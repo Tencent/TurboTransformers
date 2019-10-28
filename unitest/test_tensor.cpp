@@ -14,7 +14,7 @@ protected:
 };
 
 TEST_F(tensorTest, inialization) {
-    Tensor test_tensor(details::CreateDLPackTensor<float>({3,4}));
+    Tensor test_tensor(details::CreateDLPackTensor<float, ::fast_transformers::DeviceType::CPU>({3,4}));
     float* buff = test_tensor.mutableData<float>();
     for(int i = 0; i < 12; ++i)
         buff[i] = i * 0.1;

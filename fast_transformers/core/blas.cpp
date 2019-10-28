@@ -28,14 +28,17 @@ std::unique_ptr<CBlasFuncs, CBlasFuncDeleter> g_blas_funcs_;
 
 void AutoInitBlas() {
   std::string openblas_libname = absl::StrCat("libopenblas", dynlib_suffix_);
-  std::string mklml_libname = absl::StrCat("libmklml", dynlib_suffix_);
+  std::vector<std::string> mklml_libnames = {absl::StrCat("libmklml_intel", dynlib_suffix_), 
+                        absl::StrCat("libmklml", dynlib_suffix_), absl::StrCat("libmklml_gnu", dynlib_suffix_)};
   char *conda_prefix = std::getenv("CONDA_PREFIX");
   if (conda_prefix != nullptr) {
-    auto p = fs::path(conda_prefix) / "lib" / mklml_libname;
-    if (fs::exists(p)) {
-      InitializeMKLMLLib(p.c_str());
-      return;
-    }
+    for(const std::string& mklml_libname: mklml_libnames) {
+      auto p = fs::path(conda_prefix) / "lib" / mklml_libname;
+      if (fs::exists(p)) {
+        InitializeMKLMLLib(p.c_str());
+        return;
+      }
+    }//for mklmkl
   }
 
   std::vector<fs::path> pathes = {fs::path("./"), fs::path("/usr/lib"),
@@ -43,12 +46,14 @@ void AutoInitBlas() {
                                   fs::path("/usr/local/opt/openblas/lib")};
 
   for (auto &p : pathes) {
-    auto libpath = p / mklml_libname;
-    if (fs::exists(libpath)) {
-      InitializeOpenblasLib(libpath.c_str());
-      return;
-    }
-  }
+    for(const std::string& mklml_libname: mklml_libnames) {
+      auto libpath = p / mklml_libname;
+      if (fs::exists(libpath)) {
+        InitializeOpenblasLib(libpath.c_str());
+        return;
+      }
+    }//for mkl
+  }//for path
 
   for (auto &p : pathes) {
     auto libpath = p / openblas_libname;

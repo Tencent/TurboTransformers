@@ -5,6 +5,9 @@
 #include <iostream>
 
 namespace fast_transformers {
+
+enum class DeviceType{ GPU, CPU };
+
 namespace core {
 namespace details {
 
@@ -17,9 +20,9 @@ struct DLPackManagedTensorDeleter {
   }
 };
 
-template <typename T> struct DataTypeTrait;
+template <typename T, DeviceType kDevice> struct DataTypeTrait;
 
-template <> struct DataTypeTrait<float> {
+template <> struct DataTypeTrait<float, DeviceType::CPU> {
   inline static bool CheckDataType(DLDataType data_type) {
     return data_type.code == kDLFloat && data_type.bits == 32;
   }
@@ -31,10 +34,16 @@ template <> struct DataTypeTrait<float> {
     dlDataType.lanes = 0;
     return dlDataType;
   }
+
+  static DLContext getDLContext() {
+    static DLContext dlCxt;
+    dlCxt.device_type = kDLCPU;
+    dlCxt.device_id = 0; //dev id of GPU
+  }
   
 };
 
-template<typename T>
+template<typename T, DeviceType kDev>
 DLManagedTensor* CreateDLPackTensor(std::initializer_list<int64_t> shape_list) {
   DLManagedTensor* newTensor = new DLManagedTensor;
   std::vector<int64_t> shape_vec(shape_list);
@@ -43,9 +52,12 @@ DLManagedTensor* CreateDLPackTensor(std::initializer_list<int64_t> shape_list) {
   for(int i = 0; i < shape_vec.size(); ++i)
     shape_ptr[i] = shape_vec[i];
 
-  newTensor->dl_tensor.dtype = DataTypeTrait<T>::getDLDataType();
+  newTensor->dl_tensor.ctx = DataTypeTrait<T, kDev>::getDLContext();
   newTensor->dl_tensor.ndim = shape_vec.size();
+
+  newTensor->dl_tensor.dtype = DataTypeTrait<T, kDev>::getDLDataType();
   newTensor->dl_tensor.shape = shape_ptr;
+
   newTensor->dl_tensor.strides = nullptr;
   newTensor->dl_tensor.byte_offset = 0;
   
@@ -55,10 +67,11 @@ DLManagedTensor* CreateDLPackTensor(std::initializer_list<int64_t> shape_list) {
   numel_ = 1;
   for(int i = 0; i < shape_vec.size(); ++i)
     numel_ *= shape_vec[i];
-  //TODO allocator interface
+  //TODO allocator interface: allocator<DeviceType kDev>(size_t size_)
   newTensor->dl_tensor.data = static_cast<T*>(malloc(sizeof(T) * numel_));
 
   newTensor->deleter = [](struct DLManagedTensor * self) { 
+    //TDOO allocator interface: freer<DeviceType kDev>(T* data_);
     free(self->dl_tensor.data);
     delete self->dl_tensor.shape;
   };
@@ -95,9 +108,11 @@ public:
                   "strides must be nullptr");
     FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
                   "byte_offset must be zero");
+    /*
     FT_ENFORCE(
-        details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
+        details::DataTypeTrait<T, details::DeviceType::CPU>::CheckDataType(tensor_->dl_tensor.dtype),
         "data type mismatch");
+    */
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
 
@@ -106,9 +121,11 @@ public:
                   "strides must be nullptr");
     FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
                   "byte_offset must be zero");
+    /* 
     FT_ENFORCE(
         details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
         "data type mismatch");
+        */
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
 
