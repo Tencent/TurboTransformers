@@ -1,5 +1,7 @@
-#include "blas.h"
+#include <memory>
+
 #include "absl/strings/str_cat.h"
+#include "blas.h"
 #include <experimental/filesystem>
 namespace fast_transformers {
 namespace dynload {
@@ -9,10 +11,7 @@ static const char *dynlib_suffix_ = ".dylib";
 static const char *dynlib_suffix_ = ".so";
 #endif
 
-namespace details {
-BlasProvider g_blas_provider_;
-std::once_flag g_blas_once_;
-} // namespace details
+std::unique_ptr<CBlasFuncs> g_blas_funcs_;
 
 namespace fs = std::experimental::filesystem;
 
@@ -25,12 +24,24 @@ void AutoInitBlas() {
   for (auto &p : pathes) {
     auto libpath = p / openblas_libname;
     if (fs::exists(libpath)) {
-      InitializeBlas<Openblas>(libpath.c_str());
+      InitializeOpenblasLib(libpath.c_str());
       return;
     }
   }
 
   throw std::runtime_error("Cannot initialize blas automatically");
+}
+
+void InitializeOpenblasLib(const char *filename) {
+  void *lib = dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
+  if (lib == nullptr) {
+    throw std::runtime_error("Cannot load openblas");
+  }
+
+  g_blas_funcs_ = std::make_unique<CBlasFuncs>();
+  g_blas_funcs_->shared_library_ = lib;
+  g_blas_funcs_->sgemm_ =
+      reinterpret_cast<decltype(cblas_sgemm) *>(dlsym(lib, "cblas_sgemm"));
 }
 } // namespace dynload
 } // namespace fast_transformers

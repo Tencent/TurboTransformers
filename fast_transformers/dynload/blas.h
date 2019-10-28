@@ -1,26 +1,24 @@
 #pragma once
 
 #include "absl/types/variant.h"
-#include "fast_transformers/dynload/openblas.h"
+#include "fast_transformers/dynload/cblas_fn.h"
 #include <mutex>
 
 namespace fast_transformers {
 namespace dynload {
 
-using BlasProvider = absl::variant<absl::monostate, Openblas>;
+extern std::unique_ptr<CBlasFuncs> g_blas_funcs_;
 
-namespace details {
-extern BlasProvider g_blas_provider_;
-extern std::once_flag g_blas_once_;
-} // namespace details
+void InitializeOpenblasLib(const char *filename);
 
-template <typename BlasProviderT> void InitializeBlas(const char *filename) {
-  std::call_once(details::g_blas_once_, [filename] {
-    details::g_blas_provider_ = BlasProviderT(filename);
-  });
+void AutoInitBlas();
+
+inline static CBlasFuncs &Blas() {
+  if (g_blas_funcs_) {
+    throw std::runtime_error("Must initialize blas lib");
+  }
+  return *g_blas_funcs_;
 }
-
-extern void AutoInitBlas();
 
 } // namespace dynload
 } // namespace fast_transformers
