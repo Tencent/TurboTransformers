@@ -19,6 +19,7 @@ class TestBertEmbedding(unittest.TestCase):
         self.torch_embedding = BertEmbeddings(cfg)
         params = {k: _(v) for k, v in
                   self.torch_embedding.named_parameters()}
+        self.torch_embedding.eval()
 
         self.ft_embedding = fast_transformers.BERTEmbedding(params['word_embeddings.weight'],
                                                             params['position_embeddings.weight'],
