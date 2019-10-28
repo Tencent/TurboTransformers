@@ -4,3 +4,6 @@
 [submodule "3rd/pybind11"]
 	path = 3rd/pybind11
 	url = https://github.com/pybind/pybind11.git
+[submodule "3rd/abseil"]
+	path = 3rd/abseil
+	url = https://github.com/abseil/abseil-cpp.git

@@ -2,7 +2,7 @@ include(ExternalProject)
 add_library(dlpack INTERFACE)
 target_include_directories(dlpack INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/dlpack/include)
 add_subdirectory(pybind11)
-
+add_subdirectory(abseil)
 #IF (NOT UNIX)
 #    MESSAGE(FATAL "Only linux and macos are supported")
 #ENDIF ()

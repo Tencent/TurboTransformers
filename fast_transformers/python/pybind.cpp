@@ -1,4 +1,5 @@
 #include "fast_transformers/core/tensor.h"
+#include "fast_transformers/dynload/blas.h"
 #include "pybind11/pybind11.h"
 namespace fast_transformers {
 namespace python {
@@ -6,8 +7,7 @@ namespace python {
 namespace py = pybind11;
 
 static void DLPack_Capsule_Destructor(PyObject *data) {
-  auto *dlMTensor =
-      (DLManagedTensor *)PyCapsule_GetPointer(data, "dltensor");
+  auto *dlMTensor = (DLManagedTensor *)PyCapsule_GetPointer(data, "dltensor");
   if (dlMTensor) {
     // the dlMTensor has not been consumed, call deleter ourselves
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
@@ -20,6 +20,7 @@ static void DLPack_Capsule_Destructor(PyObject *data) {
 }
 
 PYBIND11_MODULE(fast_transformers, m) {
+  m.def("auto_init_blas", &dynload::AutoInitBlas);
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",
                   [](py::capsule capsule) -> std::unique_ptr<core::Tensor> {
