@@ -22,7 +22,7 @@ class Tensor {
 public:
   explicit Tensor(DLManagedTensor *tensor) : tensor_(tensor) {}
 
-  DLManagedTensor *ToDLPack() { return tensor_.get(); }
+  DLManagedTensor *ToDLPack() { return tensor_.release(); }
 
 private:
   std::unique_ptr<DLManagedTensor, details::DLPackManagedTensorDeleter> tensor_;
