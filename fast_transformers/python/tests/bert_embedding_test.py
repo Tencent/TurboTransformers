@@ -29,8 +29,10 @@ class TestBertEmbedding(unittest.TestCase):
         torch.onnx.export(self.torch_embedding, (
             torch.ones(size=(1, 7), dtype=torch.long), torch.ones(size=(1, 7), dtype=torch.long),
             torch.ones(size=(1, 7), dtype=torch.long)), f="bert-emb.onnx", output_names=['emb'])
-
-        self.onnx_embedding = onnxruntime.InferenceSession("bert-emb.onnx")
+        onnx_sess_opts = onnxruntime.SessionOptions()
+        onnx_sess_opts.max_num_graph_transformation_steps = 10
+        # onnx_sess_opts.set_graph_optimization_level(2)
+        self.onnx_embedding = onnxruntime.InferenceSession("bert-emb.onnx", sess_options=onnx_sess_opts)
         backend.prepare(self.onnx_embedding, "CPU-MKL-DNN")
 
         self.torch_script_embedding = torch.jit.trace(
