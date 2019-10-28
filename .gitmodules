@@ -1,3 +1,6 @@
 [submodule "3rd/dlpack"]
 	path = 3rd/dlpack
 	url = https://github.com/dmlc/dlpack.git
+[submodule "3rd/pybind11"]
+	path = 3rd/pybind11
+	url = https://github.com/pybind/pybind11.git

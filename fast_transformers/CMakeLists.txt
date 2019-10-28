@@ -1,2 +1,3 @@
-add_subdirectory(utils)
-add_subdirectory(kernels)
+add_subdirectory(core)
+add_subdirectory(layers)
+add_subdirectory(python)
