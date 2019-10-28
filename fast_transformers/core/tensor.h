@@ -2,6 +2,8 @@
 #include "fast_transformers/core/enforce.h"
 #include <dlpack/dlpack.h>
 #include <memory>
+#include <iostream>
+
 namespace fast_transformers {
 namespace core {
 namespace details {
@@ -21,7 +23,47 @@ template <> struct DataTypeTrait<float> {
   inline static bool CheckDataType(DLDataType data_type) {
     return data_type.code == kDLFloat && data_type.bits == 32;
   }
+  
+  static DLDataType getDLDataType() {
+    static DLDataType dlDataType;
+    dlDataType.code = kDLFloat;
+    dlDataType.bits = sizeof(float) * 8;
+    dlDataType.lanes = 0;
+    return dlDataType;
+  }
+  
 };
+
+template<typename T>
+DLManagedTensor* CreateDLPackTensor(std::initializer_list<int64_t> shape_list) {
+  DLManagedTensor* newTensor = new DLManagedTensor;
+  std::vector<int64_t> shape_vec(shape_list);
+
+  int64_t* shape_ptr = new int64_t [shape_vec.size()];
+  for(int i = 0; i < shape_vec.size(); ++i)
+    shape_ptr[i] = shape_vec[i];
+
+  newTensor->dl_tensor.dtype = DataTypeTrait<T>::getDLDataType();
+  newTensor->dl_tensor.ndim = shape_vec.size();
+  newTensor->dl_tensor.shape = shape_ptr;
+  newTensor->dl_tensor.strides = nullptr;
+  newTensor->dl_tensor.byte_offset = 0;
+  
+  size_t numel_;
+  if(shape_vec.size() == 0)
+    numel_ = 0;
+  numel_ = 1;
+  for(int i = 0; i < shape_vec.size(); ++i)
+    numel_ *= shape_vec[i];
+  //TODO allocator interface
+  newTensor->dl_tensor.data = static_cast<T*>(malloc(sizeof(T) * numel_));
+
+  newTensor->deleter = [](struct DLManagedTensor * self) { 
+    free(self->dl_tensor.data);
+    delete self->dl_tensor.shape;
+  };
+  return newTensor;
+}
 
 } // namespace details
 
@@ -34,16 +76,19 @@ public:
     return tensor_.release();
   }
 
-  size_t length() const {
-    size_t length_ = 1;
-    for(int i = 0; i < n_dim(); ++i) {
-      length_ *= shape(i);
-    }
-    return length_;
-  }
   size_t n_dim() const { return tensor_->dl_tensor.ndim; }
-
+  
   int64_t shape(size_t pos) const { return tensor_->dl_tensor.shape[pos]; }
+
+  size_t numel() const {
+    if(n_dim() == 0)
+      return 0;
+    size_t numel_ = 1;
+    for(int i = 0; i < n_dim(); ++i)
+      numel_ *= shape(i);
+    return numel_;
+  }
+
 
   template <typename T> const T *data() const {
     FT_ENFORCE_EQ(tensor_->dl_tensor.strides, nullptr,
@@ -56,20 +101,23 @@ public:
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
 
-  static DLManagedTensor* CreateDLPackTensor(initializer_list<int64_t> shape_list) {
-    DLManagedTensor* newTensor = new DLManagedTensor;
-    vector<int64_t> shape_vec(shape_list);
-    newTensor->dl_tensor->dim = shape_vec.size();
-    newTensor->dl_tensor->shape = &shape_vec[0];
-    newTensor->dl_tensor->strides = nullptr;
-    newTensor->dl_tensor->byte_offset = 0;
-    int64_t total_len = 1;
-    for(int64_t dim_ : shape_list) {
-      total_len *= dim;
+  template <typename T> T *mutableData() {
+    FT_ENFORCE_EQ(tensor_->dl_tensor.strides, nullptr,
+                  "strides must be nullptr");
+    FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
+                  "byte_offset must be zero");
+    FT_ENFORCE(
+        details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
+        "data type mismatch");
+    return reinterpret_cast<T *>(tensor_->dl_tensor.data);
+  }
+
+  template <typename T> void print() const {
+    std::cout << "numel " << numel() << std::endl;
+    for(int i = 0; i < numel(); ++i) {
+      std::cout << data<T>()[i] << ", ";
     }
-    if(shape_vec.size() == 0)
-      total_len = 0;
-    tensor = dl_tensor->data = static_cast<float*>malloc(sizeof(float)*total_len);
+    std::cout << std::endl;
   }
 
 private:
