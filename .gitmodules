@@ -7,3 +7,6 @@
 [submodule "3rd/abseil"]
 	path = 3rd/abseil
 	url = https://github.com/abseil/abseil-cpp.git
+[submodule "3rd/Catch2"]
+	path = 3rd/Catch2
+	url = https://github.com/catchorg/Catch2.git
