@@ -10,6 +10,7 @@ namespace core {
 extern std::unique_ptr<CBlasFuncs, CBlasFuncDeleter> g_blas_funcs_;
 
 void InitializeOpenblasLib(const char *filename);
+void InitializeMKLMLLib(const char *filename);
 
 void AutoInitBlas();
 
