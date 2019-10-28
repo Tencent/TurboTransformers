@@ -34,6 +34,13 @@ public:
     return tensor_.release();
   }
 
+  size_t length() const {
+    size_t length_ = 1;
+    for(int i = 0; i < n_dim(); ++i) {
+      length_ *= shape(i);
+    }
+    return length_;
+  }
   size_t n_dim() const { return tensor_->dl_tensor.ndim; }
 
   int64_t shape(size_t pos) const { return tensor_->dl_tensor.shape[pos]; }
@@ -47,6 +54,22 @@ public:
         details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
         "data type mismatch");
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
+  }
+
+  static DLManagedTensor* CreateDLPackTensor(initializer_list<int64_t> shape_list) {
+    DLManagedTensor* newTensor = new DLManagedTensor;
+    vector<int64_t> shape_vec(shape_list);
+    newTensor->dl_tensor->dim = shape_vec.size();
+    newTensor->dl_tensor->shape = &shape_vec[0];
+    newTensor->dl_tensor->strides = nullptr;
+    newTensor->dl_tensor->byte_offset = 0;
+    int64_t total_len = 1;
+    for(int64_t dim_ : shape_list) {
+      total_len *= dim;
+    }
+    if(shape_vec.size() == 0)
+      total_len = 0;
+    tensor = dl_tensor->data = static_cast<float*>malloc(sizeof(float)*total_len);
   }
 
 private:

@@ -1,3 +1,5 @@
 .idea
 cmake-build-*
 venv
+.vscode
+build
