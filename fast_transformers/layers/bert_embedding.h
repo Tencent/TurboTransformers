@@ -2,7 +2,7 @@
 #include <memory>
 
 namespace fast_transformers {
-namespace kernels {
+namespace layers {
 
 class BERTEmbedding {
 public:

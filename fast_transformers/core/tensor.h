@@ -29,7 +29,10 @@ class Tensor {
 public:
   explicit Tensor(DLManagedTensor *tensor) : tensor_(tensor) {}
 
-  DLManagedTensor *ToDLPack() { return tensor_.release(); }
+  DLManagedTensor *ToDLPack() {
+    FT_ENFORCE_NE(tensor_, nullptr, "The Tensor must contain data");
+    return tensor_.release();
+  }
 
   size_t n_dim() const { return tensor_->dl_tensor.ndim; }
 
