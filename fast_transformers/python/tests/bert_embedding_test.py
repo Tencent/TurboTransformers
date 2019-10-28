@@ -3,7 +3,11 @@ import unittest
 import fast_transformers
 import torch
 import torch.utils.dlpack as dlpack
+import torch.jit
+import torch.onnx
 from transformers import BertTokenizer
+import contexttimer
+import onnxruntime
 
 
 def _(t):
@@ -21,6 +25,16 @@ class TestBertEmbedding(unittest.TestCase):
                   self.torch_embedding.named_parameters()}
         self.torch_embedding.eval()
 
+        torch.onnx.export(self.torch_embedding, (
+            torch.ones(size=(1, 7), dtype=torch.long), torch.ones(size=(1, 7), dtype=torch.long),
+            torch.ones(size=(1, 7), dtype=torch.long)), f="bert-emb.onnx", output_names=['emb'])
+
+        self.onnx_embedding = onnxruntime.InferenceSession("bert-emb.onnx")
+
+        self.torch_script_embedding = torch.jit.trace(
+            self.torch_embedding, (torch.ones(size=(1, 7), dtype=torch.long), torch.ones(size=(1, 7), dtype=torch.long),
+                                   torch.ones(size=(1, 7), dtype=torch.long)))
+
         self.ft_embedding = fast_transformers.BERTEmbedding(params['word_embeddings.weight'],
                                                             params['position_embeddings.weight'],
                                                             params['token_type_embeddings.weight'],
@@ -34,8 +48,32 @@ class TestBertEmbedding(unittest.TestCase):
         position_ids = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
         position_ids = position_ids.unsqueeze(0).expand_as(input_ids)
         token_type_ids = torch.zeros_like(input_ids)
+        # warming up.
+        self.torch_embedding(input_ids, token_type_ids, position_ids)
+        self.torch_script_embedding(input_ids, token_type_ids, position_ids)
+        onnx_inputs = self.onnx_embedding.get_inputs()
+        onnx_input_feeds = {
+            onnx_inputs[0].name: input_ids.numpy(),
+            onnx_inputs[1].name: token_type_ids.numpy(),
+            onnx_inputs[2].name: position_ids.numpy()
+        }
+        self.onnx_embedding.run(output_names=['emb'],
+                                input_feed=onnx_input_feeds)
+        with contexttimer.Timer() as t:
+            for it in range(100):
+                torch_result = self.onnx_embedding.run(output_names=['emb'],
+                                                       input_feed=onnx_input_feeds)
+        print(f'ONNX time {t.elapsed}')
 
-        torch_result = self.torch_embedding(input_ids, token_type_ids, position_ids)
+        with contexttimer.Timer() as t:
+            for it in range(100):
+                torch_result = self.torch_embedding(input_ids, token_type_ids, position_ids)
+        print(f'Plain PyTorch time {t.elapsed}')
+
+        with contexttimer.Timer() as t:
+            for it in range(100):
+                torch_result = self.torch_script_embedding(input_ids, token_type_ids, position_ids)
+        print(f'TorchScript(i.e., jit) time {t.elapsed}')
 
         ft_result = dlpack.from_dlpack(self.ft_embedding(_(input_ids), _(token_type_ids), _(position_ids)).to_dlpack())
 
