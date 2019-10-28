@@ -20,15 +20,17 @@ namespace fast_transformers {
 namespace core {
 #ifdef __APPLE__
 static const char *dynlib_suffix_ = ".dylib";
+static const char *mklml_prefix = "libmklml";
 #else
 static const char *dynlib_suffix_ = ".so";
+static const char *mklml_prefix = "libmklml_intel";
 #endif
 
 std::unique_ptr<CBlasFuncs, CBlasFuncDeleter> g_blas_funcs_;
 
 void AutoInitBlas() {
   std::string openblas_libname = absl::StrCat("libopenblas", dynlib_suffix_);
-  std::string mklml_libname = absl::StrCat("libmklml", dynlib_suffix_);
+  std::string mklml_libname = absl::StrCat(mklml_prefix, dynlib_suffix_);
   char *conda_prefix = std::getenv("CONDA_PREFIX");
   if (conda_prefix != nullptr) {
     auto p = fs::path(conda_prefix) / "lib" / mklml_libname;
