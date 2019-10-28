@@ -1,7 +1,7 @@
-#include "fast_transformers/dynload/cblas_defs.h"
+#include "fast_transformers/core/cblas_defs.h"
 #include <dlfcn.h>
 namespace fast_transformers {
-namespace dynload {
+namespace core {
 extern void cblas_sgemm(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE TransA,
                         CBLAS_TRANSPOSE TransB, const int M, const int N,
                         const int K, const float alpha, const float *A,
@@ -24,5 +24,5 @@ struct CBlasFuncDeleter {
   }
 };
 
-} // namespace dynload
+} // namespace core
 } // namespace fast_transformers

@@ -1,10 +1,9 @@
 #pragma once
+#include "fast_transformers/core/enforce.h"
 #include <dlpack/dlpack.h>
 #include <memory>
 namespace fast_transformers {
-
 namespace core {
-
 namespace details {
 
 struct DLPackManagedTensorDeleter {
@@ -37,15 +36,13 @@ public:
   int64_t shape(size_t pos) const { return tensor_->dl_tensor.shape[pos]; }
 
   template <typename T> const T *data() const {
-    if (tensor_->dl_tensor.strides != nullptr) {
-      throw std::runtime_error("strides must be nullptr");
-    }
-    if (tensor_->dl_tensor.byte_offset != 0) {
-      throw std::runtime_error("byte_offset must be zero");
-    }
-    if (details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype)) {
-      throw std::runtime_error("data type mismatch");
-    }
+    FT_ENFORCE_EQ(tensor_->dl_tensor.strides, nullptr,
+                  "strides must be nullptr");
+    FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
+                  "byte_offset must be zero");
+    FT_ENFORCE(
+        details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
+        "data type mismatch");
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
 

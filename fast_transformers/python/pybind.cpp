@@ -1,5 +1,5 @@
+#include "fast_transformers/core/blas.h"
 #include "fast_transformers/core/tensor.h"
-#include "fast_transformers/dynload/blas.h"
 #include "pybind11/pybind11.h"
 namespace fast_transformers {
 namespace python {
@@ -20,7 +20,7 @@ static void DLPack_Capsule_Destructor(PyObject *data) {
 }
 
 PYBIND11_MODULE(fast_transformers, m) {
-  m.def("auto_init_blas", &dynload::AutoInitBlas);
+  m.def("auto_init_blas", &core::AutoInitBlas);
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",
                   [](py::capsule capsule) -> std::unique_ptr<core::Tensor> {

@@ -1,17 +1,16 @@
-#include <memory>
-
-#include "absl/strings/str_cat.h"
 #include "blas.h"
+#include "absl/strings/str_cat.h"
 #include <experimental/filesystem>
+#include <memory>
 namespace fast_transformers {
-namespace dynload {
+namespace core {
 #ifdef __APPLE__
 static const char *dynlib_suffix_ = ".dylib";
 #else
 static const char *dynlib_suffix_ = ".so";
 #endif
 
-std::unique_ptr<CBlasFuncs> g_blas_funcs_;
+std::unique_ptr<CBlasFuncs, CBlasFuncDeleter> g_blas_funcs_;
 
 namespace fs = std::experimental::filesystem;
 
@@ -38,10 +37,10 @@ void InitializeOpenblasLib(const char *filename) {
     throw std::runtime_error("Cannot load openblas");
   }
 
-  g_blas_funcs_ = std::make_unique<CBlasFuncs>();
+  g_blas_funcs_.reset(new CBlasFuncs());
   g_blas_funcs_->shared_library_ = lib;
   g_blas_funcs_->sgemm_ =
       reinterpret_cast<decltype(cblas_sgemm) *>(dlsym(lib, "cblas_sgemm"));
 }
-} // namespace dynload
+} // namespace core
 } // namespace fast_transformers
