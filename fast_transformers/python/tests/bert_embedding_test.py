@@ -8,6 +8,7 @@ import torch.onnx
 from transformers import BertTokenizer
 import contexttimer
 import onnxruntime
+import onnxruntime.backend as backend
 
 
 def _(t):
@@ -30,6 +31,7 @@ class TestBertEmbedding(unittest.TestCase):
             torch.ones(size=(1, 7), dtype=torch.long)), f="bert-emb.onnx", output_names=['emb'])
 
         self.onnx_embedding = onnxruntime.InferenceSession("bert-emb.onnx")
+        backend.prepare(self.onnx_embedding, "CPU-MKL-DNN")
 
         self.torch_script_embedding = torch.jit.trace(
             self.torch_embedding, (torch.ones(size=(1, 7), dtype=torch.long), torch.ones(size=(1, 7), dtype=torch.long),
@@ -63,7 +65,7 @@ class TestBertEmbedding(unittest.TestCase):
             for it in range(100):
                 torch_result = self.onnx_embedding.run(output_names=['emb'],
                                                        input_feed=onnx_input_feeds)
-        print(f'ONNX time {t.elapsed}')
+        print(f'ONNX (with mkl-dnn) time {t.elapsed}')
 
         with contexttimer.Timer() as t:
             for it in range(100):
