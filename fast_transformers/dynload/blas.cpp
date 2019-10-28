@@ -16,7 +16,7 @@ std::unique_ptr<CBlasFuncs> g_blas_funcs_;
 namespace fs = std::experimental::filesystem;
 
 void AutoInitBlas() {
-  std::vector<fs::path> pathes = {fs::path("/usr/lib"),
+  std::vector<fs::path> pathes = {fs::path("./"), fs::path("/usr/lib"),
                                   fs::path("/usr/local/lib"),
                                   fs::path("/usr/local/opt/openblas/lib")};
   std::string openblas_libname = absl::StrCat("libopenblas", dynlib_suffix_);
