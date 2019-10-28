@@ -28,10 +28,15 @@ PYBIND11_MODULE(fast_transformers, m) {
                     PyCapsule_SetName(capsule.ptr(), "used_tensor");
                     return std::make_unique<core::Tensor>(tensor);
                   })
-      .def("to_dlpack", [](core::Tensor &tensor) -> py::capsule {
-        auto *dlpack = tensor.ToDLPack();
-        return py::capsule(dlpack, "dltensor", DLPack_Capsule_Destructor);
-      });
+      .def("to_dlpack",
+           [](core::Tensor &tensor) -> py::capsule {
+             auto *dlpack = tensor.ToDLPack();
+             return py::capsule(dlpack, "dltensor", DLPack_Capsule_Destructor);
+           })
+      .def("n_dim", &core::Tensor::n_dim)
+      .def("shape", &core::Tensor::shape)
+      .def("float_data", &core::Tensor::data<float>);
+  ;
 }
 
 } // namespace python
