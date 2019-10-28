@@ -1,7 +1,19 @@
 #include "blas.h"
 #include "absl/strings/str_cat.h"
-#include <experimental/filesystem>
 #include <memory>
+
+#if defined(__cplusplus) && __cplusplus >= 201703L && defined(__has_include)
+#if __has_include(<filesystem>)
+#define GHC_USE_STD_FS
+#include <filesystem>
+namespace fs = std::filesystem;
+#endif
+#endif
+#ifndef GHC_USE_STD_FS
+#include <ghc/filesystem.hpp>
+namespace fs = ghc::filesystem;
+#endif
+
 namespace fast_transformers {
 namespace core {
 #ifdef __APPLE__
@@ -11,8 +23,6 @@ static const char *dynlib_suffix_ = ".so";
 #endif
 
 std::unique_ptr<CBlasFuncs, CBlasFuncDeleter> g_blas_funcs_;
-
-namespace fs = std::experimental::filesystem;
 
 void AutoInitBlas() {
   std::vector<fs::path> pathes = {fs::path("./"), fs::path("/usr/lib"),

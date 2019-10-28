@@ -10,3 +10,6 @@
 [submodule "3rd/Catch2"]
 	path = 3rd/Catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "3rd/filesystem"]
+	path = 3rd/filesystem
+	url = https://github.com/gulrak/filesystem.git
