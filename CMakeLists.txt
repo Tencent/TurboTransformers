@@ -7,13 +7,3 @@ add_subdirectory(3rd)
 enable_testing()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(fast_transformers)
-
-add_executable(test_fast_transformer 
-    ./unitest/test_tensor.cpp
-    ./unitest/unitest.cpp
-    )
-target_link_libraries(test_fast_transformer tensor gtest)
-
-enable_testing()
-message(STATUS "test includes: ${googletest_INCLUDE_DIRS} lib: ${googletest_STATIC_LIBRARIES}")
-target_include_directories(test_fast_transformer PUBLIC ./fast_transformers)

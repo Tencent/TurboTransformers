@@ -55,9 +55,12 @@ inline DLManagedTensor* CreateDLPackTensor(std::initializer_list<int64_t> shape_
 
   newTensor->deleter = [](struct DLManagedTensor * self) { 
     //TDOO allocator interface: freer<DeviceType kDev>(T* data_);
+    if(self->dl_tensor.data)
     delete [] (T*)self->dl_tensor.data;
-    delete [] self->dl_tensor.shape;
-    free(self->manager_ctx); //warning: deleting 'void*' is undefined
+    if(self->dl_tensor.shape)
+      delete [] self->dl_tensor.shape;
+    //if(self->manager_ctx)
+    //  free(self->manager_ctx); //warning: deleting 'void*' is undefined
     delete self;
   };
   return newTensor;
@@ -89,28 +92,24 @@ public:
 
 
   template <typename T> const T *data() const {
-    //FT_ENFORCE_EQ(tensor_->dl_tensor.strides, nullptr,
-    //              "strides must be nullptr");
     FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
                   "byte_offset must be zero");
-    /*
+    
     FT_ENFORCE(
-        details::DataTypeTrait<T, details::DeviceType::CPU>::CheckDataType(tensor_->dl_tensor.dtype),
+        details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
         "data type mismatch");
-    */
+    
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
 
   template <typename T> T *mutableData() {
-    //FT_ENFORCE_EQ(tensor_->dl_tensor.strides, nullptr,
-    //              "strides must be nullptr");
     FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
                   "byte_offset must be zero");
-    /* 
+    
     FT_ENFORCE(
         details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
         "data type mismatch");
-        */
+        
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
 
