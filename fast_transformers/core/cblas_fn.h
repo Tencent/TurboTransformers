@@ -5,6 +5,8 @@ namespace core {
 
 using blasint = int;
 
+// NOTE(josephyu): These method just provide the interface of blas routines.
+// do not try to invoke these method directly. Use `Blas().sgemm` instead.
 extern void cblas_sgemm(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE TransA,
                         CBLAS_TRANSPOSE TransB, blasint M, blasint N, blasint K,
                         float alpha, float *A, blasint lda, float *B,
@@ -30,7 +32,7 @@ struct CBlasFuncs {
 };
 
 struct CBlasFuncDeleter {
-  void operator()(CBlasFuncs *f) {
+  void operator()(CBlasFuncs *f) const {
     if (f == nullptr)
       return;
     if (f->shared_library_) {
