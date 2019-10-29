@@ -30,6 +30,15 @@ template <> struct DataTypeTrait<float> {
   };
 };
 
+template <> struct DataTypeTrait<int> {
+  inline static bool CheckDataType(DLDataType data_type) {
+    return data_type.code == kDLInt && data_type.bits == 32;
+  }
+  enum {
+    DLPackTypeCode = kDLInt
+  };
+};
+
 template<typename T, DeviceType kDev>
 inline DLManagedTensor* CreateDLPackTensor(std::initializer_list<int64_t> shape_list) {
   DLManagedTensor* newTensor = new DLManagedTensor;
@@ -41,7 +50,8 @@ inline DLManagedTensor* CreateDLPackTensor(std::initializer_list<int64_t> shape_
   newTensor->dl_tensor.ctx = {kDLCPU, 0}; //device_type, device_id
   newTensor->dl_tensor.ndim = shape_list.size(); 
 
-  newTensor->dl_tensor.dtype = {DataTypeTrait<T>::DLPackTypeCode, sizeof(T)*8, 1}; //code, bits, lanes
+  newTensor->dl_tensor.dtype = {DataTypeTrait<T>::DLPackTypeCode, 32, 1}; //code, bits, lanes
+
   newTensor->dl_tensor.strides = nullptr; //TODO
   newTensor->dl_tensor.byte_offset = 0;
 
@@ -95,9 +105,8 @@ public:
     FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
                   "byte_offset must be zero");
     
-    FT_ENFORCE(
-        details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
-        "data type mismatch");
+    //FT_ENFORCE(details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
+    //    "data type mismatch");
     
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
@@ -106,9 +115,8 @@ public:
     FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
                   "byte_offset must be zero");
     
-    FT_ENFORCE(
-        details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
-        "data type mismatch");
+    //FT_ENFORCE(details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
+    //    "data type mismatch");
         
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
