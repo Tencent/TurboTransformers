@@ -3,25 +3,24 @@
 namespace fast_transformers {
 namespace core {
 
-using blasint = int;
+using BlasInt = int;
 
 // NOTE(josephyu): These method just provide the interface of blas routines.
 // do not try to invoke these method directly. Use `Blas().sgemm` instead.
 extern void cblas_sgemm(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE TransA,
-                        CBLAS_TRANSPOSE TransB, blasint M, blasint N, blasint K,
-                        float alpha, float *A, blasint lda, float *B,
-                        blasint ldb, float beta, float *C, blasint ldc);
+                        CBLAS_TRANSPOSE TransB, BlasInt M, BlasInt N, BlasInt K,
+                        float alpha, float *A, BlasInt lda, float *B,
+                        BlasInt ldb, float beta, float *C, BlasInt ldc);
 
-extern void cblas_sgemm_batch(CBLAS_LAYOUT Layout,
-                              CBLAS_TRANSPOSE *transa_array,
-                              CBLAS_TRANSPOSE *transb_array, int *m_array,
-                              int *n_array, int *k_array, float *alpha_array,
-                              float **a_array, int *lda_array, float **b_array,
-                              int *ldb_array, float *beta_array,
-                              float **c_array, int *ldc_array, int group_count,
-                              int *group_size);
+extern void
+cblas_sgemm_batch(CBLAS_LAYOUT Layout, CBLAS_TRANSPOSE *transa_array,
+                  CBLAS_TRANSPOSE *transb_array, BlasInt *m_array,
+                  BlasInt *n_array, BlasInt *k_array, float *alpha_array,
+                  float **a_array, BlasInt *lda_array, float **b_array,
+                  BlasInt *ldb_array, float *beta_array, float **c_array,
+                  BlasInt *ldc_array, BlasInt group_count, BlasInt *group_size);
 
-extern void cblas_sscal(int N, float alpha, float *X, int incX);
+extern void cblas_sscal(BlasInt N, float alpha, float *X, BlasInt incX);
 
 struct CBlasFuncs {
   decltype(cblas_sgemm) *sgemm_;

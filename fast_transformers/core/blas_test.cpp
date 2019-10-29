@@ -33,11 +33,11 @@ TEST_CASE("blas-batch-gemm") {
   float *B[] = {B1, B2};
   float *C[] = {C1, C2};
 
-  blasint m[] = {2, 2};
+  BlasInt m[] = {2, 2};
   CBLAS_TRANSPOSE trans[] = {CblasNoTrans, CblasNoTrans};
   float alpha = 1;
   float beta = 0;
-  blasint batch_size = 2;
+  BlasInt batch_size = 2;
 
   Blas().sgemm_batch_(CblasRowMajor, trans, trans, m, m, m, &alpha,
                       reinterpret_cast<float **>(A), m, B, m, &beta, C, m, 1,
