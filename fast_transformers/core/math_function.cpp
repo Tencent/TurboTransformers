@@ -13,7 +13,7 @@ namespace core {
                           const float beta,
                           float *C, const int ldc
                           ) {
-                g_blas_funcs_->sgemm_(CblasRowMajor,
+                Blas().sgemm_(CblasRowMajor,
                         TransA ? CblasTrans : CblasNoTrans, TransB ? CblasTrans : CblasNoTrans,
                         N, M, K,
                         alpha,
@@ -35,7 +35,7 @@ namespace core {
                           const float beta,
                           float *C, const int ldc
                           ) {
-                g_blas_funcs_->sgemm_(CblasRowMajor,
+                Blas().sgemm_(CblasRowMajor,
                         TransA ? CblasTrans : CblasNoTrans, TransB ? CblasTrans : CblasNoTrans,
                         N, M, K,
                         alpha,
@@ -46,7 +46,7 @@ namespace core {
                 return 1;
     }
 
-/*
+
     template<>
     int cpu_blas_gemm_batch<float>(
                                 const bool TransA, const bool TransB,
@@ -59,7 +59,7 @@ namespace core {
                                 int batchCount) {
             CBLAS_TRANSPOSE transA = TransA ? CblasTrans : CblasNoTrans;
             CBLAS_TRANSPOSE transB = TransB ? CblasTrans : CblasNoTrans;
-            cblas_sgemm_batch(CblasColMajor,
+            Blas().sgemm_batch_(CblasColMajor,
                               &transA, &transB,
                               &m, &n, &k,
                               &alpha,
@@ -93,7 +93,7 @@ namespace core {
 
             CBLAS_TRANSPOSE transA = TransA ? CblasTrans : CblasNoTrans;
             CBLAS_TRANSPOSE transB = TransB ? CblasTrans : CblasNoTrans;
-            cblas_sgemm_batch(CblasColMajor,
+            Blas().sgemm_batch_(CblasColMajor,
                               &transA, &transB,
                               &m, &n, &k,
                               &alpha,
@@ -104,7 +104,7 @@ namespace core {
                               1, &batchCount);
             return 1;
     }
-*/
+
 
 }//namespace core
 }//namespace fast_transformers
