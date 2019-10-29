@@ -9,7 +9,7 @@ add_library(tensor tensor.cpp)
 target_link_libraries(tensor dlpack enforce)
 
 add_library(blas blas.cpp)
-target_link_libraries(blas PRIVATE absl::strings ghc_filesystem
+target_link_libraries(blas PRIVATE absl::strings ghc_filesystem dl
         PUBLIC absl::variant enforce)
 
 add_executable(blas_test blas_test.cpp)
