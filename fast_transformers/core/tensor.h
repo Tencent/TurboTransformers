@@ -3,10 +3,9 @@
 #include <dlpack/dlpack.h>
 #include <memory>
 #include <iostream>
+#include "fast_transformers/core/common.h"
 
 namespace fast_transformers {
-
-enum class DeviceType{ GPU, CPU };
 
 namespace core {
 namespace details {
@@ -20,60 +19,46 @@ struct DLPackManagedTensorDeleter {
   }
 };
 
-template <typename T, DeviceType kDevice> struct DataTypeTrait;
+template <typename T> struct DataTypeTrait;
 
-template <> struct DataTypeTrait<float, DeviceType::CPU> {
+template <> struct DataTypeTrait<float> {
   inline static bool CheckDataType(DLDataType data_type) {
     return data_type.code == kDLFloat && data_type.bits == 32;
   }
-  
-  static DLDataType getDLDataType() {
-    static DLDataType dlDataType;
-    dlDataType.code = kDLFloat;
-    dlDataType.bits = sizeof(float) * 8;
-    dlDataType.lanes = 0;
-    return dlDataType;
-  }
-
-  static DLContext getDLContext() {
-    static DLContext dlCxt;
-    dlCxt.device_type = kDLCPU;
-    dlCxt.device_id = 0; //dev id of GPU
-  }
-  
+  enum {
+    DLPackTypeCode = kDLFloat
+  };
 };
 
 template<typename T, DeviceType kDev>
-DLManagedTensor* CreateDLPackTensor(std::initializer_list<int64_t> shape_list) {
+inline DLManagedTensor* CreateDLPackTensor(std::initializer_list<int64_t> shape_list) {
   DLManagedTensor* newTensor = new DLManagedTensor;
   std::vector<int64_t> shape_vec(shape_list);
 
-  int64_t* shape_ptr = new int64_t [shape_vec.size()];
-  for(int i = 0; i < shape_vec.size(); ++i)
-    shape_ptr[i] = shape_vec[i];
+  newTensor->dl_tensor.shape = new int64_t [shape_list.size()];
+  std::copy(shape_list.begin(), shape_list.end(), newTensor->dl_tensor.shape);
 
-  newTensor->dl_tensor.ctx = DataTypeTrait<T, kDev>::getDLContext();
-  newTensor->dl_tensor.ndim = shape_vec.size();
+  newTensor->dl_tensor.ctx = {kDLCPU, 0}; //device_type, device_id
+  newTensor->dl_tensor.ndim = shape_list.size(); 
 
-  newTensor->dl_tensor.dtype = DataTypeTrait<T, kDev>::getDLDataType();
-  newTensor->dl_tensor.shape = shape_ptr;
-
-  newTensor->dl_tensor.strides = nullptr;
+  newTensor->dl_tensor.dtype = {DataTypeTrait<T>::DLPackTypeCode, sizeof(T)*8, 1}; //code, bits, lanes
+  newTensor->dl_tensor.strides = nullptr; //TODO
   newTensor->dl_tensor.byte_offset = 0;
-  
-  size_t numel_;
+
+  size_t numel;
   if(shape_vec.size() == 0)
-    numel_ = 0;
-  numel_ = 1;
-  for(int i = 0; i < shape_vec.size(); ++i)
-    numel_ *= shape_vec[i];
+    numel = 0;
+  else
+    numel = std::accumulate(shape_list.begin(), shape_list.end(), 1, std::multiplies<int64_t>());
   //TODO allocator interface: allocator<DeviceType kDev>(size_t size_)
-  newTensor->dl_tensor.data = static_cast<T*>(malloc(sizeof(T) * numel_));
+  newTensor->dl_tensor.data = new T [numel];
 
   newTensor->deleter = [](struct DLManagedTensor * self) { 
     //TDOO allocator interface: freer<DeviceType kDev>(T* data_);
-    free(self->dl_tensor.data);
-    delete self->dl_tensor.shape;
+    delete [] (T*)self->dl_tensor.data;
+    delete [] self->dl_tensor.shape;
+    free(self->manager_ctx); //warning: deleting 'void*' is undefined
+    delete self;
   };
   return newTensor;
 }
@@ -104,8 +89,8 @@ public:
 
 
   template <typename T> const T *data() const {
-    FT_ENFORCE_EQ(tensor_->dl_tensor.strides, nullptr,
-                  "strides must be nullptr");
+    //FT_ENFORCE_EQ(tensor_->dl_tensor.strides, nullptr,
+    //              "strides must be nullptr");
     FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
                   "byte_offset must be zero");
     /*
@@ -117,8 +102,8 @@ public:
   }
 
   template <typename T> T *mutableData() {
-    FT_ENFORCE_EQ(tensor_->dl_tensor.strides, nullptr,
-                  "strides must be nullptr");
+    //FT_ENFORCE_EQ(tensor_->dl_tensor.strides, nullptr,
+    //              "strides must be nullptr");
     FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
                   "byte_offset must be zero");
     /* 
@@ -129,12 +114,50 @@ public:
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
 
-  template <typename T> void print() const {
-    std::cout << "numel " << numel() << std::endl;
-    for(int i = 0; i < numel(); ++i) {
-      std::cout << data<T>()[i] << ", ";
+  DLDataTypeCode GetDataTypeCode() const {
+    return static_cast<DLDataTypeCode>(tensor_->dl_tensor.dtype.code);
+  }
+
+  DLDeviceType GetDeviceType() const {
+    return tensor_->dl_tensor.ctx.device_type;
+  }
+  //if stride is NULL, indicating tensor is compact and row-majored.
+  int64_t GetStride() const {
+    if(tensor_->dl_tensor.strides != nullptr)
+      return *(tensor_->dl_tensor.strides);
+    else
+      return 0;
+  }
+  template <typename T> void Print(std::ostream& os) const {
+    switch (GetDataTypeCode()) {
+      case kDLInt:
+        os << "type: int" <<std::endl;
+        break;
+      case kDLUInt:
+        os << "type: unsigned" <<std::endl;
+        break;
+      case kDLFloat:
+        os << "type float" << std::endl;
+        break;
+      default:
+        os << "unrecoginized type" << std::endl;
     }
-    std::cout << std::endl;
+    
+    os << "numel: " << numel() << std::endl;
+    os << "stride: " << GetStride() << std::endl;
+    os << "n_dim: " << n_dim() << ", shape: ";
+    for(int i = 0; i < n_dim(); ++i)
+      os << shape(i) << ", ";
+    os << std::endl;
+
+    int cnt = 10;
+    double sum = 0.;
+    for(int i = 0; i < numel(); ++i) {
+      sum += data<T>()[i];
+      if(cnt-- >= 0)
+        os << data<T>()[i] << ", ";
+    }
+    os << "sum is " << sum << std::endl;
   }
 
 private:

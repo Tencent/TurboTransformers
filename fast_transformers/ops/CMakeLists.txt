@@ -1,0 +1,2 @@
+add_library(cpu_bert_embedding_op cpu_bert_embedding_op.cpp)
+target_link_libraries(cpu_bert_embedding_op tensor math_function)

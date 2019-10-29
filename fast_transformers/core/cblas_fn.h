@@ -1,3 +1,4 @@
+#pragma once
 #include "fast_transformers/core/cblas_defs.h"
 #include <dlfcn.h>
 namespace fast_transformers {

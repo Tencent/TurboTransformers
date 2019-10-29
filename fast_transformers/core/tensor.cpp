@@ -3,5 +3,5 @@
 namespace fast_transformers {
 namespace core {
 
-}//core
-}//fast_transformers
+}// namespace core
+}// namespace fast_transformers
