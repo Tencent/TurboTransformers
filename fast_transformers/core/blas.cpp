@@ -81,6 +81,10 @@ void InitializeOpenblasLib(const char *filename) {
 void InitializeMKLMLLib(const char *filename) {
   std::cerr << "using mkl-ml...\n";
   InitializeBlasCommon(filename);
+  g_blas_funcs_->sgemm_batch_ = reinterpret_cast<decltype(cblas_sgemm_batch) *>(
+      dlsym(g_blas_funcs_->shared_library_, "cblas_sgemm_batch"));
+  FT_ENFORCE_NE(g_blas_funcs_->sgemm_batch_, nullptr,
+                "Cannot load cblas_sgemm_batch");
 }
 } // namespace core
 } // namespace fast_transformers
