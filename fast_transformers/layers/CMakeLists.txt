@@ -1,2 +1,2 @@
 add_library(bert_embedding bert_embedding.cpp)
-target_link_libraries(bert_embedding tensor math_function cpu_bert_embedding_op)
+target_link_libraries(bert_embedding tensor math_function cpu_bert_embedding_op cpu_layernorm_op)

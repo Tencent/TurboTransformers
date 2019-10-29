@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 #include "fast_transformers/ops/cpu_bert_embedding_op.h"
+#include "fast_transformers/ops/cpu_layernorm_op.h"
 
 namespace fast_transformers {
 namespace layers {
@@ -55,10 +56,10 @@ void EmbeddingPostprocessorKernel<float, kDLCPU>(const float* position_embedding
         std::cout << "after lookup_position_embedding" << std::endl;
     }
     //TODO wait for layernorm_op ready!
-    /*
-    mkl::layernorm_op(input_tensor, embedding_beta, embedding_gamma,
+    
+    ops::layernorm_op(input_tensor, embedding_beta, embedding_gamma,
         batch_size * seq_length, hidden_size);
-    */
+    
     std::cout << "after layernorm_op" << std::endl;
     return;
 }
