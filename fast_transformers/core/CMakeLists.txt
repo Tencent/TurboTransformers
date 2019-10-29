@@ -11,3 +11,5 @@ add_library(blas blas.cpp)
 target_link_libraries(blas PRIVATE absl::strings ghc_filesystem
         PUBLIC absl::variant enforce)
 
+add_executable(blas_test blas_test.cpp)
+target_link_libraries(blas_test blas Catch2)
