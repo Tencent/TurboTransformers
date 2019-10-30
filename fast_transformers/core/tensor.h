@@ -71,12 +71,9 @@ public:
   }
 
   size_t numel() const {
-    if (n_dim() == 0)
-      return 0;
-    size_t numel_ = 1;
-    for (int i = 0; i < n_dim(); ++i)
-      numel_ *= shape(i);
-    return numel_;
+    return std::accumulate(tensor_->dl_tensor.shape,
+                           tensor_->dl_tensor.shape + tensor_->dl_tensor.ndim,
+                           1, std::multiplies<int64_t>());
   }
 
   template <typename T> const T *data() const {
@@ -94,20 +91,7 @@ public:
   }
 
   template <typename T> void Print(std::ostream &os) const {
-    switch (tensor_->dl_tensor.dtype.code) {
-    case kDLInt:
-      os << "type: int" << std::endl;
-      break;
-    case kDLUInt:
-      os << "type: unsigned" << std::endl;
-      break;
-    case kDLFloat:
-      os << "type float" << std::endl;
-      break;
-    default:
-      os << "unrecoginized type" << std::endl;
-    }
-
+    os << "type " << tensor_->dl_tensor.dtype.code << std::endl;
     os << "numel: " << numel() << std::endl;
     os << "n_dim: " << n_dim() << std::endl;
     os << "stride: ";
