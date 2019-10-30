@@ -103,10 +103,12 @@ void InitializeMKLMLLib(const char *filename) {
 
 void naive_cblas_sgemm_batch(CBLAS_LAYOUT Layout, CBLAS_TRANSPOSE *transa_array,
                              CBLAS_TRANSPOSE *transb_array, int *m_array,
-                             int *n_array, int *k_array, float *alpha_array,
-                             float **a_array, int *lda_array, float **b_array,
-                             int *ldb_array, float *beta_array, float **c_array,
-                             int *ldc_array, int group_count, int *group_size) {
+                             int *n_array, int *k_array,
+                             const float *alpha_array, const float **a_array,
+                             int *lda_array, const float **b_array,
+                             int *ldb_array, const float *beta_array,
+                             float **c_array, int *ldc_array, int group_count,
+                             int *group_size) {
   int idx = 0;
   for (int i = 0; i < group_count; ++i) {
     auto alpha = alpha_array[i];

@@ -21,16 +21,16 @@ TEST_CASE("blas-gemm") {
 }
 TEST_CASE("blas-batch-gemm") {
   AutoInitBlas();
-  float A1[] = {1, 2, 3, 4};
-  float B1[] = {2, 3, 4, 5};
+  const float A1[] = {1, 2, 3, 4};
+  const float B1[] = {2, 3, 4, 5};
   float C1[] = {0, 0, 0, 0};
 
-  float A2[] = {1, 2, 3, 4};
-  float B2[] = {2, 3, 4, 5};
+  const float A2[] = {1, 2, 3, 4};
+  const float B2[] = {2, 3, 4, 5};
   float C2[] = {0, 0, 0, 0};
 
-  float *A[] = {A1, A2};
-  float *B[] = {B1, B2};
+  const float *A[] = {A1, A2};
+  const float *B[] = {B1, B2};
   float *C[] = {C1, C2};
 
   BlasInt m[] = {2, 2};
@@ -40,7 +40,7 @@ TEST_CASE("blas-batch-gemm") {
   BlasInt batch_size = 2;
 
   Blas().sgemm_batch_(CblasRowMajor, trans, trans, m, m, m, &alpha,
-                      reinterpret_cast<float **>(A), m, B, m, &beta, C, m, 1,
+                      reinterpret_cast<const float **>(A), m, B, m, &beta, C, m, 1,
                       &batch_size);
   REQUIRE(float_eq(C1[0], 10));
   REQUIRE(float_eq(C1[1], 13));
