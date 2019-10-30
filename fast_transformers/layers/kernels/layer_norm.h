@@ -34,9 +34,9 @@ void LayerNorm(core::Tensor &out_tensor, const core::Tensor &gamma,
     // 1 / sqrt(var)
     var = 1.f / sqrtf(var + g_epsilon);
 
-#pragma omp simd
     auto beta_ptr = beta.data<float>();
     auto gamma_ptr = gamma.data<float>();
+#pragma omp simd
     for (int i = 0; i < feature_dim; ++i) {
       int j = batch_idx * feature_dim + i;
       out[j] = beta_ptr[i] + gamma_ptr[i] * var * (out[j] - mean);
