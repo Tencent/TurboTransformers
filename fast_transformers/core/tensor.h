@@ -1,8 +1,14 @@
 #pragma once
+#include "fast_transformers/core/blas.h"
 #include "fast_transformers/core/enforce.h"
+#include "fast_transformers/core/memory.h"
 #include <dlpack/dlpack.h>
+#include <iostream>
 #include <memory>
+#include <numeric>
+
 namespace fast_transformers {
+
 namespace core {
 namespace details {
 
@@ -18,12 +24,36 @@ struct DLPackManagedTensorDeleter {
 template <typename T> struct DataTypeTrait;
 
 template <> struct DataTypeTrait<float> {
-  inline static bool CheckDataType(DLDataType data_type) {
-    return data_type.code == kDLFloat && data_type.bits == 32;
-  }
+  enum { DLPackTypeCode = kDLFloat };
 };
 
+template <> struct DataTypeTrait<int> {
+  enum { DLPackTypeCode = kDLInt };
+};
+
+template <> struct DataTypeTrait<int64_t> {
+  enum { DLPackTypeCode = kDLInt };
+};
+
+template <typename T> static inline bool IsDataType(DLDataType dt) {
+  return DataTypeTrait<T>::DLPackTypeCode == dt.code &&
+         (dt.bits == 0 || dt.bits == sizeof(T) * 8);
+}
+
 } // namespace details
+extern DLManagedTensor *
+NewDLPackTensor(std::initializer_list<int64_t> shape_list, DLDeviceType device,
+                int device_id, uint8_t data_type_code, size_t bits,
+                size_t lanes);
+
+template <typename T>
+inline DLManagedTensor *
+NewDLPackTensorT(std::initializer_list<int64_t> shape_list,
+                 DLDeviceType device = kDLCPU, int device_id = 0) {
+  return NewDLPackTensor(shape_list, device, device_id,
+                         details::DataTypeTrait<T>::DLPackTypeCode,
+                         sizeof(T) * 8, 1);
+}
 
 class Tensor {
 public:
@@ -36,17 +66,75 @@ public:
 
   size_t n_dim() const { return tensor_->dl_tensor.ndim; }
 
-  int64_t shape(size_t pos) const { return tensor_->dl_tensor.shape[pos]; }
+  const int64_t &shape(size_t pos) const {
+    return tensor_->dl_tensor.shape[pos];
+  }
+
+  size_t numel() const {
+    return std::accumulate(tensor_->dl_tensor.shape,
+                           tensor_->dl_tensor.shape + tensor_->dl_tensor.ndim,
+                           1, std::multiplies<int64_t>());
+  }
 
   template <typename T> const T *data() const {
-    FT_ENFORCE_EQ(tensor_->dl_tensor.strides, nullptr,
-                  "strides must be nullptr");
-    FT_ENFORCE_EQ(tensor_->dl_tensor.byte_offset, 0,
-                  "byte_offset must be zero");
-    FT_ENFORCE(
-        details::DataTypeTrait<T>::CheckDataType(tensor_->dl_tensor.dtype),
-        "data type mismatch");
+    EnforceDataType<T>(tensor_->dl_tensor);
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
+  }
+
+  template <typename T> T *mutableData() {
+    EnforceDataType<T>(tensor_->dl_tensor);
+    return reinterpret_cast<T *>(tensor_->dl_tensor.data);
+  }
+
+  DLDeviceType device_type() const {
+    return tensor_->dl_tensor.ctx.device_type;
+  }
+
+  template <typename T> void Print(std::ostream &os) const {
+    os << "type " << tensor_->dl_tensor.dtype.code << std::endl;
+    os << "numel: " << numel() << std::endl;
+    os << "n_dim: " << n_dim() << std::endl;
+    os << "stride: ";
+    if (tensor_->dl_tensor.strides != nullptr) {
+      PrintArray(os, tensor_->dl_tensor.strides, tensor_->dl_tensor.ndim);
+    } else {
+      os << "null";
+    }
+    os << "\n";
+    os << "shape: ";
+    PrintArray(os, tensor_->dl_tensor.shape, tensor_->dl_tensor.ndim);
+    os << "\n";
+    os << "first 10 elems: (";
+    int cnt = 10;
+    double sum = 0.;
+    for (int i = 0; i < numel(); ++i) {
+      sum += data<T>()[i];
+      if (cnt-- >= 0)
+        os << data<T>()[i] << ", ";
+    }
+    os << ")\n";
+    os << "sum is " << sum << std::endl;
+  }
+
+private:
+  template <typename T>
+  static void PrintArray(std::ostream &os, const T *data, size_t n) {
+    os << "(";
+    for (size_t i = 0; i < n; ++i) {
+      if (i != 0) {
+        os << ", ";
+      }
+      os << data[i];
+    }
+    os << ")";
+  }
+
+  template <typename T> static void EnforceDataType(DLTensor t) {
+    FT_ENFORCE_EQ(t.byte_offset, 0, "byte_offset must be zero");
+
+    FT_ENFORCE(details::IsDataType<T>(t.dtype),
+               "data type mismatch, request %s, actual (%d,%d)",
+               typeid(T).name(), t.dtype.code, t.dtype.bits);
   }
 
 private:
