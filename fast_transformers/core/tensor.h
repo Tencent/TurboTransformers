@@ -40,34 +40,19 @@ template <typename T> static inline bool IsDataType(DLDataType dt) {
          (dt.bits == 0 || dt.bits == sizeof(T) * 8);
 }
 
-extern void DLManagedTensorDeletor(DLManagedTensor *tensor);
-
 } // namespace details
+extern DLManagedTensor *
+NewDLPackTensor(std::initializer_list<int64_t> shape_list, DLDeviceType device,
+                int device_id, uint8_t data_type_code, size_t bits,
+                size_t lanes);
 
 template <typename T>
 inline DLManagedTensor *
-CreateDLPackTensor(std::initializer_list<int64_t> shape_list) {
-  FT_ENFORCE_NE(shape_list.size(), 0, "Shape list should not be empty");
-  DLManagedTensor *newTensor = new DLManagedTensor;
-
-  newTensor->dl_tensor.shape = new int64_t[shape_list.size()];
-  std::copy(shape_list.begin(), shape_list.end(), newTensor->dl_tensor.shape);
-
-  newTensor->dl_tensor.ctx = {kDLCPU, 0}; // device_type, device_id
-  newTensor->dl_tensor.ndim = shape_list.size();
-
-  newTensor->dl_tensor.dtype = {details::DataTypeTrait<T>::DLPackTypeCode,
-                                sizeof(T) * 8, 1}; // code, bits, lanes
-
-  newTensor->dl_tensor.strides = nullptr; // TODO
-  newTensor->dl_tensor.byte_offset = 0;
-
-  size_t numel = std::accumulate(shape_list.begin(), shape_list.end(), 1,
-                                 std::multiplies<int64_t>());
-  newTensor->dl_tensor.data = align_alloc_t<T>(numel);
-
-  newTensor->deleter = details::DLManagedTensorDeletor;
-  return newTensor;
+NewDLPackTensorT(std::initializer_list<int64_t> shape_list,
+                 DLDeviceType device = kDLCPU, int device_id = 0) {
+  return NewDLPackTensor(shape_list, device, device_id,
+                         details::DataTypeTrait<T>::DLPackTypeCode,
+                         sizeof(T) * 8, 1);
 }
 
 class Tensor {

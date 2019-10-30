@@ -50,7 +50,7 @@ operator()(const core::Tensor &input_ids, const core::Tensor &position_ids,
   // TODO 1. switch DeviceType::CPU 2. how should I set stride?
   auto hidden_size = word_embedings_.shape(1);
   core::Tensor output_tensor(
-      core::CreateDLPackTensor<float>({batch_size, seq_length, hidden_size}));
+      core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}));
 
   LookupEmbedding</*Add=*/false>(output_tensor, word_embedings_, input_ids);
   LookupEmbedding</*Add=*/true>(output_tensor, token_type_embeddings_,
