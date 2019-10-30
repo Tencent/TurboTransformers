@@ -9,6 +9,7 @@ option(OPENMP_ENDABLE "Build OpenMP" ON)
 add_subdirectory(3rd)
 enable_testing()
 
+
 if (OPENMP_ENDABLE)
     find_package(OpenMP)
     if (OPENMP_FOUND)

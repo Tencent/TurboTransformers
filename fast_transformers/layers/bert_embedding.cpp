@@ -1,19 +1,31 @@
 #include "fast_transformers/layers/bert_embedding.h"
-#include "fast_transformers/core/math_function.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
 namespace fast_transformers {
 namespace layers {
 
-static void LookupEmbedding(const float *word_embeddings,
-                            const int64_t *tokens_ids, float *out,
-                            int64_t batch_size, int64_t seq_length,
-                            int64_t vocab_size, int64_t hidden_size) {
-  for (size_t i = 0; i < batch_size * seq_length; ++i) {
-    int id = tokens_ids[i];
+template <bool Add>
+static void LookupEmbedding(core::Tensor &out_tensor,
+                            const core::Tensor &embedding_table,
+                            const core::Tensor &ids_tensor) {
+  auto *embedding = embedding_table.data<float>();
+  auto *ids = ids_tensor.data<int64_t>();
+  auto *out = out_tensor.mutableData<float>();
+  auto num_ids = ids_tensor.numel();
+  auto hidden_size = embedding_table.shape(1);
+  auto vocab_size = embedding_table.shape(0);
+  for (int64_t i = 0; i < num_ids; ++i) {
+    int64_t id = ids[i];
     FT_ENFORCE_LT(id, vocab_size, "embedding id out of index");
-    float *dst = out + i * hidden_size;
-    const float *src = word_embeddings + id * hidden_size;
-    std::copy(src, src + hidden_size, dst);
+    auto dst = out + i * hidden_size;
+    auto src = embedding + id * hidden_size;
+    if (Add) {
+#pragma omp simd
+      for (int64_t j = 0; j < hidden_size; ++j) {
+        dst[j] += src[j];
+      }
+    } else {
+      std::copy(src, src + hidden_size, dst);
+    }
   }
 }
 
@@ -40,43 +52,14 @@ operator()(const core::Tensor &input_ids, const core::Tensor &position_ids,
   core::Tensor output_tensor(
       core::CreateDLPackTensor<float>({batch_size, seq_length, hidden_size}));
 
-  auto vocab_size = word_embedings_.shape(0);
+  LookupEmbedding</*Add=*/false>(output_tensor, word_embedings_, input_ids);
+  LookupEmbedding</*Add=*/true>(output_tensor, token_type_embeddings_,
+                                token_type_ids);
+  LookupEmbedding</*Add=*/true>(output_tensor, position_embeddings_,
+                                position_ids);
 
-  LookupEmbedding(word_embedings_.data<float>(), input_ids.data<int64_t>(),
-                  output_tensor.mutableData<float>(), batch_size, seq_length,
-                  vocab_size, hidden_size);
-  auto token_type_ids_ptr = token_type_ids.data<int64_t>();
-
-  auto token_type_vocab_size = token_type_embeddings_.shape(0);
-  std::vector<float> data(batch_size * seq_length * token_type_vocab_size, 0.);
-  for (size_t i = 0; i < batch_size * seq_length; ++i) {
-    auto id = token_type_ids_ptr[i];
-    FT_ENFORCE_LT(id, token_type_vocab_size, "Out of range");
-    data[i * token_type_vocab_size + id] = 1.;
-  }
-  core::cpu_blas_gemm(false, false, hidden_size, seq_length * batch_size,
-                      token_type_vocab_size, 1.f,
-                      token_type_embeddings_.data<float>(), hidden_size,
-                      &data[0], token_type_vocab_size, 1.f,
-                      output_tensor.mutableData<float>(), hidden_size);
-
-  FT_ENFORCE_LT(seq_length, position_embeddings_.shape(0),
-                "Seq length out of range");
-  {
-    auto *out = output_tensor.mutableData<float>();
-    auto position_embeddings = position_embeddings_.data<float>();
-    for (size_t i = 0; i < batch_size; ++i) {
-      for (size_t j = 0; j < seq_length; ++j) {
-        for (size_t k = 0; k < hidden_size; ++k) {
-          out[(i * seq_length + j) * hidden_size + k] +=
-              position_embeddings[j * hidden_size + k];
-        }
-      }
-    }
-  }
-  kernels::LayerNorm(
-      output_tensor.mutableData<float>(), layer_norm_weights_.data<float>(),
-      layer_norm_bias_.data<float>(), batch_size * seq_length, hidden_size);
+  kernels::LayerNorm<float>(output_tensor, layer_norm_weights_,
+                            layer_norm_bias_);
 
   return output_tensor;
 }

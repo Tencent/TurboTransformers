@@ -81,7 +81,9 @@ public:
 
   size_t n_dim() const { return tensor_->dl_tensor.ndim; }
 
-  int64_t shape(size_t pos) const { return tensor_->dl_tensor.shape[pos]; }
+  const int64_t &shape(size_t pos) const {
+    return tensor_->dl_tensor.shape[pos];
+  }
 
   size_t numel() const {
     if (n_dim() == 0)
