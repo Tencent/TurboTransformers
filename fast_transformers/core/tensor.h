@@ -104,16 +104,12 @@ public:
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
 
-  DLDataTypeCode GetDataTypeCode() const {
-    return static_cast<DLDataTypeCode>(tensor_->dl_tensor.dtype.code);
-  }
-
-  DLDeviceType GetDeviceType() const {
+  DLDeviceType device_type() const {
     return tensor_->dl_tensor.ctx.device_type;
   }
 
   template <typename T> void Print(std::ostream &os) const {
-    switch (GetDataTypeCode()) {
+    switch (tensor_->dl_tensor.dtype.code) {
     case kDLInt:
       os << "type: int" << std::endl;
       break;

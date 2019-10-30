@@ -66,7 +66,7 @@ operator()(const core::Tensor &input_ids, const core::Tensor &position_ids,
 void BERTEmbedding::EnforceShapeAndType() const {
 
   VLOG(3) << ">>>>> init BERTEmbedding <<<<<<<<";
-  FT_ENFORCE_EQ(word_embedings_.GetDeviceType(), kDLCPU, "Only CPU supportted");
+  FT_ENFORCE_EQ(word_embedings_.device_type(), kDLCPU, "Only CPU supportted");
 
   VLOG(3) << ">>>>> Assert OK <<<<<<<<";
 
