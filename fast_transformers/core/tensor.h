@@ -4,6 +4,7 @@
 #include <memory>
 #include <iostream>
 #include "fast_transformers/core/common.h"
+#include "fast_transformers/core/blas.h"
 
 namespace fast_transformers {
 
@@ -60,13 +61,12 @@ inline DLManagedTensor* CreateDLPackTensor(std::initializer_list<int64_t> shape_
     numel = 0;
   else
     numel = std::accumulate(shape_list.begin(), shape_list.end(), 1, std::multiplies<int64_t>());
-  //TODO allocator interface: allocator<DeviceType kDev>(size_t size_)
-  newTensor->dl_tensor.data = new T [numel];
+  newTensor->dl_tensor.data = static_cast<T*>(cpu_allocater(numel * sizeof(T), 64, false)); //new T [numel];
 
   newTensor->deleter = [](struct DLManagedTensor * self) { 
-    //TDOO allocator interface: freer<DeviceType kDev>(T* data_);
     if(self->dl_tensor.data)
-    delete [] (T*)self->dl_tensor.data;
+      cpu_freer(self->dl_tensor.data);
+      //delete [] (T*)self->dl_tensor.data;
     if(self->dl_tensor.shape)
       delete [] self->dl_tensor.shape;
     //if(self->manager_ctx)

@@ -27,5 +27,8 @@ naive_cblas_sgemm_batch(CBLAS_LAYOUT Layout, CBLAS_TRANSPOSE *transa_array,
                         int *ldb_array, const float *beta_array, float **c_array,
                         int *ldc_array, int group_count, int *group_size);
 
+void* cpu_allocater(size_t size, size_t align, bool raiseException);
+void* cpu_freer(void* ptr);
+
 } // namespace core
 } // namespace fast_transformers

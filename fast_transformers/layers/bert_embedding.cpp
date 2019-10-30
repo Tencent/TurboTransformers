@@ -19,10 +19,8 @@ core::Tensor BERTEmbedding::operator()(const core::Tensor& input_ids,
     //TODO 1. switch DeviceType::CPU 2. how should I set stride?
     core::Tensor output_tensor(core::details::CreateDLPackTensor<float, ::fast_transformers::DeviceType::CPU>({batch_size, seq_length, hidden_size_}));
 
-    //embedding_lookup_op_->forward(input_ids.data<int>(), output_tensor.mutableData<float>(), batch_size, seq_length);
-
-    
-    EmbeddingLookupKernel<float, kDLCPU>(word_embedings_.data<float>(),
+    //embedding_lookup_op_->forward(input_ids.data<int>(), output_tensor.mutableData<float>(), batch_size, seq_length)
+    ops::EmbeddingLookupKernel<float, kDLCPU>(word_embedings_.data<float>(),
                        input_ids.data<int>(),
                        output_tensor.mutableData<float>(),
                        batch_size, 
@@ -31,7 +29,7 @@ core::Tensor BERTEmbedding::operator()(const core::Tensor& input_ids,
                        hidden_size_);
     //embedding_postprocessor_op_->forward(token_type_ids.data<int>(), output_tensor.mutableData<float>(), true, true, batch_size, seq_length);
     
-    EmbeddingPostprocessorKernel<float, kDLCPU>(position_embeddings_.data<float>(),
+    ops::EmbeddingPostprocessorKernel<float, kDLCPU>(position_embeddings_.data<float>(),
                                  token_type_embeddings_.data<float>(), 
                                  layer_norm_weights_.data<float>(), 
                                  layer_norm_bias_.data<float>(),

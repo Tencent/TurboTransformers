@@ -3,7 +3,7 @@
 #include <dlpack/dlpack.h>
 
 namespace fast_transformers {
-namespace layers {
+namespace ops {
 
 template<typename T, DLDeviceType Device>
 class EmbeddingLookupOp;

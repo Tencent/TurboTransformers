@@ -5,7 +5,7 @@
 #include "fast_transformers/ops/cpu_layernorm_op.h"
 
 namespace fast_transformers {
-namespace layers {
+namespace ops {
 
 template<>
 void EmbeddingPostprocessorKernel<float, kDLCPU>(const float* position_embeddings,
@@ -57,7 +57,7 @@ void EmbeddingPostprocessorKernel<float, kDLCPU>(const float* position_embedding
     }
     //TODO wait for layernorm_op ready!
     
-    ops::layernorm_op(input_tensor, embedding_beta, embedding_gamma,
+    ops::cpu_layernorm_op(input_tensor, embedding_beta, embedding_gamma,
         batch_size * seq_length, hidden_size);
     
     std::cout << "after layernorm_op" << std::endl;

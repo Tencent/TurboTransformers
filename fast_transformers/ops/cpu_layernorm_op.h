@@ -6,10 +6,6 @@
 namespace fast_transformers {
 namespace ops {
 
-void* wxflow_cpu_alloc(const size_t __size);
-
-void* wxflow_cpu_free(void* ptr); 
-
 /***
  * Trans from (B, S, N, H) -> (B, N, S, H)
  * **/
@@ -35,7 +31,7 @@ void cpu_add_bias_input_layernorm_op(T* out, const T* input, const T* bias,
   const T* gamma, const T* beta, int m, int n);
 
 template<typename T>
-void layernorm_op(T* input, 
+void cpu_layernorm_op(T* input, 
     const T* gamma, const T* beta, const int m, const int n);
 
 

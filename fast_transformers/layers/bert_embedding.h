@@ -38,8 +38,8 @@ public:
     "token_type_vocab_size: " << token_type_vocab_size_ << 
     ", " << "max_position_embeddings: " << max_position_embeddings_ <<std::endl;
     
-    embedding_lookup_op_ = std::make_shared<EmbeddingLookupOp<float, kDLCPU>>(vocab_size_, hidden_size_);
-    embedding_postprocessor_op_ = std::make_shared<EmbeddingPostprocessorOp<float, kDLCPU>>(token_type_vocab_size_,
+    embedding_lookup_op_ = std::make_shared<ops::EmbeddingLookupOp<float, kDLCPU>>(vocab_size_, hidden_size_);
+    embedding_postprocessor_op_ = std::make_shared<ops::EmbeddingPostprocessorOp<float, kDLCPU>>(token_type_vocab_size_,
                                                                                                  hidden_size_,
                                                                                                  max_position_embeddings_);
     std::cerr << ">>>>> word_embedings_ <<<<<<<<" << std::endl;
@@ -81,8 +81,8 @@ private:
 
   //TODO should not known the data type and device type utill constructor is executed.
   //now hardcode for CPU and float, we should have an interface here.
-  std::shared_ptr<EmbeddingLookupOp<float, kDLCPU>> embedding_lookup_op_;
-  std::shared_ptr<EmbeddingPostprocessorOp<float, kDLCPU>> embedding_postprocessor_op_;
+  std::shared_ptr<ops::EmbeddingLookupOp<float, kDLCPU>> embedding_lookup_op_;
+  std::shared_ptr<ops::EmbeddingPostprocessorOp<float, kDLCPU>> embedding_postprocessor_op_;
 };
 
 } // namespace layers

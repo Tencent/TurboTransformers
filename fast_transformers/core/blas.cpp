@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 
 #if defined(__cplusplus) && __cplusplus >= 201703L && defined(__has_include)
 #if __has_include(<filesystem>)
@@ -125,6 +126,36 @@ void naive_cblas_sgemm_batch(CBLAS_LAYOUT Layout, CBLAS_TRANSPOSE *transa_array,
     }
   }
 }
+
+void* cpu_freer(void* ptr) {
+  free(ptr);
+  //mkl_free(ptr);
+}
+
+
+void* cpu_allocator(const size_t __size, const size_t alignment_size = 64) {
+  void* aligned_mem;
+  if (posix_memalign(&aligned_mem, alignment_size, __size))
+    return 0;
+  aligned_mem = malloc(__size);
+  //aligned_mem = mkl_malloc(__size, 64);
+  return aligned_mem;
+}
+
+void* cpu_allocater(
+    size_t size,
+    size_t align = 64,
+    bool raiseException = false) {
+  void* aligned_mem;
+  if (posix_memalign(&aligned_mem, align, size)) {
+    if (raiseException) {
+      throw std::bad_alloc();
+    }
+    return nullptr;
+  }
+  return aligned_mem;
+}
+
 
 } // namespace core
 } // namespace fast_transformers

@@ -1,25 +1,9 @@
 #include "fast_transformers/ops/cpu_layernorm_op.h"
-#include <immintrin.h>
 #include <cassert>
 #include <cmath>
 
 namespace fast_transformers {
 namespace ops {
-
-void* wxflow_cpu_free(void* ptr) {
-  free(ptr);
-  //kl_free(ptr);
-}
-
-
-void* wxflow_cpu_alloc(const size_t __size) {
-  void* aligned_mem;
-  if (posix_memalign(&aligned_mem, 64, __size))
-    return 0;
-  aligned_mem = malloc(__size);
-  //aligned_mem = mkl_malloc(__size, 64);
-  return aligned_mem;
-}
 
 template <class T>
 void cpu_add_bias(const T* bias,
@@ -179,7 +163,7 @@ template void cpu_add_bias_input_layernorm_op<float>(
   int m, int n);
 
 template<typename T>
-void layernorm_op(T* input, 
+void cpu_layernorm_op(T* input, 
     const T* gamma, const T* beta, const int m, const int n) { 
 #pragma omp parallel for
         for (int batch_idx = 0; batch_idx < m; ++batch_idx) {
@@ -206,7 +190,7 @@ void layernorm_op(T* input,
         }
 }
 
-template void layernorm_op<float>(
+template void cpu_layernorm_op<float>(
   float* input, const float* gamma, const float* beta, 
   const int m, const int n);
 

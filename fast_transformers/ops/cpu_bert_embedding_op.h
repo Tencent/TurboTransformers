@@ -1,9 +1,10 @@
 #pragma once
-#include "bert_embedding_op.h"
 #include "fast_transformers/core/math_function.h"
+#include "fast_transformers/ops/cpu_layernorm_op.h"
+#include "fast_transformers/ops/ops_interfaces.h"
 
 namespace fast_transformers {
-namespace layers {
+namespace ops {
 
 //TODO please choose either a function or a class.
 //I prefer a function, because it can be split to a .cpp file, while it has too many args.
@@ -87,11 +88,8 @@ public:
             }
             std::cout << "after lookup_position_embedding" << std::endl;
         }
-        //TODO wait for layernorm_op ready!
-        /*
-        mkl::layernorm_op(input_tensor, embedding_beta_, embedding_gamma_,
+        ops::cpu_layernorm_op(input_tensor, embedding_beta_, embedding_gamma_,
             batch_size * seq_length, hidden_size_);
-        */
         std::cout << "after layernorm_op" << std::endl;
         return;
     }

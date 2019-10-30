@@ -9,7 +9,7 @@ add_test(NAME enforce_test COMMAND enforce_test)
 #target_link_libraries(tensor_test Catch2)
 
 add_library(tensor tensor.cpp)
-target_link_libraries(tensor dlpack enforce)
+target_link_libraries(tensor dlpack enforce blas)
 
 add_executable(tensor_test tensor_test.cpp)
 target_link_libraries(tensor_test Catch2 tensor)
