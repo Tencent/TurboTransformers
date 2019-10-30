@@ -1,7 +1,7 @@
 #pragma once
 #include "fast_transformers/core/blas.h"
-#include "fast_transformers/core/common.h"
 #include "fast_transformers/core/enforce.h"
+#include "fast_transformers/core/memory.h"
 #include <dlpack/dlpack.h>
 #include <iostream>
 #include <memory>
@@ -31,16 +31,24 @@ template <> struct DataTypeTrait<int> {
   enum { DLPackTypeCode = kDLInt };
 };
 
+template <> struct DataTypeTrait<int64_t> {
+  enum { DLPackTypeCode = kDLInt };
+};
+
 template <typename T> static inline bool IsDataType(DLDataType dt) {
   return DataTypeTrait<T>::DLPackTypeCode == dt.code &&
          (dt.bits == 0 || dt.bits == sizeof(T) * 8);
 }
 
-template <typename T, DeviceType kDev>
+extern void DLManagedTensorDeletor(DLManagedTensor *tensor);
+
+} // namespace details
+
+template <typename T>
 inline DLManagedTensor *
 CreateDLPackTensor(std::initializer_list<int64_t> shape_list) {
+  FT_ENFORCE_NE(shape_list.size(), 0, "Shape list should not be empty");
   DLManagedTensor *newTensor = new DLManagedTensor;
-  std::vector<int64_t> shape_vec(shape_list);
 
   newTensor->dl_tensor.shape = new int64_t[shape_list.size()];
   std::copy(shape_list.begin(), shape_list.end(), newTensor->dl_tensor.shape);
@@ -48,35 +56,19 @@ CreateDLPackTensor(std::initializer_list<int64_t> shape_list) {
   newTensor->dl_tensor.ctx = {kDLCPU, 0}; // device_type, device_id
   newTensor->dl_tensor.ndim = shape_list.size();
 
-  newTensor->dl_tensor.dtype = {DataTypeTrait<T>::DLPackTypeCode, 32,
-                                1}; // code, bits, lanes
+  newTensor->dl_tensor.dtype = {details::DataTypeTrait<T>::DLPackTypeCode,
+                                sizeof(T) * 8, 1}; // code, bits, lanes
 
   newTensor->dl_tensor.strides = nullptr; // TODO
   newTensor->dl_tensor.byte_offset = 0;
 
-  size_t numel;
-  if (shape_vec.size() == 0)
-    numel = 0;
-  else
-    numel = std::accumulate(shape_list.begin(), shape_list.end(), 1,
-                            std::multiplies<int64_t>());
-  newTensor->dl_tensor.data = static_cast<T *>(
-      cpu_allocater(numel * sizeof(T), 64, false)); // new T [numel];
+  size_t numel = std::accumulate(shape_list.begin(), shape_list.end(), 1,
+                                 std::multiplies<int64_t>());
+  newTensor->dl_tensor.data = align_alloc_t<T>(numel);
 
-  newTensor->deleter = [](struct DLManagedTensor *self) {
-    if (self->dl_tensor.data)
-      cpu_freer(self->dl_tensor.data);
-    // delete [] (T*)self->dl_tensor.data;
-    if (self->dl_tensor.shape)
-      delete[] self->dl_tensor.shape;
-    // if(self->manager_ctx)
-    //  free(self->manager_ctx); //warning: deleting 'void*' is undefined
-    delete self;
-  };
+  newTensor->deleter = details::DLManagedTensorDeletor;
   return newTensor;
 }
-
-} // namespace details
 
 class Tensor {
 public:

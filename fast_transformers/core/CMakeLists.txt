@@ -5,11 +5,14 @@ add_executable(enforce_test enforce_test.cpp)
 target_link_libraries(enforce_test Catch2 enforce)
 add_test(NAME enforce_test COMMAND enforce_test)
 
+add_library(memory memory.cpp)
+target_link_libraries(memory enforce)
+
 #add_executable(tensor_test tensor_test.cpp)
 #target_link_libraries(tensor_test Catch2)
 
 add_library(tensor tensor.cpp)
-target_link_libraries(tensor dlpack enforce blas)
+target_link_libraries(tensor dlpack blas memory)
 
 add_executable(tensor_test tensor_test.cpp)
 target_link_libraries(tensor_test Catch2 tensor)

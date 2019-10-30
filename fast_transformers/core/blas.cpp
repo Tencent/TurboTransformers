@@ -31,17 +31,19 @@ std::unique_ptr<CBlasFuncs, CBlasFuncDeleter> g_blas_funcs_;
 
 void AutoInitBlas() {
   std::string openblas_libname = absl::StrCat("libopenblas", dynlib_suffix_);
-  std::vector<std::string> mklml_libnames = {absl::StrCat("libmklml_intel", dynlib_suffix_), 
-                        absl::StrCat("libmklml", dynlib_suffix_), absl::StrCat("libmklml_gnu", dynlib_suffix_)};
+  std::vector<std::string> mklml_libnames = {
+      absl::StrCat("libmklml_intel", dynlib_suffix_),
+      absl::StrCat("libmklml", dynlib_suffix_),
+      absl::StrCat("libmklml_gnu", dynlib_suffix_)};
   char *conda_prefix = std::getenv("CONDA_PREFIX");
   if (conda_prefix != nullptr) {
-    for(const std::string& mklml_libname: mklml_libnames) {
+    for (const std::string &mklml_libname : mklml_libnames) {
       auto p = fs::path(conda_prefix) / "lib" / mklml_libname;
       if (fs::exists(p)) {
         InitializeMKLMLLib(p.c_str());
         return;
       }
-    }//for mklmkl
+    } // for mklmkl
   }
 
   std::vector<fs::path> pathes = {fs::path("./"), fs::path("/usr/lib"),
@@ -49,14 +51,14 @@ void AutoInitBlas() {
                                   fs::path("/usr/local/opt/openblas/lib")};
 
   for (auto &p : pathes) {
-    for(const std::string& mklml_libname: mklml_libnames) {
+    for (const std::string &mklml_libname : mklml_libnames) {
       auto libpath = p / mklml_libname;
       if (fs::exists(libpath)) {
         InitializeOpenblasLib(libpath.c_str());
         return;
       }
-    }//for mkl
-  }//for path
+    } // for mkl
+  }   // for path
 
   for (auto &p : pathes) {
     auto libpath = p / openblas_libname;
@@ -109,10 +111,12 @@ void InitializeMKLMLLib(const char *filename) {
 
 void naive_cblas_sgemm_batch(CBLAS_LAYOUT Layout, CBLAS_TRANSPOSE *transa_array,
                              CBLAS_TRANSPOSE *transb_array, int *m_array,
-                             int *n_array, int *k_array, const float *alpha_array,
-                             const float **a_array, int *lda_array, const float **b_array,
-                             int *ldb_array, const float *beta_array, float **c_array,
-                             int *ldc_array, int group_count, int *group_size) {
+                             int *n_array, int *k_array,
+                             const float *alpha_array, const float **a_array,
+                             int *lda_array, const float **b_array,
+                             int *ldb_array, const float *beta_array,
+                             float **c_array, int *ldc_array, int group_count,
+                             int *group_size) {
   int idx = 0;
   for (int i = 0; i < group_count; ++i) {
     auto alpha = alpha_array[i];
@@ -126,36 +130,6 @@ void naive_cblas_sgemm_batch(CBLAS_LAYOUT Layout, CBLAS_TRANSPOSE *transa_array,
     }
   }
 }
-
-void* cpu_freer(void* ptr) {
-  free(ptr);
-  //mkl_free(ptr);
-}
-
-
-void* cpu_allocator(const size_t __size, const size_t alignment_size = 64) {
-  void* aligned_mem;
-  if (posix_memalign(&aligned_mem, alignment_size, __size))
-    return 0;
-  aligned_mem = malloc(__size);
-  //aligned_mem = mkl_malloc(__size, 64);
-  return aligned_mem;
-}
-
-void* cpu_allocater(
-    size_t size,
-    size_t align = 64,
-    bool raiseException = false) {
-  void* aligned_mem;
-  if (posix_memalign(&aligned_mem, align, size)) {
-    if (raiseException) {
-      throw std::bad_alloc();
-    }
-    return nullptr;
-  }
-  return aligned_mem;
-}
-
 
 } // namespace core
 } // namespace fast_transformers
