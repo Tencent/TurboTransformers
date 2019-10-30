@@ -111,13 +111,7 @@ public:
   DLDeviceType GetDeviceType() const {
     return tensor_->dl_tensor.ctx.device_type;
   }
-  // if stride is NULL, indicating tensor is compact and row-majored.
-  int64_t GetStride() const {
-    if (tensor_->dl_tensor.strides != nullptr)
-      return *(tensor_->dl_tensor.strides);
-    else
-      return 0;
-  }
+
   template <typename T> void Print(std::ostream &os) const {
     switch (GetDataTypeCode()) {
     case kDLInt:
@@ -134,12 +128,18 @@ public:
     }
 
     os << "numel: " << numel() << std::endl;
-    os << "stride: " << GetStride() << std::endl;
-    os << "n_dim: " << n_dim() << ", shape: ";
-    for (int i = 0; i < n_dim(); ++i)
-      os << shape(i) << ", ";
-    os << std::endl;
-
+    os << "n_dim: " << n_dim() << std::endl;
+    os << "stride: ";
+    if (tensor_->dl_tensor.strides != nullptr) {
+      PrintArray(os, tensor_->dl_tensor.strides, tensor_->dl_tensor.ndim);
+    } else {
+      os << "null";
+    }
+    os << "\n";
+    os << "shape: ";
+    PrintArray(os, tensor_->dl_tensor.shape, tensor_->dl_tensor.ndim);
+    os << "\n";
+    os << "first 10 elems: (";
     int cnt = 10;
     double sum = 0.;
     for (int i = 0; i < numel(); ++i) {
@@ -147,10 +147,23 @@ public:
       if (cnt-- >= 0)
         os << data<T>()[i] << ", ";
     }
+    os << ")\n";
     os << "sum is " << sum << std::endl;
   }
 
 private:
+  template <typename T>
+  static void PrintArray(std::ostream &os, const T *data, size_t n) {
+    os << "(";
+    for (size_t i = 0; i < n; ++i) {
+      if (i != 0) {
+        os << ", ";
+      }
+      os << data[i];
+    }
+    os << ")";
+  }
+
   template <typename T> static void EnforceDataType(DLTensor t) {
     FT_ENFORCE_EQ(t.byte_offset, 0, "byte_offset must be zero");
 
