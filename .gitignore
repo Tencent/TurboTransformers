@@ -3,3 +3,5 @@ cmake-build-*
 venv
 .vscode
 build
+*.onnx
+onnxruntime_profile_*json

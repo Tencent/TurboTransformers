@@ -1,93 +1,101 @@
-from transformers.modeling_bert import BertEmbeddings, BertConfig
 import unittest
-import fast_transformers
+
+import contexttimer
+import onnx
+import onnxruntime.backend as backend
 import torch
-import torch.utils.dlpack as dlpack
 import torch.jit
 import torch.onnx
+import torch.utils.dlpack as dlpack
 from transformers import BertTokenizer
-import contexttimer
-import onnxruntime
-import onnxruntime.backend as backend
+from transformers.modeling_bert import BertEmbeddings, BertConfig
+
+import fast_transformers
 
 
 def _(t):
     return fast_transformers.Tensor.from_dlpack(dlpack.to_dlpack(t))
 
+def create_test_bert_emb(batch_size: int, seq_length: int):
+    class TestBertEmbedding(unittest.TestCase):
+        def setUp(self) -> None:
+            fast_transformers.auto_init_blas()
+            torch.set_grad_enabled(False)
+            self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
+            cfg = BertConfig(vocab_size_or_config_json_file=self.tokenizer.vocab_size)
+            self.torch_embedding = BertEmbeddings(cfg)
+            params = {k: _(v) for k, v in
+                      self.torch_embedding.named_parameters()}
+            self.torch_embedding.eval()
+            torch.onnx.export(self.torch_embedding, (
+                torch.ones(size=(batch_size, seq_length), dtype=torch.long),
+                torch.ones(size=(batch_size, seq_length), dtype=torch.long),
+                torch.ones(size=(batch_size, seq_length), dtype=torch.long)), f="bert-emb.onnx",
+                              output_names=['emb'])
 
-class TestBertEmbedding(unittest.TestCase):
-    def setUp(self) -> None:
-        fast_transformers.auto_init_blas()
-        torch.set_grad_enabled(False)
-        self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
-        cfg = BertConfig(vocab_size_or_config_json_file=self.tokenizer.vocab_size)
-        self.torch_embedding = BertEmbeddings(cfg)
-        params = {k: _(v) for k, v in
-                  self.torch_embedding.named_parameters()}
-        self.torch_embedding.eval()
+            if not backend.supports_device('MKL-DNN'):
+                self.onnx_embedding = backend.prepare("bert-emb.onnx", device='CPU')
+            else:
+                self.onnx_embedding = backend.prepare("bert-emb.onnx", device='MKL-DNN')
+            backend.prepare(self.onnx_embedding, "CPU-MKL-DNN")
 
-        torch.onnx.export(self.torch_embedding, (
-            torch.ones(size=(1, 7), dtype=torch.long), torch.ones(size=(1, 7), dtype=torch.long),
-            torch.ones(size=(1, 7), dtype=torch.long)), f="bert-emb.onnx", output_names=['emb'])
-        onnx_sess_opts = onnxruntime.SessionOptions()
-        onnx_sess_opts.max_num_graph_transformation_steps = 10
-        # onnx_sess_opts.set_graph_optimization_level(2)
-        self.onnx_embedding = onnxruntime.InferenceSession("bert-emb.onnx", sess_options=onnx_sess_opts)
-        backend.prepare(self.onnx_embedding, "CPU-MKL-DNN")
+            self.torch_script_embedding = torch.jit.trace(
+                self.torch_embedding, (torch.ones(size=(batch_size, seq_length), dtype=torch.long),
+                                       torch.ones(size=(batch_size, seq_length), dtype=torch.long),
+                                       torch.ones(size=(batch_size, seq_length), dtype=torch.long)))
 
-        self.torch_script_embedding = torch.jit.trace(
-            self.torch_embedding, (torch.ones(size=(1, 7), dtype=torch.long), torch.ones(size=(1, 7), dtype=torch.long),
-                                   torch.ones(size=(1, 7), dtype=torch.long)))
+            self.ft_embedding = fast_transformers.BERTEmbedding(params['word_embeddings.weight'],
+                                                                params['position_embeddings.weight'],
+                                                                params['token_type_embeddings.weight'],
+                                                                params['LayerNorm.weight'],
+                                                                params['LayerNorm.bias'],
+                                                                cfg.hidden_dropout_prob)
 
-        self.ft_embedding = fast_transformers.BERTEmbedding(params['word_embeddings.weight'],
-                                                            params['position_embeddings.weight'],
-                                                            params['token_type_embeddings.weight'],
-                                                            params['LayerNorm.weight'],
-                                                            params['LayerNorm.bias'],
-                                                            cfg.hidden_dropout_prob)
+        def test_embedding(self):
+            num_iter = 10
+            input_ids = torch.randint(low=0, high=self.tokenizer.vocab_size - 1, size=(batch_size, seq_length), dtype = torch.long)
+            position_ids = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
+            # position_ids = position_ids.unsqueeze(0).expand_as(input_ids) #will cause bug
+            position_ids = position_ids.repeat(batch_size, 1)
+            token_type_ids = torch.zeros_like(input_ids, dtype=torch.long)
 
-    def test_embedding(self):
-        input_ids = torch.tensor(self.tokenizer.encode("这是测试数据?"), dtype=torch.long).reshape((1, -1))
-        seq_length = input_ids.size(1)
-        position_ids = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
-        position_ids = position_ids.unsqueeze(0).expand_as(input_ids)
-        token_type_ids = torch.zeros_like(input_ids)
-        # warming up.
-        self.torch_embedding(input_ids, token_type_ids, position_ids)
-        self.torch_script_embedding(input_ids, token_type_ids, position_ids)
-        onnx_inputs = self.onnx_embedding.get_inputs()
-        onnx_input_feeds = {
-            onnx_inputs[0].name: input_ids.numpy(),
-            onnx_inputs[1].name: token_type_ids.numpy(),
-            onnx_inputs[2].name: position_ids.numpy()
-        }
-        self.onnx_embedding.run(output_names=['emb'],
-                                input_feed=onnx_input_feeds)
-        with contexttimer.Timer() as t:
-            for it in range(100):
-                torch_result = self.onnx_embedding.run(output_names=['emb'],
-                                                       input_feed=onnx_input_feeds)
-        print(f'ONNX (with mkl-dnn) time {t.elapsed}')
+            # warming up.
+            self.torch_embedding(input_ids, token_type_ids, position_ids)
+            self.torch_script_embedding(input_ids, token_type_ids, position_ids)
 
-        with contexttimer.Timer() as t:
-            for it in range(100):
-                torch_result = self.torch_embedding(input_ids, token_type_ids, position_ids)
-        print(f'Plain PyTorch time {t.elapsed}')
+            onnx_inputs = [input_ids.numpy(), token_type_ids.numpy(), position_ids.numpy()]
+            self.onnx_embedding.run(onnx_inputs)
+            with contexttimer.Timer() as t:
+                for it in range(num_iter):
+                    self.onnx_embedding.run(onnx_inputs)
+            print(f'BertEmb({batch_size}, {seq_length:03}) ONNX (with mkl-dnn) QPS {num_iter / t.elapsed}')
 
-        with contexttimer.Timer() as t:
-            for it in range(100):
-                torch_result = self.torch_script_embedding(input_ids, token_type_ids, position_ids)
-        print(f'TorchScript(i.e., jit) time {t.elapsed}')
+            with contexttimer.Timer() as t:
+                for it in range(num_iter):
+                    self.torch_embedding(input_ids, token_type_ids, position_ids)
+            print(f'BertEmb({batch_size}, {seq_length:03}) Plain PyTorch QPS {num_iter / t.elapsed}')
 
-        torch_result = self.torch_embedding(input_ids, token_type_ids, position_ids)
-        ft_result = dlpack.from_dlpack(self.ft_embedding(_(input_ids), _(position_ids), _(token_type_ids)).to_dlpack())
-        with contexttimer.Timer() as t:
-            for it in range(100):
-                ft_result = dlpack.from_dlpack(
-                    self.ft_embedding(_(input_ids), _(position_ids), _(token_type_ids)).to_dlpack())
-        self.assertTrue(torch.max(torch_result - ft_result) < 1e-5)
-        print(f'FastTransform time {t.elapsed}')
+            with contexttimer.Timer() as t:
+                for it in range(num_iter):
+                    self.torch_script_embedding(input_ids, token_type_ids, position_ids)
+            print(f'BertEmb({batch_size}, {seq_length:03}) TorchScript(i.e., jit) QPS {num_iter / t.elapsed}')
+
+            torch_result = self.torch_embedding(input_ids, token_type_ids, position_ids)
+            ft_result = dlpack.from_dlpack(
+                self.ft_embedding(_(input_ids), _(position_ids), _(token_type_ids)).to_dlpack())
+            with contexttimer.Timer() as t:
+                for it in range(num_iter):
+                    ft_result = dlpack.from_dlpack(
+                        self.ft_embedding(_(input_ids), _(position_ids), _(token_type_ids)).to_dlpack())
+            self.assertTrue(torch.max(torch.abs(torch_result - ft_result)) < 1e-5)
+            print(f'BertEmb({batch_size}, {seq_length:03}) FastTransform QPS {num_iter / t.elapsed}')
+
+    globals()[f"TestBertEmbedding{batch_size}_{seq_length:03}"] = TestBertEmbedding
 
 
+for batch_size in [1, 2]:
+    for seq_length in [10, 20, 40, 80, 100, 120]:
+        create_test_bert_emb(batch_size, seq_length)
+# create_test_bert_emb(2, 10)
 if __name__ == '__main__':
     unittest.main()

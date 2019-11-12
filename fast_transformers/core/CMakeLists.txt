@@ -22,3 +22,8 @@ target_link_libraries(blas PRIVATE absl::strings ghc_filesystem dl
 add_executable(blas_test blas_test.cpp)
 target_link_libraries(blas_test blas Catch2)
 add_test(NAME blas_test COMMAND blas_test)
+
+add_library(aligned_scratchpad aligned_scratchpad.cpp)
+target_link_libraries(aligned_scratchpad PRIVATE memory enforce)
+add_executable(aligned_scratchpad_test aligned_scratchpad_test.cpp)
+target_link_libraries(aligned_scratchpad_test aligned_scratchpad Catch2)

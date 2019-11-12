@@ -1,8 +1,8 @@
 #include "blas.h"
-#include "absl/strings/str_cat.h"
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include "absl/strings/str_cat.h"
 
 #if defined(__cplusplus) && __cplusplus >= 201703L && defined(__has_include)
 #if __has_include(<filesystem>)
@@ -90,6 +90,7 @@ void InitializeOpenblasLib(const char *filename) {
 
   // Since openblas did not provide cblas_sgemm_batch, just use naive
   // implementation.
+  g_blas_funcs_->tanh_ = naive_vsTanh;
   g_blas_funcs_->sgemm_batch_ = naive_cblas_sgemm_batch;
 }
 void InitializeMKLMLLib(const char *filename) {
@@ -97,6 +98,10 @@ void InitializeMKLMLLib(const char *filename) {
   InitializeBlasCommon(filename);
   g_blas_funcs_->sgemm_batch_ = reinterpret_cast<decltype(cblas_sgemm_batch) *>(
       dlsym(g_blas_funcs_->shared_library_, "cblas_sgemm_batch"));
+
+  g_blas_funcs_->tanh_ = reinterpret_cast<decltype(cblas_tanh) *>(
+      dlsym(g_blas_funcs_->shared_library_, "vsTanh"));
+  FT_ENFORCE_NE(g_blas_funcs_->tanh_, nullptr, "Cannot load vsTanh");
   FT_ENFORCE_NE(g_blas_funcs_->sgemm_batch_, nullptr,
                 "Cannot load cblas_sgemm_batch");
 }
@@ -123,5 +128,12 @@ void naive_cblas_sgemm_batch(CBLAS_LAYOUT Layout, CBLAS_TRANSPOSE *transa_array,
   }
 }
 
-} // namespace core
-} // namespace fast_transformers
+void naive_vsTanh(int N, float *X, float *Y) {
+#pragma parallel omp
+  for (int i = 0; i < N; ++i) {
+    Y[i] = tanh(X[i]);
+  }
+}
+
+}  // namespace core
+}  // namespace fast_transformers

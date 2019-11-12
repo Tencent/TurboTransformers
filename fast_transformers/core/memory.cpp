@@ -10,5 +10,5 @@ void *align_alloc(size_t sz, size_t align) {
                 sz, align);
   return aligned_mem;
 }
-} // namespace core
-} // namespace fast_transformers
+}  // namespace core
+}  // namespace fast_transformers

@@ -1,7 +1,7 @@
 pybind11_add_module(fast_transformers
         pybind.cpp)
 
-target_link_libraries(fast_transformers PRIVATE bert_embedding blas)
+target_link_libraries(fast_transformers PRIVATE blas bert_embedding attention bert_self_attention bert_intermediate bert_output)
 
 
 file(GLOB PY_TEST_FILES tests/*_test.py)
@@ -16,5 +16,5 @@ foreach (py_test_file ${PY_TEST_FILES})
             PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}
             ${PYTHON_EXECUTABLE} ${py_test_file}
             WORKING_DIRECTORY
-            ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+            ${CMAKE_CURRENT_BINARY_DIR})
 endforeach ()

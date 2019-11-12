@@ -4,11 +4,26 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
 
 option(CUDA_VERSION "Set cuda version of torch, in (`92`, `101`), default is None" NONE)
-option(OPENMP_ENDABLE "Build OpenMP" ON)
+option(OPENMP_ENDABLE "Build with OpenMP" ON)
+option(MKL_ENABLE "Build with MKL" OFF)
 
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL Intel)
+  message(STATUS ">>>>> Fast Transformer is built with a intel compiler!")
+  add_definitions(-D__USE_INTEL_COMPILER__)
+endif()
 add_subdirectory(3rd)
 enable_testing()
 
+
+if (MKL_ENABLE)
+    SET(INTEL_COMPILER_DIR "/home/jiaruifang/" CACHE STRING "Root directory of the Intel Compiler Suite (contains ipp, mkl, etc.)")
+    SET(INTEL_MKL_DIR "/home/jiaruifang/intel/mkl" CACHE STRING "Root directory of the Intel MKL (standalone)")
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+    find_package(MKL)
+    if(${MKL_FOUND})
+        include_directories("${MKL_INCLUDE_DIR}")
+    endif()
+endif()
 
 if (OPENMP_ENDABLE)
     find_package(OpenMP)
@@ -23,6 +38,7 @@ if (OPENMP_ENDABLE)
 else ()
     message(STATUS "OpenMP is not used")
 endif ()
+
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(fast_transformers)

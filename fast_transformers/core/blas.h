@@ -1,8 +1,8 @@
 #pragma once
+#include <mutex>
 #include "absl/types/variant.h"
 #include "fast_transformers/core/cblas_fn.h"
 #include "fast_transformers/core/enforce.h"
-#include <mutex>
 
 namespace fast_transformers {
 namespace core {
@@ -26,5 +26,7 @@ extern void naive_cblas_sgemm_batch(
     const float **b_array, int *ldb_array, const float *beta_array,
     float **c_array, int *ldc_array, int group_count, int *group_size);
 
-} // namespace core
-} // namespace fast_transformers
+extern void naive_vsTanh(int N, float *X, float *Y);
+
+}  // namespace core
+}  // namespace fast_transformers

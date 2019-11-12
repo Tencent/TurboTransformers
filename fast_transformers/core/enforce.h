@@ -1,10 +1,10 @@
 #pragma once
-#include "absl/debugging/stacktrace.h"
-#include "absl/strings/str_cat.h"
-#include "absl/strings/str_format.h"
 #include <array>
 #include <stdexcept>
 #include <string>
+#include "absl/debugging/stacktrace.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 namespace fast_transformers {
 namespace core {
 /**
@@ -20,14 +20,14 @@ namespace core {
 static constexpr size_t kStackLimit = 20UL;
 static constexpr size_t kStackSkipCount = 1UL;
 class EnforceNotMet : public std::exception {
-public:
+ public:
   explicit EnforceNotMet(std::string msg) : msg_(std::move(msg)) {
     n_ = absl::GetStackTrace(stacks_.data(), stacks_.size(), kStackSkipCount);
   }
 
   const char *what() const noexcept override;
 
-private:
+ private:
   mutable std::string msg_;
   std::array<void *, kStackLimit> stacks_{};
   size_t n_;
@@ -40,17 +40,17 @@ private:
 #define FT_UNLIKELY(condition) (condition)
 #endif
 
-#define FT_THROW(...)                                                          \
+#define FT_THROW(...) \
   throw ::fast_transformers::core::EnforceNotMet(absl::StrFormat(__VA_ARGS__))
-#define FT_ENFORCE(cond, ...)                                                  \
-  do {                                                                         \
-    if (FT_UNLIKELY(!(cond))) {                                                \
-      throw ::fast_transformers::core::EnforceNotMet(                          \
-          absl::StrCat("enforce error", #cond,                                 \
-                       absl::StrFormat(" at %s:%d\n", __FILE__, __LINE__),     \
-                       absl::StrFormat(__VA_ARGS__)));                         \
-    }                                                                          \
-                                                                               \
+#define FT_ENFORCE(cond, ...)                                              \
+  do {                                                                     \
+    if (FT_UNLIKELY(!(cond))) {                                            \
+      throw ::fast_transformers::core::EnforceNotMet(                      \
+          absl::StrCat("enforce error", #cond,                             \
+                       absl::StrFormat(" at %s:%d\n", __FILE__, __LINE__), \
+                       absl::StrFormat(__VA_ARGS__)));                     \
+    }                                                                      \
+                                                                           \
   } while (false)
 
 #define FT_ENFORCE_EQ(a, b, ...) FT_ENFORCE((a) == (b), __VA_ARGS__)
@@ -58,5 +58,5 @@ private:
 #define FT_ENFORCE_LT(a, b, ...) FT_ENFORCE((a) < (b), __VA_ARGS__)
 #define FT_ENFORCE_LE(a, b, ...) FT_ENFORCE((a) <= (b), __VA_ARGS__)
 
-} // namespace core
-} // namespace fast_transformers
+}  // namespace core
+}  // namespace fast_transformers

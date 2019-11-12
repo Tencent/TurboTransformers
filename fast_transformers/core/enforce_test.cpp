@@ -1,6 +1,6 @@
 #define CATCH_CONFIG_MAIN
-#include "catch2/catch.hpp"
 #include "fast_transformers/core/enforce.h"
+#include "catch2/catch.hpp"
 // TEST(enforce, throw) { ASSERT_THROW(WXBOT_THROW("Test"),
 // wxbot::base::EnforceNotMet); } TEST(enforce, check) {
 // ASSERT_THROW(WXBOT_ENFORCE(false, "Not matched"),

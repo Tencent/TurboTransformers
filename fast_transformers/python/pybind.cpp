@@ -1,7 +1,13 @@
+#include "absl/memory/memory.h"
 #include "fast_transformers/core/blas.h"
 #include "fast_transformers/core/tensor.h"
+#include "fast_transformers/layers/bert_attention.h"
 #include "fast_transformers/layers/bert_embedding.h"
+#include "fast_transformers/layers/bert_intermediate.h"
+#include "fast_transformers/layers/bert_output.h"
+#include "fast_transformers/layers/bert_self_attention.h"
 #include "pybind11/pybind11.h"
+
 namespace fast_transformers {
 namespace python {
 
@@ -27,7 +33,7 @@ PYBIND11_MODULE(fast_transformers, m) {
                   [](py::capsule capsule) -> std::unique_ptr<core::Tensor> {
                     auto tensor = (DLManagedTensor *)(capsule);
                     PyCapsule_SetName(capsule.ptr(), "used_tensor");
-                    return std::make_unique<core::Tensor>(tensor);
+                    return absl::make_unique<core::Tensor>(tensor);
                   })
       .def("to_dlpack",
            [](core::Tensor &tensor) -> py::capsule {
@@ -55,7 +61,71 @@ PYBIND11_MODULE(fast_transformers, m) {
              return self(std::move(input_ids), std::move(token_type_ids),
                          std::move(position_ids));
            });
+
+  py::class_<layers::BertAttention>(m, "BertAttention")
+      .def(py::init([](core::Tensor &query_weight, core::Tensor &query_bias,
+                       core::Tensor &key_weight, core::Tensor &key_bias,
+                       core::Tensor &value_weight, core::Tensor &value_bias,
+                       core::Tensor &dense_weight, core::Tensor &dense_bias,
+                       core::Tensor &layer_norm_weight,
+                       core::Tensor &layer_norm_bias,
+                       int num_attention_heads) -> layers::BertAttention * {
+        return new layers::BertAttention(
+            std::move(query_weight), std::move(query_bias),
+            std::move(key_weight), std::move(key_bias), std::move(value_weight),
+            std::move(value_bias), std::move(dense_weight),
+            std::move(dense_bias), std::move(layer_norm_weight),
+            std::move(layer_norm_bias), num_attention_heads);
+      }))
+      .def("__call__",
+           [](layers::BertAttention &self, core::Tensor &input_tensor,
+              core::Tensor &attention_mask, core::Tensor &head_mask) {
+             return self(std::move(input_tensor), std::move(attention_mask),
+                         std::move(head_mask));
+           });
+
+  py::class_<layers::BertSelfAttention>(m, "BertSelfAttention")
+      .def(py::init([](core::Tensor &qkv_weight, core::Tensor &qkv_bias,
+                       core::Tensor &dense_weight, core::Tensor &dense_bias,
+                       core::Tensor &layer_norm_weight,
+                       core::Tensor &layer_norm_bias,
+                       int num_attention_heads) -> layers::BertSelfAttention * {
+        return new layers::BertSelfAttention(
+            std::move(qkv_weight), std::move(qkv_bias), std::move(dense_weight),
+            std::move(dense_bias), std::move(layer_norm_weight),
+            std::move(layer_norm_bias), num_attention_heads);
+      }))
+      .def("__call__",
+           [](layers::BertSelfAttention &self, core::Tensor &input_tensor,
+              core::Tensor &attention_mask, core::Tensor &head_mask) {
+             return self(std::move(input_tensor), std::move(attention_mask),
+                         std::move(head_mask));
+           });
+
+  py::class_<layers::BertIntermediate>(m, "BertIntermediate")
+      .def(py::init([](core::Tensor &dense_weight,
+                       core::Tensor &dense_bias) -> layers::BertIntermediate * {
+        return new layers::BertIntermediate(std::move(dense_weight),
+                                            std::move(dense_bias));
+      }))
+      .def("__call__",
+           [](layers::BertIntermediate &self, core::Tensor &input_tensor) {
+             return self(std::move(input_tensor));
+           });
+
+  py::class_<layers::BertOutput>(m, "BertOutput")
+      .def(py::init([](core::Tensor &dense_weight, core::Tensor &dense_bias,
+                       core::Tensor &layer_norm_weight,
+                       core::Tensor &layer_norm_bias) -> layers::BertOutput * {
+        return new layers::BertOutput(
+            std::move(dense_weight), std::move(dense_bias),
+            std::move(layer_norm_weight), std::move(layer_norm_bias));
+      }))
+      .def("__call__", [](layers::BertOutput &self, core::Tensor &hidden_states,
+                          core::Tensor &input_tensor) {
+        return self(std::move(hidden_states), std::move(input_tensor));
+      });
 }
 
-} // namespace python
-} // namespace fast_transformers
+}  // namespace python
+}  // namespace fast_transformers

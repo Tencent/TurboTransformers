@@ -1,6 +1,6 @@
 #include "enforce.h"
-#include "absl/debugging/symbolize.h"
 #include <sstream>
+#include "absl/debugging/symbolize.h"
 namespace fast_transformers {
 namespace core {
 static constexpr size_t gBufSize = 128;
@@ -24,5 +24,5 @@ const char *EnforceNotMet::what() const noexcept {
   return msg_.c_str();
 }
 
-} // namespace core
-} // namespace fast_transformers
+}  // namespace core
+}  // namespace fast_transformers

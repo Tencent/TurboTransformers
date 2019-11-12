@@ -1,2 +1,11 @@
 add_library(layer_norm layer_norm.cpp)
 target_link_libraries(layer_norm tensor)
+
+add_library(softmax softmax.cpp)
+target_link_libraries(softmax tensor)
+
+add_library(transpose transpose.cpp)
+target_link_libraries(transpose tensor)
+
+add_library(activation activation.cpp)
+target_link_libraries(activation tensor)

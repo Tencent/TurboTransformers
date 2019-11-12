@@ -13,6 +13,7 @@ static void LookupEmbedding(core::Tensor &out_tensor,
   auto num_ids = ids_tensor.numel();
   auto hidden_size = embedding_table.shape(1);
   auto vocab_size = embedding_table.shape(0);
+#pragma omp parallel for
   for (int64_t i = 0; i < num_ids; ++i) {
     int64_t id = ids[i];
     FT_ENFORCE_LT(id, vocab_size, "embedding id out of index");
@@ -29,10 +30,10 @@ static void LookupEmbedding(core::Tensor &out_tensor,
   }
 }
 
-core::Tensor BERTEmbedding::
-operator()(const core::Tensor &input_ids, const core::Tensor &position_ids,
-           const core::Tensor &token_type_ids) const {
-  if (VLOG_IS_ON(3)) {
+core::Tensor BERTEmbedding::operator()(
+    const core::Tensor &input_ids, const core::Tensor &position_ids,
+    const core::Tensor &token_type_ids) const {
+  if (VLOG_IS_ON(10)) {
     std::ostringstream os;
     os << ">>>>>>>>>>>> input_ids <<<<<<<<<<<<" << std::endl;
     input_ids.Print<int64_t>(os);
@@ -40,8 +41,9 @@ operator()(const core::Tensor &input_ids, const core::Tensor &position_ids,
     position_ids.Print<int64_t>(os);
     os << ">>>>>>>>>>>> token_type_ids <<<<<<<<<<<<" << std::endl;
     token_type_ids.Print<int64_t>(os);
-    VLOG(3) << os.str();
+    VLOG(10) << os.str();
   }
+
   FT_ENFORCE_EQ(
       input_ids.n_dim(), 2,
       "The input ids should be a matrix with shape [BatchSize, SeqLen].");
@@ -58,13 +60,11 @@ operator()(const core::Tensor &input_ids, const core::Tensor &position_ids,
   LookupEmbedding</*Add=*/true>(output_tensor, position_embeddings_,
                                 position_ids);
 
-  kernels::LayerNorm<float>(output_tensor, layer_norm_weights_,
-                            layer_norm_bias_);
+  kernels::LayerNorm(output_tensor, layer_norm_weights_, layer_norm_bias_);
 
   return output_tensor;
 }
 void BERTEmbedding::EnforceShapeAndType() const {
-
   VLOG(3) << ">>>>> init BERTEmbedding <<<<<<<<";
   FT_ENFORCE_EQ(word_embedings_.device_type(), kDLCPU, "Only CPU supportted");
 
@@ -85,5 +85,5 @@ void BERTEmbedding::EnforceShapeAndType() const {
     VLOG(3) << os.str();
   }
 }
-} // namespace layers
-} // namespace fast_transformers
+}  // namespace layers
+}  // namespace fast_transformers
