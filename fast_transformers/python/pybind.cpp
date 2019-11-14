@@ -1,5 +1,6 @@
 #include "absl/memory/memory.h"
 #include "fast_transformers/core/blas.h"
+#include "fast_transformers/core/profiler.h"
 #include "fast_transformers/core/tensor.h"
 #include "fast_transformers/layers/bert_attention.h"
 #include "fast_transformers/layers/bert_embedding.h"
@@ -28,6 +29,8 @@ static void DLPack_Capsule_Destructor(PyObject *data) {
 
 PYBIND11_MODULE(fast_transformers, m) {
   m.def("auto_init_blas", &core::AutoInitBlas);
+  m.def("enable_gperf", &core::EnableGPerf);
+
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",
                   [](py::capsule capsule) -> std::unique_ptr<core::Tensor> {

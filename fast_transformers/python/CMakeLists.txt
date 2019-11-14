@@ -1,7 +1,7 @@
 pybind11_add_module(fast_transformers
         pybind.cpp)
 
-target_link_libraries(fast_transformers PRIVATE blas bert_embedding attention bert_self_attention bert_intermediate bert_output)
+target_link_libraries(fast_transformers PRIVATE blas profiler bert_embedding attention bert_self_attention bert_intermediate bert_output)
 
 
 file(GLOB PY_TEST_FILES tests/*_test.py)
