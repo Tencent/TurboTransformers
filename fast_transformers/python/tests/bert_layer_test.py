@@ -78,7 +78,6 @@ class FastBertLayer(nn.Module):
 
 class TestBertLayer(unittest.TestCase):
     def setUp(self) -> None:
-        fast_transformers.enable_gperf("./profile.perf")
         fast_transformers.auto_init_blas()
         torch.set_grad_enabled(False)
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
@@ -119,11 +118,13 @@ class TestBertLayer(unittest.TestCase):
 
         print(f"BertLayer Torch QPS, {self.num_iter / t.elapsed}, ", f"Time Cost, {t.elapsed / self.num_iter}")
 
-
+        fast_transformers.enable_gperf("./profile.perf")
         ft_bert_layer_result = self.ft_bert_layer(self.input_tensor, self.attention_mask, self.head_mask)
         with contexttimer.Timer() as t:
             for it in range(self.num_iter):
                 ft_bert_layer_result = self.ft_bert_layer(self.input_tensor, self.attention_mask, self.head_mask)
+
+        fast_transformers.disable_gperf()
 
         print(f"fast_transformer BertLayer Torch QPS, {self.num_iter / t.elapsed}, ", f"Time Cost, {t.elapsed / self.num_iter}")
 

@@ -6,3 +6,4 @@ build
 *.onnx
 onnxruntime_profile_*json
 tmp
+build2

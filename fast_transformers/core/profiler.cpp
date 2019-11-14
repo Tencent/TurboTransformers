@@ -1,32 +1,36 @@
 #include "profiler.h"
+#include "enforce.h"
 #include <glog/logging.h>
+
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
 
 namespace fast_transformers {
 namespace core {
-static std::once_flag gProfileOnce;
 #ifdef WITH_GPERFTOOLS
 static bool gProfileStarted = false;
 #endif
 
-void EnableGPerf(const std::string& profile_file) {
+void EnableGperf(const std::string &profile_file) {
 #ifdef WITH_GPERFTOOLS
   VLOG(1) << "gperf tools enabled." << profile_file;
-    std::call_once(gProfileOnce, [&] {
-#ifdef WITH_GPERFTOOLS
-      ProfilerStart(profile_file.c_str());
-      gProfileStarted = true;
+  FT_ENFORCE_EQ(gProfileStarted, false, "Currently the gPerf is enabled.");
+  ProfilerStart(profile_file.c_str());
+  gProfileStarted = true;
 #else
-      LOG(WARNING) << "fast_transformers is not compiled with gperftools.";
-#endif
-    });
+  LOG(WARNING) << "fast_transformers is not compiled with gperftools.";
 #endif
 }
 
-void DisableGPerf(){
-
+void DisableGperf() {
+#ifdef WITH_GPERFTOOLS
+  FT_ENFORCE_EQ(gProfileStarted, true, "Currently the gPerf is disabled.");
+  ProfilerStop();
+  gProfileStarted=false;
+#else
+  LOG(WARNING) << "fast_transformers is not compiled with gperftools.";
+#endif
 }
 
 }  // namespace core

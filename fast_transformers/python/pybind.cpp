@@ -29,7 +29,8 @@ static void DLPack_Capsule_Destructor(PyObject *data) {
 
 PYBIND11_MODULE(fast_transformers, m) {
   m.def("auto_init_blas", &core::AutoInitBlas);
-  m.def("enable_gperf", &core::EnableGPerf);
+  m.def("enable_gperf", &core::EnableGperf);
+  m.def("disable_gperf", &core::DisableGperf);
 
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",
