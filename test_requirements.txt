@@ -3,3 +3,4 @@ transformers
 contexttimer
 onnxruntime
 onnx
+future
