@@ -9,13 +9,8 @@ import torch.utils.dlpack as dlpack
 from onnxruntime.backend import backend
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertOutput
-
 import fast_transformers
-
-
-def _(t):
-    return fast_transformers.Tensor.from_dlpack(dlpack.to_dlpack(t))
-
+from utils import convert2ft_tensor
 
 def create_shape_test(batch_size: int, seq_length: int):
     class TestBertOut(unittest.TestCase):
@@ -32,10 +27,10 @@ def create_shape_test(batch_size: int, seq_length: int):
                               self.torch_bertout.named_parameters()}
 
             self.ft_bertout = fast_transformers.BertOutput(
-                _(bertout_params["dense.weight"]),
-                _(bertout_params["dense.bias"]),
-                _(bertout_params["LayerNorm.weight"]),
-                _(bertout_params["LayerNorm.bias"])
+                convert2ft_tensor(bertout_params["dense.weight"]),
+                convert2ft_tensor(bertout_params["dense.bias"]),
+                convert2ft_tensor(bertout_params["LayerNorm.weight"]),
+                convert2ft_tensor(bertout_params["LayerNorm.bias"])
             )
 
             self.intermediate_output = torch.rand(size=(batch_size, seq_length, self.intermediate_size),
@@ -79,11 +74,11 @@ def create_shape_test(batch_size: int, seq_length: int):
                 print(f'BertOut({batch_size}, {seq_length:03}) ONNX QPS {num_steps / t.elapsed}', file=of)
 
                 ft_result = dlpack.from_dlpack(
-                    self.ft_bertout(_(self.intermediate_output), _(self.attention_output)).to_dlpack())
+                    self.ft_bertout(convert2ft_tensor(self.intermediate_output), convert2ft_tensor(self.attention_output)).to_dlpack())
                 with contexttimer.Timer() as t:
                     for it in range(num_steps):
                         ft_result = dlpack.from_dlpack(
-                            self.ft_bertout(_(self.intermediate_output), _(self.attention_output)).to_dlpack())
+                            self.ft_bertout(convert2ft_tensor(self.intermediate_output), convert2ft_tensor(self.attention_output)).to_dlpack())
 
                 print(f"BertOut({batch_size}, {seq_length:03}) FastTransform QPS {num_steps / t.elapsed}", file=of)
                 self.assertTrue( torch.max(torch.abs(torch_result - ft_result)) < 1e-4 )

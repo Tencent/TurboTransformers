@@ -9,12 +9,8 @@ import torch.onnx
 import torch.utils.dlpack as dlpack
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertEmbeddings, BertConfig
-
 import fast_transformers
-
-
-def _(t):
-    return fast_transformers.Tensor.from_dlpack(dlpack.to_dlpack(t))
+from utils import convert2ft_tensor
 
 def create_test_bert_emb(batch_size: int, seq_length: int):
     class TestBertEmbedding(unittest.TestCase):
@@ -23,7 +19,7 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
             self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
             cfg = BertConfig(vocab_size_or_config_json_file=self.tokenizer.vocab_size)
             self.torch_embedding = BertEmbeddings(cfg)
-            params = {k: _(v) for k, v in
+            params = {k: convert2ft_tensor(v) for k, v in
                       self.torch_embedding.named_parameters()}
             self.torch_embedding.eval()
             torch.onnx.export(self.torch_embedding, (
@@ -81,11 +77,11 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
 
             torch_result = self.torch_embedding(input_ids, token_type_ids, position_ids)
             ft_result = dlpack.from_dlpack(
-                self.ft_embedding(_(input_ids), _(position_ids), _(token_type_ids)).to_dlpack())
+                self.ft_embedding(convert2ft_tensor(input_ids), convert2ft_tensor(position_ids), convert2ft_tensor(token_type_ids)).to_dlpack())
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
                     ft_result = dlpack.from_dlpack(
-                        self.ft_embedding(_(input_ids), _(position_ids), _(token_type_ids)).to_dlpack())
+                        self.ft_embedding(convert2ft_tensor(input_ids), convert2ft_tensor(position_ids), convert2ft_tensor(token_type_ids)).to_dlpack())
             self.assertTrue(torch.max(torch.abs(torch_result - ft_result)) < 1e-5)
             print(f'BertEmb({batch_size}, {seq_length:03}) FastTransform QPS {num_iter / t.elapsed}')
 
