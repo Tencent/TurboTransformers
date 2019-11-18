@@ -8,20 +8,18 @@ namespace core {
 static bool float_eq(float a, float b) { return std::abs(a - b) < 1e-5; }
 
 TEST_CASE("blas-gemm") {
-  AutoInitBlas();
   float A[] = {1, 2, 3, 4};
   float B[] = {2, 3, 4, 5};
   float C[] = {0, 0, 0, 0};
 
-  Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasNoTrans, 2, 2, 2, 1, A, 2, B,
-                2, 0, C, 2);
+  cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 2, 2, 2, 1, A, 2, B, 2,
+              0, C, 2);
   REQUIRE(float_eq(C[0], 10));
   REQUIRE(float_eq(C[1], 13));
   REQUIRE(float_eq(C[2], 22));
   REQUIRE(float_eq(C[3], 29));
 }
 TEST_CASE("blas-batch-gemm") {
-  AutoInitBlas();
   const float A1[] = {1, 2, 3, 4};
   const float B1[] = {2, 3, 4, 5};
   float C1[] = {0, 0, 0, 0};
@@ -36,12 +34,11 @@ TEST_CASE("blas-batch-gemm") {
 
   BlasInt m[] = {2, 2};
   CBLAS_TRANSPOSE trans[] = {CblasNoTrans, CblasNoTrans};
-  static constexpr float alpha = 1., beta = 0.;
+  static float alpha = 1., beta = 0.;
   BlasInt batch_size = 2;
 
-  Blas().sgemm_batch_(CblasRowMajor, trans, trans, m, m, m, &alpha,
-                      reinterpret_cast<const float**>(A), m, B, m, &beta, C, m,
-                      1, &batch_size);
+  cblas_sgemm_batch(CblasRowMajor, trans, trans, m, m, m, &alpha, A, m, B, m,
+                    &beta, C, m, 1, &batch_size);
   REQUIRE(float_eq(C1[0], 10));
   REQUIRE(float_eq(C1[1], 13));
   REQUIRE(float_eq(C1[2], 22));
@@ -53,15 +50,13 @@ TEST_CASE("blas-batch-gemm") {
 }
 
 TEST_CASE("blas-sscal") {
-  AutoInitBlas();
   float vec[] = {1, 2};
-  Blas().sscal_(2, 2, vec, 1);
+  cblas_sscal(2, 2, vec, 1);
   REQUIRE(float_eq(vec[0], 2));
   REQUIRE(float_eq(vec[1], 4));
 }
 
 TEST_CASE("blas-gemm-no-merge") {
-  AutoInitBlas();
   int m = 1 * 128, k = 12 * 64, n = 12 * 64;
   float* A = new float[m * k];
   float* B = new float[k * n];
@@ -70,8 +65,8 @@ TEST_CASE("blas-gemm-no-merge") {
 
   auto start = std::chrono::system_clock::now();
   for (int it = 0; it < 100; ++it)
-    core::Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-                        A, k, B, k, beta, C, n);
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha, A, k,
+                B, k, beta, C, n);
 
   auto end = std::chrono::system_clock::now();
   auto duration =
@@ -84,7 +79,6 @@ TEST_CASE("blas-gemm-no-merge") {
 }
 
 TEST_CASE("blas-gemm-merge") {
-  AutoInitBlas();
   int m = 1 * 128, k = 12 * 64, n = 12 * 64 * 3;
   float* A = new float[m * k];
   float* B = new float[k * n];
@@ -93,8 +87,8 @@ TEST_CASE("blas-gemm-merge") {
 
   auto start = std::chrono::system_clock::now();
   for (int it = 0; it < 100; ++it)
-    core::Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-                        A, k, B, k, beta, C, n);
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha, A, k,
+                B, k, beta, C, n);
   auto end = std::chrono::system_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -106,7 +100,6 @@ TEST_CASE("blas-gemm-merge") {
 }
 
 TEST_CASE("blas-gemm-intermediate") {
-  AutoInitBlas();
   int m = 1 * 128, k = 12 * 64 * 4, n = 12 * 64;
   float* A = new float[m * k];
   float* B = new float[k * n];
@@ -116,8 +109,8 @@ TEST_CASE("blas-gemm-intermediate") {
   auto start = std::chrono::system_clock::now();
   int step = 100;
   for (int it = 0; it < step; ++it)
-    core::Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-                        A, k, B, k, beta, C, n);
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha, A, k,
+                B, k, beta, C, n);
   auto end = std::chrono::system_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -130,7 +123,6 @@ TEST_CASE("blas-gemm-intermediate") {
 }
 
 TEST_CASE("blas-gemm-intermediate-pad") {
-  AutoInitBlas();
   int k_pad = 0;
   int m = 1 * 128, k_param = 12 * 64 * 4, n_param = 12 * 64 * 4;
   int pad_size = 0;
@@ -145,8 +137,8 @@ TEST_CASE("blas-gemm-intermediate-pad") {
     auto start = std::chrono::system_clock::now();
     int step = 100;
     for (int it = 0; it < step; ++it)
-      core::Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k,
-                          alpha, A, k, B, k, beta, C, n);
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha, A, k,
+                  B, k, beta, C, n);
     auto end = std::chrono::system_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -170,8 +162,8 @@ TEST_CASE("blas-gemm-intermediate-pad") {
     auto start = std::chrono::system_clock::now();
     int step = 100;
     for (int it = 0; it < step; ++it)
-      core::Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
-                          alpha, A, k, B, n, beta, C, n);
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha, A,
+                  k, B, n, beta, C, n);
     auto end = std::chrono::system_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -195,8 +187,8 @@ TEST_CASE("blas-gemm-intermediate-pad") {
     auto start = std::chrono::system_clock::now();
     int step = 100;
     for (int it = 0; it < step; ++it)
-      core::Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k,
-                          alpha, A, k, B, n, beta, C, n);
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha, A,
+                  k, B, n, beta, C, n);
     auto end = std::chrono::system_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -220,8 +212,8 @@ TEST_CASE("blas-gemm-intermediate-pad") {
     auto start = std::chrono::system_clock::now();
     int step = 100;
     for (int it = 0; it < step; ++it)
-      core::Blas().sgemm_(CblasRowMajor, CblasTrans, CblasNoTrans, m, n, k,
-                          alpha, A, m, B, n, beta, C, n);
+      cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, m, n, k, alpha, A, m,
+                  B, n, beta, C, n);
     auto end = std::chrono::system_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
