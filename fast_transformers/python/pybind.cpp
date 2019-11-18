@@ -1,5 +1,6 @@
 #include "absl/memory/memory.h"
 #include "fast_transformers/core/blas.h"
+#include "fast_transformers/core/profiler.h"
 #include "fast_transformers/core/tensor.h"
 #include "fast_transformers/layers/bert_attention.h"
 #include "fast_transformers/layers/bert_embedding.h"
@@ -30,6 +31,9 @@ PYBIND11_MODULE(fast_transformers, m) {
   m.def("auto_init_blas", &core::AutoInitBlas);
   m.def("set_stderr_verbose_level",
         [](int v) { loguru::g_stderr_verbosity = v; });
+  m.def("enable_gperf", &core::EnableGperf);
+  m.def("disable_gperf", &core::DisableGperf);
+
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",
                   [](py::capsule capsule) -> std::unique_ptr<core::Tensor> {

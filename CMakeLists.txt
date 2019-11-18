@@ -3,9 +3,12 @@ project(fast_transformers)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 option(CUDA_VERSION "Set cuda version of torch, in (`92`, `101`), default is None" NONE)
 option(OPENMP_ENDABLE "Build with OpenMP" ON)
 option(MKL_ENABLE "Build with MKL" OFF)
+option(WITH_PROFILER  "Compile with gperftools" OFF)
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL Intel)
   message(STATUS ">>>>> Fast Transformer is built with a intel compiler!")
@@ -39,6 +42,11 @@ else ()
     message(STATUS "OpenMP is not used")
 endif ()
 
+if(WITH_PROFILER)
+    find_package(Gperftools REQUIRED)
+    include_directories(${GPERFTOOLS_INCLUDE_DIR})
+    add_definitions(-DWITH_GPERFTOOLS)
+endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(fast_transformers)
