@@ -1,5 +1,6 @@
 #include "fast_transformers/layers/bert_embedding.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
+#include "loguru.hpp"
 namespace fast_transformers {
 namespace layers {
 
@@ -33,7 +34,7 @@ static void LookupEmbedding(core::Tensor &out_tensor,
 core::Tensor BERTEmbedding::operator()(
     const core::Tensor &input_ids, const core::Tensor &position_ids,
     const core::Tensor &token_type_ids) const {
-  if (VLOG_IS_ON(10)) {
+  if (loguru::current_verbosity_cutoff() >= 3) {
     std::ostringstream os;
     os << ">>>>>>>>>>>> input_ids <<<<<<<<<<<<" << std::endl;
     input_ids.Print<int64_t>(os);
@@ -41,7 +42,7 @@ core::Tensor BERTEmbedding::operator()(
     position_ids.Print<int64_t>(os);
     os << ">>>>>>>>>>>> token_type_ids <<<<<<<<<<<<" << std::endl;
     token_type_ids.Print<int64_t>(os);
-    VLOG(10) << os.str();
+    LOG_S(3) << os.str();
   }
 
   FT_ENFORCE_EQ(
@@ -65,12 +66,12 @@ core::Tensor BERTEmbedding::operator()(
   return output_tensor;
 }
 void BERTEmbedding::EnforceShapeAndType() const {
-  VLOG(3) << ">>>>> init BERTEmbedding <<<<<<<<";
+  LOG_S(3) << ">>>>> init BERTEmbedding <<<<<<<<";
   FT_ENFORCE_EQ(word_embedings_.device_type(), kDLCPU, "Only CPU supportted");
 
-  VLOG(3) << ">>>>> Assert OK <<<<<<<<";
+  LOG_S(3) << ">>>>> Assert OK <<<<<<<<";
 
-  if (VLOG_IS_ON(3)) {
+  if (loguru::current_verbosity_cutoff() >= 3) {
     std::ostringstream os;
     os << ">>>>> word_embedings_ <<<<<<<<" << std::endl;
     word_embedings_.Print<float>(os);
@@ -82,7 +83,7 @@ void BERTEmbedding::EnforceShapeAndType() const {
     layer_norm_weights_.Print<float>(os);
     os << ">>>>> layer_norm_bias_ <<<<<<<<" << std::endl;
     layer_norm_bias_.Print<float>(os);
-    VLOG(3) << os.str();
+    LOG_S(3) << os.str();
   }
 }
 }  // namespace layers

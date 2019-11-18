@@ -1,5 +1,4 @@
 #pragma once
-#include <glog/logging.h>
 #include <memory>
 #include "fast_transformers/core/tensor.h"
 
