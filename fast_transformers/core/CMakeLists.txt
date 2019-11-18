@@ -1,3 +1,15 @@
+add_library(blas blas_${BLAS_PROVIDER}.cpp)
+
+if (${BLAS_PROVIDER} STREQUAL "mkl")
+    target_link_libraries(blas PRIVATE ${MKL_LIBRARIES})
+    target_include_directories(blas PRIVATE ${MKL_INCLUDE_DIR})
+endif ()
+target_link_libraries(blas PRIVATE ${CMAKE_DL_LIBS})
+
+add_executable(blas_test blas_test.cpp)
+target_link_libraries(blas_test blas Catch2)
+add_test(NAME blas_test COMMAND blas_test)
+
 add_library(enforce enforce.cpp)
 target_link_libraries(enforce PUBLIC absl::stacktrace absl::symbolize absl::strings absl::str_format)
 
@@ -17,19 +29,11 @@ add_test(NAME tensor_test COMMAND tensor_test)
 
 add_library(profiler profiler.cpp)
 set(PROFILER_DEPS loguru enforce)
-if(WITH_PROFILER)
-  list(APPEND PROFILER_DEPS gperftools::profiler)
-endif()
+if (WITH_PROFILER)
+    list(APPEND PROFILER_DEPS gperftools::profiler)
+endif ()
 target_link_libraries(profiler ${PROFILER_DEPS})
 
-
-add_library(blas blas.cpp)
-target_link_libraries(blas PRIVATE absl::strings ghc_filesystem dl
-        PUBLIC absl::variant enforce)
-
-add_executable(blas_test blas_test.cpp)
-target_link_libraries(blas_test blas Catch2)
-add_test(NAME blas_test COMMAND blas_test)
 
 add_library(aligned_scratchpad aligned_scratchpad.cpp)
 target_link_libraries(aligned_scratchpad PRIVATE memory enforce)

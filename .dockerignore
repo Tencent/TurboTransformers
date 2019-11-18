@@ -7,5 +7,5 @@ build
 onnxruntime_profile_*json
 tmp
 build2
+.git
 *.pyc
-Testing/*

@@ -35,8 +35,8 @@ core::Tensor BertOutput::operator()(const core::Tensor &hidden_states,
   core::Tensor output_tensor(
       core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}));
 
-  core::Blas().sgemm_(
-      CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
+  core::cblas_sgemm(
+      core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans, m, n, k, alpha,
       hidden_states.data<float>(),
       k,  // (batch_size*seq_length = m, intermediate_size = k)
       dense_weight_.data<float>(), k,

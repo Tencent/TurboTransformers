@@ -78,7 +78,6 @@ class FastBertLayer(nn.Module):
 
 class TestBertLayer(unittest.TestCase):
     def setUp(self) -> None:
-        fast_transformers.auto_init_blas()
         torch.set_grad_enabled(False)
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
         self.cfg = BertConfig(vocab_size_or_config_json_file=self.tokenizer.vocab_size,

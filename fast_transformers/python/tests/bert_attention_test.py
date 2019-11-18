@@ -21,7 +21,6 @@ def create_test(batch_size, seq_length):
     class TestBertAttention(unittest.TestCase):
         def setUp(self) -> None:
             fast_transformers.set_stderr_verbose_level(1)
-            fast_transformers.auto_init_blas()
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
             self.cfg = BertConfig(vocab_size_or_config_json_file=self.tokenizer.vocab_size,

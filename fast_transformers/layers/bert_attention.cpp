@@ -11,10 +11,12 @@ namespace layers {
 
 namespace details {
 
-static void matmul(bool TransA, bool TransB, int m, int n, int k, float alpha,
-                   const float* A, int lda, int64_t strideA, const float* B,
-                   int ldb, int64_t strideB, const float beta, float* C,
-                   int ldc, int64_t strideC, int batchCount) {
+static void matmul(bool TransA, bool TransB, core::BlasInt m, core::BlasInt n,
+                   core::BlasInt k, float alpha, const float* A,
+                   core::BlasInt lda, int64_t strideA, const float* B,
+                   core::BlasInt ldb, int64_t strideB, const float beta,
+                   float* C, core::BlasInt ldc, int64_t strideC,
+                   core::BlasInt batchCount) {
   const float* A_Array[batchCount];
   const float* B_Array[batchCount];
   float* C_Array[batchCount];
@@ -23,11 +25,11 @@ static void matmul(bool TransA, bool TransB, int m, int n, int k, float alpha,
     B_Array[i] = B + strideB * i;
     C_Array[i] = C + strideC * i;
   }
-  CBLAS_TRANSPOSE transA = TransA ? CblasTrans : CblasNoTrans;
-  CBLAS_TRANSPOSE transB = TransB ? CblasTrans : CblasNoTrans;
-  core::Blas().sgemm_batch_(CblasColMajor, &transA, &transB, &m, &n, &k, &alpha,
-                            A_Array, &lda, B_Array, &ldb, &beta, C_Array, &ldc,
-                            1, &batchCount);
+  auto transA = TransA ? core::CblasTrans : core::CblasNoTrans;
+  auto transB = TransB ? core::CblasTrans : core::CblasNoTrans;
+  core::cblas_sgemm_batch(core::CblasColMajor, &transA, &transB, &m, &n, &k,
+                          &alpha, A_Array, &lda, B_Array, &ldb, &beta, C_Array,
+                          &ldc, 1, &batchCount);
 }
 }  // namespace details
 
@@ -90,15 +92,16 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   const float* dense_bias_ptr = dense_bias_.data<float>();
   float* output_tensor_ptr = output_tensor.mutableData<float>();
 
-  core::Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-                      from_tensor_ptr, k, query_weight_ptr, k, beta, query_buf,
-                      n);
-  core::Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-                      to_tensor_ptr, k, key_weight_ptr, k, beta, key_buf, n);
+  core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
+                    m, n, k, alpha, from_tensor_ptr, k, query_weight_ptr, k,
+                    beta, query_buf, n);
+  core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
+                    m, n, k, alpha, to_tensor_ptr, k, key_weight_ptr, k, beta,
+                    key_buf, n);
 
-  core::Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-                      to_tensor_ptr, k, value_weight_ptr, k, beta, value_buf,
-                      n);
+  core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
+                    m, n, k, alpha, to_tensor_ptr, k, value_weight_ptr, k, beta,
+                    value_buf, n);
 
   const std::vector<int64_t> QKV_shape{batch_size, seq_length,
                                        num_attention_heads_, size_per_head};
@@ -140,9 +143,9 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   // self_outputs = (context_layer, attention_probs) if self.output_attentions
   // else (context_layer,) # self.output_attentions is nullptr hidden_states =
   // self.dense(self_outputs[0]) #context_layer
-  core::Blas().sgemm_(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-                      self_attr_out, k, dense_weight_ptr, k, beta,
-                      output_tensor_ptr, n);
+  core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
+                    m, n, k, alpha, self_attr_out, k, dense_weight_ptr, k, beta,
+                    output_tensor_ptr, n);
 
   // attention_output = self.LayerNorm(hidden_states + input_tensor)
   kernels::AddBiasLayerNorm(output_tensor_ptr, from_tensor_ptr, dense_bias_ptr,

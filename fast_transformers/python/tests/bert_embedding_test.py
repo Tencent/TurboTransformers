@@ -19,7 +19,6 @@ def _(t):
 def create_test_bert_emb(batch_size: int, seq_length: int):
     class TestBertEmbedding(unittest.TestCase):
         def setUp(self) -> None:
-            fast_transformers.auto_init_blas()
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
             cfg = BertConfig(vocab_size_or_config_json_file=self.tokenizer.vocab_size)
