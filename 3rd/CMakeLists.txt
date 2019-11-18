@@ -5,8 +5,6 @@ add_subdirectory(pybind11)
 set(BUILD_TESTING OFF)
 add_subdirectory(abseil)
 add_subdirectory(Catch2)
-add_subdirectory(filesystem)
-
 add_library(loguru loguru/loguru.cpp)
 target_include_directories(loguru PUBLIC loguru/)
 target_compile_definitions(loguru PUBLIC LOGURU_WITH_STREAMS=1)
