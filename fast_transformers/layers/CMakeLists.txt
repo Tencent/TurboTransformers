@@ -1,5 +1,3 @@
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64 -mavx2 -mfma") #-mavx512f
-
 add_subdirectory(kernels)
 
 add_library(bert_embedding bert_embedding.cpp)

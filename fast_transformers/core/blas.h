@@ -1,8 +1,6 @@
 #pragma once
 #include <stdint.h>
 #include <mutex>
-#include "absl/types/variant.h"
-#include "fast_transformers/core/enforce.h"
 
 namespace fast_transformers {
 namespace core {
@@ -18,7 +16,7 @@ enum CBLAS_UPLO { CblasUpper = 121, CblasLower = 122 };
 enum CBLAS_DIAG { CblasNonUnit = 131, CblasUnit = 132 };
 enum CBLAS_SIDE { CblasLeft = 141, CblasRight = 142 };
 using CBLAS_LAYOUT = CBLAS_ORDER;
-using BlasInt = BLASINT;
+using BlasInt = long long int;
 
 extern void cblas_sgemm(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE TransA,
                         CBLAS_TRANSPOSE TransB, BlasInt M, BlasInt N, BlasInt K,
