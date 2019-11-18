@@ -1,4 +1,5 @@
 #include "fast_transformers/layers/bert_intermediate.h"
+#include <loguru.hpp>
 #include "fast_transformers/core/aligned_scratchpad.h"
 #include "fast_transformers/core/blas.h"
 #include "fast_transformers/core/memory.h"
@@ -13,7 +14,7 @@ namespace layers {
 namespace details {}  // namespace details
 
 core::Tensor BertIntermediate::operator()(
-    const core::Tensor &input_tensor) const {
+    const core::Tensor& input_tensor) const {
   auto intermediate_size = dense_weight_.shape(0);  //[3072, 768]
   auto hidden_size = dense_weight_.shape(1);
   auto batch_size = input_tensor.shape(0);
@@ -43,13 +44,13 @@ void BertIntermediate::EnforceShapeAndType() const {
                 "weight and bias shape mismatch %d, %d", dense_weight_.shape(0),
                 dense_bias_.shape(0));
 
-  if (VLOG_IS_ON(3)) {
+  if (loguru::current_verbosity_cutoff() >= 3) {
     std::ostringstream os;
     os << ">>>>>>>>>>>> query_weight <<<<<<<<<<<<" << std::endl;
     dense_weight_.Print<float>(os);
     os << ">>>>>>>>>>>> query_bias <<<<<<<<<<<<" << std::endl;
     dense_bias_.Print<float>(os);
-    VLOG(3) << os.str();
+    LOG_S(3) << os.str();
   }
 }
 

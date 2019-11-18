@@ -1,4 +1,5 @@
 #include "fast_transformers/layers/bert_output.h"
+#include <loguru.hpp>
 #include "fast_transformers/core/memory.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
 
@@ -51,16 +52,18 @@ core::Tensor BertOutput::operator()(const core::Tensor &hidden_states,
 }
 
 void BertOutput::EnforceShapeAndType() const {
-  std::stringstream ss;
-  ss << "<<<<<<<< dense_weight_ <<<<<<<<<<";
-  dense_weight_.Print<float>(ss);
-  ss << "<<<<<<<< dense_bias <<<<<<<<<<";
-  dense_bias_.Print<float>(ss);
-  ss << "<<<<<<<< layer_norm_weight <<<<<<<<<<";
-  layer_norm_weight_.Print<float>(ss);
-  ss << "<<<<<<<< layer_norm_bias <<<<<<<<<<";
-  layer_norm_bias_.Print<float>(ss);
-  VLOG(3) << ss.str();
+  if (loguru::current_verbosity_cutoff() >= 3) {
+    std::stringstream ss;
+    ss << "<<<<<<<< dense_weight_ <<<<<<<<<<";
+    dense_weight_.Print<float>(ss);
+    ss << "<<<<<<<< dense_bias <<<<<<<<<<";
+    dense_bias_.Print<float>(ss);
+    ss << "<<<<<<<< layer_norm_weight <<<<<<<<<<";
+    layer_norm_weight_.Print<float>(ss);
+    ss << "<<<<<<<< layer_norm_bias <<<<<<<<<<";
+    layer_norm_bias_.Print<float>(ss);
+    LOG_S(3) << ss.str();
+  }
 }
 
 }  // namespace layers

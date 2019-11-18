@@ -4,7 +4,7 @@
 #include "fast_transformers/layers/kernels/layer_norm.h"
 #include "fast_transformers/layers/kernels/softmax.h"
 #include "fast_transformers/layers/kernels/transpose.h"
-
+#include "loguru.hpp"
 namespace fast_transformers {
 namespace layers {
 
@@ -40,10 +40,10 @@ core::Tensor BertSelfAttention::operator()(
   auto seq_length = input_tensor.shape(1);
   auto hidden_size = input_tensor.shape(2);
   auto size_per_head = hidden_size / num_attention_heads_;
-  VLOG(3) << "batch_size: " << batch_size
-          << ", num_head: " << num_attention_heads_
-          << ", seq_length: " << seq_length << ", hidden_size: " << hidden_size
-          << ", size_per_head: " << size_per_head;
+  LOG_S(3) << "batch_size: " << batch_size
+           << ", num_head: " << num_attention_heads_
+           << ", seq_length: " << seq_length << ", hidden_size: " << hidden_size
+           << ", size_per_head: " << size_per_head;
 
   // numel of Q/K/V
   auto buf_size = batch_size * seq_length * hidden_size;
@@ -145,12 +145,12 @@ core::Tensor BertSelfAttention::operator()(
 void BertSelfAttention::EnforceShapeAndType() const {
   FT_ENFORCE_EQ(layer_norm_weight_.device_type(), kDLCPU,
                 "Only CPU supportted");
-  if (VLOG_IS_ON(3)) {
+  if (loguru::current_verbosity_cutoff() > 3) {
     std::ostringstream os;
     layer_norm_weight_.Print<float>(os);
     os << ">>>>>>>>>>>> layer_norm_bias <<<<<<<<<<<<" << std::endl;
     layer_norm_bias_.Print<float>(os);
-    VLOG(3) << os.str();
+    LOG_S(3) << os.str();
   }
 }
 

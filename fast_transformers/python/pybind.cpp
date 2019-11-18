@@ -7,8 +7,8 @@
 #include "fast_transformers/layers/bert_intermediate.h"
 #include "fast_transformers/layers/bert_output.h"
 #include "fast_transformers/layers/bert_self_attention.h"
+#include "loguru.hpp"
 #include "pybind11/pybind11.h"
-
 namespace fast_transformers {
 namespace python {
 
@@ -29,6 +29,8 @@ static void DLPack_Capsule_Destructor(PyObject *data) {
 
 PYBIND11_MODULE(fast_transformers, m) {
   m.def("auto_init_blas", &core::AutoInitBlas);
+  m.def("set_stderr_verbose_level",
+        [](int v) { loguru::g_stderr_verbosity = v; });
   m.def("enable_gperf", &core::EnableGperf);
   m.def("disable_gperf", &core::DisableGperf);
 

@@ -16,7 +16,7 @@ target_link_libraries(tensor_test Catch2 tensor)
 add_test(NAME tensor_test COMMAND tensor_test)
 
 add_library(profiler profiler.cpp)
-set(PROFILER_DEPS glog enforce)
+set(PROFILER_DEPS loguru enforce)
 if(WITH_PROFILER)
   list(APPEND PROFILER_DEPS gperftools::profiler)
 endif()
