@@ -15,6 +15,14 @@ add_executable(tensor_test tensor_test.cpp)
 target_link_libraries(tensor_test Catch2 tensor)
 add_test(NAME tensor_test COMMAND tensor_test)
 
+add_library(profiler profiler.cpp)
+set(PROFILER_DEPS glog enforce)
+if(WITH_PROFILER)
+  list(APPEND PROFILER_DEPS gperftools::profiler)
+endif()
+target_link_libraries(profiler ${PROFILER_DEPS})
+
+
 add_library(blas blas.cpp)
 target_link_libraries(blas PRIVATE absl::strings ghc_filesystem dl
         PUBLIC absl::variant enforce)
