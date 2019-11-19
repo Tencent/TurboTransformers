@@ -1,7 +1,7 @@
 import torch
 import torch.utils.dlpack as dlpack
 import unittest
-from utils import convert2ft_tensor
+from fast_transformers.layers.modeling_bert import convert2ft_tensor
 
 
 class TestDLPack(unittest.TestCase):
