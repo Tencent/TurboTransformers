@@ -1,14 +1,13 @@
 import unittest
 
-import torch
-import torch.jit
-import torch.onnx
-import torch.utils.dlpack as dlpack
-from transformers import BertTokenizer
-from transformers.modeling_bert import BertConfig, BertIntermediate
 import contexttimer
 import fast_transformers
 import onnxruntime.backend as backend
+import torch
+import torch.jit
+import torch.onnx
+from transformers import BertTokenizer
+from transformers.modeling_bert import BertConfig, BertIntermediate
 
 
 def create_test(batch_size, seq_length):
