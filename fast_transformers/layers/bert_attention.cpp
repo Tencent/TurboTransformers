@@ -42,11 +42,10 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   auto seq_length = input_tensor.shape(1);
   auto hidden_size = input_tensor.shape(2);
   auto size_per_head = hidden_size / num_attention_heads_;
-  LOG_S(INFO) << "batch_size: " << batch_size
-              << ", num_head: " << num_attention_heads_
-              << ", seq_length: " << seq_length
-              << ", hidden_size: " << hidden_size
-              << ", size_per_head: " << size_per_head;
+  LOG_S(3) << "batch_size: " << batch_size
+           << ", num_head: " << num_attention_heads_
+           << ", seq_length: " << seq_length << ", hidden_size: " << hidden_size
+           << ", size_per_head: " << size_per_head;
 
   // numel of Q/K/V
   auto buf_size = batch_size * seq_length * hidden_size;
@@ -93,9 +92,9 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
                     m, 3 * n, k, alpha, from_tensor_ptr, k, qkv_weight_ptr, k,
                     beta, query_buf, 3 * n);
 
-  LOG_S(INFO) << m << ", " << 3 * n << " " << k << " " << alpha << " "
-              << from_tensor_ptr << " " << k << " " << qkv_weight_ptr << " "
-              << k << " " << beta << " " << query_buf << " " << 3 * n;
+  LOG_S(3) << m << ", " << 3 * n << " " << k << " " << alpha << " "
+           << from_tensor_ptr << " " << k << " " << qkv_weight_ptr << " " << k
+           << " " << beta << " " << query_buf << " " << 3 * n;
 
   const std::vector<int64_t> QKV_shape{batch_size, seq_length, 3,
                                        num_attention_heads_, size_per_head};
