@@ -9,3 +9,5 @@ tmp
 build2
 *.pyc
 Testing/*
+*.pyi
+*qps_*.txt
