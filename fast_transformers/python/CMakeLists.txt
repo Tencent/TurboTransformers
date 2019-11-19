@@ -6,6 +6,7 @@ target_link_libraries(fast_transformers_cxx PRIVATE blas profiler bert_embedding
 
 
 SET(PY_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/pypackage)
+file(GLOB_RECURSE PY_PROJ_FILES ${CMAKE_CURRENT_SOURCE_DIR}/fast_transformers/*.py)
 
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in ${PY_PACKAGE_DIR}/setup.py @ONLY)
@@ -18,7 +19,7 @@ add_custom_command(OUTPUT ${PY_PACKAGE_DIR}/.timestamp
         COMMAND ${PYTHON_EXECUTABLE} setup.py bdist_wheel
         COMMAND ${CMAKE_COMMAND} -E touch ${PY_PACKAGE_DIR}/.timestamp
         WORKING_DIRECTORY ${PY_PACKAGE_DIR}
-        DEPENDS fast_transformers_cxx)
+        DEPENDS fast_transformers_cxx ${PY_PROJ_FILES})
 add_custom_target(fast_transformers ALL DEPENDS ${PY_PACKAGE_DIR}/.timestamp)
 
 

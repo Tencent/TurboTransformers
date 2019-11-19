@@ -1,16 +1,13 @@
 import unittest
 
 import contexttimer
+import fast_transformers
 import onnxruntime.backend as backend
 import torch
 import torch.jit
 import torch.onnx
-import torch.utils.dlpack as dlpack
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertEmbeddings, BertConfig
-
-import fast_transformers
-import fast_transformers.torch_utils
 
 
 def create_test_bert_emb(batch_size: int, seq_length: int):
@@ -71,14 +68,10 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
             print(f'BertEmb({batch_size}, {seq_length:03}) TorchScript(i.e., jit) QPS {num_iter / t.elapsed}')
 
             torch_result = self.torch_embedding(input_ids, token_type_ids, position_ids)
-            ft_result = dlpack.from_dlpack(
-                self.ft_embedding(convert2ft_tensor(input_ids), convert2ft_tensor(position_ids),
-                                  convert2ft_tensor(token_type_ids)).to_dlpack())
+            ft_result = self.ft_embedding(input_ids, position_ids, token_type_ids)
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
-                    ft_result = dlpack.from_dlpack(
-                        self.ft_embedding(convert2ft_tensor(input_ids), convert2ft_tensor(position_ids),
-                                          convert2ft_tensor(token_type_ids)).to_dlpack())
+                    ft_result = self.ft_embedding(input_ids, position_ids, token_type_ids)
             self.assertTrue(torch.max(torch.abs(torch_result - ft_result)) < 1e-5)
             print(f'BertEmb({batch_size}, {seq_length:03}) FastTransform QPS {num_iter / t.elapsed}')
 
