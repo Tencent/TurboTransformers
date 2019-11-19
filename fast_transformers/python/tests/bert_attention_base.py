@@ -15,7 +15,7 @@ def get_ft_attention(attention_params, num_attention_heads):
     qkv_bias = torch.cat((attention_params['self.query.bias'],
                           attention_params['self.key.bias'],
                           attention_params['self.value.bias']), 0)
-    ft_self_attention = fast_transformers.BertSelfAttention(
+    ft_attention = fast_transformers.BertAttention(
         convert2ft_tensor(qkv_weight),
         convert2ft_tensor(qkv_bias),
         convert2ft_tensor(attention_params['output.dense.weight']),
@@ -23,20 +23,7 @@ def get_ft_attention(attention_params, num_attention_heads):
         convert2ft_tensor(attention_params['output.LayerNorm.weight']),
         convert2ft_tensor(attention_params['output.LayerNorm.bias']),
         num_attention_heads)
-    ft_attention = fast_transformers.BertAttention(
-        convert2ft_tensor(attention_params['self.query.weight']),
-        convert2ft_tensor(attention_params['self.query.bias']),
-        convert2ft_tensor(attention_params['self.key.weight']),
-        convert2ft_tensor(attention_params['self.key.bias']),
-        convert2ft_tensor(attention_params['self.value.weight']),
-        convert2ft_tensor(attention_params['self.value.bias']),
-        convert2ft_tensor(attention_params['output.dense.weight']),
-        convert2ft_tensor(attention_params['output.dense.bias']),
-        convert2ft_tensor(attention_params['output.LayerNorm.weight']),
-        convert2ft_tensor(attention_params['output.LayerNorm.bias']),
-        num_attention_heads)
-
-    return ft_attention, ft_self_attention
+    return ft_attention
 
 class BertAttentionBase(unittest.TestCase):
     def setUp(self):

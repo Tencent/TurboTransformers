@@ -6,7 +6,6 @@
 #include "fast_transformers/layers/bert_embedding.h"
 #include "fast_transformers/layers/bert_intermediate.h"
 #include "fast_transformers/layers/bert_output.h"
-#include "fast_transformers/layers/bert_self_attention.h"
 #include "loguru.hpp"
 #include "pybind11/pybind11.h"
 namespace fast_transformers {
@@ -68,40 +67,18 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
            });
 
   py::class_<layers::BertAttention>(m, "BertAttention")
-      .def(py::init([](core::Tensor &query_weight, core::Tensor &query_bias,
-                       core::Tensor &key_weight, core::Tensor &key_bias,
-                       core::Tensor &value_weight, core::Tensor &value_bias,
+      .def(py::init([](core::Tensor &qkv_weight, core::Tensor &qkv_bias,
                        core::Tensor &dense_weight, core::Tensor &dense_bias,
                        core::Tensor &layer_norm_weight,
                        core::Tensor &layer_norm_bias,
                        int num_attention_heads) -> layers::BertAttention * {
         return new layers::BertAttention(
-            std::move(query_weight), std::move(query_bias),
-            std::move(key_weight), std::move(key_bias), std::move(value_weight),
-            std::move(value_bias), std::move(dense_weight),
-            std::move(dense_bias), std::move(layer_norm_weight),
-            std::move(layer_norm_bias), num_attention_heads);
-      }))
-      .def("__call__",
-           [](layers::BertAttention &self, core::Tensor &input_tensor,
-              core::Tensor &attention_mask, core::Tensor &head_mask) {
-             return self(std::move(input_tensor), std::move(attention_mask),
-                         std::move(head_mask));
-           });
-
-  py::class_<layers::BertSelfAttention>(m, "BertSelfAttention")
-      .def(py::init([](core::Tensor &qkv_weight, core::Tensor &qkv_bias,
-                       core::Tensor &dense_weight, core::Tensor &dense_bias,
-                       core::Tensor &layer_norm_weight,
-                       core::Tensor &layer_norm_bias,
-                       int num_attention_heads) -> layers::BertSelfAttention * {
-        return new layers::BertSelfAttention(
             std::move(qkv_weight), std::move(qkv_bias), std::move(dense_weight),
             std::move(dense_bias), std::move(layer_norm_weight),
             std::move(layer_norm_bias), num_attention_heads);
       }))
       .def("__call__",
-           [](layers::BertSelfAttention &self, core::Tensor &input_tensor,
+           [](layers::BertAttention &self, core::Tensor &input_tensor,
               core::Tensor &attention_mask, core::Tensor &head_mask) {
              return self(std::move(input_tensor), std::move(attention_mask),
                          std::move(head_mask));
