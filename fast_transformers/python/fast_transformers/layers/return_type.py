@@ -13,7 +13,8 @@ class ReturnType(enum.Enum):
     TENSOR_FLOW = 2
 
 
-def convert_returns_as_type(tensor: cxx.Tensor, rtype: Optional[ReturnType]) -> Union[cxx.Tensor, torch.Tensor]:
+def convert_returns_as_type(tensor: cxx.Tensor, rtype: Optional[ReturnType]
+                            ) -> Union[cxx.Tensor, torch.Tensor]:
     if rtype is None:
         rtype = ReturnType.TORCH
 

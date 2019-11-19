@@ -12,3 +12,7 @@ repos:
     rev: master
     hooks:
     -   id: clang-format
+-   repo: https://github.com/pre-commit/mirrors-yapf
+    rev: 'v0.28.0'
+    hooks:
+        -   id: yapf
