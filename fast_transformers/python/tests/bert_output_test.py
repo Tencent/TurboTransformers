@@ -5,10 +5,10 @@ import onnx
 import torch
 import torch.jit
 import torch.onnx
-import torch.utils.dlpack as dlpack
 from onnxruntime.backend import backend
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertOutput
+
 import fast_transformers
 
 
