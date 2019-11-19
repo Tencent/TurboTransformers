@@ -1,15 +1,13 @@
 import unittest
 
-import torch
-import torch.jit
-import torch.onnx
-import torch.utils.dlpack as dlpack
-from transformers import BertTokenizer
-from transformers.modeling_bert import BertConfig, BertIntermediate
 import contexttimer
 import fast_transformers
 import onnxruntime.backend as backend
-from utils import convert2ft_tensor
+import torch
+import torch.jit
+import torch.onnx
+from transformers import BertTokenizer
+from transformers.modeling_bert import BertConfig, BertIntermediate
 
 
 def create_test(batch_size, seq_length):
@@ -22,10 +20,6 @@ def create_test(batch_size, seq_length):
 
             self.torch_intermediate = BertIntermediate(self.cfg)
             self.torch_intermediate.eval()
-            intermediate_params = {
-                k: convert2ft_tensor(v)
-                for k, v in self.torch_intermediate.named_parameters()
-            }
 
             self.jit_intermediate = torch.jit.trace(
                 self.torch_intermediate,
@@ -45,9 +39,8 @@ def create_test(batch_size, seq_length):
             else:
                 self.onnx_intermedia = backend.prepare(
                     "bert-intermediate.onnx", 'MKL-DNN')
-            self.ft_intermediate = fast_transformers.BertIntermediate(
-                intermediate_params['dense.weight'],
-                intermediate_params['dense.bias'])
+            self.ft_intermediate = fast_transformers.BertIntermediate.from_torch(
+                self.torch_intermediate)
 
         def test_intermediate(self):
             num_iter = 100
@@ -82,18 +75,16 @@ def create_test(batch_size, seq_length):
                 f"BertIntermediate ({batch_size},{seq_length:03}) ONNX QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
             )
 
-            ft_result = dlpack.from_dlpack(
-                self.ft_intermediate(
-                    convert2ft_tensor(input_tensor)).to_dlpack())
+            ft_result = self.ft_intermediate(input_tensor)
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
-                    ft_result = self.torch_intermediate(input_tensor)
+                    ft_result = self.ft_intermediate(input_tensor)
 
             print(
                 f"BertIntermediate ({batch_size},{seq_length:03}) FastTransform QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
             )
             self.assertTrue(
-                torch.max(torch.abs(torch_result - ft_result)) < 1e-5)
+                torch.max(torch.abs(torch_result - ft_result)) < 0.001)
 
     globals(
     )[f"TestBertIntermediate_{batch_size}_{seq_length:03}"] = TestBertIntermediate

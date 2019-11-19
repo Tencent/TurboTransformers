@@ -4,18 +4,17 @@ import contexttimer
 import torch
 import torch.jit
 import torch.onnx
-import torch.utils.dlpack as dlpack
 from transformers.modeling_bert import BertConfig, BertAttention
 import fast_transformers
-from utils import convert2ft_tensor
-import bert_attention_base
-from bert_attention_base import BertAttentionBase
+from transformers import BertTokenizer
+import onnxruntime.backend
 
 
 def create_test(batch_size, seq_length):
-    class TestBertAttention(BertAttentionBase):
+    class TestBertAttention(unittest.TestCase):
         def setUp(self) -> None:
-            super(TestBertAttention, self).setUp()
+            torch.set_grad_enabled(False)
+            self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
 
             # Get Torch attention
             self.cfg = BertConfig(
@@ -26,31 +25,9 @@ def create_test(batch_size, seq_length):
             self.torch_attention.eval()
 
             # Get FT Attention
-            attention_params = {
-                k: v
-                for k, v in self.torch_attention.named_parameters()
-            }
             num_attention_heads = self.cfg.num_attention_heads
-            self.ft_attention = \
-                bert_attention_base.get_ft_attention(attention_params, num_attention_heads)
-
-            # merge self.query.weight, self.query.weight and self.query.weight togather as qkv.weight
-            qkv_weight = torch.cat((attention_params['self.query.weight'],
-                                    attention_params['self.key.weight']), 0)
-            qkv_weight = torch.cat(
-                (qkv_weight, attention_params['self.value.weight']), 0)
-            qkv_bias = torch.cat((attention_params['self.query.bias'],
-                                  attention_params['self.key.bias']), 0)
-            qkv_bias = torch.cat(
-                (qkv_bias, attention_params['self.value.bias']), 0)
-
-            self.ft_attention = fast_transformers.BertAttention(
-                convert2ft_tensor(qkv_weight), convert2ft_tensor(qkv_bias),
-                convert2ft_tensor((attention_params['output.dense.weight'])),
-                convert2ft_tensor(attention_params['output.dense.bias']),
-                convert2ft_tensor(attention_params['output.LayerNorm.weight']),
-                convert2ft_tensor(attention_params['output.LayerNorm.bias']),
-                self.cfg.num_attention_heads)
+            self.ft_attention = fast_transformers.BertAttention.from_torch(
+                self.torch_attention)
 
             self.hidden_size = self.cfg.hidden_size
             self.input_tensor = torch.rand(size=(batch_size, seq_length,
@@ -127,19 +104,13 @@ def create_test(batch_size, seq_length):
                 f'BertAttention({batch_size}, {seq_length}) ONNX(MKL-DNN) QPS, {self.num_iter / t.elapsed}, Elapse {t.elapsed / self.num_iter}'
             )
 
-            ft_self_attention_result = dlpack.from_dlpack(
-                self.ft_attention(convert2ft_tensor(self.input_tensor),
-                                  convert2ft_tensor(self.attention_mask),
-                                  convert2ft_tensor(
-                                      self.head_mask)).to_dlpack())
+            ft_self_attention_result = self.ft_attention(
+                self.input_tensor, self.attention_mask, self.head_mask)
 
             with contexttimer.Timer() as t:
                 for it in range(self.num_iter):
-                    ft_self_attention_result = dlpack.from_dlpack(
-                        self.ft_attention(
-                            convert2ft_tensor(self.input_tensor),
-                            convert2ft_tensor(self.attention_mask),
-                            convert2ft_tensor(self.head_mask)).to_dlpack())
+                    ft_self_attention_result = self.ft_attention(
+                        self.input_tensor, self.attention_mask, self.head_mask)
             print(
                 f"BertAttention({batch_size}, {seq_length}) BertAttention QPS, {self.num_iter / t.elapsed}, Elapse {t.elapsed / self.num_iter}"
             )
@@ -159,6 +130,12 @@ def create_test(batch_size, seq_length):
                 batch_size, seq_length, model_name, num_iter / t.elapsed,
                 t.elapsed / num_iter))
             return torch_attention_result
+
+        def get_onnxruntime_modle(self, onnx_file):
+            if not onnxruntime.backend.supports_device("MKL-DNN"):
+                return onnxruntime.backend.prepare(onnx_file, device="CPU")
+            else:
+                return onnxruntime.backend.prepare(onnx_file, device="MKL-DNN")
 
     globals()[f"TestBertAtt{batch_size}_{seq_length:3}"] = TestBertAttention
 

@@ -9,6 +9,7 @@ setup(name='fast-transformers',
       description='Fast transformers',
       packages=[
           'fast_transformers',
+          'fast_transformers.layers'
       ],
       package_data={
           '': [
@@ -18,4 +19,8 @@ setup(name='fast-transformers',
       },
       ext_modules=[Extension('_fast_transformers_stub_ext', ['stub.c'])],
       include_package_data=True,
+      install_requires=[
+        "torch",
+        "transformers"
+      ]
       )
