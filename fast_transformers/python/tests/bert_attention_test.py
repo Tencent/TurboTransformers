@@ -1,19 +1,18 @@
 import unittest
 
 import contexttimer
-import fast_transformers
-import onnxruntime.backend
 import torch
 import torch.jit
 import torch.onnx
-from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertAttention
+import fast_transformers
+from transformers import BertTokenizer
+import onnxruntime.backend
 
 
 def create_test(batch_size, seq_length):
     class TestBertAttention(unittest.TestCase):
         def setUp(self) -> None:
-            # fast_transformers.set_stderr_verbose_level(1)
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
 
@@ -26,6 +25,7 @@ def create_test(batch_size, seq_length):
             self.torch_attention.eval()
 
             # Get FT Attention
+            num_attention_heads = self.cfg.num_attention_heads
             self.ft_attention = fast_transformers.BertAttention.from_torch(
                 self.torch_attention)
 
@@ -59,12 +59,8 @@ def create_test(batch_size, seq_length):
                                 self.head_mask))
 
             # Prepare the backend
-            if not onnxruntime.backend.supports_device("MKL-DNN"):
-                self.onnxruntime_attention = onnxruntime.backend.prepare(
-                    "bert-attn.onnx", device="CPU")
-            else:
-                self.onnxruntime_attention = onnxruntime.backend.prepare(
-                    "bert-attn.onnx", device="MKL-DNN")
+            self.onnxruntime_attention = self.get_onnxruntime_modle(
+                onnx_file="bert-attn.onnx")
 
         def init_torch_tensors(self):
             input_tensor = torch.rand(size=(batch_size, seq_length,
@@ -134,6 +130,12 @@ def create_test(batch_size, seq_length):
                 batch_size, seq_length, model_name, num_iter / t.elapsed,
                 t.elapsed / num_iter))
             return torch_attention_result
+
+        def get_onnxruntime_modle(self, onnx_file):
+            if not onnxruntime.backend.supports_device("MKL-DNN"):
+                return onnxruntime.backend.prepare(onnx_file, device="CPU")
+            else:
+                return onnxruntime.backend.prepare(onnx_file, device="MKL-DNN")
 
     globals()[f"TestBertAtt{batch_size}_{seq_length:3}"] = TestBertAttention
 

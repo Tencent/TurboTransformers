@@ -8,8 +8,12 @@ from transformers.modeling_bert import BertEmbeddings as TorchBertEmbeddings
 from transformers.modeling_bert import BertIntermediate as TorchBertIntermediate
 from transformers.modeling_bert import BertOutput as TorchBertOutput
 from transformers.modeling_bert import BertAttention as TorchBertAttention
+from transformers.modeling_bert import BertLayer as TorchBertlayer
 
-__all__ = ['BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention']
+__all__ = [
+    'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
+    'BertLayer'
+]
 
 
 def _try_convert(t):
@@ -30,11 +34,14 @@ def _to_param_dict(torch_module: torch.nn.Module):
     }
 
 
+AnyTensor = Union[cxx.Tensor, torch.Tensor]
+
+
 class BertEmbeddings(cxx.BERTEmbedding):
     def __call__(self,
-                 input_ids: Union[cxx.Tensor, torch.Tensor],
-                 position_ids: Union[cxx.Tensor, torch.Tensor],
-                 token_type_ids: Union[cxx.Tensor, torch.Tensor],
+                 input_ids: AnyTensor,
+                 position_ids: AnyTensor,
+                 token_type_ids: AnyTensor,
                  return_type: Optional[ReturnType] = None):
         input_ids = _try_convert(input_ids)
         position_ids = _try_convert(position_ids)
@@ -58,7 +65,7 @@ class BertEmbeddings(cxx.BERTEmbedding):
 
 class BertIntermediate(cxx.BertIntermediate):
     def __call__(self,
-                 input_tensor: Union[cxx.Tensor, torch.Tensor],
+                 input_tensor: AnyTensor,
                  return_type: Optional[ReturnType] = None):
         input_tensor = _try_convert(input_tensor)
         return convert_returns_as_type(
@@ -73,8 +80,8 @@ class BertIntermediate(cxx.BertIntermediate):
 
 class BertOutput(cxx.BertOutput):
     def __call__(self,
-                 intermediate_output: Union[cxx.Tensor, torch.Tensor],
-                 attention_output: Union[cxx.Tensor, torch.Tensor],
+                 intermediate_output: AnyTensor,
+                 attention_output: AnyTensor,
                  return_type: Optional[ReturnType] = None):
         intermediate_output = _try_convert(intermediate_output)
         attention_output = _try_convert(attention_output)
@@ -91,9 +98,9 @@ class BertOutput(cxx.BertOutput):
 
 class BertAttention(cxx.BertAttention):
     def __call__(self,
-                 input_tensor: Union[cxx.Tensor, torch.Tensor],
-                 attention_mask: Union[cxx.Tensor, torch.Tensor],
-                 head_mask: Union[cxx.Tensor, torch.Tensor],
+                 input_tensor: AnyTensor,
+                 attention_mask: AnyTensor,
+                 head_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None):
         input_tensor = _try_convert(input_tensor)
         attention_mask = _try_convert(attention_mask)
@@ -105,21 +112,50 @@ class BertAttention(cxx.BertAttention):
     @staticmethod
     def from_torch(attention: TorchBertAttention):
         params = {k: v for k, v in attention.named_parameters()}
-        print(attention.self.num_attention_heads)
 
         with torch.no_grad():
             # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
             qkv_weight = torch.cat(
-                (params['self.query.weight'], params['self.key.weight']), 0)
-            qkv_weight = torch.cat((qkv_weight, params['self.value.weight']),
-                                   0)
+                (params['self.query.weight'], params['self.key.weight'],
+                 params['self.value.weight']), 0)
             qkv_bias = torch.cat(
-                (params['self.query.bias'], params['self.key.bias']), 0)
-            qkv_bias = torch.cat((qkv_bias, params['self.value.bias']), 0)
-        return BertAttention(
-            convert2ft_tensor(qkv_weight), convert2ft_tensor(qkv_bias),
-            convert2ft_tensor(params['output.dense.weight']),
-            convert2ft_tensor(params['output.dense.bias']),
-            convert2ft_tensor(params['output.LayerNorm.weight']),
-            convert2ft_tensor(params['output.LayerNorm.bias']),
-            attention.self.num_attention_heads)
+                (params['self.query.bias'], params['self.key.bias'],
+                 params['self.value.bias']), 0)
+
+            att = BertAttention(
+                convert2ft_tensor(qkv_weight), convert2ft_tensor(qkv_bias),
+                convert2ft_tensor(params['output.dense.weight']),
+                convert2ft_tensor(params['output.dense.bias']),
+                convert2ft_tensor(params['output.LayerNorm.weight']),
+                convert2ft_tensor(params['output.LayerNorm.bias']),
+                attention.self.num_attention_heads)
+
+            return att
+
+
+class BertLayer:
+    def __init__(self, attention: BertAttention,
+                 intermediate: BertIntermediate, output: BertOutput):
+        self.attention = attention
+        self.intermediate = intermediate
+        self.output = output
+
+    def __call__(self,
+                 hidden_states: AnyTensor,
+                 attention_mask: AnyTensor,
+                 head_mask: AnyTensor,
+                 return_type: Optional[ReturnType] = None):
+        attention_output = self.attention(
+            hidden_states,
+            attention_mask,
+            head_mask,
+            return_type=ReturnType.FAST_TRANSFORMERS)
+        intermediate_output = self.intermediate(
+            attention_output, return_type=ReturnType.FAST_TRANSFORMERS)
+        return self.output(intermediate_output,
+                           attention_output,
+                           return_type=return_type)
+
+    @staticmethod
+    def from_torch(layer: TorchBertlayer):
+        return BertLayer(layer.attention, layer.intermediate, layer.output)

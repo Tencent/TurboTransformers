@@ -42,10 +42,11 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   auto seq_length = input_tensor.shape(1);
   auto hidden_size = input_tensor.shape(2);
   auto size_per_head = hidden_size / num_attention_heads_;
-  LOG_S(3) << "batch_size: " << batch_size
-           << ", num_head: " << num_attention_heads_
-           << ", seq_length: " << seq_length << ", hidden_size: " << hidden_size
-           << ", size_per_head: " << size_per_head;
+  LOG_S(INFO) << "batch_size: " << batch_size
+              << ", num_head: " << num_attention_heads_
+              << ", seq_length: " << seq_length
+              << ", hidden_size: " << hidden_size
+              << ", size_per_head: " << size_per_head;
 
   // numel of Q/K/V
   auto buf_size = batch_size * seq_length * hidden_size;
@@ -55,7 +56,7 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
 
   // allocate memory for temporary buffers
   static core::AlignedScratchpad<float> buf;
-  float* buffer = buf.mutable_data(buf_size * 8 + attention_scores_size);
+  float* buffer = buf.mutable_data(buf_size * 9 + attention_scores_size);
 
   float* query_buf = buffer;
   float* key_buf = buffer + buf_size;
@@ -71,7 +72,7 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   int64_t m = batch_size * seq_length;
   int64_t k = num_attention_heads_ * size_per_head;
   int64_t n = k;
-  static constexpr float alpha = 1., beta = 0.;
+  static float alpha = 1., beta = 0.;
 
   // TODO assert from_tensor is equal to to_tensor.
   // TODO delete the wrapper after we check the results, and rewrite it with
@@ -91,6 +92,11 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
                     m, 3 * n, k, alpha, from_tensor_ptr, k, qkv_weight_ptr, k,
                     beta, query_buf, 3 * n);
+
+  LOG_S(INFO) << m << ", " << 3 * n << " " << k << " " << alpha << " "
+              << from_tensor_ptr << " " << k << " " << qkv_weight_ptr << " "
+              << k << " " << beta << " " << query_buf << " " << 3 * n;
+
   const std::vector<int64_t> QKV_shape{batch_size, seq_length, 3,
                                        num_attention_heads_, size_per_head};
   kernels::SplitAddbiasTransposeForScore(q_buf, query_buf, qkv_bias_ptr,
