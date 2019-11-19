@@ -40,7 +40,6 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
                 (torch.ones(size=(batch_size, seq_length), dtype=torch.long),
                  torch.ones(size=(batch_size, seq_length), dtype=torch.long),
                  torch.ones(size=(batch_size, seq_length), dtype=torch.long)))
-
             self.ft_embedding = fast_transformers.BertEmbeddings.from_torch(
                 self.torch_embedding)
 
