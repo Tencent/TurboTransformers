@@ -9,11 +9,7 @@ from transformers.modeling_bert import BertConfig, BertIntermediate
 import contexttimer
 import fast_transformers
 import onnxruntime.backend as backend
-
-
-def _(t):
-    return fast_transformers.Tensor.from_dlpack(dlpack.to_dlpack(t))
-
+from utils import convert2ft_tensor
 
 def create_test(batch_size, seq_length):
     class TestBertIntermediate(unittest.TestCase):
@@ -24,7 +20,7 @@ def create_test(batch_size, seq_length):
 
             self.torch_intermediate = BertIntermediate(self.cfg)
             self.torch_intermediate.eval()
-            intermediate_params = {k: _(v) for k, v in
+            intermediate_params = {k: convert2ft_tensor(v) for k, v in
                                    self.torch_intermediate.named_parameters()}
 
             self.jit_intermediate = torch.jit.trace(self.torch_intermediate, example_inputs=[
@@ -66,7 +62,7 @@ def create_test(batch_size, seq_length):
 
             print(f"BertIntermediate ({batch_size},{seq_length:03}) ONNX QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}")
 
-            ft_result = dlpack.from_dlpack(self.ft_intermediate(_(input_tensor)).to_dlpack())
+            ft_result = dlpack.from_dlpack(self.ft_intermediate(convert2ft_tensor(input_tensor)).to_dlpack())
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
                     ft_result = self.torch_intermediate(input_tensor)

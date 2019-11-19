@@ -13,60 +13,38 @@ import contexttimer
 import fast_transformers
 import caffe2.python.onnx.backend as caffe2_backend
 import onnx
-
-
-# dlpack to fast_transformer inline Tensor
-def _(t):
-    return fast_transformers.Tensor.from_dlpack(dlpack.to_dlpack(t))
+from utils import convert2ft_tensor
 
 class FastBertLayer(nn.Module):
     def __init__(self, config, bert_layer_params, isSelf: bool):
         super(FastBertLayer, self).__init__()
-        # TODO: currently not support decoder
+        qkv_weight = torch.cat((bert_layer_params['attention.self.query.weight'], bert_layer_params['attention.self.key.weight']), 0)
+        qkv_weight   = torch.cat((qkv_weight, bert_layer_params['attention.self.value.weight']), 0)
 
+        qkv_bias = torch.cat((bert_layer_params['attention.self.query.bias'], bert_layer_params['attention.self.key.bias']), 0)
+        qkv_bias   = torch.cat((qkv_bias, bert_layer_params['attention.self.value.bias']), 0)
 
+        self.attention = fast_transformers.BertAttention(convert2ft_tensor(qkv_weight),
+                                                             convert2ft_tensor(qkv_bias),
+                                                             convert2ft_tensor((bert_layer_params['attention.output.dense.weight'])),
+                                                             convert2ft_tensor(bert_layer_params['attention.output.dense.bias']),
+                                                             convert2ft_tensor(bert_layer_params['attention.output.LayerNorm.weight']),
+                                                             convert2ft_tensor(bert_layer_params['attention.output.LayerNorm.bias']),
+                                                             config.num_attention_heads)
 
-        # Optimization for self-attention
-        if(isSelf):
-            qkv_weight = torch.cat((bert_layer_params['attention.self.query.weight'], bert_layer_params['attention.self.key.weight']), 0)
-            qkv_weight   = torch.cat((qkv_weight, bert_layer_params['attention.self.value.weight']), 0)
-
-            qkv_bias = torch.cat((bert_layer_params['attention.self.query.bias'], bert_layer_params['attention.self.key.bias']), 0)
-            qkv_bias   = torch.cat((qkv_bias, bert_layer_params['attention.self.value.bias']), 0)
-
-            self.attention = fast_transformers.BertAttention(_(qkv_weight),
-                                            _(qkv_bias),
-                                            _((bert_layer_params['attention.output.dense.weight'])),
-                                            _(bert_layer_params['attention.output.dense.bias']),
-                                            _(bert_layer_params['attention.output.LayerNorm.weight']),
-                                            _(bert_layer_params['attention.output.LayerNorm.bias']),
-                                            config.num_attention_heads)
-        else:
-            self.attention = fast_transformers.BertAttention(_((bert_layer_params['attention.self.query.weight'])),
-                                        _(bert_layer_params['attention.self.query.bias']),
-                                        _((bert_layer_params['attention.self.key.weight'])),
-                                        _(bert_layer_params['attention.self.key.bias']),
-                                        _((bert_layer_params['attention.self.value.weight'])),
-                                        _(bert_layer_params['attention.self.value.bias']),
-                                        _((bert_layer_params['attention.output.dense.weight'])),
-                                        _(bert_layer_params['attention.output.dense.bias']),
-                                        _(bert_layer_params['attention.output.LayerNorm.weight']),
-                                        _(bert_layer_params['attention.output.LayerNorm.bias']),
-                                        config.num_attention_heads)
-
-        self.intermediate = fast_transformers.BertIntermediate(_(bert_layer_params['intermediate.dense.weight']),
-                                                               _(bert_layer_params['intermediate.dense.bias'])
+        self.intermediate = fast_transformers.BertIntermediate(convert2ft_tensor(bert_layer_params['intermediate.dense.weight']),
+                                                               convert2ft_tensor(bert_layer_params['intermediate.dense.bias'])
                                                                )
 
-        self.output = fast_transformers.BertOutput(_((bert_layer_params["output.dense.weight"])),  # trans here Important
-                                                        _(bert_layer_params["output.dense.bias"]),  # bertout_params["dense.bias"],
-                                                        _(bert_layer_params["output.LayerNorm.weight"]),
-                                                        _(bert_layer_params["output.LayerNorm.bias"])
-                                                        )
+        self.output = fast_transformers.BertOutput(convert2ft_tensor((bert_layer_params["output.dense.weight"])),  # trans here Important
+                                                   convert2ft_tensor(bert_layer_params["output.dense.bias"]),  # bertout_params["dense.bias"],
+                                                   convert2ft_tensor(bert_layer_params["output.LayerNorm.weight"]),
+                                                   convert2ft_tensor(bert_layer_params["output.LayerNorm.bias"])
+                                                   )
 
     # do not output weight
     def forward(self, hidden_states, attention_mask=None, head_mask=None, encoder_hidden_states=None, encoder_attention_mask=None):
-        self_attention_outputs = self.attention(_(hidden_states), _(attention_mask), _(head_mask))
+        self_attention_outputs = self.attention(convert2ft_tensor(hidden_states), convert2ft_tensor(attention_mask), convert2ft_tensor(head_mask))
         attention_output = self_attention_outputs #[0] TODO
         #outputs = self_attention_outputs[1:]  # TODO add self attentions if we output attention weights
 
