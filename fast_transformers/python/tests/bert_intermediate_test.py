@@ -84,7 +84,7 @@ def create_test(batch_size, seq_length):
                 f"BertIntermediate ({batch_size},{seq_length:03}) FastTransform QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
             )
             self.assertTrue(
-                torch.max(torch.abs(torch_result - ft_result)) < 1e-5)
+                torch.max(torch.abs(torch_result - ft_result)) < 0.001)
 
     globals(
     )[f"TestBertIntermediate_{batch_size}_{seq_length:03}"] = TestBertIntermediate
