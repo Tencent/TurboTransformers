@@ -158,4 +158,6 @@ class BertLayer:
 
     @staticmethod
     def from_torch(layer: TorchBertlayer):
-        return BertLayer(layer.attention, layer.intermediate, layer.output)
+        return BertLayer(BertAttention.from_torch(layer.attention),
+                         BertIntermediate.from_torch(layer.intermediate),
+                         BertOutput.from_torch(layer.output))
