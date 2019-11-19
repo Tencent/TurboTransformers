@@ -1,6 +1,6 @@
 from setuptools import setup, Extension
 
-with open("stub.cc", "w") as f:
+with open("stub.c", "w") as f:
     f.write("\n")
 
 
@@ -16,6 +16,6 @@ setup(name='fast-transformers',
               '*.pyi'
           ]
       },
-      ext_modules=[Extension('_fast_transformers_stub_ext', ['stub.cc'])],
+      ext_modules=[Extension('_fast_transformers_stub_ext', ['stub.c'])],
       include_package_data=True,
       )
