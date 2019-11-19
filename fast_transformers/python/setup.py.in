@@ -9,7 +9,7 @@ setup(name='fast-transformers',
       description='Fast transformers',
       packages=[
           'fast_transformers',
-          'fast_transformers.torch_utils'
+          'fast_transformers.layers'
       ],
       package_data={
           '': [
