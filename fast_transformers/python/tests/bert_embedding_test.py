@@ -1,7 +1,6 @@
 import unittest
 
 import contexttimer
-import onnx
 import onnxruntime.backend as backend
 import torch
 import torch.jit
@@ -9,8 +8,10 @@ import torch.onnx
 import torch.utils.dlpack as dlpack
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertEmbeddings, BertConfig
+
 import fast_transformers
-from utils import convert2ft_tensor
+import fast_transformers.torch_utils
+
 
 def create_test_bert_emb(batch_size: int, seq_length: int):
     class TestBertEmbedding(unittest.TestCase):
@@ -19,8 +20,6 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
             self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
             cfg = BertConfig(vocab_size_or_config_json_file=self.tokenizer.vocab_size)
             self.torch_embedding = BertEmbeddings(cfg)
-            params = {k: convert2ft_tensor(v) for k, v in
-                      self.torch_embedding.named_parameters()}
             self.torch_embedding.eval()
             torch.onnx.export(self.torch_embedding, (
                 torch.ones(size=(batch_size, seq_length), dtype=torch.long),
@@ -39,16 +38,12 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
                                        torch.ones(size=(batch_size, seq_length), dtype=torch.long),
                                        torch.ones(size=(batch_size, seq_length), dtype=torch.long)))
 
-            self.ft_embedding = fast_transformers.BERTEmbedding(params['word_embeddings.weight'],
-                                                                params['position_embeddings.weight'],
-                                                                params['token_type_embeddings.weight'],
-                                                                params['LayerNorm.weight'],
-                                                                params['LayerNorm.bias'],
-                                                                cfg.hidden_dropout_prob)
+            self.ft_embedding = fast_transformers.torch_utils.convert_embeddings_layer(self.torch_embedding)
 
         def test_embedding(self):
             num_iter = 10
-            input_ids = torch.randint(low=0, high=self.tokenizer.vocab_size - 1, size=(batch_size, seq_length), dtype = torch.long)
+            input_ids = torch.randint(low=0, high=self.tokenizer.vocab_size - 1, size=(batch_size, seq_length),
+                                      dtype=torch.long)
             position_ids = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
             # position_ids = position_ids.unsqueeze(0).expand_as(input_ids) #will cause bug
             position_ids = position_ids.repeat(batch_size, 1)
@@ -77,11 +72,13 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
 
             torch_result = self.torch_embedding(input_ids, token_type_ids, position_ids)
             ft_result = dlpack.from_dlpack(
-                self.ft_embedding(convert2ft_tensor(input_ids), convert2ft_tensor(position_ids), convert2ft_tensor(token_type_ids)).to_dlpack())
+                self.ft_embedding(convert2ft_tensor(input_ids), convert2ft_tensor(position_ids),
+                                  convert2ft_tensor(token_type_ids)).to_dlpack())
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
                     ft_result = dlpack.from_dlpack(
-                        self.ft_embedding(convert2ft_tensor(input_ids), convert2ft_tensor(position_ids), convert2ft_tensor(token_type_ids)).to_dlpack())
+                        self.ft_embedding(convert2ft_tensor(input_ids), convert2ft_tensor(position_ids),
+                                          convert2ft_tensor(token_type_ids)).to_dlpack())
             self.assertTrue(torch.max(torch.abs(torch_result - ft_result)) < 1e-5)
             print(f'BertEmb({batch_size}, {seq_length:03}) FastTransform QPS {num_iter / t.elapsed}')
 
