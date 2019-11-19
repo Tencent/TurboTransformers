@@ -1,0 +1,21 @@
+from setuptools import setup, Extension
+
+with open("stub.cc", "w") as f:
+    f.write("\n")
+
+
+setup(name='fast-transformers',
+      version='@FAST_TRANSFORMERS_VERSION@',
+      description='Fast transformers',
+      packages=[
+          'fast_transformers',
+      ],
+      package_data={
+          '': [
+              '*.so',
+              '*.pyi'
+          ]
+      },
+      ext_modules=[Extension('_fast_transformers_stub_ext', ['stub.cc'])],
+      include_package_data=True,
+      )
