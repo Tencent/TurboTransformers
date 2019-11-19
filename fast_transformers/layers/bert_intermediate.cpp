@@ -1,5 +1,7 @@
 #include "fast_transformers/layers/bert_intermediate.h"
+
 #include <loguru.hpp>
+
 #include "fast_transformers/core/aligned_scratchpad.h"
 #include "fast_transformers/core/blas.h"
 #include "fast_transformers/core/memory.h"
@@ -13,8 +15,8 @@ namespace layers {
 
 namespace details {}  // namespace details
 
-core::Tensor BertIntermediate::operator()(
-    const core::Tensor& input_tensor) const {
+void BertIntermediate::operator()(const core::Tensor& input_tensor,
+                                  core::Tensor* output_tensor) const {
   auto intermediate_size = dense_weight_.shape(0);  //[3072, 768]
   auto hidden_size = dense_weight_.shape(1);
   auto batch_size = input_tensor.shape(0);
@@ -23,17 +25,17 @@ core::Tensor BertIntermediate::operator()(
   auto k = hidden_size;
   auto n = intermediate_size;
   static constexpr float alpha = 1., beta = 0.;
-  core::Tensor output_tensor(core::NewDLPackTensorT<float>(
-      {batch_size, seq_length, intermediate_size}));
+
+  FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
+  output_tensor->Reshape({batch_size, seq_length, intermediate_size});
 
   core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
                     m, n, k, alpha, input_tensor.data<float>(), k,
                     dense_weight_.data<float>(), k, beta,
-                    output_tensor.mutableData<float>(), n);
+                    output_tensor->mutableData<float>(), n);
 
-  kernels::AddBiasGeLUAct(output_tensor.mutableData<float>(),
+  kernels::AddBiasGeLUAct(output_tensor->mutableData<float>(),
                           dense_bias_.data<float>(), m, n);
-  return output_tensor;
 }
 
 void BertIntermediate::EnforceShapeAndType() const {

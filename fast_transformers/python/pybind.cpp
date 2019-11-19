@@ -107,7 +107,9 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
       }))
       .def("__call__",
            [](layers::BertIntermediate &self, core::Tensor &input_tensor) {
-             return self(std::move(input_tensor));
+             core::Tensor output(core::NewDLPackTensorT<float>({0}));
+             self(input_tensor, &output);
+             return output;
            });
 
   py::class_<layers::BertOutput>(m, "BertOutput")
@@ -120,7 +122,9 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
       }))
       .def("__call__", [](layers::BertOutput &self, core::Tensor &hidden_states,
                           core::Tensor &input_tensor) {
-        return self(std::move(hidden_states), std::move(input_tensor));
+        core::Tensor output(core::NewDLPackTensorT<float>({0}));
+        self(hidden_states, input_tensor, &output);
+        return output;
       });
 }
 

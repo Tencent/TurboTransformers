@@ -65,8 +65,6 @@ class Tensor {
  public:
   explicit Tensor(DLManagedTensor *tensor) : tensor_(tensor) {}
 
-  void ResetTensorBuf(DLManagedTensor *buf) { tensor_.reset(buf); }
-
   DLManagedTensor *ToDLPack() {
     // FT_ENFORCE_NE(tensor_, nullptr, "The Tensor must contain data");
     return tensor_.release();
@@ -75,6 +73,9 @@ class Tensor {
   size_t n_dim() const { return tensor_->dl_tensor.ndim; }
 
   const int64_t &shape(size_t pos) const {
+    FT_ENFORCE_LT(pos, tensor_->dl_tensor.ndim,
+                  "The index(%d) is out of the range[0...%d]", pos,
+                  tensor_->dl_tensor.ndim);
     return tensor_->dl_tensor.shape[pos];
   }
 
@@ -84,7 +85,29 @@ class Tensor {
                            1, std::multiplies<int64_t>());
   }
 
-  bool is_same_shape(const std::vector<int64_t> &shape) {
+  std::vector<int64_t> Dims() const {
+    std::vector<int64_t> dims;
+    dims.reserve(tensor_->dl_tensor.ndim);
+    for (size_t i = 0; i < tensor_->dl_tensor.ndim; ++i) {
+      dims.emplace_back(tensor_->dl_tensor.shape[i]);
+    }
+    return dims;
+  }
+
+  void Reshape(std::initializer_list<int64_t> dims) {
+    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
+    auto t_dims = Dims();
+    bool is_same_shape = false;
+    if (t_dims.size() == dims.size()) {
+      is_same_shape = std::equal(std::begin(dims), std::end(dims),
+                                 std::begin(t_dims), std::end(t_dims));
+    }
+    if (!is_same_shape) {
+      tensor_.reset(core::NewDLPackTensorT<float>(dims));
+    }
+  }
+
+  bool is_same_shape(const std::vector<int64_t> &shape) const {
     if (shape.size() != tensor_->dl_tensor.ndim) return false;
     for (size_t i = 0; i < shape.size(); ++i) {
       if (shape[i] != tensor_->dl_tensor.shape[i]) {

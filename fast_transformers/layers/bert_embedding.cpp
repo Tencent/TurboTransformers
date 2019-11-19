@@ -55,11 +55,8 @@ void BERTEmbedding::operator()(const core::Tensor &input_ids,
   // TODO 1. switch DeviceType::CPU 2. how should I set stride?
   auto hidden_size = word_embedings_.shape(1);
 
-  if (!output_tensor ||
-      output_tensor->numel() != batch_size * seq_length * hidden_size) {
-    output_tensor->ResetTensorBuf(
-        core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}));
-  }
+  FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
+  output_tensor->Reshape({batch_size, seq_length, hidden_size});
 
   LookupEmbedding</*Add=*/false>(*output_tensor, word_embedings_, input_ids);
   LookupEmbedding</*Add=*/true>(*output_tensor, token_type_embeddings_,
