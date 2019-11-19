@@ -79,9 +79,25 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
       }))
       .def("__call__",
            [](layers::BertAttention &self, core::Tensor &input_tensor,
+              core::Tensor &attention_mask, core::Tensor &head_mask,
+              bool inplace = false) {
+             if (inplace) {
+               self(input_tensor, attention_mask, head_mask, &input_tensor);
+               return std::move(input_tensor);
+             } else {
+               core::Tensor output(core::NewDLPackTensorT<float>({0}));
+               self(std::move(input_tensor), std::move(attention_mask),
+                    std::move(head_mask), &output);
+               return output;
+             }
+           })
+      .def("__call__",
+           [](layers::BertAttention &self, core::Tensor &input_tensor,
               core::Tensor &attention_mask, core::Tensor &head_mask) {
-             return self(std::move(input_tensor), std::move(attention_mask),
-                         std::move(head_mask));
+             core::Tensor output(core::NewDLPackTensorT<float>({0}));
+             self(std::move(input_tensor), std::move(attention_mask),
+                  std::move(head_mask), &output);
+             return output;
            });
 
   py::class_<layers::BertIntermediate>(m, "BertIntermediate")

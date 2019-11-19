@@ -1,8 +1,10 @@
 #pragma once
 #include <dlpack/dlpack.h>
+
 #include <iostream>
 #include <memory>
 #include <numeric>
+
 #include "fast_transformers/core/blas.h"
 #include "fast_transformers/core/enforce.h"
 #include "fast_transformers/core/memory.h"
@@ -62,6 +64,8 @@ inline DLManagedTensor *NewDLPackTensorT(
 class Tensor {
  public:
   explicit Tensor(DLManagedTensor *tensor) : tensor_(tensor) {}
+
+  void ResetTensorBuf(DLManagedTensor *buf) { tensor_.reset(buf); }
 
   DLManagedTensor *ToDLPack() {
     // FT_ENFORCE_NE(tensor_, nullptr, "The Tensor must contain data");
