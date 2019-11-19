@@ -1,4 +1,5 @@
 #include "fast_transformers/layers/bert_embedding.h"
+
 #include "fast_transformers/layers/kernels/layer_norm.h"
 #include "loguru.hpp"
 namespace fast_transformers {
@@ -31,9 +32,10 @@ static void LookupEmbedding(core::Tensor &out_tensor,
   }
 }
 
-core::Tensor BERTEmbedding::operator()(
-    const core::Tensor &input_ids, const core::Tensor &position_ids,
-    const core::Tensor &token_type_ids) const {
+void BERTEmbedding::operator()(const core::Tensor &input_ids,
+                               const core::Tensor &position_ids,
+                               const core::Tensor &token_type_ids,
+                               core::Tensor *output_tensor) const {
   if (loguru::current_verbosity_cutoff() >= 3) {
     std::ostringstream os;
     os << ">>>>>>>>>>>> input_ids <<<<<<<<<<<<" << std::endl;
@@ -52,18 +54,20 @@ core::Tensor BERTEmbedding::operator()(
   auto seq_length = input_ids.shape(1);
   // TODO 1. switch DeviceType::CPU 2. how should I set stride?
   auto hidden_size = word_embedings_.shape(1);
-  core::Tensor output_tensor(
-      core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}));
 
-  LookupEmbedding</*Add=*/false>(output_tensor, word_embedings_, input_ids);
-  LookupEmbedding</*Add=*/true>(output_tensor, token_type_embeddings_,
+  if (!output_tensor ||
+      output_tensor->numel() != batch_size * seq_length * hidden_size) {
+    output_tensor->ResetTensorBuf(
+        core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}));
+  }
+
+  LookupEmbedding</*Add=*/false>(*output_tensor, word_embedings_, input_ids);
+  LookupEmbedding</*Add=*/true>(*output_tensor, token_type_embeddings_,
                                 token_type_ids);
-  LookupEmbedding</*Add=*/true>(output_tensor, position_embeddings_,
+  LookupEmbedding</*Add=*/true>(*output_tensor, position_embeddings_,
                                 position_ids);
 
-  kernels::LayerNorm(output_tensor, layer_norm_weights_, layer_norm_bias_);
-
-  return output_tensor;
+  kernels::LayerNorm(*output_tensor, layer_norm_weights_, layer_norm_bias_);
 }
 void BERTEmbedding::EnforceShapeAndType() const {
   LOG_S(3) << ">>>>> init BERTEmbedding <<<<<<<<";

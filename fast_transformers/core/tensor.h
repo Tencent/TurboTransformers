@@ -84,6 +84,16 @@ class Tensor {
                            1, std::multiplies<int64_t>());
   }
 
+  bool is_same_shape(const std::vector<int64_t> &shape) {
+    if (shape.size() != tensor_->dl_tensor.ndim) return false;
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (shape[i] != tensor_->dl_tensor.shape[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   template <typename T>
   const T *data() const {
     EnforceDataType<T>(tensor_->dl_tensor);

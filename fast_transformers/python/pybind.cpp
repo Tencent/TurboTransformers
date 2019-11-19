@@ -62,8 +62,9 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
       .def("__call__",
            [](layers::BERTEmbedding &self, core::Tensor &input_ids,
               core::Tensor &token_type_ids, core::Tensor &position_ids) {
-             return self(std::move(input_ids), std::move(token_type_ids),
-                         std::move(position_ids));
+             core::Tensor output(core::NewDLPackTensorT<float>({0}));
+             self(input_ids, token_type_ids, position_ids, &output);
+             return output;
            });
 
   py::class_<layers::BertAttention>(m, "BertAttention")
@@ -86,8 +87,7 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
                return std::move(input_tensor);
              } else {
                core::Tensor output(core::NewDLPackTensorT<float>({0}));
-               self(std::move(input_tensor), std::move(attention_mask),
-                    std::move(head_mask), &output);
+               self(input_tensor, attention_mask, head_mask, &output);
                return output;
              }
            })
@@ -95,8 +95,7 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
            [](layers::BertAttention &self, core::Tensor &input_tensor,
               core::Tensor &attention_mask, core::Tensor &head_mask) {
              core::Tensor output(core::NewDLPackTensorT<float>({0}));
-             self(std::move(input_tensor), std::move(attention_mask),
-                  std::move(head_mask), &output);
+             self(input_tensor, attention_mask, head_mask, &output);
              return output;
            });
 
