@@ -40,7 +40,7 @@ void AddBiasGeLUAct(float *out, const float *bias, int64_t m, int64_t n) {
       float tmp_ = out[j] + bias[k++];
       buff[j] = (0.7978845608028654f * (tmp_ + 0.044715f * tmp_ * tmp_ * tmp_));
     }
-    core::cblas_tanh(n, &buff[i * n], &buff[i * n]);
+    vsTanh(n, &buff[i * n], &buff[i * n]);
     k = 0;
 #pragma omp simd
     for (int64_t j = n * i; j < n * (i + 1); ++j) {

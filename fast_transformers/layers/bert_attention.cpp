@@ -10,12 +10,11 @@ namespace layers {
 
 namespace details {
 
-static void matmul(bool TransA, bool TransB, core::BlasInt m, core::BlasInt n,
-                   core::BlasInt k, float alpha, const float* A,
-                   core::BlasInt lda, int64_t strideA, const float* B,
-                   core::BlasInt ldb, int64_t strideB, const float beta,
-                   float* C, core::BlasInt ldc, int64_t strideC,
-                   core::BlasInt batchCount) {
+static void matmul(bool TransA, bool TransB, BlasInt m, BlasInt n, BlasInt k,
+                   float alpha, const float* A, BlasInt lda, int64_t strideA,
+                   const float* B, BlasInt ldb, int64_t strideB,
+                   const float beta, float* C, BlasInt ldc, int64_t strideC,
+                   BlasInt batchCount) {
   const float* A_Array[batchCount];
   const float* B_Array[batchCount];
   float* C_Array[batchCount];
@@ -24,11 +23,11 @@ static void matmul(bool TransA, bool TransB, core::BlasInt m, core::BlasInt n,
     B_Array[i] = B + strideB * i;
     C_Array[i] = C + strideC * i;
   }
-  auto transA = TransA ? core::CblasTrans : core::CblasNoTrans;
-  auto transB = TransB ? core::CblasTrans : core::CblasNoTrans;
-  core::cblas_sgemm_batch(core::CblasColMajor, &transA, &transB, &m, &n, &k,
-                          &alpha, A_Array, &lda, B_Array, &ldb, &beta, C_Array,
-                          &ldc, 1, &batchCount);
+  auto transA = TransA ? CblasTrans : CblasNoTrans;
+  auto transB = TransB ? CblasTrans : CblasNoTrans;
+  cblas_sgemm_batch(CblasColMajor, &transA, &transB, &m, &n, &k, &alpha,
+                    A_Array, &lda, B_Array, &ldb, &beta, C_Array, &ldc, 1,
+                    &batchCount);
 }
 }  // namespace details
 
@@ -88,9 +87,8 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   const float* to_tensor_ptr = from_tensor_ptr;  // self attention
   float* output_tensor_ptr = output_tensor.mutableData<float>();
 
-  core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
-                    m, 3 * n, k, alpha, from_tensor_ptr, k, qkv_weight_ptr, k,
-                    beta, query_buf, 3 * n);
+  cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, 3 * n, k, alpha,
+              from_tensor_ptr, k, qkv_weight_ptr, k, beta, query_buf, 3 * n);
   const std::vector<int64_t> QKV_shape{batch_size, seq_length, 3,
                                        num_attention_heads_, size_per_head};
   kernels::SplitAddbiasTransposeForScore(q_buf, query_buf, qkv_bias_ptr,
@@ -131,9 +129,9 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   // self_outputs = (context_layer, attention_probs) if self.output_attentions
   // else (context_layer,) # self.output_attentions is nullptr hidden_states =
   // self.dense(self_outputs[0]) #context_layer
-  core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
-                    m, n, k, alpha, self_attr_out, k, dense_weight_ptr, k, beta,
-                    output_tensor_ptr, n);
+  cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
+              self_attr_out, k, dense_weight_ptr, k, beta, output_tensor_ptr,
+              n);
 
   // attention_output = self.LayerNorm(hidden_states + input_tensor)
   kernels::AddBiasLayerNorm(output_tensor_ptr, from_tensor_ptr, dense_bias_ptr,

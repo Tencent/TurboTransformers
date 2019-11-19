@@ -52,7 +52,7 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask,
     for (int64_t j = 0; j < N; ++j) {
       sum += qk_buf[i * N + j];
     }
-    core::cblas_sscal(N, 1.0f / (sum + g_epsilon), &qk_buf[i * N], 1);
+    cblas_sscal(N, 1.0f / (sum + g_epsilon), &qk_buf[i * N], 1);
   }
 #endif
 }  // namespace kernels
