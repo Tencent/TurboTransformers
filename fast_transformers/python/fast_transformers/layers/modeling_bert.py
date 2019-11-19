@@ -7,8 +7,9 @@ import fast_transformers.fast_transformers_cxx as fast_transformers
 
 from transformers.modeling_bert import BertEmbeddings as TorchBertEmbeddings
 from transformers.modeling_bert import BertIntermediate as TorchBertIntermediate
+from transformers.modeling_bert import BertOutput as TorchBertOutput
 
-__all__ = ['BertEmbeddings', 'BertIntermediate']
+__all__ = ['BertEmbeddings', 'BertIntermediate', 'BertOutput']
 
 
 def _try_convert(t):
@@ -20,6 +21,13 @@ def _try_convert(t):
 
 def convert2ft_tensor(t):
     return fast_transformers.Tensor.from_dlpack(dlpack.to_dlpack(t))
+
+
+def _to_param_dict(torch_module: torch.nn.Module):
+    return {
+        k: convert2ft_tensor(v)
+        for k, v in torch_module.named_parameters()
+    }
 
 
 class BertEmbeddings(cxx.BERTEmbedding):
@@ -38,10 +46,7 @@ class BertEmbeddings(cxx.BERTEmbedding):
 
     @staticmethod
     def from_torch(bert_embedding: TorchBertEmbeddings) -> 'BertEmbeddings':
-        params = {
-            k: convert2ft_tensor(v)
-            for k, v in bert_embedding.named_parameters()
-        }
+        params = _to_param_dict(bert_embedding)
 
         return BertEmbeddings(params['word_embeddings.weight'],
                               params['position_embeddings.weight'],
@@ -61,9 +66,24 @@ class BertIntermediate(cxx.BertIntermediate):
 
     @staticmethod
     def from_torch(intermediate: TorchBertIntermediate):
-        intermediate_params = {
-            k: convert2ft_tensor(v)
-            for k, v in intermediate.named_parameters()
-        }
+        intermediate_params = _to_param_dict(intermediate)
         return BertIntermediate(intermediate_params['dense.weight'],
                                 intermediate_params['dense.bias'])
+
+
+class BertOutput(cxx.BertOutput):
+    def __call__(self,
+                 intermediate_output: Union[cxx.Tensor, torch.Tensor],
+                 attention_output: Union[cxx.Tensor, torch.Tensor],
+                 return_type: Optional[ReturnType] = None):
+        intermediate_output = _try_convert(intermediate_output)
+        attention_output = _try_convert(attention_output)
+        return convert_returns_as_type(
+            super(BertOutput, self).__call__(intermediate_output,
+                                             attention_output), return_type)
+
+    @staticmethod
+    def from_torch(output: TorchBertOutput):
+        params = _to_param_dict(output)
+        return BertOutput(params["dense.weight"], params["dense.bias"],
+                          params["LayerNorm.weight"], params["LayerNorm.bias"])

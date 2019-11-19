@@ -10,7 +10,6 @@ from onnxruntime.backend import backend
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertOutput
 import fast_transformers
-from utils import convert2ft_tensor
 
 
 def create_shape_test(batch_size: int, seq_length: int):
@@ -25,16 +24,8 @@ def create_shape_test(batch_size: int, seq_length: int):
             self.torch_bertout = BertOutput(self.cfg)
             self.torch_bertout.eval()
 
-            bertout_params = {
-                k: v
-                for k, v in self.torch_bertout.named_parameters()
-            }
-
-            self.ft_bertout = fast_transformers.BertOutput(
-                convert2ft_tensor(bertout_params["dense.weight"]),
-                convert2ft_tensor(bertout_params["dense.bias"]),
-                convert2ft_tensor(bertout_params["LayerNorm.weight"]),
-                convert2ft_tensor(bertout_params["LayerNorm.bias"]))
+            self.ft_bertout = fast_transformers.BertOutput.from_torch(
+                self.torch_bertout)
 
             self.intermediate_output = torch.rand(
                 size=(batch_size, seq_length, self.intermediate_size),
@@ -99,17 +90,13 @@ def create_shape_test(batch_size: int, seq_length: int):
                     f'BertOut({batch_size}, {seq_length:03}) ONNX QPS {num_steps / t.elapsed}',
                     file=of)
 
-                ft_result = dlpack.from_dlpack(
-                    self.ft_bertout(
-                        convert2ft_tensor(self.intermediate_output),
-                        convert2ft_tensor(self.attention_output)).to_dlpack())
+                ft_result = self.ft_bertout(self.intermediate_output,
+                                            self.attention_output)
+
                 with contexttimer.Timer() as t:
                     for it in range(num_steps):
-                        ft_result = dlpack.from_dlpack(
-                            self.ft_bertout(
-                                convert2ft_tensor(self.intermediate_output),
-                                convert2ft_tensor(
-                                    self.attention_output)).to_dlpack())
+                        ft_result = self.ft_bertout(self.intermediate_output,
+                                                    self.attention_output)
 
                 print(
                     f"BertOut({batch_size}, {seq_length:03}) FastTransform QPS {num_steps / t.elapsed}",
