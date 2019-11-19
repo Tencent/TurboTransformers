@@ -28,11 +28,35 @@ def create_test(batch_size, seq_length):
             attention_params = {k: v for k, v in
                                 self.torch_attention.named_parameters()}
             num_attention_heads = self.cfg.num_attention_heads
-            self.ft_attention, self.ft_self_attention = \
+            self.ft_attention = \
                 bert_attention_base.get_ft_attention(attention_params, num_attention_heads)
 
-            # Init input data
-            self.input_tensor, self.attention_mask, self.head_mask = self.init_torch_tensors()
+            # merge self.query.weight, self.query.weight and self.query.weight togather as qkv.weight
+            qkv_weight = torch.cat((attention_params['self.query.weight'], attention_params['self.key.weight']), 0)
+            qkv_weight = torch.cat((qkv_weight, attention_params['self.value.weight']), 0)
+            qkv_bias = torch.cat((attention_params['self.query.bias'], attention_params['self.key.bias']), 0)
+            qkv_bias = torch.cat((qkv_bias, attention_params['self.value.bias']), 0)
+
+            self.ft_attention = fast_transformers.BertAttention(convert2ft_tensor(qkv_weight),
+                                                                         convert2ft_tensor(qkv_bias),
+                                                                         convert2ft_tensor((attention_params['output.dense.weight'])),
+                                                                         convert2ft_tensor(attention_params['output.dense.bias']),
+                                                                         convert2ft_tensor(attention_params['output.LayerNorm.weight']),
+                                                                         convert2ft_tensor(attention_params['output.LayerNorm.bias']),
+                                                                         self.cfg.num_attention_heads)
+
+            self.hidden_size = self.cfg.hidden_size
+            self.input_tensor = torch.rand(size=(batch_size, seq_length, self.hidden_size),
+                                           dtype=torch.float32)
+
+            self.attention_mask = torch.ones((batch_size, seq_length), dtype=torch.long)
+            self.attention_mask = self.attention_mask[:, None, None, :]
+            self.attention_mask = (1.0 - self.attention_mask) * -10000.0
+
+            self.head_mask = torch.ones(
+                (batch_size, self.cfg.num_attention_heads, seq_length, seq_length),
+                dtype=torch.long)
+
             self.torch_attention(self.input_tensor, self.attention_mask, self.head_mask)
             torch.onnx.export(self.torch_attention, args=(self.input_tensor, self.attention_mask, self.head_mask),
                               output_names=['out'], f='bert-attn.onnx')
@@ -44,7 +68,6 @@ def create_test(batch_size, seq_length):
 
             # Prepare the backend
             self.onnxruntime_attention  = self.get_onnxruntime_modle(onnx_file="bert-attn.onnx")
-
 
         def init_torch_tensors(self):
             input_tensor = torch.rand(size=(batch_size, seq_length, self.cfg.hidden_size),
@@ -58,6 +81,7 @@ def create_test(batch_size, seq_length):
             return input_tensor, attention_mask, head_mask
 
         def test_bertattention(self):
+            self.num_iter = 50
             # Torch
             model = lambda :self.torch_attention(self.input_tensor, self.attention_mask, self.head_mask)
             torch_attention_result = self.run_model("Torch", model)
@@ -70,21 +94,26 @@ def create_test(batch_size, seq_length):
 
             # ONNX(MKL-DNN)
             onnx_inputs = [t.numpy() for t in [self.input_tensor, self.attention_mask, self.head_mask]]
-            model = lambda :self.onnxruntime_attention.run(inputs=onnx_inputs)
-            self.run_model("ONNX(MKL-DNN)", model)
 
-            # FastTransform
-            model = lambda :dlpack.from_dlpack(self.ft_attention(convert2ft_tensor(self.input_tensor),
-                                                                 convert2ft_tensor(self.attention_mask),
-                                                                 convert2ft_tensor(self.head_mask)).to_dlpack())
-            ft_attention_result = self.run_model("FastTransform", model)
-            self.assertTrue(torch.max(torch.abs(torch_attention_result[0] - ft_attention_result)) < 1e-4)
+            self.onnxruntime_attention.run(inputs=onnx_inputs)
 
-            # FastTransform
-            model = lambda :dlpack.from_dlpack(self.ft_self_attention(convert2ft_tensor(self.input_tensor),
-                                                                      convert2ft_tensor(self.attention_mask),
-                                                                      convert2ft_tensor(self.head_mask)).to_dlpack())
-            ft_self_attention_result = self.run_model("BertSelfAttention", model)
+            with contexttimer.Timer() as t:
+                for it in range(self.num_iter):
+                    self.onnxruntime_attention.run(inputs=onnx_inputs)
+            print(
+                f'BertAttention({batch_size}, {seq_length}) ONNX(MKL-DNN) QPS, {self.num_iter / t.elapsed}, Elapse {t.elapsed / self.num_iter}')
+
+            ft_self_attention_result = dlpack.from_dlpack(
+                self.ft_attention(convert2ft_tensor(self.input_tensor), convert2ft_tensor(self.attention_mask), convert2ft_tensor(self.head_mask)).to_dlpack());
+
+            with contexttimer.Timer() as t:
+                for it in range(self.num_iter):
+                    ft_self_attention_result = dlpack.from_dlpack(
+                        self.ft_attention(convert2ft_tensor(self.input_tensor), convert2ft_tensor(self.attention_mask),
+                                               convert2ft_tensor(self.head_mask)).to_dlpack());
+            print(
+                f"BertAttention({batch_size}, {seq_length}) BertAttention QPS, {self.num_iter / t.elapsed}, Elapse {t.elapsed / self.num_iter}")
+            # print("max diff: ", torch.max(torch.abs(torch_attention_result[0] - ft_self_attention_result)))
             self.assertTrue(torch.max(torch.abs(torch_attention_result[0] - ft_self_attention_result)) < 1e-4)
 
         def run_model(self, model_name, model, num_iter=50):

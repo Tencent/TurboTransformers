@@ -1,12 +1,9 @@
 pybind11_add_module(fast_transformers_cxx
         pybind.cpp)
 
-target_link_libraries(fast_transformers_cxx PRIVATE blas profiler bert_embedding attention bert_self_attention bert_intermediate bert_output)
-
-
+target_link_libraries(fast_transformers_cxx PRIVATE blas profiler bert_embedding bert_attention bert_intermediate bert_output)
 
 SET(PY_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/pypackage)
-
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in ${PY_PACKAGE_DIR}/setup.py @ONLY)
 

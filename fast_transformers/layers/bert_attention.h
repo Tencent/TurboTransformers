@@ -7,18 +7,12 @@ namespace layers {
 
 class BertAttention {
  public:
-  BertAttention(core::Tensor query_weight, core::Tensor query_bias,
-                core::Tensor key_weight, core::Tensor key_bias,
-                core::Tensor value_weight, core::Tensor value_bias,
+  BertAttention(core::Tensor qkv_weight, core::Tensor qkv_bias,
                 core::Tensor dense_weight, core::Tensor dense_bias,
                 core::Tensor layer_norm_weight, core::Tensor layer_norm_bias,
                 int64_t num_attention_heads)
-      : query_weight_(std::move(query_weight)),  //(768, 768)
-        query_bias_(std::move(query_bias)),      //(768)
-        key_weight_(std::move(key_weight)),
-        key_bias_(std::move(key_bias)),
-        value_weight_(std::move(value_weight)),
-        value_bias_(std::move(value_bias)),
+      : qkv_weight_(std::move(qkv_weight)),  //(768, 768)
+        qkv_bias_(std::move(qkv_bias)),
         dense_weight_(std::move(dense_weight)),
         dense_bias_(std::move(dense_bias)),
         layer_norm_weight_(std::move(layer_norm_weight)),  //(768)
@@ -33,12 +27,8 @@ class BertAttention {
                           const core::Tensor &head_mask) const;
 
  private:
-  core::Tensor query_weight_;
-  core::Tensor query_bias_;
-  core::Tensor key_weight_;
-  core::Tensor key_bias_;
-  core::Tensor value_weight_;
-  core::Tensor value_bias_;
+  core::Tensor qkv_weight_;
+  core::Tensor qkv_bias_;
   core::Tensor dense_weight_;
   core::Tensor dense_bias_;
   core::Tensor layer_norm_weight_;

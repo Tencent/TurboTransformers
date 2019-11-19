@@ -18,30 +18,14 @@ from utils import convert2ft_tensor
 class FastBertLayer(nn.Module):
     def __init__(self, config, bert_layer_params, isSelf: bool):
         super(FastBertLayer, self).__init__()
-        # TODO: currently not support decoder
+        qkv_weight = torch.cat((bert_layer_params['attention.self.query.weight'], bert_layer_params['attention.self.key.weight']), 0)
+        qkv_weight   = torch.cat((qkv_weight, bert_layer_params['attention.self.value.weight']), 0)
 
-        # Optimization for self-attention
-        if(isSelf):
-            qkv_weight = torch.cat((bert_layer_params['attention.self.query.weight'], bert_layer_params['attention.self.key.weight']), 0)
-            qkv_weight   = torch.cat((qkv_weight, bert_layer_params['attention.self.value.weight']), 0)
+        qkv_bias = torch.cat((bert_layer_params['attention.self.query.bias'], bert_layer_params['attention.self.key.bias']), 0)
+        qkv_bias   = torch.cat((qkv_bias, bert_layer_params['attention.self.value.bias']), 0)
 
-            qkv_bias = torch.cat((bert_layer_params['attention.self.query.bias'], bert_layer_params['attention.self.key.bias']), 0)
-            qkv_bias   = torch.cat((qkv_bias, bert_layer_params['attention.self.value.bias']), 0)
-
-            self.attention = fast_transformers.BertSelfAttention(convert2ft_tensor(qkv_weight),
-                                                                 convert2ft_tensor(qkv_bias),
-                                                                 convert2ft_tensor((bert_layer_params['attention.output.dense.weight'])),
-                                                                 convert2ft_tensor(bert_layer_params['attention.output.dense.bias']),
-                                                                 convert2ft_tensor(bert_layer_params['attention.output.LayerNorm.weight']),
-                                                                 convert2ft_tensor(bert_layer_params['attention.output.LayerNorm.bias']),
-                                                                 config.num_attention_heads)
-        else:
-            self.attention = fast_transformers.BertAttention(convert2ft_tensor((bert_layer_params['attention.self.query.weight'])),
-                                                             convert2ft_tensor(bert_layer_params['attention.self.query.bias']),
-                                                             convert2ft_tensor((bert_layer_params['attention.self.key.weight'])),
-                                                             convert2ft_tensor(bert_layer_params['attention.self.key.bias']),
-                                                             convert2ft_tensor((bert_layer_params['attention.self.value.weight'])),
-                                                             convert2ft_tensor(bert_layer_params['attention.self.value.bias']),
+        self.attention = fast_transformers.BertAttention(convert2ft_tensor(qkv_weight),
+                                                             convert2ft_tensor(qkv_bias),
                                                              convert2ft_tensor((bert_layer_params['attention.output.dense.weight'])),
                                                              convert2ft_tensor(bert_layer_params['attention.output.dense.bias']),
                                                              convert2ft_tensor(bert_layer_params['attention.output.LayerNorm.weight']),
