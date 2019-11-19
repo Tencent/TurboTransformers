@@ -6,4 +6,4 @@ cd /tmp/build
 cmake -DCMAKE_BUILD_TYPE=Release ${SRC_ROOT}
 make VERBOSE=1 -j $(nproc)
 pip3 install -r ${SRC_ROOT}/test_requirements.txt
-ctest --output-on-failure
+ctest -j $(nproc) --output-on-failure
