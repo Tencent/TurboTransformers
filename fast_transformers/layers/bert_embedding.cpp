@@ -56,7 +56,7 @@ void BERTEmbedding::operator()(const core::Tensor &input_ids,
   auto hidden_size = word_embedings_.shape(1);
 
   FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
-  output_tensor->Reshape({batch_size, seq_length, hidden_size});
+  output_tensor->Reshape<float>({batch_size, seq_length, hidden_size});
 
   LookupEmbedding</*Add=*/false>(*output_tensor, word_embedings_, input_ids);
   LookupEmbedding</*Add=*/true>(*output_tensor, token_type_embeddings_,

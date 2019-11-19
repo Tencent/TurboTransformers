@@ -65,12 +65,12 @@ class Tensor {
  public:
   explicit Tensor(DLManagedTensor *tensor) : tensor_(tensor) {}
 
-  DLManagedTensor *ToDLPack() {
-    // FT_ENFORCE_NE(tensor_, nullptr, "The Tensor must contain data");
-    return tensor_.release();
-  }
+  DLManagedTensor *ToDLPack() { return tensor_.release(); }
 
-  size_t n_dim() const { return tensor_->dl_tensor.ndim; }
+  size_t n_dim() const {
+    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
+    return tensor_->dl_tensor.ndim;
+  }
 
   const int64_t &shape(size_t pos) const {
     FT_ENFORCE_LT(pos, tensor_->dl_tensor.ndim,
@@ -80,12 +80,14 @@ class Tensor {
   }
 
   size_t numel() const {
+    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
     return std::accumulate(tensor_->dl_tensor.shape,
                            tensor_->dl_tensor.shape + tensor_->dl_tensor.ndim,
                            1, std::multiplies<int64_t>());
   }
 
   std::vector<int64_t> Dims() const {
+    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
     std::vector<int64_t> dims;
     dims.reserve(tensor_->dl_tensor.ndim);
     for (size_t i = 0; i < tensor_->dl_tensor.ndim; ++i) {
@@ -94,47 +96,47 @@ class Tensor {
     return dims;
   }
 
-  void Reshape(std::initializer_list<int64_t> dims) {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
-    auto t_dims = Dims();
-    bool is_same_shape = false;
-    if (t_dims.size() == dims.size()) {
-      is_same_shape = std::equal(std::begin(dims), std::end(dims),
-                                 std::begin(t_dims), std::end(t_dims));
-    }
-    if (!is_same_shape) {
-      tensor_.reset(core::NewDLPackTensorT<float>(dims));
-    }
-  }
-
-  bool is_same_shape(const std::vector<int64_t> &shape) const {
-    if (shape.size() != tensor_->dl_tensor.ndim) return false;
-    for (size_t i = 0; i < shape.size(); ++i) {
-      if (shape[i] != tensor_->dl_tensor.shape[i]) {
-        return false;
+  // FIXME(florianzhao): Maybe this func should not be named Reshape.
+  template <typename T>
+  T *Reshape(std::initializer_list<int64_t> shape_list) {
+    if (tensor_ &&
+        numel() >= std::accumulate(shape_list.begin(), shape_list.end(), 1,
+                                   std::multiplies<>())) {
+      if (tensor_->dl_tensor.ndim != shape_list.size()) {
+        tensor_->dl_tensor.ndim = shape_list.size();
+        delete[] tensor_->dl_tensor.shape;
+        tensor_->dl_tensor.shape = new int64_t[shape_list.size()];
       }
+      std::copy(shape_list.begin(), shape_list.end(), tensor_->dl_tensor.shape);
+      tensor_->dl_tensor.ndim = shape_list.size();
+    } else {
+      tensor_.reset(NewDLPackTensorT<T>(shape_list));
     }
-    return true;
+    return this->template mutableData<T>();
   }
 
   template <typename T>
   const T *data() const {
+    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
     EnforceDataType<T>(tensor_->dl_tensor);
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
 
   template <typename T>
   T *mutableData() {
+    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
     EnforceDataType<T>(tensor_->dl_tensor);
     return reinterpret_cast<T *>(tensor_->dl_tensor.data);
   }
 
   DLDeviceType device_type() const {
+    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
     return tensor_->dl_tensor.ctx.device_type;
   }
 
   template <typename T>
   void Print(std::ostream &os) const {
+    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
     os << "type " << tensor_->dl_tensor.dtype.code << std::endl;
     os << "bits " << tensor_->dl_tensor.dtype.bits << std::endl;
     os << "numel: " << numel() << std::endl;

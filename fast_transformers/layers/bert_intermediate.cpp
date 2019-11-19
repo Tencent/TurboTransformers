@@ -27,7 +27,7 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
   static constexpr float alpha = 1., beta = 0.;
 
   FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
-  output_tensor->Reshape({batch_size, seq_length, intermediate_size});
+  output_tensor->Reshape<float>({batch_size, seq_length, intermediate_size});
 
   core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
                     m, n, k, alpha, input_tensor.data<float>(), k,

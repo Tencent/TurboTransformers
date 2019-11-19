@@ -80,7 +80,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   // Blas().
 
   FT_ENFORCE(output, "The output tensor should not be nullptr.");
-  output->Reshape({batch_size, seq_length, hidden_size});
+  output->Reshape<float>({batch_size, seq_length, hidden_size});
 
   auto* qkv_weight_ptr = qkv_weight_.data<float>();
   auto* qkv_bias_ptr = qkv_bias_.data<float>();

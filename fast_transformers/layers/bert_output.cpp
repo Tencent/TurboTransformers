@@ -36,7 +36,7 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
   static constexpr float alpha = 1., beta = 0.;
 
   FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
-  output_tensor->Reshape({batch_size, seq_length, hidden_size});
+  output_tensor->Reshape<float>({batch_size, seq_length, hidden_size});
 
   core::cblas_sgemm(
       core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans, m, n, k, alpha,
