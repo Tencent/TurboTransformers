@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+
 #include "fast_transformers/core/tensor.h"
 
 namespace fast_transformers {
@@ -22,9 +23,9 @@ class BertAttention {
   }
   void EnforceShapeAndType() const;
 
-  core::Tensor operator()(const core::Tensor &input_tensor,
-                          const core::Tensor &attention_mask,
-                          const core::Tensor &head_mask) const;
+  void operator()(const core::Tensor &input_tensor,
+                  const core::Tensor &attention_mask,
+                  const core::Tensor &head_mask, core::Tensor *output) const;
 
  private:
   core::Tensor qkv_weight_;

@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+
 #include "fast_transformers/core/tensor.h"
 
 namespace fast_transformers {
@@ -25,9 +26,10 @@ class BERTEmbedding {
 
   void EnforceShapeAndType() const;
 
-  core::Tensor operator()(const core::Tensor &input_ids,
-                          const core::Tensor &position_ids,
-                          const core::Tensor &token_type_ids) const;
+  void operator()(const core::Tensor &input_ids,
+                  const core::Tensor &position_ids,
+                  const core::Tensor &token_type_ids,
+                  core::Tensor *output) const;
 
  private:
   core::Tensor word_embedings_;

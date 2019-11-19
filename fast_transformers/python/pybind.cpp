@@ -62,8 +62,9 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
       .def("__call__",
            [](layers::BERTEmbedding &self, core::Tensor &input_ids,
               core::Tensor &token_type_ids, core::Tensor &position_ids) {
-             return self(std::move(input_ids), std::move(token_type_ids),
-                         std::move(position_ids));
+             core::Tensor output(nullptr);
+             self(input_ids, token_type_ids, position_ids, &output);
+             return output;
            });
 
   py::class_<layers::BertAttention>(m, "BertAttention")
@@ -80,8 +81,9 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
       .def("__call__",
            [](layers::BertAttention &self, core::Tensor &input_tensor,
               core::Tensor &attention_mask, core::Tensor &head_mask) {
-             return self(std::move(input_tensor), std::move(attention_mask),
-                         std::move(head_mask));
+             core::Tensor output(nullptr);
+             self(input_tensor, attention_mask, head_mask, &output);
+             return output;
            });
 
   py::class_<layers::BertIntermediate>(m, "BertIntermediate")
@@ -92,7 +94,9 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
       }))
       .def("__call__",
            [](layers::BertIntermediate &self, core::Tensor &input_tensor) {
-             return self(std::move(input_tensor));
+             core::Tensor output(nullptr);
+             self(input_tensor, &output);
+             return output;
            });
 
   py::class_<layers::BertOutput>(m, "BertOutput")
@@ -105,7 +109,9 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
       }))
       .def("__call__", [](layers::BertOutput &self, core::Tensor &hidden_states,
                           core::Tensor &input_tensor) {
-        return self(std::move(hidden_states), std::move(input_tensor));
+        core::Tensor output(nullptr);
+        self(hidden_states, input_tensor, &output);
+        return output;
       });
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+
 #include "fast_transformers/core/tensor.h"
 
 namespace fast_transformers {
@@ -14,7 +15,7 @@ class BertIntermediate {
   }
 
   void EnforceShapeAndType() const;
-  core::Tensor operator()(const core::Tensor &input_tensor) const;
+  void operator()(const core::Tensor& input_tensor, core::Tensor* output) const;
 
  private:
   core::Tensor dense_weight_;
