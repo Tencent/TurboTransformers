@@ -5,7 +5,6 @@
 #include "fast_transformers/layers/kernels/softmax.h"
 #include "fast_transformers/layers/kernels/transpose.h"
 #include "loguru.hpp"
-
 namespace fast_transformers {
 namespace layers {
 
@@ -54,17 +53,16 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   auto attention_scores_size =
       batch_size * num_attention_heads_ * seq_length * seq_length;
 
+  // allocate memory for temporary buffers
   static core::AlignedScratchpad<float> buf;
   float* buffer = buf.mutable_data(buf_size * 8 + attention_scores_size);
 
   float* query_buf = buffer;
   float* key_buf = buffer + buf_size;
   float* value_buf = buffer + 2 * buf_size;
-
   float* q_buf = buffer + 3 * buf_size;
   float* k_buf = buffer + 4 * buf_size;
   float* v_buf = buffer + 5 * buf_size;
-
   float* self_attr_out = buffer + 6 * buf_size;
   float* context_layer = buffer + 7 * buf_size;
   float* attention_scores = buffer + 8 * buf_size;
@@ -73,41 +71,30 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   int64_t m = batch_size * seq_length;
   int64_t k = num_attention_heads_ * size_per_head;
   int64_t n = k;
-  const float alpha = 1.0f, beta = 0.0f;
+  static constexpr float alpha = 1., beta = 0.;
 
   // TODO assert from_tensor is equal to to_tensor.
   // TODO delete the wrapper after we check the results, and rewrite it with
   // Blas().
   core::Tensor output_tensor(
       core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}));
-  const float* query_weight_ptr = query_weight_.data<float>();
-  const float* key_weight_ptr = key_weight_.data<float>();
-  const float* value_weight_ptr = value_weight_.data<float>();
+  const float* qkv_weight_ptr = qkv_weight_.data<float>();
+  const float* qkv_bias_ptr = qkv_bias_.data<float>();
+
   const float* dense_weight_ptr = dense_weight_.data<float>();
+  const float* dense_bias_ptr = dense_bias_.data<float>();
+
   const float* from_tensor_ptr = input_tensor.data<float>();
   const float* to_tensor_ptr = from_tensor_ptr;  // self attention
-  const float* query_bias_ptr = query_bias_.data<float>();
-  const float* value_bias_ptr = value_bias_.data<float>();
-  const float* key_bias_ptr = key_bias_.data<float>();
-  const float* dense_bias_ptr = dense_bias_.data<float>();
   float* output_tensor_ptr = output_tensor.mutableData<float>();
 
   core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
-                    m, n, k, alpha, from_tensor_ptr, k, query_weight_ptr, k,
-                    beta, query_buf, n);
-  core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
-                    m, n, k, alpha, to_tensor_ptr, k, key_weight_ptr, k, beta,
-                    key_buf, n);
-
-  core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
-                    m, n, k, alpha, to_tensor_ptr, k, value_weight_ptr, k, beta,
-                    value_buf, n);
-
-  const std::vector<int64_t> QKV_shape{batch_size, seq_length,
+                    m, 3 * n, k, alpha, from_tensor_ptr, k, qkv_weight_ptr, k,
+                    beta, query_buf, 3 * n);
+  const std::vector<int64_t> QKV_shape{batch_size, seq_length, 3,
                                        num_attention_heads_, size_per_head};
-  kernels::AdBiasTransposeForScore(q_buf, query_buf, query_bias_ptr, QKV_shape);
-  kernels::AdBiasTransposeForScore(k_buf, key_buf, key_bias_ptr, QKV_shape);
-  kernels::AdBiasTransposeForScore(v_buf, value_buf, value_bias_ptr, QKV_shape);
+  kernels::SplitAddbiasTransposeForScore(q_buf, query_buf, qkv_bias_ptr,
+                                         QKV_shape);
 
   // attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
   details::matmul(true, false, seq_length, seq_length, size_per_head, alpha,
@@ -124,7 +111,8 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   kernels::SoftmaxMask(attention_scores, attention_mask.data<float>(),
                        batch_size, num_attention_heads_, seq_length,
                        scaler);  // preprocess: attention_mask * -10000
-  // TODO: attention_probs = self.dropout(attention_probs)
+  // attention_probs = self.dropout(attention_probs)
+  // TODO
 
   // context_layer = torch.matmul(attention_probs, value_layer) -> context_layer
   details::matmul(false, false, size_per_head, seq_length, seq_length, alpha,
@@ -157,14 +145,10 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
 }
 
 void BertAttention::EnforceShapeAndType() const {
-  FT_ENFORCE_EQ(query_weight_.device_type(), kDLCPU, "Only CPU supportted");
-  if (loguru::current_verbosity_cutoff() >= 3) {
+  FT_ENFORCE_EQ(layer_norm_weight_.device_type(), kDLCPU,
+                "Only CPU supportted");
+  if (loguru::current_verbosity_cutoff() > 3) {
     std::ostringstream os;
-    os << ">>>>>>>>>>>> query_weight <<<<<<<<<<<<" << std::endl;
-    query_weight_.Print<float>(os);
-    os << ">>>>>>>>>>>> query_bias <<<<<<<<<<<<" << std::endl;
-    query_bias_.Print<float>(os);
-    os << ">>>>>>>>>>>> layer_norm_weight <<<<<<<<<<<<" << std::endl;
     layer_norm_weight_.Print<float>(os);
     os << ">>>>>>>>>>>> layer_norm_bias <<<<<<<<<<<<" << std::endl;
     layer_norm_bias_.Print<float>(os);

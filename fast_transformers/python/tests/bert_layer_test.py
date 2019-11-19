@@ -34,7 +34,7 @@ class FastBertLayer(nn.Module):
             qkv_bias = torch.cat((bert_layer_params['attention.self.query.bias'], bert_layer_params['attention.self.key.bias']), 0)
             qkv_bias   = torch.cat((qkv_bias, bert_layer_params['attention.self.value.bias']), 0)
 
-            self.attention = fast_transformers.BertSelfAttention(_(qkv_weight),
+            self.attention = fast_transformers.BertAttention(_(qkv_weight),
                                             _(qkv_bias),
                                             _((bert_layer_params['attention.output.dense.weight'])),
                                             _(bert_layer_params['attention.output.dense.bias']),

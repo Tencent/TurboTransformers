@@ -39,25 +39,13 @@ def create_test(batch_size, seq_length):
             qkv_bias = torch.cat((attention_params['self.query.bias'], attention_params['self.key.bias']), 0)
             qkv_bias = torch.cat((qkv_bias, attention_params['self.value.bias']), 0)
 
-            self.ft_self_attention = fast_transformers.BertSelfAttention(_((qkv_weight)),
+            self.ft_attention = fast_transformers.BertAttention(_((qkv_weight)),
                                                                          _(qkv_bias),
                                                                          _((attention_params['output.dense.weight'])),
                                                                          _(attention_params['output.dense.bias']),
                                                                          _(attention_params['output.LayerNorm.weight']),
                                                                          _(attention_params['output.LayerNorm.bias']),
                                                                          self.cfg.num_attention_heads)
-
-            self.ft_attention = fast_transformers.BertAttention(_((attention_params['self.query.weight'])),
-                                                                _(attention_params['self.query.bias']),
-                                                                _((attention_params['self.key.weight'])),
-                                                                _(attention_params['self.key.bias']),
-                                                                _((attention_params['self.value.weight'])),
-                                                                _(attention_params['self.value.bias']),
-                                                                _((attention_params['output.dense.weight'])),
-                                                                _(attention_params['output.dense.bias']),
-                                                                _(attention_params['output.LayerNorm.weight']),
-                                                                _(attention_params['output.LayerNorm.bias']),
-                                                                self.cfg.num_attention_heads)
 
             self.hidden_size = self.cfg.hidden_size
             self.input_tensor = torch.rand(size=(batch_size, seq_length, self.hidden_size),
@@ -81,7 +69,6 @@ def create_test(batch_size, seq_length):
                               output_names=['out'], f='bert-attn.onnx')
 
             # Prepare the backend
-
             if not onnxruntime.backend.supports_device("MKL-DNN"):
                 self.onnxruntime_attention = onnxruntime.backend.prepare("bert-attn.onnx", device="CPU")
                 # raise RuntimeError("Please recompile onnx-runtime to support MKL-DNN")
@@ -120,28 +107,15 @@ def create_test(batch_size, seq_length):
             print(
                 f'BertAttention({batch_size}, {seq_length}) ONNX(MKL-DNN) QPS, {self.num_iter / t.elapsed}, Elapse {t.elapsed / self.num_iter}')
 
-            ft_attention_result = dlpack.from_dlpack(
+            ft_self_attention_result = dlpack.from_dlpack(
                 self.ft_attention(_(self.input_tensor), _(self.attention_mask), _(self.head_mask)).to_dlpack());
             with contexttimer.Timer() as t:
                 for it in range(self.num_iter):
-                    ft_attention_result = dlpack.from_dlpack(
-                        self.ft_attention(_(self.input_tensor), _(self.attention_mask), _(self.head_mask)).to_dlpack());
-
-            print(
-                f"BertAttention({batch_size}, {seq_length}) FastTransform QPS, {self.num_iter / t.elapsed}, Elapse {t.elapsed / self.num_iter}")
-            # print("max diff: ", torch.max(torch.abs(torch_attention_result[0] - ft_attention_result)))
-            self.assertTrue(torch.max(torch.abs(torch_attention_result[0] - ft_attention_result)) < 1e-4)
-
-            ft_self_attention_result = dlpack.from_dlpack(
-                self.ft_self_attention(_(self.input_tensor), _(self.attention_mask), _(self.head_mask)).to_dlpack());
-            with contexttimer.Timer() as t:
-                for it in range(self.num_iter):
                     ft_self_attention_result = dlpack.from_dlpack(
-                        self.ft_self_attention(_(self.input_tensor), _(self.attention_mask),
+                        self.ft_attention(_(self.input_tensor), _(self.attention_mask),
                                                _(self.head_mask)).to_dlpack());
-
             print(
-                f"BertAttention({batch_size}, {seq_length}) BertSelfAttention QPS, {self.num_iter / t.elapsed}, Elapse {t.elapsed / self.num_iter}")
+                f"BertAttention({batch_size}, {seq_length}) BertAttention QPS, {self.num_iter / t.elapsed}, Elapse {t.elapsed / self.num_iter}")
             # print("max diff: ", torch.max(torch.abs(torch_attention_result[0] - ft_self_attention_result)))
             self.assertTrue(torch.max(torch.abs(torch_attention_result[0] - ft_self_attention_result)) < 1e-4)
 
