@@ -57,6 +57,8 @@ class EnforceNotMet : public std::exception {
 #define FT_ENFORCE_NE(a, b, ...) FT_ENFORCE((a) != (b), __VA_ARGS__)
 #define FT_ENFORCE_LT(a, b, ...) FT_ENFORCE((a) < (b), __VA_ARGS__)
 #define FT_ENFORCE_LE(a, b, ...) FT_ENFORCE((a) <= (b), __VA_ARGS__)
+#define FT_ENFORCE_GT(a, b, ...) FT_ENFORCE((a) > (b), __VA_ARGS__)
+#define FT_ENFORCE_GE(a, b, ...) FT_ENFORCE((a) >= (b), __VA_ARGS__)
 
 }  // namespace core
 }  // namespace fast_transformers

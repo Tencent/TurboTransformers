@@ -2,6 +2,7 @@
 #include <immintrin.h>
 #include <numeric>
 #include "fast_transformers/core/aligned_scratchpad.h"
+#include "fast_transformers/core/eigen-tensor.h"
 
 namespace fast_transformers {
 namespace layers {
@@ -48,6 +49,17 @@ void AddBiasGeLUAct(float *out, const float *bias, int64_t m, int64_t n) {
     }
   }
 #endif
+}
+void AddBiasGeLUAct(const core::Tensor &bias, core::Tensor *inout) {
+  auto in_mat = core::to_mat(inout);
+  auto bias_vec = core::to_vec(bias);
+  auto before_act = (in_mat.rowwise() + bias_vec.transpose()).eval().array();
+
+  in_mat =
+      before_act * 0.5f *
+      (1.0f + (0.7978845608028654f *
+               (before_act + 0.044715f * before_act * before_act * before_act))
+                  .tanh());
 }
 
 }  // namespace kernels

@@ -32,9 +32,9 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
   cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
               input_tensor.data<float>(), k, dense_weight_.data<float>(), k,
               beta, output_tensor->mutableData<float>(), n);
-
-  kernels::AddBiasGeLUAct(output_tensor->mutableData<float>(),
-                          dense_bias_.data<float>(), m, n);
+  //  kernels::AddBiasGeLUAct(output_tensor->mutableData<float>(),
+  //                          dense_bias_.data<float>(), m, n);
+  kernels::AddBiasGeLUAct(dense_bias_, output_tensor);
 }
 
 void BertIntermediate::EnforceShapeAndType() const {
