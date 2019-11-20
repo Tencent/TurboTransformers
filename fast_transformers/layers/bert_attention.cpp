@@ -1,4 +1,5 @@
 #include "fast_transformers/layers/bert_attention.h"
+
 #include "fast_transformers/core/aligned_scratchpad.h"
 #include "fast_transformers/core/memory.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
@@ -31,9 +32,10 @@ static void matmul(bool TransA, bool TransB, BlasInt m, BlasInt n, BlasInt k,
 }
 }  // namespace details
 
-core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
-                                       const core::Tensor& attention_mask,
-                                       const core::Tensor& head_mask) const {
+void BertAttention::operator()(const core::Tensor& input_tensor,
+                               const core::Tensor& attention_mask,
+                               const core::Tensor& head_mask,
+                               core::Tensor* output) const {
   FT_ENFORCE_EQ(input_tensor.n_dim(), 3,
                 "The input ids should be a matrix with shape [BatchSize, "
                 "SeqLen, HiddenSize].");
@@ -75,17 +77,19 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
   // TODO assert from_tensor is equal to to_tensor.
   // TODO delete the wrapper after we check the results, and rewrite it with
   // Blas().
-  core::Tensor output_tensor(
-      core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}));
-  const float* qkv_weight_ptr = qkv_weight_.data<float>();
-  const float* qkv_bias_ptr = qkv_bias_.data<float>();
 
-  const float* dense_weight_ptr = dense_weight_.data<float>();
-  const float* dense_bias_ptr = dense_bias_.data<float>();
+  FT_ENFORCE(output, "The output tensor should not be nullptr.");
+  output->Reshape<float>({batch_size, seq_length, hidden_size});
 
-  const float* from_tensor_ptr = input_tensor.data<float>();
+  auto* qkv_weight_ptr = qkv_weight_.data<float>();
+  auto* qkv_bias_ptr = qkv_bias_.data<float>();
+
+  auto* dense_weight_ptr = dense_weight_.data<float>();
+  auto* dense_bias_ptr = dense_bias_.data<float>();
+
+  auto* from_tensor_ptr = input_tensor.data<float>();
   const float* to_tensor_ptr = from_tensor_ptr;  // self attention
-  float* output_tensor_ptr = output_tensor.mutableData<float>();
+  auto* output_tensor_ptr = output->mutableData<float>();
 
   cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, 3 * n, k, alpha,
               from_tensor_ptr, k, qkv_weight_ptr, k, beta, query_buf, 3 * n);
@@ -144,7 +148,6 @@ core::Tensor BertAttention::operator()(const core::Tensor& input_tensor,
                             layer_norm_bias_.data<float>(), m, n);
 
   // outputs = (attention_output,) + self_outputs[1:]
-  return output_tensor;
 }
 
 void BertAttention::EnforceShapeAndType() const {

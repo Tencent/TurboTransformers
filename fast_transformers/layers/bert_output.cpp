@@ -1,5 +1,7 @@
 #include "fast_transformers/layers/bert_output.h"
+
 #include <loguru.hpp>
+
 #include "fast_transformers/core/memory.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
 
@@ -19,8 +21,9 @@ namespace layers {
 //         hidden_states = self.dropout(hidden_states)
 //         hidden_states = self.LayerNorm(hidden_states + input_tensor)
 //         return hidden_states
-core::Tensor BertOutput::operator()(const core::Tensor &hidden_states,
-                                    const core::Tensor &input_tensor) const {
+void BertOutput::operator()(const core::Tensor &hidden_states,
+                            const core::Tensor &input_tensor,
+                            core::Tensor *output_tensor) const {
   auto batch_size = hidden_states.shape(0);
   auto seq_length = hidden_states.shape(1);
   auto intermediate_size = hidden_states.shape(2);
@@ -32,8 +35,8 @@ core::Tensor BertOutput::operator()(const core::Tensor &hidden_states,
 
   static constexpr float alpha = 1., beta = 0.;
 
-  core::Tensor output_tensor(
-      core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}));
+  FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
+  output_tensor->Reshape<float>({batch_size, seq_length, hidden_size});
 
   cblas_sgemm(
       CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
@@ -41,14 +44,13 @@ core::Tensor BertOutput::operator()(const core::Tensor &hidden_states,
       k,  // (batch_size*seq_length = m, intermediate_size = k)
       dense_weight_.data<float>(), k,
       beta,  //[hidden_size = n, intermediate_size = k] please transpose here!x
-      output_tensor.mutableData<float>(),
+      output_tensor->mutableData<float>(),
       n);  // (batch_size*seq_length = m, hidden_size = n)
 
   kernels::AddBiasLayerNorm(
-      output_tensor.mutableData<float>(), input_tensor.data<float>(),
+      output_tensor->mutableData<float>(), input_tensor.data<float>(),
       dense_bias_.data<float>(), layer_norm_weight_.data<float>(),
       layer_norm_bias_.data<float>(), m, n);
-  return output_tensor;
 }
 
 void BertOutput::EnforceShapeAndType() const {
