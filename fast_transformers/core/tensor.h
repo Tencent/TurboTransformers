@@ -90,7 +90,7 @@ class Tensor {
     FT_ENFORCE(tensor_, "This tensor is not initialized.");
     FT_ENFORCE_GE(n_dim(), 2, "n_dims() >= 2");
     return std::accumulate(&shape(0), &shape(0) + n_dim() - 1, 1,
-                           std::multiplies<>());
+                           std::multiplies<int64_t>());
   }
   int64_t cols() const {
     FT_ENFORCE(tensor_, "This tensor is not initialized.");
@@ -103,7 +103,7 @@ class Tensor {
   T *Reshape(std::initializer_list<int64_t> shape_list) {
     if (tensor_ &&
         numel() >= std::accumulate(shape_list.begin(), shape_list.end(), 1,
-                                   std::multiplies<>())) {
+                                   std::multiplies<int64_t>())) {
       if (tensor_->dl_tensor.ndim != shape_list.size()) {
         tensor_->dl_tensor.ndim = shape_list.size();
         delete[] tensor_->dl_tensor.shape;

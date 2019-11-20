@@ -64,9 +64,6 @@ def create_test(batch_size, seq_length):
     )[f"TestBertIntermediate_{batch_size}_{seq_length:03}"] = TestBertIntermediate
 
 
-# for batch_size in [1, 2]:
-#     for seq_length in [10, 20, 40, 60, 80, 100, 120]:
-#         create_test(batch_size, seq_length)
 create_test(1, 40)
 if __name__ == '__main__':
     unittest.main()
