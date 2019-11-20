@@ -7,7 +7,7 @@ namespace layers {
 
 void SequencePool::operator()(const core::Tensor &input,
                               core::Tensor *output) const {
-  kernels::SeqPool(input, pool_type_, output);
+  kernels::SeqPool<float>(input, pool_type_, output);
 }
 
 }  // namespace layers

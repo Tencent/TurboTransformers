@@ -13,6 +13,7 @@ PoolType GetPoolType(const std::string& pool_type);
 // The input's shape is (batch_size, seq_len, hidden_size)
 // and the output's shape is (batch_size, hidden_size)
 // The pool_type could be max, mean, first, last.
+template <typename T>
 void SeqPool(const core::Tensor& input, PoolType pool_type,
              core::Tensor* output);
 

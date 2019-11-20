@@ -1,35 +1,46 @@
 import unittest
-
-import contexttimer
 import fast_transformers
-import onnxruntime.backend as backend
 import torch
-import torch.jit
-import torch.onnx
+import numpy as np
 
 
-def create_test_seq_pool(batch_size: int, seq_length: int):
+def pooling(input, pool_type):
+    if pool_type == "First":
+        return input[:, 0, :]
+    elif pool_type == "Last":
+        seq_len = input.shape[1]
+        return input[:, seq_len - 1, :]
+    elif pool_type == "Mean":
+        return np.mean(input, axis=1)
+    elif pool_type == "Max":
+        return np.max(input, axis=1)
+    else:
+        raise "{} is not support.".format(pool_type)
+
+
+def create_test_seq_pool(batch_size: int, seq_length: int, pool_type: str):
     class TestSequencePool(unittest.TestCase):
         def setUp(self) -> None:
             torch.set_grad_enabled(False)
             hidden_size = 50
-            self.input = torch.rand(size=(batch_size, seq_length, hidden_size))
-            self.seq_pool = fast_transformers.SequencePool("Mean")
+            self.input = np.random.random(
+                (batch_size, seq_length, hidden_size)).astype("float32")
+            self.seq_pool = fast_transformers.SequencePool(pool_type)
 
         def test_embedding(self):
-            print(self.input)
-            print(self.input.shape)
-            ft_result = self.seq_pool(self.input)
-            print(ft_result)
-            print(ft_result.shape)
+            np_result = pooling(self.input, pool_type)
+            ft_result = self.seq_pool(torch.tensor(self.input))
+            self.assertTrue(
+                np.max(np.abs(np_result - ft_result.numpy())) < 1e-3)
 
     globals(
     )[f"TestSequencePool{batch_size}_{seq_length:03}"] = TestSequencePool
 
 
-for batch_size in [2, 4]:
+for batch_size in [1, 5]:
     for seq_length in [5, 8]:
-        create_test_seq_pool(batch_size, seq_length)
+        for pool_type in ['Mean', 'Max']:
+            create_test_seq_pool(batch_size, seq_length, pool_type)
 
 if __name__ == '__main__':
     unittest.main()

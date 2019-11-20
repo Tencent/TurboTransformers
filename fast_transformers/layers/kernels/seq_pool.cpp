@@ -12,6 +12,8 @@
 namespace fast_transformers {
 namespace layers {
 namespace kernels {
+
+namespace {
 template <typename T>
 struct AvgProcess {
   static inline void InitValue(T* ptr, int64_t len) {
@@ -46,8 +48,6 @@ struct MaxProcess {
   static inline void Finalize(T* ptr, int64_t len, int64_t seq_len) {}
 };
 
-namespace {
-
 template <typename T, typename Process>
 void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   auto batch_size = input.shape(0);
@@ -61,11 +61,12 @@ void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   for (int64_t i = 0; i < batch_size; ++i) {
     T* sub_out_ptr = out_ptr + i * hidden_size;
     Process::InitValue(sub_out_ptr, hidden_size);
+    int64_t stride = i * seq_len * hidden_size;
 #pragma omp simd
     for (int64_t j = 0; j < seq_len; ++j) {
-      const T* sub_in_ptr = in_ptr + i * seq_len * hidden_size + j;
+      const T* sub_in_ptr = in_ptr + stride + j * hidden_size;
 
-      // #pragma omp simd
+      //#pragma omp simd
       for (int64_t k = 0; k < hidden_size; k++) {
         Process::ProcessEle(sub_out_ptr, k, sub_in_ptr[k]);
       }
@@ -96,6 +97,7 @@ void SeqPoolWithIdx(const core::Tensor& input, int64_t idx,
 }
 }  // namespace
 
+template <typename T>
 void SeqPool(const core::Tensor& input, PoolType pool_type,
              core::Tensor* output) {
   FT_ENFORCE_EQ(input.n_dim(), 3,
@@ -106,23 +108,26 @@ void SeqPool(const core::Tensor& input, PoolType pool_type,
   auto seq_len = input.shape(1);
   auto hidden_size = input.shape(2);
 
-  output->Reshape<float>({batch_size, hidden_size});
+  output->Reshape<T>({batch_size, hidden_size});
 
   switch (pool_type) {
     case PoolType::kMax:
-      SeqPoolWithProcess<float, MaxProcess<float>>(input, output);
+      SeqPoolWithProcess<T, MaxProcess<T>>(input, output);
       break;
     case PoolType::kAvg:
-      SeqPoolWithProcess<float, AvgProcess<float>>(input, output);
+      SeqPoolWithProcess<T, AvgProcess<T>>(input, output);
       break;
     case PoolType::kFirst:
-      SeqPoolWithIdx<float>(input, 0, output);
+      SeqPoolWithIdx<T>(input, 0, output);
       break;
     case PoolType::kLast:
-      SeqPoolWithIdx<float>(input, seq_len - 1, output);
+      SeqPoolWithIdx<T>(input, seq_len - 1, output);
       break;
   }
 }
+
+template void SeqPool<float>(const core::Tensor& input, PoolType pool_type,
+                             core::Tensor* output);
 
 PoolType GetPoolType(const std::string& pool_type) {
   static std::unordered_map<std::string, PoolType> pool_type_map(
