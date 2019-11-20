@@ -12,3 +12,7 @@ target_link_libraries(bert_intermediate tensor blas loguru aligned_scratchpad)
 
 add_library(bert_output bert_output.cpp)
 target_link_libraries(bert_output tensor blas loguru enforce activation)
+
+
+add_library(sequence_pool sequence_pool.cpp)
+target_link_libraries(sequence_pool tensor seq_pool)

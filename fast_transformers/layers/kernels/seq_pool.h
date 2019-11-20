@@ -1,5 +1,4 @@
 #pragma once
-#include <stdint.h>
 
 #include "fast_transformers/core/tensor.h"
 
@@ -9,11 +8,13 @@ namespace kernels {
 
 enum PoolType { kMax, kAvg, kFirst, kLast };
 
+PoolType GetPoolType(const std::string& pool_type);
+
 // The input's shape is (batch_size, seq_len, hidden_size)
 // and the output's shape is (batch_size, hidden_size)
 // The pool_type could be max, mean, first, last.
 template <typename T>
-void SeqPool(const core::Tensor& input, const PoolType& pool_type,
+void SeqPool(const core::Tensor& input, PoolType pool_type,
              core::Tensor* output);
 
 }  // namespace kernels
