@@ -39,60 +39,38 @@ def create_test(batch_size, seq_length):
             self.attention_mask = self.attention_mask[:, None, None, :]
             self.attention_mask = (1.0 - self.attention_mask) * -10000.0
 
-            self.head_mask = torch.ones(
-                (batch_size, self.cfg.num_attention_heads, seq_length,
-                 seq_length),
-                dtype=torch.long)
-
-            self.torch_attention(self.input_tensor, self.attention_mask,
-                                 self.head_mask)
+            self.torch_attention(self.input_tensor, self.attention_mask)
             torch.onnx.export(self.torch_attention,
-                              args=(self.input_tensor, self.attention_mask,
-                                    self.head_mask),
+                              args=(self.input_tensor, self.attention_mask),
                               output_names=['out'],
                               f='bert-attn.onnx')
 
             # Get Torch JIT attention
             self.jit_attention = torch.jit.trace(
                 self.torch_attention,
-                example_inputs=(self.input_tensor, self.attention_mask,
-                                self.head_mask))
+                example_inputs=(self.input_tensor, self.attention_mask))
 
             # Prepare the backend
             self.onnxruntime_attention = self.get_onnxruntime_modle(
                 onnx_file="bert-attn.onnx")
 
-        def init_torch_tensors(self):
-            input_tensor = torch.rand(size=(batch_size, seq_length,
-                                            self.cfg.hidden_size),
-                                      dtype=torch.float32)
-            attention_mask = torch.ones((batch_size, seq_length),
-                                        dtype=torch.long)
-            attention_mask = attention_mask[:, None, None, :]
-            attention_mask = (1.0 - attention_mask) * -10000.0
-            head_mask = torch.ones((batch_size, self.cfg.num_attention_heads,
-                                    seq_length, seq_length),
-                                   dtype=torch.long)
-            return input_tensor, attention_mask, head_mask
-
         def test_bertattention(self):
             self.num_iter = 50
             # Torch
-            model = lambda: self.torch_attention(
-                self.input_tensor, self.attention_mask, self.head_mask)
+            model = lambda: self.torch_attention(self.input_tensor, self.
+                                                 attention_mask)
             torch_attention_result = self.run_model("Torch", model)
 
             # Torch JIT
             model = lambda: self.jit_attention(self.input_tensor, self.
-                                               attention_mask, self.head_mask)
+                                               attention_mask)
             with torch.jit.optimized_execution(True):
                 model()
             torch_attention_result = self.run_model("Torch JIT", model)
 
             # ONNX(MKL-DNN)
             onnx_inputs = [
-                t.numpy() for t in
-                [self.input_tensor, self.attention_mask, self.head_mask]
+                t.numpy() for t in [self.input_tensor, self.attention_mask]
             ]
 
             self.onnxruntime_attention.run(inputs=onnx_inputs)
@@ -105,12 +83,12 @@ def create_test(batch_size, seq_length):
             )
 
             ft_self_attention_result = self.ft_attention(
-                self.input_tensor, self.attention_mask, self.head_mask)
+                self.input_tensor, self.attention_mask)
 
             with contexttimer.Timer() as t:
                 for it in range(self.num_iter):
                     ft_self_attention_result = self.ft_attention(
-                        self.input_tensor, self.attention_mask, self.head_mask)
+                        self.input_tensor, self.attention_mask)
             print(
                 f"BertAttention({batch_size}, {seq_length}) BertAttention QPS, {self.num_iter / t.elapsed}, Elapse {t.elapsed / self.num_iter}"
             )

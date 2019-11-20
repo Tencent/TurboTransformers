@@ -34,10 +34,6 @@ class TestBertLayer(unittest.TestCase):
                                          dtype=torch.long)
         self.attention_mask = self.attention_mask[:, None, None, :]
         self.attention_mask = (1.0 - self.attention_mask) * -10000.0
-        self.head_mask = torch.ones(
-            (self.batch_size, self.cfg.num_attention_heads, self.seq_length,
-             self.seq_length),
-            dtype=torch.long)
 
         self.ft_bert_layer = fast_transformers.BertLayer.from_torch(
             self.torch_bert_layer)
@@ -46,22 +42,21 @@ class TestBertLayer(unittest.TestCase):
         self.num_iter = 100
 
         torch_bert_layer_result = self.torch_bert_layer(
-            self.input_tensor, self.attention_mask, self.head_mask)
+            self.input_tensor, self.attention_mask)
         with contexttimer.Timer() as t:
             for it in range(self.num_iter):
                 torch_bert_layer_result = self.torch_bert_layer(
-                    self.input_tensor, self.attention_mask, self.head_mask)
+                    self.input_tensor, self.attention_mask)
 
         print(f"BertLayer Torch QPS, {self.num_iter / t.elapsed}, ",
               f"Time Cost, {t.elapsed / self.num_iter}")
 
         ft_bert_layer_result = self.ft_bert_layer(self.input_tensor,
-                                                  self.attention_mask,
-                                                  self.head_mask)
+                                                  self.attention_mask)
         with contexttimer.Timer() as t:
             for it in range(self.num_iter):
                 ft_bert_layer_result = self.ft_bert_layer(
-                    self.input_tensor, self.attention_mask, self.head_mask)
+                    self.input_tensor, self.attention_mask)
 
         print(
             f"fast_transformer BertLayer Torch QPS, {self.num_iter / t.elapsed}, ",
