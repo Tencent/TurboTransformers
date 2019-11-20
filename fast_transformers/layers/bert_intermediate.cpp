@@ -27,11 +27,12 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
   out_mat.noalias() = (X * W.transpose()).rowwise() + B.transpose();
   auto out_mat_array = out_mat.array();
 
-  out_mat_array = out_mat_array * 0.5f *
-                  (1.0f + (0.7978845608028654f *
-                           (out_mat_array + 0.044715f * out_mat_array *
-                                                out_mat_array * out_mat_array))
-                              .tanh());
+  out_mat_array =
+      out_mat_array * 0.5f *
+      (1.0f + ((0.7978845608028654f + 0.7978845608028654f * 0.044715f *
+                                          out_mat_array * out_mat_array) *
+               out_mat_array)
+                  .tanh());
 }
 
 void BertIntermediate::EnforceShapeAndType() const {
