@@ -23,7 +23,7 @@ struct AvgProcess {
   static inline int ProcessEle(T* ptr, int64_t idx, T ele) { ptr[idx] += ele; }
 
   static inline void Finalize(T* ptr, int64_t len, int64_t seq_len) {
-#pragma omp parallel for
+#pragma omp parallel simd
     for (int64_t i = 0; i < len; ++i) {
       ptr[i] /= seq_len;
     }
@@ -33,7 +33,7 @@ struct AvgProcess {
 template <typename T>
 struct MaxProcess {
   static inline void InitValue(T* ptr, int64_t len) {
-#pragma omp parallel for
+#pragma omp parallel simd
     for (int64_t i = 0; i < len; ++i) {
       ptr[i] = -std::numeric_limits<T>::max();
     }
@@ -63,11 +63,11 @@ static void SeqPoolWithProcess(const core::Tensor& input,
   for (int64_t i = 0; i < batch_size; ++i) {
     T* sub_out_ptr = out_ptr + i * hidden_size;
     Process::InitValue(sub_out_ptr, hidden_size);
-#pragma omp parallel for
+#pragma omp parallel simd
     for (int64_t j = 0; j < seq_len; ++j) {
       const T* sub_in_ptr = in_ptr + i * seq_len * hidden_size + j;
 
-#pragma omp parallel for
+#pragma omp parallel simd
       for (int64_t k = 0; k < hidden_size; k++) {
         Process::ProcessEle(sub_out_ptr, k, sub_in_ptr[k]);
       }
