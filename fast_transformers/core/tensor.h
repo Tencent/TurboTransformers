@@ -80,20 +80,22 @@ class Tensor {
   }
 
   size_t numel() const {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
+    FT_ENFORCE(tensor_, "This tensor is not initialized.");
     return std::accumulate(tensor_->dl_tensor.shape,
                            tensor_->dl_tensor.shape + tensor_->dl_tensor.ndim,
                            1, std::multiplies<int64_t>());
   }
 
-  std::vector<int64_t> Dims() const {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
-    std::vector<int64_t> dims;
-    dims.reserve(tensor_->dl_tensor.ndim);
-    for (size_t i = 0; i < tensor_->dl_tensor.ndim; ++i) {
-      dims.emplace_back(tensor_->dl_tensor.shape[i]);
-    }
-    return dims;
+  int64_t rows() const {
+    FT_ENFORCE(tensor_, "This tensor is not initialized.");
+    FT_ENFORCE_GE(n_dim(), 2, "n_dims() >= 2");
+    return std::accumulate(&shape(0), &shape(0) + n_dim() - 1, 1,
+                           std::multiplies<>());
+  }
+  int64_t cols() const {
+    FT_ENFORCE(tensor_, "This tensor is not initialized.");
+    FT_ENFORCE_GE(n_dim(), 2, "n_dims() >= 2");
+    return shape(n_dim() - 1);
   }
 
   // FIXME(florianzhao): Maybe this func should not be named Reshape.

@@ -28,6 +28,9 @@ static void DLPack_Capsule_Destructor(PyObject *data) {
 }
 
 PYBIND11_MODULE(fast_transformers_cxx, m) {
+  char *argv[] = {strdup("fast_transformers_cxx"), nullptr};
+  int argc = 1;
+  loguru::init(argc, argv);
   m.def("set_stderr_verbose_level",
         [](int v) { loguru::g_stderr_verbosity = v; });
   m.def("enable_gperf", &core::EnableGperf);

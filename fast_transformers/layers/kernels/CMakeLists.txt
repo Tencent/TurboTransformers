@@ -8,7 +8,7 @@ add_library(transpose transpose.cpp)
 target_link_libraries(transpose tensor)
 
 add_library(activation activation.cpp)
-target_link_libraries(activation tensor)
+target_link_libraries(activation eigen-tensor)
 
 add_library(seq_pool seq_pool.cpp)
 target_link_libraries(seq_pool tensor enforce)
