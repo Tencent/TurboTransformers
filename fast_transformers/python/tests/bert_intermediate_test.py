@@ -48,7 +48,7 @@ def create_test(batch_size, seq_length):
             input_tensor = torch.rand(size=(batch_size, seq_length,
                                             hidden_size),
                                       dtype=torch.float32)
-            self.torch_intermediate(input_tensor)
+            torch_result = self.torch_intermediate(input_tensor)
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
                     torch_result = self.torch_intermediate(input_tensor)
@@ -57,19 +57,20 @@ def create_test(batch_size, seq_length):
                 f"BertIntermediate ({batch_size},{seq_length:03}) Torch QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
             )
 
-            self.jit_intermediate(input_tensor)
+            jit_results = self.jit_intermediate(input_tensor)
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
-                    self.jit_intermediate(input_tensor)
+                    jit_results = self.jit_intermediate(input_tensor)
 
             print(
                 f"BertIntermediate ({batch_size},{seq_length:03}) JIT QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
             )
+
             onnx_inputs = [input_tensor.numpy()]
-            self.onnx_intermedia.run(onnx_inputs)
+            onnx_results = self.onnx_intermedia.run(onnx_inputs)
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
-                    self.onnx_intermedia.run(onnx_inputs)
+                    onnx_results = self.onnx_intermedia.run(onnx_inputs)
 
             print(
                 f"BertIntermediate ({batch_size},{seq_length:03}) ONNX QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
@@ -84,15 +85,22 @@ def create_test(batch_size, seq_length):
                 f"BertIntermediate ({batch_size},{seq_length:03}) FastTransform QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
             )
             self.assertTrue(
+                torch.max(torch.abs(torch_result -
+                                    torch.tensor(onnx_results))) < 0.001)
+            self.assertTrue(
+                torch.max(torch.abs(torch_result - jit_results)) < 0.001)
+            self.assertTrue(
                 torch.max(torch.abs(torch_result - ft_result)) < 0.001)
 
     globals(
     )[f"TestBertIntermediate_{batch_size}_{seq_length:03}"] = TestBertIntermediate
 
 
-for batch_size in [1, 2]:
-    for seq_length in [10, 20, 40, 60, 80, 100, 120]:
-        create_test(batch_size, seq_length)
+create_test(1, 32)
+
+# for batch_size in [1, 16]:
+#     for seq_length in [16, 32, 64, 128]:
+#         create_test(batch_size, seq_length)
 
 if __name__ == '__main__':
     unittest.main()
