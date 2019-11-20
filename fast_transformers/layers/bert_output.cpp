@@ -38,8 +38,8 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
   FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
   output_tensor->Reshape<float>({batch_size, seq_length, hidden_size});
 
-  core::cblas_sgemm(
-      core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans, m, n, k, alpha,
+  cblas_sgemm(
+      CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
       hidden_states.data<float>(),
       k,  // (batch_size*seq_length = m, intermediate_size = k)
       dense_weight_.data<float>(), k,

@@ -29,10 +29,9 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
   FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
   output_tensor->Reshape<float>({batch_size, seq_length, intermediate_size});
 
-  core::cblas_sgemm(core::CblasRowMajor, core::CblasNoTrans, core::CblasTrans,
-                    m, n, k, alpha, input_tensor.data<float>(), k,
-                    dense_weight_.data<float>(), k, beta,
-                    output_tensor->mutableData<float>(), n);
+  cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
+              input_tensor.data<float>(), k, dense_weight_.data<float>(), k,
+              beta, output_tensor->mutableData<float>(), n);
 
   kernels::AddBiasGeLUAct(output_tensor->mutableData<float>(),
                           dense_bias_.data<float>(), m, n);
