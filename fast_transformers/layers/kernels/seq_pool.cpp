@@ -65,8 +65,6 @@ void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
 #pragma omp simd
     for (int64_t j = 0; j < seq_len; ++j) {
       const T* sub_in_ptr = in_ptr + stride + j * hidden_size;
-
-      //#pragma omp simd
       for (int64_t k = 0; k < hidden_size; k++) {
         Process::ProcessEle(sub_out_ptr, k, sub_in_ptr[k]);
       }
@@ -87,10 +85,10 @@ void SeqPoolWithIdx(const core::Tensor& input, int64_t idx,
 
   const T* in_ptr = input.data<T>();
   T* out_ptr = output->mutableData<T>();
-
+  int64_t stride = seq_len * hidden_size;
 #pragma omp parallel for
   for (int64_t i = 0; i < batch_size; ++i) {
-    const T* sub_in_ptr = in_ptr + i * seq_len * hidden_size + idx;
+    const T* sub_in_ptr = in_ptr + i * stride + idx * hidden_size;
     T* sub_out_ptr = out_ptr + i * hidden_size;
     std::copy(sub_in_ptr, sub_in_ptr + hidden_size, sub_out_ptr);
   }

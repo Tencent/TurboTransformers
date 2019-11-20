@@ -34,12 +34,12 @@ def create_test_seq_pool(batch_size: int, seq_length: int, pool_type: str):
                 np.max(np.abs(np_result - ft_result.numpy())) < 1e-3)
 
     globals(
-    )[f"TestSequencePool{batch_size}_{seq_length:03}"] = TestSequencePool
+    )[f"TestSequencePool{batch_size}_{seq_length:03}_{pool_type}"] = TestSequencePool
 
 
 for batch_size in [1, 5]:
     for seq_length in [5, 8]:
-        for pool_type in ['Mean', 'Max']:
+        for pool_type in ["Mean", "Max", "First", "Last"]:
             create_test_seq_pool(batch_size, seq_length, pool_type)
 
 if __name__ == '__main__':
