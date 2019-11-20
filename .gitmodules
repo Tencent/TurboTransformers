@@ -13,3 +13,6 @@
 [submodule "3rd/loguru"]
 	path = 3rd/loguru
 	url = https://github.com/emilk/loguru.git
+[submodule "hunter-gate"]
+	path = hunter-gate
+	url = https://github.com/hunter-packages/gate.git

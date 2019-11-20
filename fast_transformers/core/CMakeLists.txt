@@ -40,3 +40,6 @@ add_library(aligned_scratchpad aligned_scratchpad.cpp)
 target_link_libraries(aligned_scratchpad PRIVATE memory enforce)
 add_executable(aligned_scratchpad_test aligned_scratchpad_test.cpp)
 target_link_libraries(aligned_scratchpad_test aligned_scratchpad Catch2)
+
+add_library(eigen-tensor eigen-tensor.cpp)
+target_link_libraries(eigen-tensor PUBLIC tensor Eigen3::Eigen)
