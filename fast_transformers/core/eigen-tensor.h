@@ -8,6 +8,28 @@ namespace core {
 template <int Order>
 using EigenFloatTensor = Eigen::TensorMap<Eigen::Tensor<float, Order>>;
 
+using Vector =
+    Eigen::Matrix<float, Eigen::Dynamic,
+                  1>;  // for vector, row major and col major are same.
+using Matrix =
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+
+inline Eigen::Map<Vector> to_vector(Tensor* t) {
+  return Eigen::Map<Vector>(t->mutableData<float>(), t->numel());
+}
+
+inline const Eigen::Map<Vector> to_vector(const Tensor& t) {
+  return to_vector(const_cast<Tensor*>(&t));
+}
+
+inline Eigen::Map<Matrix> to_mat(Tensor* t) {
+  return Eigen::Map<Matrix>(t->mutableData<float>(), t->rows(), t->cols());
+}
+
+inline const Eigen::Map<Matrix> to_mat(const Tensor& t) {
+  return to_mat(const_cast<Tensor*>(&t));
+}
+
 template <int Order>
 inline EigenFloatTensor<Order> to_tensor(Tensor* t);
 template <int Order>

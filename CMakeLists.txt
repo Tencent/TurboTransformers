@@ -14,7 +14,13 @@ hunter_add_package(Eigen)
 find_package(Eigen3 CONFIG REQUIRED)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
-add_definitions(-DEIGEN_FAST_MATH -DEIGEN_USE_THREADS)
+add_definitions(
+        -DEIGEN_USE_THREADS # support openmp
+        -DEIGEN_USE_MKL_ALL # support mkl
+        -DEIGEN_NO_MALLOC  # if any eigen code needs malloc, just raise a compilation error
+        -DEIGEN_DEFAULT_TO_ROW_MAJOR
+        -DEIGEN_FAST_MATH=1 # fast math for cos/sin/...
+        )
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)

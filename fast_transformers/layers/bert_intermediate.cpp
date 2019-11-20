@@ -4,6 +4,7 @@
 
 #include "fast_transformers/core/aligned_scratchpad.h"
 #include "fast_transformers/core/blas.h"
+#include "fast_transformers/core/eigen-tensor.h"
 #include "fast_transformers/core/memory.h"
 #include "fast_transformers/layers/kernels/activation.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
@@ -13,28 +14,24 @@
 namespace fast_transformers {
 namespace layers {
 
-namespace details {}  // namespace details
-
 void BertIntermediate::operator()(const core::Tensor& input_tensor,
                                   core::Tensor* output_tensor) const {
-  auto intermediate_size = dense_weight_.shape(0);  //[3072, 768]
-  auto hidden_size = dense_weight_.shape(1);
-  auto batch_size = input_tensor.shape(0);
-  auto seq_length = input_tensor.shape(1);
-  auto m = batch_size * seq_length;
-  auto k = hidden_size;
-  auto n = intermediate_size;
-  static constexpr float alpha = 1., beta = 0.;
+  output_tensor->Reshape<float>(
+      {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(0)});
 
-  FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
-  output_tensor->Reshape<float>({batch_size, seq_length, intermediate_size});
+  auto X = core::to_mat(input_tensor);
+  auto W = core::to_mat(dense_weight_);
+  auto B = core::to_vector(dense_bias_);
+  auto out_mat = core::to_mat(output_tensor);
 
-  cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-              input_tensor.data<float>(), k, dense_weight_.data<float>(), k,
-              beta, output_tensor->mutableData<float>(), n);
-  //  kernels::AddBiasGeLUAct(output_tensor->mutableData<float>(),
-  //                          dense_bias_.data<float>(), m, n);
-  kernels::AddBiasGeLUAct(dense_bias_, output_tensor);
+  out_mat.noalias() = (X * W.transpose()).rowwise() + B.transpose();
+  auto out_mat_array = out_mat.array();
+
+  out_mat_array = out_mat_array * 0.5f *
+                  (1.0f + (0.7978845608028654f *
+                           (out_mat_array + 0.044715f * out_mat_array *
+                                                out_mat_array * out_mat_array))
+                              .tanh());
 }
 
 void BertIntermediate::EnforceShapeAndType() const {
