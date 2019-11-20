@@ -12,6 +12,9 @@ project(fast_transformers)
 
 hunter_add_package(Eigen)
 find_package(Eigen3 CONFIG REQUIRED)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
+add_definitions(-DEIGEN_FAST_MATH)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
@@ -57,7 +60,5 @@ if (WITH_PROFILER)
 endif ()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
-add_definitions(-DEIGEN_FAST_MATH)
+
 add_subdirectory(fast_transformers)
