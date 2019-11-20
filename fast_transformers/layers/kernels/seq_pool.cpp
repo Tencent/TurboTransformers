@@ -12,8 +12,6 @@
 namespace fast_transformers {
 namespace layers {
 namespace kernels {
-
-namespace {
 template <typename T>
 struct AvgProcess {
   static inline void InitValue(T* ptr, int64_t len) {
@@ -23,7 +21,7 @@ struct AvgProcess {
   static inline int ProcessEle(T* ptr, int64_t idx, T ele) { ptr[idx] += ele; }
 
   static inline void Finalize(T* ptr, int64_t len, int64_t seq_len) {
-#pragma omp parallel simd
+#pragma omp simd
     for (int64_t i = 0; i < len; ++i) {
       ptr[i] /= seq_len;
     }
@@ -33,7 +31,7 @@ struct AvgProcess {
 template <typename T>
 struct MaxProcess {
   static inline void InitValue(T* ptr, int64_t len) {
-#pragma omp parallel simd
+#pragma omp simd
     for (int64_t i = 0; i < len; ++i) {
       ptr[i] = -std::numeric_limits<T>::max();
     }
@@ -47,11 +45,11 @@ struct MaxProcess {
 
   static inline void Finalize(T* ptr, int64_t len, int64_t seq_len) {}
 };
-}  // namespace
+
+namespace {
 
 template <typename T, typename Process>
-static void SeqPoolWithProcess(const core::Tensor& input,
-                               core::Tensor* output) {
+void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   auto batch_size = input.shape(0);
   auto seq_len = input.shape(1);
   auto hidden_size = input.shape(2);
@@ -63,11 +61,11 @@ static void SeqPoolWithProcess(const core::Tensor& input,
   for (int64_t i = 0; i < batch_size; ++i) {
     T* sub_out_ptr = out_ptr + i * hidden_size;
     Process::InitValue(sub_out_ptr, hidden_size);
-#pragma omp parallel simd
+#pragma omp simd
     for (int64_t j = 0; j < seq_len; ++j) {
       const T* sub_in_ptr = in_ptr + i * seq_len * hidden_size + j;
 
-#pragma omp parallel simd
+      // #pragma omp simd
       for (int64_t k = 0; k < hidden_size; k++) {
         Process::ProcessEle(sub_out_ptr, k, sub_in_ptr[k]);
       }
@@ -78,8 +76,8 @@ static void SeqPoolWithProcess(const core::Tensor& input,
 }
 
 template <typename T>
-static void SeqPoolWithIdx(const core::Tensor& input, int64_t idx,
-                           core::Tensor* output) {
+void SeqPoolWithIdx(const core::Tensor& input, int64_t idx,
+                    core::Tensor* output) {
   auto batch_size = input.shape(0);
   auto seq_len = input.shape(1);
   auto hidden_size = input.shape(2);
@@ -96,8 +94,8 @@ static void SeqPoolWithIdx(const core::Tensor& input, int64_t idx,
     std::copy(sub_in_ptr, sub_in_ptr + hidden_size, sub_out_ptr);
   }
 }
+}  // namespace
 
-template <typename T>
 void SeqPool(const core::Tensor& input, PoolType pool_type,
              core::Tensor* output) {
   FT_ENFORCE_EQ(input.n_dim(), 3,
@@ -108,20 +106,20 @@ void SeqPool(const core::Tensor& input, PoolType pool_type,
   auto seq_len = input.shape(1);
   auto hidden_size = input.shape(2);
 
-  output->Reshape<T>({batch_size, hidden_size});
+  output->Reshape<float>({batch_size, hidden_size});
 
   switch (pool_type) {
     case PoolType::kMax:
-      SeqPoolWithProcess<T, MaxProcess>(input, output);
+      SeqPoolWithProcess<float, MaxProcess<float>>(input, output);
       break;
     case PoolType::kAvg:
-      SeqPoolWithProcess<T, AvgProcess>(input, output);
+      SeqPoolWithProcess<float, AvgProcess<float>>(input, output);
       break;
     case PoolType::kFirst:
-      SeqPoolWithIdx<T>(input, output, 0);
+      SeqPoolWithIdx<float>(input, 0, output);
       break;
     case PoolType::kLast:
-      SeqPoolWithIdx<T>(input, output, seq_len - 1);
+      SeqPoolWithIdx<float>(input, seq_len - 1, output);
       break;
   }
 }
@@ -140,6 +138,7 @@ PoolType GetPoolType(const std::string& pool_type) {
   }
   return iter->second;
 }
+
 }  // namespace kernels
 }  // namespace layers
 }  // namespace fast_transformers
