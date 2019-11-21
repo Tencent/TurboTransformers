@@ -56,7 +56,8 @@ class TestBertLayer(unittest.TestCase):
 
         with fast_transformers.gperf_guard("bert_layer.gperf"):
             ft_bert_layer_result = self.ft_bert_layer(self.input_tensor,
-                                                      self.attention_mask)
+                                                      self.attention_mask,
+                                                      self.head_mask)
         with contexttimer.Timer() as t:
             for it in range(self.num_iter):
                 ft_bert_layer_result = self.ft_bert_layer(
