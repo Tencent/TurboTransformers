@@ -6,6 +6,7 @@
 #include "fast_transformers/layers/bert_embedding.h"
 #include "fast_transformers/layers/bert_intermediate.h"
 #include "fast_transformers/layers/bert_output.h"
+#include "fast_transformers/layers/sequence_pool.h"
 #include "loguru.hpp"
 #include "pybind11/pybind11.h"
 namespace fast_transformers {
@@ -95,6 +96,12 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
             std::move(layer_norm_weight), std::move(layer_norm_bias));
       }))
       .def("__call__", &layers::BertOutput::operator());
+
+  py::class_<layers::SequencePool>(m, "SequencePool")
+      .def(py::init([](const std::string &pool_type) -> layers::SequencePool * {
+        return new layers::SequencePool(pool_type);
+      }))
+      .def("__call__", &layers::SequencePool::operator());
 }
 
 }  // namespace python

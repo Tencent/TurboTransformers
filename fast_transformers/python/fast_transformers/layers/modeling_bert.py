@@ -11,8 +11,12 @@ from transformers.modeling_bert import BertAttention as TorchBertAttention
 from transformers.modeling_bert import BertLayer as TorchBertlayer
 
 __all__ = [
-    'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
-    'BertLayer'
+    'BertEmbeddings',
+    'BertIntermediate',
+    'BertOutput',
+    'BertAttention',
+    'BertLayer',
+    'SequencePool',
 ]
 
 
@@ -179,3 +183,14 @@ class BertLayer:
         return BertLayer(BertAttention.from_torch(layer.attention),
                          BertIntermediate.from_torch(layer.intermediate),
                          BertOutput.from_torch(layer.output))
+
+
+class SequencePool(cxx.SequencePool):
+    def __call__(self,
+                 input_tensor: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 output_tensor: Optional[cxx.Tensor] = None):
+        input_tensor = _try_convert(input_tensor)
+        output_tensor = _create_empty_if_none(output_tensor)
+        super(SequencePool, self).__call__(input_tensor, output_tensor)
+        return convert_returns_as_type(output_tensor, return_type)
