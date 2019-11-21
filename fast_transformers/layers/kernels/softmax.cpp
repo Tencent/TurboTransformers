@@ -29,9 +29,8 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask,
     for (int64_t j = 0; j < N; ++j) {
       sum += qk_buf[i * N + j];
     }
-    core::Blas().sscal_(N, 1.0f / (sum + 1e-6f), &qk_buf[i * N], 1);
+    cblas_sscal(N, 1.0f / (sum + 1e-6f), &qk_buf[i * N], 1);
   }
-}
 #else
 #pragma omp parallel for
   for (int64_t i = 0; i < M; ++i) {
@@ -55,7 +54,7 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask,
     cblas_sscal(N, 1.0f / (sum + g_epsilon), &qk_buf[i * N], 1);
   }
 #endif
+}
 }  // namespace kernels
 }  // namespace layers
-}  // namespace fast_transformers
 }  // namespace fast_transformers

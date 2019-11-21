@@ -50,7 +50,8 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
            })
       .def("n_dim", &core::Tensor::n_dim)
       .def("shape", &core::Tensor::shape)
-      .def("float_data", &core::Tensor::data<float>);
+      .def("float_data", &core::Tensor::data<float>)
+      .def_static("create_empty", [] { return core::Tensor(nullptr); });
 
   py::class_<layers::BERTEmbedding>(m, "BERTEmbedding")
       .def(py::init(
@@ -63,13 +64,7 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
                 std::move(token_type_embeddings), std::move(layer_norm_weights),
                 std::move(layer_norm_bias), dropout_rate);
           }))
-      .def("__call__",
-           [](layers::BERTEmbedding &self, core::Tensor &input_ids,
-              core::Tensor &token_type_ids, core::Tensor &position_ids) {
-             core::Tensor output(nullptr);
-             self(input_ids, token_type_ids, position_ids, &output);
-             return output;
-           });
+      .def("__call__", &layers::BERTEmbedding::operator());
 
   py::class_<layers::BertAttention>(m, "BertAttention")
       .def(py::init([](core::Tensor &qkv_weight, core::Tensor &qkv_bias,
@@ -82,13 +77,7 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
             std::move(dense_bias), std::move(layer_norm_weight),
             std::move(layer_norm_bias), num_attention_heads);
       }))
-      .def("__call__",
-           [](layers::BertAttention &self, core::Tensor &input_tensor,
-              core::Tensor &attention_mask, core::Tensor &head_mask) {
-             core::Tensor output(nullptr);
-             self(input_tensor, attention_mask, head_mask, &output);
-             return output;
-           });
+      .def("__call__", &layers::BertAttention::operator());
 
   py::class_<layers::BertIntermediate>(m, "BertIntermediate")
       .def(py::init([](core::Tensor &dense_weight,
@@ -96,12 +85,7 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
         return new layers::BertIntermediate(std::move(dense_weight),
                                             std::move(dense_bias));
       }))
-      .def("__call__",
-           [](layers::BertIntermediate &self, core::Tensor &input_tensor) {
-             core::Tensor output(nullptr);
-             self(input_tensor, &output);
-             return output;
-           });
+      .def("__call__", &layers::BertIntermediate::operator());
 
   py::class_<layers::BertOutput>(m, "BertOutput")
       .def(py::init([](core::Tensor &dense_weight, core::Tensor &dense_bias,
@@ -111,22 +95,13 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
             std::move(dense_weight), std::move(dense_bias),
             std::move(layer_norm_weight), std::move(layer_norm_bias));
       }))
-      .def("__call__", [](layers::BertOutput &self, core::Tensor &hidden_states,
-                          core::Tensor &input_tensor) {
-        core::Tensor output(nullptr);
-        self(hidden_states, input_tensor, &output);
-        return output;
-      });
+      .def("__call__", &layers::BertOutput::operator());
 
   py::class_<layers::SequencePool>(m, "SequencePool")
       .def(py::init([](const std::string &pool_type) -> layers::SequencePool * {
         return new layers::SequencePool(pool_type);
       }))
-      .def("__call__", [](layers::SequencePool &self, core::Tensor &input) {
-        core::Tensor output(nullptr);
-        self(input, &output);
-        return output;
-      });
+      .def("__call__", &layers::SequencePool::operator());
 }
 
 }  // namespace python

@@ -38,6 +38,10 @@ def _to_param_dict(torch_module: torch.nn.Module):
     }
 
 
+def _create_empty_if_none(output):
+    return output if output is not None else cxx.Tensor.create_empty()
+
+
 AnyTensor = Union[cxx.Tensor, torch.Tensor]
 
 
@@ -46,14 +50,15 @@ class BertEmbeddings(cxx.BERTEmbedding):
                  input_ids: AnyTensor,
                  position_ids: AnyTensor,
                  token_type_ids: AnyTensor,
-                 return_type: Optional[ReturnType] = None):
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None):
         input_ids = _try_convert(input_ids)
         position_ids = _try_convert(position_ids)
         token_type_ids = _try_convert(token_type_ids)
-
-        return convert_returns_as_type(
-            super(BertEmbeddings, self).__call__(input_ids, position_ids,
-                                                 token_type_ids), return_type)
+        output = _create_empty_if_none(output)
+        super(BertEmbeddings, self).__call__(input_ids, position_ids,
+                                             token_type_ids, output)
+        return convert_returns_as_type(output, return_type)
 
     @staticmethod
     def from_torch(bert_embedding: TorchBertEmbeddings) -> 'BertEmbeddings':
@@ -70,10 +75,12 @@ class BertEmbeddings(cxx.BERTEmbedding):
 class BertIntermediate(cxx.BertIntermediate):
     def __call__(self,
                  input_tensor: AnyTensor,
-                 return_type: Optional[ReturnType] = None):
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None):
         input_tensor = _try_convert(input_tensor)
-        return convert_returns_as_type(
-            super(BertIntermediate, self).__call__(input_tensor), return_type)
+        output = _create_empty_if_none(output)
+        super(BertIntermediate, self).__call__(input_tensor, output)
+        return convert_returns_as_type(output, return_type)
 
     @staticmethod
     def from_torch(intermediate: TorchBertIntermediate):
@@ -86,12 +93,14 @@ class BertOutput(cxx.BertOutput):
     def __call__(self,
                  intermediate_output: AnyTensor,
                  attention_output: AnyTensor,
-                 return_type: Optional[ReturnType] = None):
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None):
         intermediate_output = _try_convert(intermediate_output)
         attention_output = _try_convert(attention_output)
-        return convert_returns_as_type(
-            super(BertOutput, self).__call__(intermediate_output,
-                                             attention_output), return_type)
+        output = _create_empty_if_none(output)
+        super(BertOutput, self).__call__(intermediate_output, attention_output,
+                                         output)
+        return convert_returns_as_type(output, return_type)
 
     @staticmethod
     def from_torch(output: TorchBertOutput):
@@ -105,13 +114,15 @@ class BertAttention(cxx.BertAttention):
                  input_tensor: AnyTensor,
                  attention_mask: AnyTensor,
                  head_mask: AnyTensor,
-                 return_type: Optional[ReturnType] = None):
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None):
         input_tensor = _try_convert(input_tensor)
         attention_mask = _try_convert(attention_mask)
         head_mask = _try_convert(head_mask)
-        return convert_returns_as_type(
-            super(BertAttention, self).__call__(input_tensor, attention_mask,
-                                                head_mask), return_type)
+        output = _create_empty_if_none(output)
+        super(BertAttention, self).__call__(input_tensor, attention_mask,
+                                            head_mask, output)
+        return convert_returns_as_type(output, return_type)
 
     @staticmethod
     def from_torch(attention: TorchBertAttention):
@@ -148,17 +159,24 @@ class BertLayer:
                  hidden_states: AnyTensor,
                  attention_mask: AnyTensor,
                  head_mask: AnyTensor,
-                 return_type: Optional[ReturnType] = None):
+                 return_type: Optional[ReturnType] = None,
+                 attention_output: Optional[cxx.Tensor] = None,
+                 intermediate_output: Optional[cxx.Tensor] = None,
+                 output: Optional[cxx.Tensor] = None):
         attention_output = self.attention(
             hidden_states,
             attention_mask,
             head_mask,
-            return_type=ReturnType.FAST_TRANSFORMERS)
+            return_type=ReturnType.FAST_TRANSFORMERS,
+            output=attention_output)
         intermediate_output = self.intermediate(
-            attention_output, return_type=ReturnType.FAST_TRANSFORMERS)
+            attention_output,
+            return_type=ReturnType.FAST_TRANSFORMERS,
+            output=intermediate_output)
         return self.output(intermediate_output,
                            attention_output,
-                           return_type=return_type)
+                           return_type=return_type,
+                           output=output)
 
     @staticmethod
     def from_torch(layer: TorchBertlayer):
@@ -169,8 +187,10 @@ class BertLayer:
 
 class SequencePool(cxx.SequencePool):
     def __call__(self,
-                 input: AnyTensor,
-                 return_type: Optional[ReturnType] = None):
-        input = _try_convert(input)
-        return convert_returns_as_type(
-            super(SequencePool, self).__call__(input), return_type)
+                 input_tensor: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 output_tensor: Optional[cxx.Tensor] = None):
+        input_tensor = _try_convert(input_tensor)
+        output_tensor = _create_empty_if_none(output_tensor)
+        super(SequencePool, self).__call__(input_tensor, output_tensor)
+        return convert_returns_as_type(output_tensor, return_type)
