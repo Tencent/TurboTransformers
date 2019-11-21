@@ -11,3 +11,4 @@ build2
 Testing/*
 *.pyi
 *qps_*.txt
+*.gperf
