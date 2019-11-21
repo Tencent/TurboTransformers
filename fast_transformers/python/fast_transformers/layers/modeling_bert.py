@@ -8,17 +8,13 @@ from transformers.modeling_bert import BertEmbeddings as TorchBertEmbeddings
 from transformers.modeling_bert import BertIntermediate as TorchBertIntermediate
 from transformers.modeling_bert import BertOutput as TorchBertOutput
 from transformers.modeling_bert import BertAttention as TorchBertAttention
-from transformers.modeling_bert import BertLayer as TorchBertlayer
+from transformers.modeling_bert import BertLayer as TorchBertLayer
 from transformers.modeling_bert import BertEncoder as TorchBertEncoder
+from transformers.modeling_bert import BertModel as TorchBertModel
 
 __all__ = [
-    'BertEmbeddings',
-    'BertIntermediate',
-    'BertOutput',
-    'BertAttention',
-    'BertLayer',
-    'BertEncoder',
-    'SequencePool',
+    'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
+    'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel'
 ]
 
 
@@ -177,7 +173,7 @@ class BertLayer:
                            output=output)
 
     @staticmethod
-    def from_torch(layer: TorchBertlayer):
+    def from_torch(layer: TorchBertLayer):
         return BertLayer(BertAttention.from_torch(layer.attention),
                          BertIntermediate.from_torch(layer.intermediate),
                          BertOutput.from_torch(layer.output))
@@ -230,3 +226,56 @@ class SequencePool(cxx.SequencePool):
         output_tensor = _create_empty_if_none(output_tensor)
         super(SequencePool, self).__call__(input_tensor, output_tensor)
         return convert_returns_as_type(output_tensor, return_type)
+
+
+class BertModel:
+    def __init__(self, embeddings: BertEmbeddings, encoder: BertEncoder,
+                 seq_pool: SequencePool):
+        self.embeddings = embeddings
+        self.encoder = encoder
+        self.seq_pool = seq_pool
+        self.prepare = cxx.PrepareBertMasks()
+
+    def __call__(self,
+                 inputs: AnyTensor,
+                 attention_masks: Optional[AnyTensor] = None,
+                 token_type_ids: Optional[AnyTensor] = None,
+                 position_ids: Optional[AnyTensor] = None,
+                 hidden_cache: Optional[AnyTensor] = None,
+                 output: Optional[AnyTensor] = None,
+                 return_type: Optional[ReturnType] = None):
+        attention_masks = _try_convert(_create_empty_if_none(attention_masks))
+        token_type_ids = _try_convert(_create_empty_if_none(token_type_ids))
+        position_ids = _try_convert(_create_empty_if_none(position_ids))
+        inputs = _try_convert(inputs)
+        extended_attention_masks = cxx.Tensor.create_empty()
+        output = _create_empty_if_none(output)
+        hidden_cache = _create_empty_if_none(hidden_cache)
+
+        self.prepare(inputs, attention_masks, token_type_ids, position_ids,
+                     extended_attention_masks)
+
+        hidden_cache = self.embeddings(
+            inputs,
+            position_ids=position_ids,
+            token_type_ids=token_type_ids,
+            output=hidden_cache,
+            return_type=ReturnType.FAST_TRANSFORMERS)
+
+        hidden_cache = self.encoder(hidden_states=hidden_cache,
+                                    attention_mask=extended_attention_masks,
+                                    return_type=ReturnType.FAST_TRANSFORMERS,
+                                    output=hidden_cache)
+
+        return self.seq_pool(hidden_cache,
+                             return_type=return_type,
+                             output_tensor=output)
+
+    @staticmethod
+    def from_torch(model: TorchBertModel, pooling_type=None):
+        embeddings = BertEmbeddings.from_torch(model.embeddings)
+        encoder = BertEncoder.from_torch(model.encoder)
+        if pooling_type is None:
+            pooling_type = 'First'
+        seq_pool = SequencePool(pooling_type)
+        return BertModel(embeddings, encoder, seq_pool)

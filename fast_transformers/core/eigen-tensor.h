@@ -5,8 +5,8 @@
 namespace fast_transformers {
 namespace core {
 
-template <int Order>
-using EigenFloatTensor = Eigen::TensorMap<Eigen::Tensor<float, Order>>;
+template <int Order, typename T>
+using EigenTensor = Eigen::TensorMap<Eigen::Tensor<T, Order>>;
 
 using Vector =
     Eigen::Matrix<float, Eigen::Dynamic,
@@ -32,45 +32,64 @@ inline const Eigen::Map<Matrix, Eigen::Aligned64> to_mat(const Tensor& t) {
   return to_mat(const_cast<Tensor*>(&t));
 }
 
-template <int Order>
-inline EigenFloatTensor<Order> to_tensor(Tensor* t);
-template <int Order>
-inline const EigenFloatTensor<Order> to_tensor(const Tensor& t) {
-  auto* t_ptr = const_cast<Tensor*>(&t);
-  return to_tensor<Order>(t_ptr);
-}
+namespace details {
+template <int Order, typename T>
+struct ToTensorImpl {
+  EigenTensor<Order, T> operator()(Tensor* t) const;
+};
 
-template <>
-inline EigenFloatTensor<0> to_tensor<0>(Tensor* t) {
-  FT_ENFORCE_EQ(t->numel(), 1, "0 dim tensor must contains 1 elems");
-  return EigenFloatTensor<0>(t->mutableData<float>());
-}
+template <typename T>
+struct ToTensorImpl<0, T> {
+  EigenTensor<0, T> operator()(Tensor* t) const {
+    FT_ENFORCE_EQ(t->numel(), 1, "0 dim tensor must contains 1 elems");
+    return EigenTensor<0, T>(t->mutableData<T>());
+  }
+};
 
-template <>
-inline EigenFloatTensor<1> to_tensor<1>(Tensor* t) {
-  return EigenFloatTensor<1>(t->mutableData<float>(), (int)t->numel());
-}
+template <typename T>
+struct ToTensorImpl<1, T> {
+  inline EigenTensor<1, T> operator()(Tensor* t) {
+    return EigenTensor<1, T>(t->mutableData<T>(), (int)t->numel());
+  }
+};
 
-template <>
-inline EigenFloatTensor<2> to_tensor<2>(Tensor* t) {
-  FT_ENFORCE_EQ(t->n_dim(), 2, "must be matrix");
-  return EigenFloatTensor<2>(t->mutableData<float>(), (int)t->shape(0),
+template <typename T>
+struct ToTensorImpl<2, T> {
+  inline EigenTensor<2, T> operator()(Tensor* t) {
+    FT_ENFORCE_EQ(t->n_dim(), 2, "must be matrix");
+    return EigenTensor<2, T>(t->mutableData<T>(), (int)t->shape(0),
                              (int)t->shape(1));
-}
-
-template <>
-inline EigenFloatTensor<3> to_tensor<3>(Tensor* t) {
-  FT_ENFORCE_EQ(t->n_dim(), 3, "n_dim should be 3");
-  return EigenFloatTensor<3>(t->mutableData<float>(), (int)t->shape(0),
+  }
+};
+template <typename T>
+struct ToTensorImpl<3, T> {
+  inline EigenTensor<3, T> operator()(Tensor* t) {
+    FT_ENFORCE_EQ(t->n_dim(), 3, "n_dim should be 3");
+    return EigenTensor<3, T>(t->mutableData<T>(), (int)t->shape(0),
                              (int)t->shape(1), (int)t->shape(2));
-}
+  }
+};
 
-template <>
-inline EigenFloatTensor<4> to_tensor<4>(Tensor* t) {
-  FT_ENFORCE_EQ(t->n_dim(), 4, "n_dim should be 4");
-  return EigenFloatTensor<4>(t->mutableData<float>(), (int)t->shape(0),
+template <typename T>
+struct ToTensorImpl<4, T> {
+  inline EigenTensor<4, T> operator()(Tensor* t) {
+    FT_ENFORCE_EQ(t->n_dim(), 4, "n_dim should be 4");
+    return EigenTensor<4, T>(t->mutableData<T>(), (int)t->shape(0),
                              (int)t->shape(1), (int)t->shape(2),
                              (int)t->shape(3));
+  }
+};
+
+}  // namespace details
+
+template <int Order, typename T>
+inline EigenTensor<Order, T> to_tensor(Tensor* t) {
+  return details::ToTensorImpl<Order, T>()(t);
+}
+template <int Order, typename T>
+inline const EigenTensor<Order, T> to_tensor(const Tensor& t) {
+  auto* t_ptr = const_cast<Tensor*>(&t);
+  return to_tensor<Order, T>(t_ptr);
 }
 
 extern Eigen::ThreadPoolDevice& CPUDevice();

@@ -1,4 +1,5 @@
-from .modeling_bert import BertEmbeddings, BertIntermediate, BertOutput, BertAttention, BertLayer, SequencePool, BertEncoder
+from .modeling_bert import BertEmbeddings, BertIntermediate, BertOutput, BertAttention, BertLayer, SequencePool, \
+    BertEncoder, BertModel
 from .return_type import ReturnType
 
 __all__ = [
@@ -8,6 +9,7 @@ __all__ = [
     'BertAttention',
     'BertLayer',
     'BertEncoder',
+    'BertModel',
     'ReturnType',
     'SequencePool',
 ]
