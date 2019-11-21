@@ -29,8 +29,8 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
 
   out_mat_array =
       out_mat_array * 0.5f *
-      (1.0f + ((0.7978845608028654f + 0.7978845608028654f * 0.044715f *
-                                          out_mat_array * out_mat_array) *
+      (1.0f + ((0.7978845608028654f +
+                0.7978845608028654f * 0.044715f * out_mat_array.square()) *
                out_mat_array)
                   .tanh());
 }
