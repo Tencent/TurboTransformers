@@ -4,7 +4,6 @@ import contexttimer
 import torch
 import torch.jit
 import torch.onnx
-import torch.utils.dlpack as dlpack
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertLayer
 
@@ -23,8 +22,8 @@ class TestBertLayer(unittest.TestCase):
         self.torch_bert_layer = BertLayer(self.cfg)
         self.torch_bert_layer.eval()
 
-        self.batch_size = 20
-        self.seq_length = 40
+        self.batch_size = 1
+        self.seq_length = 400
         self.hidden_size = self.cfg.hidden_size
         self.input_tensor = torch.rand(size=(self.batch_size, self.seq_length,
                                              self.hidden_size),
@@ -43,7 +42,7 @@ class TestBertLayer(unittest.TestCase):
             self.torch_bert_layer)
 
     def test_bert_layer(self):
-        self.num_iter = 100
+        self.num_iter = 10
 
         torch_bert_layer_result = self.torch_bert_layer(
             self.input_tensor, self.attention_mask, self.head_mask)
@@ -55,9 +54,10 @@ class TestBertLayer(unittest.TestCase):
         print(f"BertLayer Torch QPS, {self.num_iter / t.elapsed}, ",
               f"Time Cost, {t.elapsed / self.num_iter}")
 
-        ft_bert_layer_result = self.ft_bert_layer(self.input_tensor,
-                                                  self.attention_mask,
-                                                  self.head_mask)
+        with fast_transformers.gperf_guard("bert_layer.gperf"):
+            ft_bert_layer_result = self.ft_bert_layer(self.input_tensor,
+                                                      self.attention_mask,
+                                                      self.head_mask)
         with contexttimer.Timer() as t:
             for it in range(self.num_iter):
                 ft_bert_layer_result = self.ft_bert_layer(
