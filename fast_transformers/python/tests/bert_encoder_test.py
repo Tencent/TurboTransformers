@@ -24,7 +24,7 @@ class TestBertEncoder(unittest.TestCase):
         self.torch_encoder_layer = BertEncoder(self.cfg)
         self.torch_encoder_layer.eval()
 
-        self.batch_size = 20
+        self.batch_size = 1
         self.seq_length = 40
         self.hidden_size = self.cfg.hidden_size
         self.input_tensor = torch.rand(size=(self.batch_size, self.seq_length,
@@ -55,7 +55,7 @@ class TestBertEncoder(unittest.TestCase):
         ft_bert_layer_result = self.ft_bert_encoder(self.input_tensor,
                                                     self.attention_mask)
         print(
-            f"fast_transformer BertLayer Torch QPS, {self.num_iter / t.elapsed}, ",
+            f"fast_transformer BertEncoder Torch QPS, {self.num_iter / t.elapsed}, ",
             f"Time Cost, {t.elapsed / self.num_iter}")
 
         torch_bert_layer_result = self.torch_encoder_layer(
@@ -67,7 +67,7 @@ class TestBertEncoder(unittest.TestCase):
                     self.input_tensor, self.attention_mask,
                     [None] * self.cfg.num_hidden_layers)
 
-        print(f"BertLayer Torch QPS, {self.num_iter / t.elapsed}, ",
+        print(f"BertEncoder Torch QPS, {self.num_iter / t.elapsed}, ",
               f"Time Cost, {t.elapsed / self.num_iter}")
 
         diff = torch.abs(torch_bert_layer_result[0] - ft_bert_layer_result)
