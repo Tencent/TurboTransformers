@@ -9,3 +9,4 @@ tmp
 build2
 .git
 *.pyc
+*.gperf
