@@ -35,7 +35,7 @@ struct MaxProcess {
   static void InitValue(T* ptr, int64_t len) {
 #pragma omp simd
     for (int64_t i = 0; i < len; ++i) {
-      ptr[i] = -std::numeric_limits<T>::max();
+      ptr[i] = std::numeric_limits<T>::lowest();
     }
   }
 
