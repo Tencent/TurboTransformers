@@ -13,7 +13,7 @@ from transformers.modeling_bert import BertEncoder as TorchBertEncoder
 
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
-    'BertLayer'
+    'BertLayer', 'BertEncoder'
 ]
 
 
@@ -192,17 +192,24 @@ class BertEncoder:
         attention_output = _create_empty_if_none(attention_output)
         intermediate_output = _create_empty_if_none(intermediate_output)
         output = _create_empty_if_none(output)
+        first = True
         for l in self.layer:
-            l(hidden_states=hidden_states,
-              attention_mask=attention_mask,
-              return_type=ReturnType.FAST_TRANSFORMERS,
-              attention_output=attention_output,
-              intermediate_output=intermediate_output,
-              output=output)
+            if first:
+                input_states = hidden_states
+                first = False
+            else:
+                input_states = output
+
+            output = l(hidden_states=input_states,
+                       attention_mask=attention_mask,
+                       return_type=ReturnType.FAST_TRANSFORMERS,
+                       attention_output=attention_output,
+                       intermediate_output=intermediate_output,
+                       output=output)
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
-    def from_troch(encoder: TorchBertEncoder):
+    def from_torch(encoder: TorchBertEncoder):
         layer = [
             BertLayer.from_torch(bert_layer) for bert_layer in encoder.layer
         ]
