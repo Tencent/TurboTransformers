@@ -8,7 +8,7 @@ add_library(bert_attention bert_attention.cpp)
 target_link_libraries(bert_attention tensor blas loguru enforce softmax transpose)
 
 add_library(bert_intermediate bert_intermediate.cpp)
-target_link_libraries(bert_intermediate tensor blas loguru aligned_scratchpad)
+target_link_libraries(bert_intermediate tensor blas loguru aligned_scratchpad Eigen3::Eigen)
 
 add_library(bert_output bert_output.cpp)
 target_link_libraries(bert_output tensor blas loguru enforce activation)

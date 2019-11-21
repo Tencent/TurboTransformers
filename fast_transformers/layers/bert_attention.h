@@ -25,7 +25,7 @@ class BertAttention {
 
   void operator()(const core::Tensor &input_tensor,
                   const core::Tensor &attention_mask,
-                  const core::Tensor &head_mask, core::Tensor *output) const;
+                  core::Tensor *output) const;
 
  private:
   core::Tensor qkv_weight_;
