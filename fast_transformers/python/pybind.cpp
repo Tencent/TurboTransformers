@@ -1,5 +1,6 @@
 #include "absl/memory/memory.h"
 #include "fast_transformers/core/blas.h"
+#include "fast_transformers/core/eigen-tensor.h"
 #include "fast_transformers/core/profiler.h"
 #include "fast_transformers/core/tensor.h"
 #include "fast_transformers/layers/bert_attention.h"
@@ -31,6 +32,8 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
   char *argv[] = {strdup("fast_transformers_cxx"), nullptr};
   int argc = 1;
   loguru::init(argc, argv);
+  Eigen::initParallel();
+
   m.def("set_stderr_verbose_level",
         [](int v) { loguru::g_stderr_verbosity = v; });
   m.def("enable_gperf", &core::EnableGperf);

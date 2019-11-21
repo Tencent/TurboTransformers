@@ -34,7 +34,6 @@ static void matmul(bool TransA, bool TransB, BlasInt m, BlasInt n, BlasInt k,
 
 void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
-                               const core::Tensor& head_mask,
                                core::Tensor* output) const {
   FT_ENFORCE_EQ(input_tensor.n_dim(), 3,
                 "The input ids should be a matrix with shape [BatchSize, "

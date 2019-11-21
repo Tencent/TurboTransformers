@@ -1,5 +1,5 @@
 import fast_transformers.fast_transformers_cxx as cxx
-from typing import Union, Optional
+from typing import Union, Optional, Sequence
 import torch
 from .return_type import convert_returns_as_type, ReturnType
 import torch.utils.dlpack as dlpack
@@ -9,6 +9,7 @@ from transformers.modeling_bert import BertIntermediate as TorchBertIntermediate
 from transformers.modeling_bert import BertOutput as TorchBertOutput
 from transformers.modeling_bert import BertAttention as TorchBertAttention
 from transformers.modeling_bert import BertLayer as TorchBertlayer
+from transformers.modeling_bert import BertEncoder as TorchBertEncoder
 
 __all__ = [
     'BertEmbeddings',
@@ -16,6 +17,7 @@ __all__ = [
     'BertOutput',
     'BertAttention',
     'BertLayer',
+    'BertEncoder',
     'SequencePool',
 ]
 
@@ -113,15 +115,13 @@ class BertAttention(cxx.BertAttention):
     def __call__(self,
                  input_tensor: AnyTensor,
                  attention_mask: AnyTensor,
-                 head_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None):
         input_tensor = _try_convert(input_tensor)
         attention_mask = _try_convert(attention_mask)
-        head_mask = _try_convert(head_mask)
         output = _create_empty_if_none(output)
         super(BertAttention, self).__call__(input_tensor, attention_mask,
-                                            head_mask, output)
+                                            output)
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
@@ -158,7 +158,6 @@ class BertLayer:
     def __call__(self,
                  hidden_states: AnyTensor,
                  attention_mask: AnyTensor,
-                 head_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
                  attention_output: Optional[cxx.Tensor] = None,
                  intermediate_output: Optional[cxx.Tensor] = None,
@@ -166,7 +165,6 @@ class BertLayer:
         attention_output = self.attention(
             hidden_states,
             attention_mask,
-            head_mask,
             return_type=ReturnType.FAST_TRANSFORMERS,
             output=attention_output)
         intermediate_output = self.intermediate(
@@ -183,6 +181,44 @@ class BertLayer:
         return BertLayer(BertAttention.from_torch(layer.attention),
                          BertIntermediate.from_torch(layer.intermediate),
                          BertOutput.from_torch(layer.output))
+
+
+class BertEncoder:
+    def __init__(self, layer: Sequence[BertLayer]):
+        self.layer = layer
+
+    def __call__(self,
+                 hidden_states: AnyTensor,
+                 attention_mask: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 attention_output: Optional[cxx.Tensor] = None,
+                 intermediate_output: Optional[cxx.Tensor] = None,
+                 output: Optional[cxx.Tensor] = None):
+        attention_output = _create_empty_if_none(attention_output)
+        intermediate_output = _create_empty_if_none(intermediate_output)
+        output = _create_empty_if_none(output)
+        first = True
+        for l in self.layer:
+            if first:
+                input_states = hidden_states
+                first = False
+            else:
+                input_states = output
+
+            output = l(hidden_states=input_states,
+                       attention_mask=attention_mask,
+                       return_type=ReturnType.FAST_TRANSFORMERS,
+                       attention_output=attention_output,
+                       intermediate_output=intermediate_output,
+                       output=output)
+        return convert_returns_as_type(output, return_type)
+
+    @staticmethod
+    def from_torch(encoder: TorchBertEncoder):
+        layer = [
+            BertLayer.from_torch(bert_layer) for bert_layer in encoder.layer
+        ]
+        return BertEncoder(layer)
 
 
 class SequencePool(cxx.SequencePool):

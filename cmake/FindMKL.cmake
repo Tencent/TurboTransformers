@@ -34,7 +34,7 @@ if (MKL_INCLUDE_DIRS AND MKL_LIBRARIES AND MKL_INTERFACE_LIBRARY AND
   set (MKL_FIND_QUIETLY TRUE)
 endif()
 
-set(INT_LIB "libmkl_intel_ilp64.a")
+set(INT_LIB "libmkl_intel_lp64.a")
 set(SEQ_LIB "libmkl_sequential.a")
 set(THR_LIB "libmkl_intel_thread.a")
 set(COR_LIB "libmkl_core.a")
@@ -78,8 +78,8 @@ if (MKL_INCLUDE_DIR AND
       set(ABI "-m64")
     endif()
 
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMKL_ILP64 ${ABI}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMKL_ILP64 ${ABI}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ABI}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ABI}")
 
 else()
 
