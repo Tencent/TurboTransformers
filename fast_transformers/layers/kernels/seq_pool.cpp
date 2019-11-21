@@ -16,13 +16,13 @@ namespace kernels {
 namespace {
 template <typename T>
 struct AvgProcess {
-  static inline void InitValue(T* ptr, int64_t len) {
+  static void InitValue(T* ptr, int64_t len) {
     memset(ptr, 0, len * sizeof(T));
   }
 
-  static inline int ProcessEle(T* ptr, int64_t idx, T ele) { ptr[idx] += ele; }
+  static int ProcessEle(T* ptr, int64_t idx, T ele) { ptr[idx] += ele; }
 
-  static inline void Finalize(T* ptr, int64_t len, int64_t seq_len) {
+  static void Finalize(T* ptr, int64_t len, int64_t seq_len) {
 #pragma omp simd
     for (int64_t i = 0; i < len; ++i) {
       ptr[i] /= seq_len;
@@ -32,20 +32,20 @@ struct AvgProcess {
 
 template <typename T>
 struct MaxProcess {
-  static inline void InitValue(T* ptr, int64_t len) {
+  static void InitValue(T* ptr, int64_t len) {
 #pragma omp simd
     for (int64_t i = 0; i < len; ++i) {
       ptr[i] = -std::numeric_limits<T>::max();
     }
   }
 
-  static inline int ProcessEle(T* ptr, int64_t idx, T ele) {
+  static int ProcessEle(T* ptr, int64_t idx, T ele) {
     if (ptr[idx] < ele) {
       ptr[idx] = ele;
     }
   }
 
-  static inline void Finalize(T* ptr, int64_t len, int64_t seq_len) {}
+  static void Finalize(T* ptr, int64_t len, int64_t seq_len) {}
 };
 
 template <typename T, typename Process>
@@ -134,11 +134,10 @@ PoolType GetPoolType(const std::string& pool_type) {
        {"Mean", PoolType::kAvg},
        {"Max", PoolType::kMax}});
   auto iter = pool_type_map.find(pool_type);
-  if (iter == pool_type_map.end()) {
-    FT_THROW(
-        "The input pool_type(%s) is not int ['First', 'Last', 'Mean', 'Max'].",
-        pool_type);
-  }
+  FT_ENFORCE_NE(
+      iter, pool_type_map.end(),
+      "The input pool_type(%s) is not int ['First', 'Last', 'Mean', 'Max'].",
+      pool_type);
   return iter->second;
 }
 

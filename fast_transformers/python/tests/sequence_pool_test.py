@@ -27,7 +27,7 @@ def create_test_seq_pool(batch_size: int, seq_length: int, pool_type: str):
                 (batch_size, seq_length, hidden_size)).astype("float32")
             self.seq_pool = fast_transformers.SequencePool(pool_type)
 
-        def test_embedding(self):
+        def test_seq_pool(self):
             np_result = pooling(self.input, pool_type)
             ft_result = self.seq_pool(torch.tensor(self.input))
             self.assertTrue(
