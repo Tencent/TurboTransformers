@@ -14,25 +14,39 @@
 namespace fast_transformers {
 namespace layers {
 
+static void Matmul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
+                   bool b_trans, float alpha, core::Tensor* out, float beta) {
+  int a_rows = A.rows();
+  int a_cols = A.cols();
+  int b_rows = B.rows();
+  int b_cols = B.cols();
+
+  int M = a_trans ? a_cols : a_rows;
+  int N = b_trans ? b_rows : b_cols;
+
+  int K_a = a_trans ? a_rows : a_cols;
+  int K_b = b_trans ? b_cols : b_rows;
+  FT_ENFORCE_EQ(K_a, K_b, "matrix shape mismatch");
+
+  CBLAS_TRANSPOSE transA = a_trans ? CblasTrans : CblasNoTrans;
+  CBLAS_TRANSPOSE transB = b_trans ? CblasTrans : CblasNoTrans;
+
+  int lda = (transA == CblasNoTrans) ? K_a : M;
+  int ldb = (transB == CblasNoTrans) ? N : K_a;
+  int ldc = N;
+
+  cblas_sgemm(CblasRowMajor, transA, transB, M, N, K_a, alpha, A.data<float>(),
+              lda, B.data<float>(), ldb, beta, out->mutableData<float>(), ldc);
+}
+
 void BertIntermediate::operator()(const core::Tensor& input_tensor,
                                   core::Tensor* output_tensor) const {
   output_tensor->Reshape<float>(
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(0)});
-
-  auto X = core::to_mat(input_tensor);
-  auto W = core::to_mat(dense_weight_);
-  auto B = core::to_vector(dense_bias_);
-  auto out_mat = core::to_mat(output_tensor);
-
-  out_mat.noalias() = (X * W.transpose()).rowwise() + B.transpose();
-  auto out_mat_array = out_mat.array();
-
-  out_mat_array =
-      out_mat_array * 0.5f *
-      (1.0f + ((0.7978845608028654f +
-                0.7978845608028654f * 0.044715f * out_mat_array.square()) *
-               out_mat_array)
-                  .tanh());
+  Matmul(input_tensor, false, dense_weight_, true, 1.0, output_tensor, 0.0);
+  kernels::AddBiasGeLUAct(output_tensor->mutableData<float>(),
+                          dense_bias_.data<float>(), output_tensor->rows(),
+                          output_tensor->cols());
 }
 
 void BertIntermediate::EnforceShapeAndType() const {

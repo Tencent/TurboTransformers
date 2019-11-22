@@ -93,6 +93,5 @@ inline const EigenTensor<Order, T> to_tensor(const Tensor& t) {
 }
 
 extern Eigen::ThreadPoolDevice& CPUDevice();
-
 }  // namespace core
 }  // namespace fast_transformers
