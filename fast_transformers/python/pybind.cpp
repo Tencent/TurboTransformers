@@ -7,6 +7,7 @@
 #include "fast_transformers/layers/bert_embedding.h"
 #include "fast_transformers/layers/bert_intermediate.h"
 #include "fast_transformers/layers/bert_output.h"
+#include "fast_transformers/layers/prepare_bert_masks.h"
 #include "fast_transformers/layers/sequence_pool.h"
 #include "loguru.hpp"
 #include "pybind11/pybind11.h"
@@ -105,6 +106,10 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
         return new layers::SequencePool(pool_type);
       }))
       .def("__call__", &layers::SequencePool::operator());
+
+  py::class_<layers::PrepareBertMasks>(m, "PrepareBertMasks")
+      .def(py::init())
+      .def("__call__", &layers::PrepareBertMasks::operator());
 }
 
 }  // namespace python

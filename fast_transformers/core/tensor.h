@@ -135,6 +135,7 @@ class Tensor {
     FT_ENFORCE(tensor_, "This tensor is not initialized.)");
     return tensor_->dl_tensor.ctx.device_type;
   }
+  bool is_null() const { return tensor_ == nullptr; }
 
   template <typename T>
   void Print(std::ostream &os) const {
