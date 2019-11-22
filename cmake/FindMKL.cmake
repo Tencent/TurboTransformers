@@ -66,7 +66,16 @@ set(MKL_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
 set(MKL_LIBRARIES ${MKL_INTERFACE_LIBRARY} ${MKL_THREADS_LIBRARY} ${MKL_CORE_LIBRARY})
 
 if (NOT APPLE)
-    set(MKL_LIBRARIES ${MKL_LIBRARIES} -liomp5)
+    find_library(IOMP_LIBRARY
+            NAMES libiomp5.a
+            PATHS ${MKLROOT}/lib
+                   ${MKLROOT}/lib/intel64
+                   ${MKLROOT}/../lib
+                   ${MKLROOT}/../lib/intel64
+            NO_DEFAULT_PATH)
+
+    set(MKL_LIBRARIES ${MKL_LIBRARIES} ${IOMP_LIBRARY})
+    message(STATUS ${IOMP_LIBRARY})
 endif ()
 
 
