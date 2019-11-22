@@ -37,23 +37,17 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
   char *argv[] = {strdup("fast_transformers_cxx"), nullptr};
   int argc = 1;
   loguru::init(argc, argv);
-  Eigen::setNbThreads(0);
-  Eigen::initParallel();
-  // do not let mkl create/destroy thread dynamically
-  mkl_set_dynamic(false);
 
   m.def("set_stderr_verbose_level",
         [](int v) { loguru::g_stderr_verbosity = v; });
   m.def("enable_gperf", &core::EnableGperf);
   m.def("disable_gperf", &core::DisableGperf);
   m.def("set_num_threads", [](int n_th) {
+    // The order seems important. Set MKL NUM_THREADS before OMP.
+    mkl_set_num_threads(n_th);
 #ifdef _OPENMP
     omp_set_num_threads(n_th);
 #endif
-    Eigen::setNbThreads(n_th);
-    mkl_set_num_threads(n_th);
-    // mkl should not adjust openmp num thread.
-    mkl_set_dynamic(false);
   });
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",

@@ -8,7 +8,7 @@ NUM_THREADS=(1 2 4 8)
 FRAMEWORKS=("torch" "torch_jit" "fast-transformers" "onnxruntime-cpu" "onnxruntime-mkldnn")
 SEQ_LEN=(10 20 40 60 80 120)
 BATCH_SIZE=(1 2)
-N=20
+N=30
 MODEL="bert-base-chinese"
 for n_th in ${NUM_THREADS[*]}
 do
