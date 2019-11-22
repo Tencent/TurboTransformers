@@ -22,27 +22,25 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
   if (seq_type->is_null()) {
     // seq_type.zeros_like(inputs)
     seq_type->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)});
-    core::to_tensor<2, int64_t>(seq_type).setZero();
+
+    std::memset(seq_type->mutableData<int64_t>(), 0,
+                sizeof(int64_t) * seq_type->numel());
   }
 
   if (att_mask->is_null()) {
     att_mask->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)});
-    core::to_tensor<2, int64_t>(att_mask).setConstant(1);
+    std::fill(att_mask->mutableData<int64_t>(),
+              att_mask->mutableData<int64_t>() + att_mask->numel(), 1);
   }
 
   // cast att_mask to float
   extended_attention_mask->Reshape<float>(
       {att_mask->shape(0), 1, 1, att_mask->shape(1)});
 
-  auto att_mask_tensor = core::to_tensor<2, int64_t>(att_mask);
-  auto extended_attention_mask_tensor =
-      core::to_tensor<4, float>(extended_attention_mask);
-
-  extended_attention_mask_tensor.device(core::CPUDevice()) =
-      (1 - att_mask_tensor.reshape(Eigen::array<int, 4>{
-               (int)att_mask->shape(0), 1, 1, (int)att_mask->shape(1)}))
-          .cast<float>() *
-      (-10000.0f);
+  std::transform(att_mask->data<int64_t>(),
+                 att_mask->data<int64_t>() + att_mask->numel(),
+                 extended_attention_mask->mutableData<float>(),
+                 [](int64_t v) { return -10000.0f * (1 - v); });
 }
 }  // namespace layers
 }  // namespace fast_transformers

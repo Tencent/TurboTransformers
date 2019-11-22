@@ -1,7 +1,8 @@
 import fast_transformers.fast_transformers_cxx as cxx
 import contextlib
+from fast_transformers.fast_transformers_cxx import set_num_threads
 
-__all__ = ['gperf_guard']
+__all__ = ['gperf_guard', 'set_num_threads']
 
 
 @contextlib.contextmanager

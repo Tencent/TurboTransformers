@@ -24,9 +24,8 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
     import transformers
     import contexttimer
     import fast_transformers
-    import os
-    os.environ['OMP_NUM_THREADS'] = str(num_threads)
-    os.environ['MKL_NUM_THREADS'] = str(num_threads)
+    import cProfile
+    fast_transformers.set_num_threads(num_threads)
 
     model = transformers.BertModel.from_pretrained(
         model)  # type: transformers.BertModel
@@ -36,6 +35,19 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
                               size=(batch_size, seq_len),
                               dtype=torch.long)
     model = fast_transformers.BertModel.from_torch(model)
+
+    with fast_transformers.gperf_guard(
+            f"ft_{batch_size}_{seq_len}_{num_threads}.gperf"):
+        model(input_ids)
+
+    py_profile = cProfile.Profile()
+    py_profile.enable()
+    try:
+        model(input_ids)
+    finally:
+        py_profile.disable()
+        py_profile.dump_stats(
+            f"ft_{batch_size}_{seq_len}_{num_threads}.py_profile")
 
     with contexttimer.Timer() as t:
         for _ in range(n):

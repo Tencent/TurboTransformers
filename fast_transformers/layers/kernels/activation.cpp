@@ -50,21 +50,6 @@ void AddBiasGeLUAct(float *out, const float *bias, int64_t m, int64_t n) {
   }
 #endif
 }
-void AddBiasGeLUAct(const core::Tensor &bias, core::Tensor *inout) {
-  int m = inout->rows();
-  int n = inout->cols();
-  core::EigenTensor<2, float> in_mat(inout->mutableData<float>(), m, n);
-  auto bias_vec = core::to_tensor<1, float>(bias);
-
-  auto before_act =
-      (in_mat + bias_vec.broadcast(Eigen::DSizes<int, 2>(m, 1))).eval();
-
-  in_mat.device(core::CPUDevice()) =
-      before_act * 0.5f *
-      (1.0f + (0.7978845608028654f *
-               (before_act + 0.044715f * before_act * before_act * before_act))
-                  .tanh());
-}
 
 }  // namespace kernels
 }  // namespace layers

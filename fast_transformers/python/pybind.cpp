@@ -11,6 +11,10 @@
 #include "fast_transformers/layers/sequence_pool.h"
 #include "loguru.hpp"
 #include "pybind11/pybind11.h"
+#ifdef _OPENMP
+#include "omp.h"
+#endif
+
 namespace fast_transformers {
 namespace python {
 
@@ -33,13 +37,18 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
   char *argv[] = {strdup("fast_transformers_cxx"), nullptr};
   int argc = 1;
   loguru::init(argc, argv);
-  Eigen::initParallel();
 
   m.def("set_stderr_verbose_level",
         [](int v) { loguru::g_stderr_verbosity = v; });
   m.def("enable_gperf", &core::EnableGperf);
   m.def("disable_gperf", &core::DisableGperf);
-
+  m.def("set_num_threads", [](int n_th) {
+    // The order seems important. Set MKL NUM_THREADS before OMP.
+    mkl_set_num_threads(n_th);
+#ifdef _OPENMP
+    omp_set_num_threads(n_th);
+#endif
+  });
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",
                   [](py::capsule capsule) -> std::unique_ptr<core::Tensor> {
