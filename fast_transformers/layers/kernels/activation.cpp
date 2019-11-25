@@ -1,6 +1,9 @@
 #include "fast_transformers/layers/kernels/activation.h"
+
 #include <immintrin.h>
+
 #include <numeric>
+
 #include "fast_transformers/core/aligned_scratchpad.h"
 #include "fast_transformers/core/eigen-tensor.h"
 
@@ -8,9 +11,17 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-void AddBiasGeLUAct(float *out, const float *bias, int64_t m, int64_t n) {
+template <typename T>
+void AddBiasGeLUAct(const core::Tensor& bias_tensor, core::Tensor* out_tensor) {
+  T* out = out_tensor->mutableData<T>();
+  const T* bias = bias_tensor.data<T>();
+
+  int64_t m = out_tensor->rows();
+  int64_t n = out_tensor->cols();
+
   static core::AlignedScratchpad<float> scratchpad;
-  float *buff = scratchpad.mutable_data(n * m);
+  float* buff = scratchpad.mutable_data(n * m);
+
 #ifdef __USE_INTEL_COMPILER__
 #pragma omp parallel for
   for (int64_t i = 0; i < m; ++i) {
@@ -50,6 +61,9 @@ void AddBiasGeLUAct(float *out, const float *bias, int64_t m, int64_t n) {
   }
 #endif
 }
+
+template void AddBiasGeLUAct<float>(const core::Tensor& bias_tensor,
+                                    core::Tensor* out_tensor);
 
 }  // namespace kernels
 }  // namespace layers

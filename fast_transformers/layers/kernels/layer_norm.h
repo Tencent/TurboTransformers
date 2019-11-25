@@ -1,17 +1,22 @@
 #pragma once
 #include <numeric>
+
 #include "fast_transformers/core/tensor.h"
 
 namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-extern void LayerNorm(core::Tensor& out_tensor, const core::Tensor& gamma,
-                      const core::Tensor& beta);
+template <typename T>
+extern void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
+                      core::Tensor* out_tensor);
 
-extern void AddBiasLayerNorm(float* out, const float* input, const float* bias,
-                             const float* gamma, const float* beta, int m,
-                             int n);
+template <typename T>
+extern void AddBiasLayerNorm(const core::Tensor& input_tensor,
+                             const core::Tensor& bias_tensor,
+                             const core::Tensor& gamma_tensor,
+                             const core::Tensor& beta_tensor,
+                             core::Tensor* out_tensor);
 
 }  // namespace kernels
 }  // namespace layers

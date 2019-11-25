@@ -1,6 +1,8 @@
 #define CATCH_CONFIG_MAIN
 #include "fast_transformers/layers/kernels/softmax.h"
+
 #include <chrono>
+
 #include "catch2/catch.hpp"
 #include "fast_transformers/core/aligned_scratchpad.h"
 #include "fast_transformers/core/blas.h"
@@ -78,13 +80,13 @@ TEST_CASE("softmax_test") {
                          std::chrono::microseconds::period::den / step * 1000
                   << "ms";
 
-      SoftmaxMask(qk_buf_avx, attr_mask, batch_size, num_attention_heads,
-                  seq_length, scaler);
+      SoftmaxMask<float>(qk_buf_avx, attr_mask, batch_size, num_attention_heads,
+                         seq_length, scaler);
 
       start = std::chrono::system_clock::now();
       for (int i = 0; i < step; ++i) {
-        SoftmaxMask(qk_buf_avx, attr_mask, batch_size, num_attention_heads,
-                    seq_length, scaler);
+        SoftmaxMask<float>(qk_buf_avx, attr_mask, batch_size,
+                           num_attention_heads, seq_length, scaler);
       }
       end = std::chrono::system_clock::system_clock::now();
       auto duration_parallel =

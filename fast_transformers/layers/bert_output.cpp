@@ -47,10 +47,9 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
       output_tensor->mutableData<float>(),
       n);  // (batch_size*seq_length = m, hidden_size = n)
 
-  kernels::AddBiasLayerNorm(
-      output_tensor->mutableData<float>(), input_tensor.data<float>(),
-      dense_bias_.data<float>(), layer_norm_weight_.data<float>(),
-      layer_norm_bias_.data<float>(), m, n);
+  kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
+                                   layer_norm_weight_, layer_norm_bias_,
+                                   output_tensor);
 }
 
 void BertOutput::EnforceShapeAndType() const {
