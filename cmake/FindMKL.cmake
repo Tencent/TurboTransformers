@@ -34,48 +34,52 @@ if (MKL_INCLUDE_DIRS AND MKL_LIBRARIES AND MKL_INTERFACE_LIBRARY AND
   set (MKL_FIND_QUIETLY TRUE)
 endif()
 
-set(INT_LIB "libmkl_intel_lp64.a")
-set(THR_LIB "libmkl_intel_thread.a")
-set(COR_LIB "libmkl_core.a")
+set(INT_LIB "mkl_intel_lp64")
+set(THR_LIB "mkl_intel_thread")
+set(COR_LIB "mkl_core")
 
-
-find_path(MKL_INCLUDE_DIR NAMES mkl.h HINTS ${MKLROOT}/include)
+message(STATUS ${CMAKE_PREFIX_PATH}/include)
+find_path(MKL_INCLUDE_DIR NAMES mkl.h HINTS $ENV{CONDA_PREFIX}/include ${MKLROOT}/include )
 
 find_library(MKL_INTERFACE_LIBRARY
              NAMES ${INT_LIB}
-             PATHS ${MKLROOT}/lib
+             PATHS
+                   $ENV{CONDA_PREFIX}/lib
+                   ${MKLROOT}/lib
                    ${MKLROOT}/lib/intel64
-                   ${INTEL}/mkl/lib/intel64
-             NO_DEFAULT_PATH)
+                   ${INTEL}/mkl/lib/intel64)
 
 find_library(MKL_THREADS_LIBRARY
              NAMES ${THR_LIB}
-             PATHS ${MKLROOT}/lib
+             PATHS
+                   $ENV{CONDA_PREFIX}/lib
+                   ${MKLROOT}/lib
                    ${MKLROOT}/lib/intel64
-                   ${INTEL}/mkl/lib/intel64
-             NO_DEFAULT_PATH)
+                   ${INTEL}/mkl/lib/intel64)
 
 find_library(MKL_CORE_LIBRARY
              NAMES ${COR_LIB}
-             PATHS ${MKLROOT}/lib
+             PATHS
+                   $ENV{CONDA_PREFIX}/lib
+                   ${MKLROOT}/lib
                    ${MKLROOT}/lib/intel64
-                   ${INTEL}/mkl/lib/intel64
-             NO_DEFAULT_PATH)
+                   ${INTEL}/mkl/lib/intel64)
 
 set(MKL_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
 set(MKL_LIBRARIES ${MKL_INTERFACE_LIBRARY} ${MKL_THREADS_LIBRARY} ${MKL_CORE_LIBRARY})
 
+
 if (NOT APPLE)
     find_library(IOMP_LIBRARY
-            NAMES libiomp5.a
-            PATHS ${MKLROOT}/lib
+            NAMES iomp5
+            PATHS
+                   $ENV{CONDA_PREFIX}/lib
+                   ${MKLROOT}/lib
                    ${MKLROOT}/lib/intel64
                    ${MKLROOT}/../lib
-                   ${MKLROOT}/../lib/intel64
-            NO_DEFAULT_PATH)
+                   ${MKLROOT}/../lib/intel64)
 
     set(MKL_LIBRARIES ${MKL_LIBRARIES} ${IOMP_LIBRARY})
-    message(STATUS ${IOMP_LIBRARY})
 endif ()
 
 

@@ -1,22 +1,16 @@
-FROM robbyjo/ubuntu-mkl:18.04-2019.1
+FROM golang:1.13.4-stretch as PProfBuilder
+RUN CGO_ENABLED=0 GOOS=linux go get -u -v github.com/google/pprof
 
-# System packages
-RUN apt-get update && \
-    apt-get install -y curl git wget bzip2 libgoogle-perftools-dev graphviz build-essential g++ python3 cmake python3-pip && \
-    rm -rf /var/lib/apt/lists/* &&\
-    pip3 install --no-cache-dir torch transformers onnxruntime
+FROM continuumio/miniconda3
+COPY --from=PProfBuilder /go/bin/pprof /bin/pprof
 
-# install golang
-RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
-    tar -xz -C /usr/local && \
-    mkdir /root/gopath && \
-    mkdir /root/gopath/bin && \
-    mkdir /root/gopath/src
-ENV GOROOT=/usr/local/go GOPATH=/root/gopath
-ENV PATH=${GOROOT}/bin:${GOPATH}/bin:${PATH}
-RUN go get -u github.com/google/pprof
+# Try to install deps by anaconda
+# NOTE:  1. MKL is installed with pytorch.
+#           Fast-Transformers will use the same MKL from PyTorch
+RUN /opt/conda/bin/conda install pytorch cpuonly -c pytorch && \
+    /opt/conda/bin/conda install curl conda-verify conda-build mkl-include cmake -c anaconda &&  \
+    /opt/conda/bin/conda install git graphviz gperftools -c conda-forge  && \
+    /opt/conda/bin/conda clean -afy
 
-# add test scripts
-RUN mkdir -p /workspace
-WORKDIR /workspace
-COPY ./tools/build_and_run_unittests.sh /workspace/
+# Install c++ compiler only
+RUN apt-get update && apt-get install -y g++ && rm -rf /var/lib/apt/lists/*
