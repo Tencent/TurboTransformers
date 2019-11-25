@@ -1,12 +1,12 @@
 #pragma once
 
+#include <string>
 #include "fast_transformers/core/tensor.h"
-
 namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-enum PoolType { kMax, kAvg, kFirst, kLast };
+enum class PoolType { kMax, kAvg, kFirst, kLast };
 
 PoolType GetPoolType(const std::string& pool_type);
 

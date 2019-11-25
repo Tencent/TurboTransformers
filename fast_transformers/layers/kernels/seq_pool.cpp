@@ -128,17 +128,20 @@ template void SeqPool<float>(const core::Tensor& input, PoolType pool_type,
                              core::Tensor* output);
 
 PoolType GetPoolType(const std::string& pool_type) {
-  static std::unordered_map<std::string, PoolType> pool_type_map(
-      {{"First", PoolType::kFirst},
-       {"Last", PoolType::kLast},
-       {"Mean", PoolType::kAvg},
-       {"Max", PoolType::kMax}});
-  auto iter = pool_type_map.find(pool_type);
-  FT_ENFORCE_NE(
-      iter, pool_type_map.end(),
+#define _EnumCase(EnumValue)         \
+  do {                               \
+    if (pool_type == #EnumValue) {   \
+      return PoolType::k##EnumValue; \
+    }                                \
+  } while (0)
+
+  _EnumCase(First);
+  _EnumCase(Last);
+  _EnumCase(Avg);
+  _EnumCase(Max);
+  FT_THROW(
       "The input pool_type(%s) is not int ['First', 'Last', 'Mean', 'Max'].",
       pool_type);
-  return iter->second;
 }
 
 }  // namespace kernels
