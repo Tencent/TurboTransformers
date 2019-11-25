@@ -5,6 +5,8 @@ if (${BLAS_PROVIDER} STREQUAL "mkl")
     target_include_directories(blas PUBLIC ${MKL_INCLUDE_DIR})
     target_compile_definitions(blas PUBLIC -DFT_BLAS_PROVIDER=MKL)
 endif ()
+
+
 target_link_libraries(blas PRIVATE ${CMAKE_DL_LIBS})
 
 add_executable(blas_test blas_test.cpp)

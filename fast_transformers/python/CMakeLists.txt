@@ -13,7 +13,7 @@ add_custom_command(OUTPUT ${PY_PACKAGE_DIR}/.timestamp
         COMMAND "${CMAKE_COMMAND}" -E copy
         "$<TARGET_FILE:fast_transformers_cxx>"
         "${PY_PACKAGE_DIR}/fast_transformers/$<TARGET_FILE_NAME:fast_transformers_cxx>"
-        COMMAND ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+        COMMAND env CC=${CMAKE_C_COMPILER} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
         COMMAND ${CMAKE_COMMAND} -E touch ${PY_PACKAGE_DIR}/.timestamp
         WORKING_DIRECTORY ${PY_PACKAGE_DIR}
         DEPENDS fast_transformers_cxx ${PY_PROJ_FILES})

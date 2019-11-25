@@ -1,0 +1,23 @@
+package:
+  name: fast-transformers
+  version: "0.1.1a0"
+
+source:
+  path: ..
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - cmake
+    - {{ compiler("cxx") }}
+    - mkl-include
+  run:
+    - python
+    - mkl
+    - intel-openmp
+  host:
+    - python
+    - mkl
+    - intel-openmp

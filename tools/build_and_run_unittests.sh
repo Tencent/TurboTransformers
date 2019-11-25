@@ -1,9 +1,11 @@
 #!/bin/bash
 set -xe
 SRC_ROOT=$1
+rm -rf /tmp/build || true
 mkdir -p /tmp/build
 cd /tmp/build
-cmake -DCMAKE_BUILD_TYPE=Release ${SRC_ROOT}
-make VERBOSE=1 -j $(nproc)
-pip3 install -r ${SRC_ROOT}/test_requirements.txt
+cmake -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release ${SRC_ROOT}
+ninja
+python3 -m pip install -r ${SRC_ROOT}/test_requirements.txt
 ctest --output-on-failure
