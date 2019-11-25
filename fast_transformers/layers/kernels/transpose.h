@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+
 #include <cmath>
 #include <numeric>
 #include <vector>
@@ -19,20 +20,19 @@ namespace kernels {
     output_tensor = tf.transpose(output_tensor, [0, 2, 1, 3])
     return output_tensor
  * **/
-
-extern void TransposeForScore(float* output, const float* input,
+template <typename T>
+extern void TransposeForScore(T* output, const T* input,
                               const std::vector<int64_t>& shape);
-
-extern void AdBiasTransposeForScore(float* output, const float* input,
-                                    const float* bias,
+template <typename T>
+extern void AdBiasTransposeForScore(T* output, const T* input, const T* bias,
                                     const std::vector<int64_t>& shape);
 
 // input (batch_size, seq_length, 3, head_num, *size_per_head)
 //(3, batch_size, head_num, seq_length, *size_per_head)
 // bias: (3, head_num, size_per_head)
-
-extern void SplitAddbiasTransposeForScore(float* output, const float* input,
-                                          const float* bias,
+template <typename T>
+extern void SplitAddbiasTransposeForScore(T* output, const T* input,
+                                          const T* bias,
                                           const std::vector<int64_t>& shape);
 
 }  // namespace kernels
