@@ -13,10 +13,13 @@ requirements:
     - cmake
     - {{ compiler("cxx") }}  # [linux]
     - mkl-include
+    - python
   run:
     - mkl
     - intel-openmp
     - pytorch
+    - python
   host:
     - mkl
     - intel-openmp
+    - python
