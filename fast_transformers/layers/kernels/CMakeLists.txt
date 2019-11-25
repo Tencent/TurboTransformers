@@ -15,3 +15,6 @@ target_link_libraries(activation eigen-tensor tensor)
 
 add_library(seq_pool seq_pool.cpp)
 target_link_libraries(seq_pool tensor enforce)
+
+add_library(mat_mul mat_mul.cpp)
+target_link_libraries(mat_mul tensor enforce)
