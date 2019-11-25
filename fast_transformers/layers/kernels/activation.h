@@ -5,7 +5,8 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-void AddBiasGeLUAct(float* out, const float* bias, int64_t m, int64_t n);
+template <typename T>
+void AddBiasGeLUAct(const core::Tensor& bias, core::Tensor* out);
 
 }  // namespace kernels
 }  // namespace layers

@@ -66,7 +66,8 @@ void BERTEmbedding::operator()(const core::Tensor &input_ids,
   LookupEmbedding</*Add=*/true>(*output_tensor, position_embeddings_,
                                 position_ids);
 
-  kernels::LayerNorm(*output_tensor, layer_norm_weights_, layer_norm_bias_);
+  kernels::LayerNorm<float>(layer_norm_weights_, layer_norm_bias_,
+                            output_tensor);
 }
 void BERTEmbedding::EnforceShapeAndType() const {
   LOG_S(3) << ">>>>> init BERTEmbedding <<<<<<<<";

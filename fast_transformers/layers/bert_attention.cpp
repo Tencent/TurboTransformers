@@ -99,8 +99,8 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
 
   const std::vector<int64_t> QKV_shape{batch_size, seq_length, 3,
                                        num_attention_heads_, size_per_head};
-  kernels::SplitAddbiasTransposeForScore(q_buf, query_buf, qkv_bias_ptr,
-                                         QKV_shape);
+  kernels::SplitAddbiasTransposeForScore<float>(q_buf, query_buf, qkv_bias_ptr,
+                                                QKV_shape);
 
   // attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
   details::matmul(true, false, seq_length, seq_length, size_per_head, alpha,
@@ -114,9 +114,9 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   // attention_probs = nn.Softmax(dim=-1)(attention_score)
   const float scaler = 1 / sqrtf(size_per_head * 1.0f);
 
-  kernels::SoftmaxMask(attention_scores, attention_mask.data<float>(),
-                       batch_size, num_attention_heads_, seq_length,
-                       scaler);  // preprocess: attention_mask * -10000
+  kernels::SoftmaxMask<float>(attention_scores, attention_mask.data<float>(),
+                              batch_size, num_attention_heads_, seq_length,
+                              scaler);  // preprocess: attention_mask * -10000
   // attention_probs = self.dropout(attention_probs)
   // TODO
 
@@ -130,7 +130,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   // context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
   // new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
   // context_layer = context_layer.view(*new_context_layer_shape)
-  kernels::TransposeForScore(
+  kernels::TransposeForScore<float>(
       self_attr_out, context_layer,
       {batch_size, num_attention_heads_, seq_length, size_per_head});
 
@@ -142,10 +142,9 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
               n);
 
   // attention_output = self.LayerNorm(hidden_states + input_tensor)
-  kernels::AddBiasLayerNorm(output_tensor_ptr, from_tensor_ptr, dense_bias_ptr,
-                            layer_norm_weight_.data<float>(),  // gemma
-                            layer_norm_bias_.data<float>(), m, n);
-
+  kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
+                                   layer_norm_weight_,  // gemma
+                                   layer_norm_bias_, output);
   // outputs = (attention_output,) + self_outputs[1:]
 }
 

@@ -44,9 +44,8 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
   output_tensor->Reshape<float>(
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(0)});
   Matmul(input_tensor, false, dense_weight_, true, 1.0, output_tensor, 0.0);
-  kernels::AddBiasGeLUAct(output_tensor->mutableData<float>(),
-                          dense_bias_.data<float>(), output_tensor->rows(),
-                          output_tensor->cols());
+
+  kernels::AddBiasGeLUAct<float>(dense_bias_, output_tensor);
 }
 
 void BertIntermediate::EnforceShapeAndType() const {
