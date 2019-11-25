@@ -1,5 +1,7 @@
 #include "fast_transformers/layers/kernels/softmax.h"
+
 #include <immintrin.h>
+
 #include <cmath>
 
 namespace fast_transformers {
@@ -7,9 +9,8 @@ namespace layers {
 namespace kernels {
 static constexpr float g_epsilon = 1e-6f;
 
-void SoftmaxMask(float* qk_buf, const float* attr_mask,
-                 const int64_t batch_size, const int64_t head_num,
-                 const int64_t seq_len, float scaler) {
+void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
+                 int64_t head_num, int64_t seq_len, float scaler) {
   int64_t M = batch_size * head_num * seq_len;
   int64_t N = seq_len;
 #pragma omp parallel for

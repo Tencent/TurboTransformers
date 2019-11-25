@@ -142,10 +142,9 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
               n);
 
   // attention_output = self.LayerNorm(hidden_states + input_tensor)
-  kernels::AddBiasLayerNorm(output_tensor_ptr, from_tensor_ptr, dense_bias_ptr,
-                            layer_norm_weight_.data<float>(),  // gemma
-                            layer_norm_bias_.data<float>(), m, n);
-
+  kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
+                                   layer_norm_weight_,  // gemma
+                                   layer_norm_bias_, output);
   // outputs = (attention_output,) + self_outputs[1:]
 }
 

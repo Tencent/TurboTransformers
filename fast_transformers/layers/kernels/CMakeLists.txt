@@ -5,13 +5,13 @@ add_library(softmax softmax.cpp)
 target_link_libraries(softmax tensor)
 
 add_executable(softmax_test softmax_test.cpp)
-target_link_libraries(softmax_test PUBLIC softmax blas Catch2 loguru enforce aligned_scratchpad)
+target_link_libraries(softmax_test PUBLIC tensor softmax blas Catch2 loguru enforce aligned_scratchpad)
 
 add_library(transpose transpose.cpp)
 target_link_libraries(transpose tensor)
 
 add_library(activation activation.cpp)
-target_link_libraries(activation eigen-tensor)
+target_link_libraries(activation eigen-tensor tensor)
 
 add_library(seq_pool seq_pool.cpp)
 target_link_libraries(seq_pool tensor enforce)
