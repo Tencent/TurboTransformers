@@ -1,9 +1,8 @@
 #include "fast_transformers/layers/bert_output.h"
-
 #include <loguru.hpp>
-
 #include "fast_transformers/core/memory.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
+#include "fast_transformers/layers/kernels/mat_mul.h"
 
 namespace fast_transformers {
 namespace layers {
@@ -24,29 +23,10 @@ namespace layers {
 void BertOutput::operator()(const core::Tensor &hidden_states,
                             const core::Tensor &input_tensor,
                             core::Tensor *output_tensor) const {
-  auto batch_size = hidden_states.shape(0);
-  auto seq_length = hidden_states.shape(1);
-  auto intermediate_size = hidden_states.shape(2);
-  auto hidden_size = input_tensor.shape(2);
-
-  auto m = batch_size * seq_length;
-  auto k = intermediate_size;
-  auto n = hidden_size;
-
-  static constexpr float alpha = 1., beta = 0.;
-
-  FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
-  output_tensor->Reshape<float>({batch_size, seq_length, hidden_size});
-
-  cblas_sgemm(
-      CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-      hidden_states.data<float>(),
-      k,  // (batch_size*seq_length = m, intermediate_size = k)
-      dense_weight_.data<float>(), k,
-      beta,  //[hidden_size = n, intermediate_size = k] please transpose here!x
-      output_tensor->mutableData<float>(),
-      n);  // (batch_size*seq_length = m, hidden_size = n)
-
+  output_tensor->Reshape<float>(
+      {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(0)});
+  kernels::Matmul(hidden_states, false, dense_weight_, true, 1.0, output_tensor,
+                  0.0);
   kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
                                    layer_norm_weight_, layer_norm_bias_,
                                    output_tensor);
