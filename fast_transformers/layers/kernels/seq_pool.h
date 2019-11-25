@@ -6,7 +6,7 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-enum class PoolType { kMax, kAvg, kFirst, kLast };
+enum class PoolType { kMax, kMean, kFirst, kLast };
 
 PoolType GetPoolType(const std::string& pool_type);
 

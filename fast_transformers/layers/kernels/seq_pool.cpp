@@ -112,7 +112,7 @@ void SeqPool(const core::Tensor& input, PoolType pool_type,
     case PoolType::kMax:
       SeqPoolWithProcess<T, MaxProcess<T>>(input, output);
       break;
-    case PoolType::kAvg:
+    case PoolType::kMean:
       SeqPoolWithProcess<T, AvgProcess<T>>(input, output);
       break;
     case PoolType::kFirst:
@@ -137,7 +137,7 @@ PoolType GetPoolType(const std::string& pool_type) {
 
   _EnumCase(First);
   _EnumCase(Last);
-  _EnumCase(Avg);
+  _EnumCase(Mean);
   _EnumCase(Max);
   FT_THROW(
       "The input pool_type(%s) is not int ['First', 'Last', 'Mean', 'Max'].",
