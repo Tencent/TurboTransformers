@@ -72,14 +72,14 @@ class Tensor {
     return tensor_->dl_tensor.ndim;
   }
 
-  const int64_t &shape(size_t pos) const {
+  const int64_t &shape(int pos) const {
     FT_ENFORCE_LT(pos, tensor_->dl_tensor.ndim,
                   "The index(%d) is out of the range[0...%d]", pos,
                   tensor_->dl_tensor.ndim);
     return tensor_->dl_tensor.shape[pos];
   }
 
-  size_t numel() const {
+  int64_t numel() const {
     FT_ENFORCE(tensor_, "This tensor is not initialized.");
     return std::accumulate(tensor_->dl_tensor.shape,
                            tensor_->dl_tensor.shape + tensor_->dl_tensor.ndim,
@@ -104,7 +104,7 @@ class Tensor {
     if (tensor_ &&
         numel() >= std::accumulate(shape_list.begin(), shape_list.end(), 1,
                                    std::multiplies<int64_t>())) {
-      if (tensor_->dl_tensor.ndim != shape_list.size()) {
+      if (tensor_->dl_tensor.ndim != static_cast<int>(shape_list.size())) {
         tensor_->dl_tensor.ndim = shape_list.size();
         delete[] tensor_->dl_tensor.shape;
         tensor_->dl_tensor.shape = new int64_t[shape_list.size()];

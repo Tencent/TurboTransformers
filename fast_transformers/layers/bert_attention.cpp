@@ -3,6 +3,7 @@
 #include "fast_transformers/core/aligned_scratchpad.h"
 #include "fast_transformers/core/memory.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
+#include "fast_transformers/layers/kernels/mat_mul.h"
 #include "fast_transformers/layers/kernels/softmax.h"
 #include "fast_transformers/layers/kernels/transpose.h"
 #include "loguru.hpp"
@@ -57,9 +58,9 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   static core::AlignedScratchpad<float> buf;
   float* buffer = buf.mutable_data(buf_size * 9 + attention_scores_size);
 
-  float* query_buf = buffer;
-  float* key_buf = buffer + buf_size;
-  float* value_buf = buffer + 2 * buf_size;
+  static core::Tensor query_buffer(nullptr);
+  query_buffer.Reshape<float>(
+      {3, batch_size, seq_length, hidden_size, size_per_head});
   float* q_buf = buffer + 3 * buf_size;
   float* k_buf = buffer + 4 * buf_size;
   float* v_buf = buffer + 5 * buf_size;
@@ -80,27 +81,19 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   FT_ENFORCE(output, "The output tensor should not be nullptr.");
   output->Reshape<float>({batch_size, seq_length, hidden_size});
 
-  auto* qkv_weight_ptr = qkv_weight_.data<float>();
   auto* qkv_bias_ptr = qkv_bias_.data<float>();
 
   auto* dense_weight_ptr = dense_weight_.data<float>();
-  auto* dense_bias_ptr = dense_bias_.data<float>();
 
-  auto* from_tensor_ptr = input_tensor.data<float>();
-  const float* to_tensor_ptr = from_tensor_ptr;  // self attention
   auto* output_tensor_ptr = output->mutableData<float>();
 
-  cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, 3 * n, k, alpha,
-              from_tensor_ptr, k, qkv_weight_ptr, k, beta, query_buf, 3 * n);
-
-  LOG_S(3) << m << ", " << 3 * n << " " << k << " " << alpha << " "
-           << from_tensor_ptr << " " << k << " " << qkv_weight_ptr << " " << k
-           << " " << beta << " " << query_buf << " " << 3 * n;
+  kernels::Matmul(input_tensor, false, qkv_weight_, true, 1.0, &query_buffer,
+                  0.0);
 
   const std::vector<int64_t> QKV_shape{batch_size, seq_length, 3,
                                        num_attention_heads_, size_per_head};
-  kernels::SplitAddbiasTransposeForScore<float>(q_buf, query_buf, qkv_bias_ptr,
-                                                QKV_shape);
+  kernels::SplitAddbiasTransposeForScore<float>(
+      q_buf, query_buffer.data<float>(), qkv_bias_ptr, QKV_shape);
 
   // attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
   details::matmul(true, false, seq_length, seq_length, size_per_head, alpha,
