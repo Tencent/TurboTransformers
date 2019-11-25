@@ -20,7 +20,7 @@ struct AvgProcess {
     memset(ptr, 0, len * sizeof(T));
   }
 
-  static int ProcessEle(T* ptr, int64_t idx, T ele) { ptr[idx] += ele; }
+  static void ProcessEle(T* ptr, int64_t idx, T ele) { ptr[idx] += ele; }
 
   static void Finalize(T* ptr, int64_t len, int64_t seq_len) {
 #pragma omp simd
@@ -39,7 +39,7 @@ struct MaxProcess {
     }
   }
 
-  static int ProcessEle(T* ptr, int64_t idx, T ele) {
+  static void ProcessEle(T* ptr, int64_t idx, T ele) {
     if (ptr[idx] < ele) {
       ptr[idx] = ele;
     }
