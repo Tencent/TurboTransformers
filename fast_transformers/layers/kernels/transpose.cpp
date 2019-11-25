@@ -32,17 +32,17 @@ void TransposeForScore(T* output, const T* input,
   }
 }
 
-void SplitAddBiasTransposeForScore(float* output,
+void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
                                    const core::Tensor& input_tensor,
-                                   const core::Tensor& bias_tensor,
-                                   const std::vector<int64_t>& shape) {
-  auto batch_size = shape[0];
-  auto seq_length = shape[1];
-  auto weight_num = shape[2];
-  auto num_attention_heads = shape[3];
-  auto width = shape[4];
+                                   const core::Tensor& bias_tensor) {
+  auto batch_size = output_tensor->shape(1);
+  auto seq_length = output_tensor->shape(3);
+  auto weight_num = output_tensor->shape(0);
+  auto num_attention_heads = output_tensor->shape(2);
+  auto width = output_tensor->shape(4);
   auto input = input_tensor.data<float>();
   auto bias = bias_tensor.data<float>();
+  auto output = output_tensor->mutableData<float>();
 
 #pragma omp parallel for
   for (int64_t idx = 0; idx < batch_size * weight_num * seq_length; ++idx) {

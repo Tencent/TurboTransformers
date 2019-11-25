@@ -59,11 +59,11 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   float* buffer = buf.mutable_data(buf_size * 9 + attention_scores_size);
 
   static core::Tensor query_buffer(nullptr);
-  query_buffer.Reshape<float>(
-      {3, batch_size, seq_length, hidden_size, size_per_head});
-  float* q_buf = buffer + 3 * buf_size;
-  float* k_buf = buffer + 4 * buf_size;
-  float* v_buf = buffer + 5 * buf_size;
+  query_buffer.Reshape<float>({3, batch_size, seq_length, hidden_size});
+  static core::Tensor q_buf_tensor(nullptr);
+  q_buf_tensor.Reshape<float>(
+      {3, batch_size, num_attention_heads_, seq_length, size_per_head});
+
   float* self_attr_out = buffer + 6 * buf_size;
   float* context_layer = buffer + 7 * buf_size;
   float* attention_scores = buffer + 8 * buf_size;
@@ -88,14 +88,13 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   kernels::Matmul(input_tensor, false, qkv_weight_, true, 1.0, &query_buffer,
                   0.0);
 
-  const std::vector<int64_t> QKV_shape{batch_size, seq_length, 3,
-                                       num_attention_heads_, size_per_head};
-  kernels::SplitAddBiasTransposeForScore(q_buf, query_buffer, qkv_bias_,
-                                         QKV_shape);
+  kernels::SplitAddBiasTransposeForScore(&q_buf_tensor, query_buffer,
+                                         qkv_bias_);
 
   // attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
   details::matmul(true, false, seq_length, seq_length, size_per_head, alpha,
-                  k_buf, size_per_head, seq_length * size_per_head, q_buf,
+                  q_buf_tensor.data<float>() + buf_size, size_per_head,
+                  seq_length * size_per_head, q_buf_tensor.data<float>(),
                   size_per_head, seq_length * size_per_head, beta,
                   attention_scores, seq_length, seq_length * seq_length,
                   batch_size * num_attention_heads_);
@@ -113,9 +112,10 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
 
   // context_layer = torch.matmul(attention_probs, value_layer) -> context_layer
   details::matmul(false, false, size_per_head, seq_length, seq_length, alpha,
-                  v_buf, size_per_head, seq_length * size_per_head,
-                  attention_scores, seq_length, seq_length * seq_length, beta,
-                  context_layer, size_per_head, seq_length * size_per_head,
+                  q_buf_tensor.data<float>() + 2 * buf_size, size_per_head,
+                  seq_length * size_per_head, attention_scores, seq_length,
+                  seq_length * seq_length, beta, context_layer, size_per_head,
+                  seq_length * size_per_head,
                   batch_size * num_attention_heads_);
 
   // context_layer = context_layer.permute(0, 2, 1, 3).contiguous()

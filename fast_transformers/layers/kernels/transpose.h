@@ -28,10 +28,9 @@ extern void TransposeForScore(T* output, const T* input,
 // input (batch_size, seq_length, 3, head_num, *size_per_head)
 //(3, batch_size, head_num, seq_length, *size_per_head)
 // bias: (3, head_num, size_per_head)
-extern void SplitAddBiasTransposeForScore(float* output,
+extern void SplitAddBiasTransposeForScore(core::Tensor* output,
                                           const core::Tensor& input_tensor,
-                                          const core::Tensor& bias_tensor,
-                                          const std::vector<int64_t>& shape);
+                                          const core::Tensor& bias_tensor);
 
 }  // namespace kernels
 }  // namespace layers
