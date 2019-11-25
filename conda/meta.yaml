@@ -11,13 +11,12 @@ build:
 requirements:
   build:
     - cmake
-    - {{ compiler("cxx") }}
+    - {{ compiler("cxx") }}  # [linux]
     - mkl-include
   run:
-    - python
     - mkl
     - intel-openmp
+    - pytorch
   host:
-    - python
     - mkl
     - intel-openmp
