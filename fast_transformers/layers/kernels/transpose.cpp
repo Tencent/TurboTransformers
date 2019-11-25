@@ -33,34 +33,6 @@ void TransposeForScore(T* output, const T* input,
 }
 
 template <typename T>
-void AdBiasTransposeForScore(T* output, const T* input, const T* bias,
-                             const std::vector<int64_t>& shape) {
-  auto batch_size = shape[0];
-  auto seq_length = shape[1];
-  auto num_attention_heads = shape[2];
-  auto width = shape[3];
-// TODO if batch_size * seq_length is not larger than thread_num, we can
-// parallel on batch_size * seq_length * num_attention_heads
-#pragma omp parallel for
-  for (int64_t idx = 0; idx < batch_size * seq_length; ++idx) {
-    auto batch_idx = idx / seq_length;  // batch idx
-    auto seq_idx = idx % seq_length;    // seq_length idx
-    for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
-      const T* src = input +
-                     batch_idx * (seq_length * num_attention_heads * width) +
-                     seq_idx * num_attention_heads * width + head_idx * width;
-      T* dst = output + batch_idx * (seq_length * num_attention_heads * width) +
-               seq_idx * width + head_idx * seq_length * width;
-      const T* src_bias = bias + head_idx * width;
-#pragma omp simd
-      for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
-        dst[width_idx] = src[width_idx] + src_bias[width_idx];
-      }
-    }
-  }  // end for
-}
-
-template <typename T>
 void SplitAddbiasTransposeForScore(T* output, const T* input, const T* bias,
                                    const std::vector<int64_t>& shape) {
   auto batch_size = shape[0];
@@ -98,9 +70,6 @@ void SplitAddbiasTransposeForScore(T* output, const T* input, const T* bias,
 
 template void TransposeForScore<float>(float* output, const float* input,
                                        const std::vector<int64_t>& shape);
-template void AdBiasTransposeForScore<float>(float* output, const float* input,
-                                             const float* bias,
-                                             const std::vector<int64_t>& shape);
 template void SplitAddbiasTransposeForScore<float>(
     float* output, const float* input, const float* bias,
     const std::vector<int64_t>& shape);

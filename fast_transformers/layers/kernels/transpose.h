@@ -23,9 +23,6 @@ namespace kernels {
 template <typename T>
 extern void TransposeForScore(T* output, const T* input,
                               const std::vector<int64_t>& shape);
-template <typename T>
-extern void AdBiasTransposeForScore(T* output, const T* input, const T* bias,
-                                    const std::vector<int64_t>& shape);
 
 // input (batch_size, seq_length, 3, head_num, *size_per_head)
 //(3, batch_size, head_num, seq_length, *size_per_head)
