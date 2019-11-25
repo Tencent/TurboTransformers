@@ -24,7 +24,7 @@ add_library(memory memory.cpp)
 target_link_libraries(memory enforce)
 
 add_library(tensor tensor.cpp)
-target_link_libraries(tensor dlpack blas memory)
+target_link_libraries(tensor dlpack blas memory absl::variant)
 
 add_executable(tensor_test tensor_test.cpp)
 target_link_libraries(tensor_test Catch2 tensor)
