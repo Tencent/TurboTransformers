@@ -32,14 +32,17 @@ void TransposeForScore(T* output, const T* input,
   }
 }
 
-template <typename T>
-void SplitAddbiasTransposeForScore(T* output, const T* input, const T* bias,
+void SplitAddBiasTransposeForScore(float* output,
+                                   const core::Tensor& input_tensor,
+                                   const core::Tensor& bias_tensor,
                                    const std::vector<int64_t>& shape) {
   auto batch_size = shape[0];
   auto seq_length = shape[1];
   auto weight_num = shape[2];
   auto num_attention_heads = shape[3];
   auto width = shape[4];
+  auto input = input_tensor.data<float>();
+  auto bias = bias_tensor.data<float>();
 
 #pragma omp parallel for
   for (int64_t idx = 0; idx < batch_size * weight_num * seq_length; ++idx) {
@@ -48,17 +51,17 @@ void SplitAddbiasTransposeForScore(T* output, const T* input, const T* bias,
     auto weight_idx = idx % weight_num;
 
     for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
-      const T* src_ptr =
+      auto* src_ptr =
           input +
           batch_idx * (seq_length * weight_num * num_attention_heads * width) +
           seq_idx * weight_num * num_attention_heads * width +
           weight_idx * (num_attention_heads * width) + head_idx * width;
-      T* dst_ptr =
+      auto* dst_ptr =
           output +
           weight_idx * (batch_size * num_attention_heads * seq_length * width) +
           batch_idx * (num_attention_heads * seq_length * width) +
           head_idx * seq_length * width + seq_idx * width;
-      const T* bias_ptr =
+      auto* bias_ptr =
           bias + weight_idx * width * num_attention_heads + head_idx * width;
 #pragma omp simd
       for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
@@ -70,9 +73,6 @@ void SplitAddbiasTransposeForScore(T* output, const T* input, const T* bias,
 
 template void TransposeForScore<float>(float* output, const float* input,
                                        const std::vector<int64_t>& shape);
-template void SplitAddbiasTransposeForScore<float>(
-    float* output, const float* input, const float* bias,
-    const std::vector<int64_t>& shape);
 }  // namespace kernels
 }  // namespace layers
 }  // namespace fast_transformers

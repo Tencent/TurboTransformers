@@ -81,8 +81,6 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   FT_ENFORCE(output, "The output tensor should not be nullptr.");
   output->Reshape<float>({batch_size, seq_length, hidden_size});
 
-  auto* qkv_bias_ptr = qkv_bias_.data<float>();
-
   auto* dense_weight_ptr = dense_weight_.data<float>();
 
   auto* output_tensor_ptr = output->mutableData<float>();
@@ -92,8 +90,8 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
 
   const std::vector<int64_t> QKV_shape{batch_size, seq_length, 3,
                                        num_attention_heads_, size_per_head};
-  kernels::SplitAddbiasTransposeForScore<float>(
-      q_buf, query_buffer.data<float>(), qkv_bias_ptr, QKV_shape);
+  kernels::SplitAddBiasTransposeForScore(q_buf, query_buffer, qkv_bias_,
+                                         QKV_shape);
 
   // attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
   details::matmul(true, false, seq_length, seq_length, size_per_head, alpha,
