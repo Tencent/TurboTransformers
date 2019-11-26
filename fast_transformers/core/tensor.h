@@ -48,19 +48,29 @@ static inline bool IsDataType(DLDataType dt) {
          (dt.bits == 0 || dt.bits == sizeof(T) * 8);
 }
 
-using DLTensorPtr =
+using DLManagedTensorPtr =
     std::unique_ptr<DLManagedTensor, details::DLPackManagedTensorDeleter>;
+
+struct DLTensorDimDeleter {
+  void operator()(DLTensor *tensor) const {
+    if (tensor) {
+      delete[] tensor->shape;
+      delete tensor;
+    }
+  }
+};
+
+using DLTensorPtr = std::unique_ptr<DLTensor, DLTensorDimDeleter>;
+
 using TensorPayload =
-    absl::variant<absl::monostate, DLTensorPtr, DLManagedTensor>;
+    absl::variant<absl::monostate, DLManagedTensorPtr, DLTensorPtr>;
 
 struct VisitDLTensor {
-  const DLManagedTensor &operator()(const DLTensorPtr &ptr) const {
-    return *ptr;
+  const DLTensor &operator()(const DLManagedTensorPtr &ptr) const {
+    return ptr->dl_tensor;
   }
-  const DLManagedTensor &operator()(const DLManagedTensor &t) const {
-    return t;
-  }
-  const DLManagedTensor &operator()(absl::monostate) const {
+  const DLTensor &operator()(const DLTensorPtr &t) const { return *t; }
+  const DLTensor &operator()(absl::monostate) const {
     FT_THROW("Tensor is null");
   }
 };
@@ -85,14 +95,14 @@ class Tensor {
     if (tensor == nullptr) {
       tensor_ = absl::monostate();
     } else {
-      tensor_ = details::DLTensorPtr(tensor);
+      tensor_ = details::DLManagedTensorPtr(tensor);
     }
   }
 
   DLManagedTensor *ToDLPack() {
-    FT_ENFORCE(absl::holds_alternative<details::DLTensorPtr>(tensor_),
+    FT_ENFORCE(absl::holds_alternative<details::DLManagedTensorPtr>(tensor_),
                "Must own dltensor");
-    return absl::get<details::DLTensorPtr>(tensor_).release();
+    return absl::get<details::DLManagedTensorPtr>(tensor_).release();
   }
 
   size_t n_dim() const {
@@ -132,7 +142,7 @@ class Tensor {
   T *Reshape(std::initializer_list<int64_t> shape_list) {
     // if Need Realloc
     if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
-      tensor_ = details::DLTensorPtr(NewDLPackTensorT<T>(shape_list));
+      tensor_ = details::DLManagedTensorPtr(NewDLPackTensorT<T>(shape_list));
     }
     return this->template mutableData<T>();
   }
@@ -146,7 +156,7 @@ class Tensor {
 
   template <typename T>
   T *mutableData() {
-    return absl::visit(GetMutableData<T>(), tensor_);
+    return const_cast<T *>(data<T>());
   }
 
   DLDeviceType device_type() const {
@@ -185,6 +195,42 @@ class Tensor {
     os << "sum is " << sum << std::endl;
   }
 
+  Tensor operator[](int64_t n) {
+    auto &dl_tensor = to_dl_tensor();
+    FT_ENFORCE_GT(dl_tensor.ndim, 1, "operator[] needs ndim > 1");
+    details::DLTensorPtr result(new DLTensor());
+    result->dtype = dl_tensor.dtype;
+    result->byte_offset = 0;
+    result->strides = nullptr;
+    result->ctx = dl_tensor.ctx;
+    if (n == 0) {
+      result->data = reinterpret_cast<void *>(
+          reinterpret_cast<uintptr_t>(dl_tensor.data) + dl_tensor.byte_offset);
+    } else {
+      int64_t offset =
+          std::accumulate(dl_tensor.shape + 1, dl_tensor.shape + dl_tensor.ndim,
+                          1, std::multiplies<>());
+
+      int type_byte_size = dl_tensor.dtype.bits / 8;
+      result->data = reinterpret_cast<void *>(
+          reinterpret_cast<uintptr_t>(dl_tensor.data) + dl_tensor.byte_offset +
+          offset * n * type_byte_size);
+    }
+
+    result->ndim = dl_tensor.ndim - 1;
+    result->shape = new int64_t[result->ndim];
+    std::copy(dl_tensor.shape + 1, dl_tensor.shape + dl_tensor.ndim,
+              result->shape);
+
+    Tensor r(nullptr);
+    r.tensor_ = std::move(result);
+    return r;
+  }
+
+  const Tensor operator[](int64_t n) const {
+    return const_cast<Tensor *>(this)->operator[](n);
+  }
+
  private:
   template <typename T>
   static void PrintArray(std::ostream &os, const T *data, size_t n) {
@@ -213,7 +259,7 @@ class Tensor {
     ReshapeNeedRealloc(const std::initializer_list<int64_t> &shape_list)
         : shape_list_(shape_list) {}
 
-    bool operator()(details::DLTensorPtr &ptr) const {
+    bool operator()(details::DLManagedTensorPtr &ptr) const {
       int64_t numel = std::accumulate(
           ptr->dl_tensor.shape, ptr->dl_tensor.shape + ptr->dl_tensor.ndim, 1,
           std::multiplies<>());
@@ -240,20 +286,8 @@ class Tensor {
     const std::initializer_list<int64_t> &shape_list_;
   };
 
-  template <typename T>
-  struct GetMutableData {
-    T *operator()(details::DLTensorPtr &ptr) const {
-      EnforceDataType<T>(ptr->dl_tensor);
-      return reinterpret_cast<T *>(ptr->dl_tensor.data);
-    }
-    template <typename Other>
-    T *operator()(Other &) const {
-      return nullptr;
-    }
-  };
-
   const DLTensor &to_dl_tensor() const {
-    return absl::visit(details::VisitDLTensor(), tensor_).dl_tensor;
+    return absl::visit(details::VisitDLTensor(), tensor_);
   }
 
   details::TensorPayload tensor_;

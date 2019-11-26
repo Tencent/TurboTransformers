@@ -31,6 +31,76 @@ static void matmul(bool TransA, bool TransB, BlasInt m, BlasInt n, BlasInt k,
                     A_Array, &lda, B_Array, &ldb, &beta, C_Array, &ldc, 1,
                     &batchCount);
 }
+
+static void BatchMatMul(const core::Tensor& A, bool a_trans,
+                        const core::Tensor& B, bool b_trans, float alpha,
+                        core::Tensor* C, float beta) {
+  auto* A_shape = &A.shape(0);
+  auto A_ndim = A.n_dim();
+  auto* B_shape = &B.shape(0);
+  auto B_ndim = B.n_dim();
+  FT_ENFORCE_GT(A_ndim, 2, "A must at least be 3 dims");
+  FT_ENFORCE_GT(B_ndim, 2, "B must at least be 3 dims");
+
+  int a_rows = A_shape[A_ndim - 2];
+  int a_cols = A_shape[A_ndim - 1];
+  int b_rows = B_shape[B_ndim - 2];
+  int b_cols = B_shape[B_ndim - 1];
+
+  int a_batch_size =
+      std::accumulate(A_shape, A_shape + A_ndim - 2, 1, std::multiplies<>());
+  int b_batch_size =
+      std::accumulate(B_shape, B_shape + B_ndim - 2, 1, std::multiplies<>());
+
+  FT_ENFORCE_EQ(a_batch_size, b_batch_size, "BatchSize mismatch");
+
+  int M = a_trans ? a_cols : a_rows;
+  int N = b_trans ? b_rows : b_cols;
+  int K_a = a_trans ? a_rows : a_cols;
+  int K_b = b_trans ? b_cols : b_rows;
+  FT_ENFORCE_EQ(K_a, K_b, "K mismatch");
+
+  auto* C_shape = &C->shape(0);
+  auto C_ndim = C->n_dim();
+
+  int c_rows = C_shape[C_ndim - 2];
+  int c_cols = C_shape[C_ndim - 1];
+  int c_batch_size =
+      std::accumulate(C_shape, C_shape + C_ndim - 2, 1, std::multiplies<>());
+
+  FT_ENFORCE_EQ(c_rows, M, "C shape mismatch");
+  FT_ENFORCE_EQ(c_cols, N, "C shape mismatch");
+  FT_ENFORCE_EQ(c_batch_size, b_batch_size, "C BatchSize mismatch");
+
+  int offsetA = a_rows * a_cols;
+  int offsetB = b_rows * b_cols;
+  int offsetC = c_rows * c_cols;
+
+  std::unique_ptr<const float* []> A_array(new const float*[a_batch_size]);
+  std::unique_ptr<const float* []> B_array(new const float*[b_batch_size]);
+  std::unique_ptr<float* []> C_array(new float*[c_batch_size]);
+
+  auto* a_ptr = A.data<float>();
+  auto* b_ptr = B.data<float>();
+  auto* c_ptr = C->mutableData<float>();
+
+  for (int i = 0; i < a_batch_size; ++i) {
+    A_array[i] = a_ptr + i * offsetA;
+    B_array[i] = b_ptr + i * offsetB;
+    C_array[i] = c_ptr + i * offsetC;
+  }
+  auto transA = a_trans ? CblasTrans : CblasNoTrans;
+  auto transB = b_trans ? CblasTrans : CblasNoTrans;
+
+  int lda = (transA == CblasNoTrans) ? K_a : M;
+  int ldb = (transB == CblasNoTrans) ? N : K_a;
+  int ldc = N;
+
+  cblas_sgemm_batch(CblasRowMajor, &transA, &transB, &M, &N, &K_a, &alpha,
+                    A_array.get(), &lda, B_array.get(), &ldb, &beta,
+                    C_array.get(), &ldc, 1, &a_batch_size);
+}
+
 }  // namespace details
 
 void BertAttention::operator()(const core::Tensor& input_tensor,
@@ -60,13 +130,16 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
 
   static core::Tensor query_buffer(nullptr);
   query_buffer.Reshape<float>({3, batch_size, seq_length, hidden_size});
-  static core::Tensor q_buf_tensor(nullptr);
-  q_buf_tensor.Reshape<float>(
+  static core::Tensor qkv_tensor(nullptr);
+  qkv_tensor.Reshape<float>(
       {3, batch_size, num_attention_heads_, seq_length, size_per_head});
+
+  static core::Tensor attention_scores_tensor(nullptr);
+  attention_scores_tensor.Reshape<float>(
+      {batch_size, num_attention_heads_, seq_length, seq_length});
 
   float* self_attr_out = buffer + 6 * buf_size;
   float* context_layer = buffer + 7 * buf_size;
-  float* attention_scores = buffer + 8 * buf_size;
 
   // Let's do forward
   int64_t m = batch_size * seq_length;
@@ -88,35 +161,32 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   kernels::Matmul(input_tensor, false, qkv_weight_, true, 1.0, &query_buffer,
                   0.0);
 
-  kernels::SplitAddBiasTransposeForScore(&q_buf_tensor, query_buffer,
-                                         qkv_bias_);
+  kernels::SplitAddBiasTransposeForScore(&qkv_tensor, query_buffer, qkv_bias_);
+
+  auto q_tensor = qkv_tensor[0];
+  auto k_tensor = qkv_tensor[1];
+  auto v_tensor = qkv_tensor[2];
 
   // attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
-  details::matmul(true, false, seq_length, seq_length, size_per_head, alpha,
-                  q_buf_tensor.data<float>() + buf_size, size_per_head,
-                  seq_length * size_per_head, q_buf_tensor.data<float>(),
-                  size_per_head, seq_length * size_per_head, beta,
-                  attention_scores, seq_length, seq_length * seq_length,
-                  batch_size * num_attention_heads_);
+  details::BatchMatMul(q_tensor, false, k_tensor, true, 1.0,
+                       &attention_scores_tensor, 0.0);
 
-  // attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-  // attention_scores = attention_scores + attention_mask
-  // attention_probs = nn.Softmax(dim=-1)(attention_score)
   const float scaler = 1 / sqrtf(size_per_head * 1.0f);
 
-  kernels::SoftmaxMask<float>(attention_scores, attention_mask.data<float>(),
-                              batch_size, num_attention_heads_, seq_length,
+  kernels::SoftmaxMask<float>(attention_scores_tensor.mutableData<float>(),
+                              attention_mask.data<float>(), batch_size,
+                              num_attention_heads_, seq_length,
                               scaler);  // preprocess: attention_mask * -10000
   // attention_probs = self.dropout(attention_probs)
   // TODO
 
   // context_layer = torch.matmul(attention_probs, value_layer) -> context_layer
-  details::matmul(false, false, size_per_head, seq_length, seq_length, alpha,
-                  q_buf_tensor.data<float>() + 2 * buf_size, size_per_head,
-                  seq_length * size_per_head, attention_scores, seq_length,
-                  seq_length * seq_length, beta, context_layer, size_per_head,
-                  seq_length * size_per_head,
-                  batch_size * num_attention_heads_);
+  details::matmul(
+      false, false, size_per_head, seq_length, seq_length, alpha,
+      v_tensor.data<float>(), size_per_head, seq_length * size_per_head,
+      attention_scores_tensor.data<float>(), seq_length,
+      seq_length * seq_length, beta, context_layer, size_per_head,
+      seq_length * size_per_head, batch_size * num_attention_heads_);
 
   // context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
   // new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
