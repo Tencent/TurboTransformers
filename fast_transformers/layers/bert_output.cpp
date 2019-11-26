@@ -25,7 +25,7 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
                             core::Tensor *output_tensor) const {
   output_tensor->Reshape<float>(
       {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(0)});
-  kernels::Matmul(hidden_states, false, dense_weight_, true, 1.0, output_tensor,
+  kernels::MatMul(hidden_states, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
   kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
                                    layer_norm_weight_, layer_norm_bias_,

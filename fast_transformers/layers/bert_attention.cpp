@@ -3,34 +3,12 @@
 #include "fast_transformers/core/aligned_scratchpad.h"
 #include "fast_transformers/core/memory.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
+#include "fast_transformers/layers/kernels/mat_mul.h"
 #include "fast_transformers/layers/kernels/softmax.h"
 #include "fast_transformers/layers/kernels/transpose.h"
 #include "loguru.hpp"
 namespace fast_transformers {
 namespace layers {
-
-namespace details {
-
-static void matmul(bool TransA, bool TransB, BlasInt m, BlasInt n, BlasInt k,
-                   float alpha, const float* A, BlasInt lda, int64_t strideA,
-                   const float* B, BlasInt ldb, int64_t strideB,
-                   const float beta, float* C, BlasInt ldc, int64_t strideC,
-                   BlasInt batchCount) {
-  const float* A_Array[batchCount];
-  const float* B_Array[batchCount];
-  float* C_Array[batchCount];
-  for (int i = 0; i < batchCount; ++i) {
-    A_Array[i] = A + strideA * i;
-    B_Array[i] = B + strideB * i;
-    C_Array[i] = C + strideC * i;
-  }
-  auto transA = TransA ? CblasTrans : CblasNoTrans;
-  auto transB = TransB ? CblasTrans : CblasNoTrans;
-  cblas_sgemm_batch(CblasColMajor, &transA, &transB, &m, &n, &k, &alpha,
-                    A_Array, &lda, B_Array, &ldb, &beta, C_Array, &ldc, 1,
-                    &batchCount);
-}
-}  // namespace details
 
 void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
@@ -46,106 +24,58 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
            << ", num_head: " << num_attention_heads_
            << ", seq_length: " << seq_length << ", hidden_size: " << hidden_size
            << ", size_per_head: " << size_per_head;
-
-  // numel of Q/K/V
-  auto buf_size = batch_size * seq_length * hidden_size;
-  // numel of Q*K, here from and to has the same lenght
-  auto attention_scores_size =
-      batch_size * num_attention_heads_ * seq_length * seq_length;
-
-  // allocate memory for temporary buffers
-  static core::AlignedScratchpad<float> buf;
-  float* buffer = buf.mutable_data(buf_size * 9 + attention_scores_size);
-
-  float* query_buf = buffer;
-  float* key_buf = buffer + buf_size;
-  float* value_buf = buffer + 2 * buf_size;
-  float* q_buf = buffer + 3 * buf_size;
-  float* k_buf = buffer + 4 * buf_size;
-  float* v_buf = buffer + 5 * buf_size;
-  float* self_attr_out = buffer + 6 * buf_size;
-  float* context_layer = buffer + 7 * buf_size;
-  float* attention_scores = buffer + 8 * buf_size;
-
-  // Let's do forward
-  int64_t m = batch_size * seq_length;
-  int64_t k = num_attention_heads_ * size_per_head;
-  int64_t n = k;
-  static float alpha = 1., beta = 0.;
-
-  // TODO assert from_tensor is equal to to_tensor.
-  // TODO delete the wrapper after we check the results, and rewrite it with
-  // Blas().
-
-  FT_ENFORCE(output, "The output tensor should not be nullptr.");
   output->Reshape<float>({batch_size, seq_length, hidden_size});
 
-  auto* qkv_weight_ptr = qkv_weight_.data<float>();
-  auto* qkv_bias_ptr = qkv_bias_.data<float>();
+  // 1. temp_qkv = MatMul(input)
+  static core::Tensor temp_qkv(nullptr);
+  temp_qkv.Reshape<float>({3, batch_size, seq_length, hidden_size});
 
-  auto* dense_weight_ptr = dense_weight_.data<float>();
-  auto* dense_bias_ptr = dense_bias_.data<float>();
+  kernels::MatMul(input_tensor, false, qkv_weight_, true, 1.0, &temp_qkv, 0.0);
 
-  auto* from_tensor_ptr = input_tensor.data<float>();
-  const float* to_tensor_ptr = from_tensor_ptr;  // self attention
-  auto* output_tensor_ptr = output->mutableData<float>();
+  // 2. qkv = transpose(temp_qkv + bias)
+  // Since `SplitAddBiasTransposeForScore` does not support inplace,
+  // qkv and temp_qkv cannot be same tensor
+  static core::Tensor qkv(nullptr);
+  qkv.Reshape<float>(
+      {3, batch_size, num_attention_heads_, seq_length, size_per_head});
 
-  cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, 3 * n, k, alpha,
-              from_tensor_ptr, k, qkv_weight_ptr, k, beta, query_buf, 3 * n);
+  kernels::SplitAddBiasTransposeForScore(&qkv, temp_qkv, qkv_bias_);
 
-  LOG_S(3) << m << ", " << 3 * n << " " << k << " " << alpha << " "
-           << from_tensor_ptr << " " << k << " " << qkv_weight_ptr << " " << k
-           << " " << beta << " " << query_buf << " " << 3 * n;
+  // 3. q = qkv[0]; k = qkv[1]; v = qkv[2];
+  auto q = qkv[0];
+  auto k = qkv[1];
+  auto v = qkv[2];
 
-  const std::vector<int64_t> QKV_shape{batch_size, seq_length, 3,
-                                       num_attention_heads_, size_per_head};
-  kernels::SplitAddbiasTransposeForScore<float>(q_buf, query_buf, qkv_bias_ptr,
-                                                QKV_shape);
+  // 4. att_score = softmax((q * k^T)*1/sqrt(size_per_head) + att_mask)
+  static core::Tensor att_score(nullptr);
+  att_score.Reshape<float>(
+      {batch_size, num_attention_heads_, seq_length, seq_length});
 
-  // attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
-  details::matmul(true, false, seq_length, seq_length, size_per_head, alpha,
-                  k_buf, size_per_head, seq_length * size_per_head, q_buf,
-                  size_per_head, seq_length * size_per_head, beta,
-                  attention_scores, seq_length, seq_length * seq_length,
-                  batch_size * num_attention_heads_);
+  kernels::BatchMatMul(q, false, k, true, 1.0, &att_score, 0.0);
 
-  // attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-  // attention_scores = attention_scores + attention_mask
-  // attention_probs = nn.Softmax(dim=-1)(attention_score)
-  const float scaler = 1 / sqrtf(size_per_head * 1.0f);
+  kernels::ApplyMaskAndSoftmax(
+      &att_score, attention_mask,
+      1 / std::sqrt(static_cast<float>(size_per_head)));
 
-  kernels::SoftmaxMask<float>(attention_scores, attention_mask.data<float>(),
-                              batch_size, num_attention_heads_, seq_length,
-                              scaler);  // preprocess: attention_mask * -10000
-  // attention_probs = self.dropout(attention_probs)
-  // TODO
-
-  // context_layer = torch.matmul(attention_probs, value_layer) -> context_layer
-  details::matmul(false, false, size_per_head, seq_length, seq_length, alpha,
-                  v_buf, size_per_head, seq_length * size_per_head,
-                  attention_scores, seq_length, seq_length * seq_length, beta,
-                  context_layer, size_per_head, seq_length * size_per_head,
-                  batch_size * num_attention_heads_);
-
-  // context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
-  // new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
-  // context_layer = context_layer.view(*new_context_layer_shape)
-  kernels::TransposeForScore<float>(
-      self_attr_out, context_layer,
+  // 5. ctx = v * att_score
+  static core::Tensor context_layer(nullptr);
+  context_layer.Reshape<float>(
       {batch_size, num_attention_heads_, seq_length, size_per_head});
+  kernels::BatchMatMul(att_score, false, v, false, 1.0, &context_layer, 0.0);
 
-  // self_outputs = (context_layer, attention_probs) if self.output_attentions
-  // else (context_layer,) # self.output_attentions is nullptr hidden_states =
-  // self.dense(self_outputs[0]) #context_layer
-  cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-              self_attr_out, k, dense_weight_ptr, k, beta, output_tensor_ptr,
-              n);
+  // 6. self_att_out = transpose(ctx)
+  static core::Tensor self_attr_out(nullptr);
+  self_attr_out.Reshape<float>(
+      {batch_size, seq_length, num_attention_heads_ * size_per_head});
 
-  // attention_output = self.LayerNorm(hidden_states + input_tensor)
+  kernels::TransposeForScore(&self_attr_out, context_layer);
+
+  // 7. output = LayerNorm(MatMul(self_att_out) + Bias)
+  kernels::MatMul(self_attr_out, false, dense_weight_, true, 1.0, output, 0.0);
+
   kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
                                    layer_norm_weight_,  // gemma
                                    layer_norm_bias_, output);
-  // outputs = (attention_output,) + self_outputs[1:]
 }
 
 void BertAttention::EnforceShapeAndType() const {

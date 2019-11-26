@@ -20,7 +20,7 @@ add_definitions(
         -DEIGEN_NO_MALLOC  # if any eigen code needs malloc, just raise a compilation error
         -DEIGEN_DEFAULT_TO_ROW_MAJOR
         -DEIGEN_FAST_MATH=1 # fast math for cos/sin/...
-        )
+)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
@@ -35,6 +35,9 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL Intel)
     message(STATUS "Fast Transformer is built with a intel compiler!")
     add_definitions(-D__USE_INTEL_COMPILER__)
 endif ()
+set(CMAKE_CXX_FLAGS "-Wall")
+set(CMAKE_C_FLAGS "-Wall")
+
 add_subdirectory(3rd)
 enable_testing()
 
@@ -66,17 +69,17 @@ if (WITH_PROFILER)
 endif ()
 
 
-IF(UNIX AND NOT APPLE)
+IF (UNIX AND NOT APPLE)
     # Link absl_base needs -lrt on linux. It is necessary on CentOS.
     find_library(RT_LIBRARY NAMES librt.a
-            PATHS   $ENV{CONDA_PREFIX}/lib/
-                    $ENV{CONDA_PREFIX}/x86_64-conda_cos6-linux-gnu/sysroot/lib/
-                    $ENV{CONDA_PREFIX}/x86_64-conda_cos6-linux-gnu/sysroot/usr/lib/)
+            PATHS $ENV{CONDA_PREFIX}/lib/
+            $ENV{CONDA_PREFIX}/x86_64-conda_cos6-linux-gnu/sysroot/lib/
+            $ENV{CONDA_PREFIX}/x86_64-conda_cos6-linux-gnu/sysroot/usr/lib/)
     if (NOT RT_LIBRARY)
         message(SEND_ERROR "Cannot find librt from")
-    ENDIF()
+    ENDIF ()
     target_link_libraries(absl_base PRIVATE ${RT_LIBRARY})
-ENDIF()
+ENDIF ()
 
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

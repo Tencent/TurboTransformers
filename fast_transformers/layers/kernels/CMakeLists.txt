@@ -4,9 +4,6 @@ target_link_libraries(layer_norm tensor)
 add_library(softmax softmax.cpp)
 target_link_libraries(softmax tensor)
 
-add_executable(softmax_test softmax_test.cpp)
-target_link_libraries(softmax_test PUBLIC tensor softmax blas Catch2 loguru enforce aligned_scratchpad)
-
 add_library(transpose transpose.cpp)
 target_link_libraries(transpose tensor)
 

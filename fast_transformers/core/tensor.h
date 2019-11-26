@@ -5,6 +5,7 @@
 #include <memory>
 #include <numeric>
 
+#include "absl/types/variant.h"
 #include "fast_transformers/core/blas.h"
 #include "fast_transformers/core/enforce.h"
 #include "fast_transformers/core/memory.h"
@@ -47,6 +48,33 @@ static inline bool IsDataType(DLDataType dt) {
          (dt.bits == 0 || dt.bits == sizeof(T) * 8);
 }
 
+using DLManagedTensorPtr =
+    std::unique_ptr<DLManagedTensor, details::DLPackManagedTensorDeleter>;
+
+struct DLTensorDimDeleter {
+  void operator()(DLTensor *tensor) const {
+    if (tensor) {
+      delete[] tensor->shape;
+      delete tensor;
+    }
+  }
+};
+
+using DLTensorPtr = std::unique_ptr<DLTensor, DLTensorDimDeleter>;
+
+using TensorPayload =
+    absl::variant<absl::monostate, DLManagedTensorPtr, DLTensorPtr>;
+
+struct VisitDLTensor {
+  const DLTensor &operator()(const DLManagedTensorPtr &ptr) const {
+    return ptr->dl_tensor;
+  }
+  const DLTensor &operator()(const DLTensorPtr &t) const { return *t; }
+  const DLTensor &operator()(absl::monostate) const {
+    FT_THROW("Tensor is null");
+  }
+};
+
 }  // namespace details
 extern DLManagedTensor *NewDLPackTensor(
     std::initializer_list<int64_t> shape_list, DLDeviceType device,
@@ -63,96 +91,98 @@ inline DLManagedTensor *NewDLPackTensorT(
 
 class Tensor {
  public:
-  explicit Tensor(DLManagedTensor *tensor) : tensor_(tensor) {}
+  explicit Tensor(DLManagedTensor *tensor) {
+    if (tensor == nullptr) {
+      tensor_ = absl::monostate();
+    } else {
+      tensor_ = details::DLManagedTensorPtr(tensor);
+    }
+  }
 
-  DLManagedTensor *ToDLPack() { return tensor_.release(); }
+  DLManagedTensor *ToDLPack() {
+    FT_ENFORCE(absl::holds_alternative<details::DLManagedTensorPtr>(tensor_),
+               "Must own dltensor");
+    return absl::get<details::DLManagedTensorPtr>(tensor_).release();
+  }
 
   size_t n_dim() const {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
-    return tensor_->dl_tensor.ndim;
+    auto &dl_tensor = to_dl_tensor();
+    return dl_tensor.ndim;
   }
 
-  const int64_t &shape(size_t pos) const {
-    FT_ENFORCE_LT(pos, tensor_->dl_tensor.ndim,
+  const int64_t &shape(int pos) const {
+    auto &dl_tensor = to_dl_tensor();
+    FT_ENFORCE_LT(pos, dl_tensor.ndim,
                   "The index(%d) is out of the range[0...%d]", pos,
-                  tensor_->dl_tensor.ndim);
-    return tensor_->dl_tensor.shape[pos];
+                  dl_tensor.ndim);
+    return dl_tensor.shape[pos];
   }
 
-  size_t numel() const {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.");
-    return std::accumulate(tensor_->dl_tensor.shape,
-                           tensor_->dl_tensor.shape + tensor_->dl_tensor.ndim,
-                           1, std::multiplies<int64_t>());
+  int64_t numel() const {
+    auto &dl_tensor = to_dl_tensor();
+    return std::accumulate(dl_tensor.shape, dl_tensor.shape + dl_tensor.ndim, 1,
+                           std::multiplies<int64_t>());
   }
 
   int64_t rows() const {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.");
-    FT_ENFORCE_GE(n_dim(), 2, "n_dims() >= 2");
-    return std::accumulate(&shape(0), &shape(0) + n_dim() - 1, 1,
+    auto &dl_tensor = to_dl_tensor();
+    FT_ENFORCE_GE(dl_tensor.ndim, 2, "n_dims() >= 2");
+    return std::accumulate(dl_tensor.shape,
+                           dl_tensor.shape + dl_tensor.ndim - 1, 1,
                            std::multiplies<int64_t>());
   }
   int64_t cols() const {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.");
-    FT_ENFORCE_GE(n_dim(), 2, "n_dims() >= 2");
-    return shape(n_dim() - 1);
+    auto &dl_tensor = to_dl_tensor();
+    FT_ENFORCE_GE(dl_tensor.ndim, 2, "n_dims() >= 2");
+    return dl_tensor.shape[dl_tensor.ndim - 1];
   }
 
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
   template <typename T>
   T *Reshape(std::initializer_list<int64_t> shape_list) {
-    if (tensor_ &&
-        numel() >= std::accumulate(shape_list.begin(), shape_list.end(), 1,
-                                   std::multiplies<int64_t>())) {
-      if (tensor_->dl_tensor.ndim != shape_list.size()) {
-        tensor_->dl_tensor.ndim = shape_list.size();
-        delete[] tensor_->dl_tensor.shape;
-        tensor_->dl_tensor.shape = new int64_t[shape_list.size()];
-      }
-      std::copy(shape_list.begin(), shape_list.end(), tensor_->dl_tensor.shape);
-      tensor_->dl_tensor.ndim = shape_list.size();
-    } else {
-      tensor_.reset(NewDLPackTensorT<T>(shape_list));
+    // if Need Realloc
+    if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
+      tensor_ = details::DLManagedTensorPtr(NewDLPackTensorT<T>(shape_list));
     }
     return this->template mutableData<T>();
   }
 
   template <typename T>
   const T *data() const {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
-    EnforceDataType<T>(tensor_->dl_tensor);
-    return reinterpret_cast<T *>(tensor_->dl_tensor.data);
+    auto &dltensor = to_dl_tensor();
+    EnforceDataType<T>(dltensor);
+    return reinterpret_cast<T *>(dltensor.data);
   }
 
   template <typename T>
   T *mutableData() {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
-    EnforceDataType<T>(tensor_->dl_tensor);
-    return reinterpret_cast<T *>(tensor_->dl_tensor.data);
+    return const_cast<T *>(data<T>());
   }
 
   DLDeviceType device_type() const {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
-    return tensor_->dl_tensor.ctx.device_type;
+    auto &dltensor = to_dl_tensor();
+    return dltensor.ctx.device_type;
   }
-  bool is_null() const { return tensor_ == nullptr; }
+  bool is_null() const {
+    return absl::holds_alternative<absl::monostate>(tensor_);
+  }
 
   template <typename T>
   void Print(std::ostream &os) const {
-    FT_ENFORCE(tensor_, "This tensor is not initialized.)");
-    os << "type " << tensor_->dl_tensor.dtype.code << std::endl;
-    os << "bits " << tensor_->dl_tensor.dtype.bits << std::endl;
+    auto &dl_tensor = to_dl_tensor();
+    os << "type " << dl_tensor.dtype.code << std::endl;
+    os << "bits " << dl_tensor.dtype.bits << std::endl;
     os << "numel: " << numel() << std::endl;
     os << "n_dim: " << n_dim() << std::endl;
     os << "stride: ";
-    if (tensor_->dl_tensor.strides != nullptr) {
-      PrintArray(os, tensor_->dl_tensor.strides, tensor_->dl_tensor.ndim);
+    if (dl_tensor.strides != nullptr) {
+      PrintArray(os, dl_tensor.strides, dl_tensor.ndim);
     } else {
       os << "null";
     }
     os << "\n";
     os << "shape: ";
-    PrintArray(os, tensor_->dl_tensor.shape, tensor_->dl_tensor.ndim);
+    PrintArray(os, dl_tensor.shape, dl_tensor.ndim);
     os << "\n";
     os << "first 10 elems: (";
     int cnt = 10;
@@ -163,6 +193,42 @@ class Tensor {
     }
     os << ")\n";
     os << "sum is " << sum << std::endl;
+  }
+
+  Tensor operator[](int64_t n) {
+    auto &dl_tensor = to_dl_tensor();
+    FT_ENFORCE_GT(dl_tensor.ndim, 1, "operator[] needs ndim > 1");
+    details::DLTensorPtr result(new DLTensor());
+    result->dtype = dl_tensor.dtype;
+    result->byte_offset = 0;
+    result->strides = nullptr;
+    result->ctx = dl_tensor.ctx;
+    if (n == 0) {
+      result->data = reinterpret_cast<void *>(
+          reinterpret_cast<uintptr_t>(dl_tensor.data) + dl_tensor.byte_offset);
+    } else {
+      int64_t offset =
+          std::accumulate(dl_tensor.shape + 1, dl_tensor.shape + dl_tensor.ndim,
+                          1, std::multiplies<>());
+
+      int type_byte_size = dl_tensor.dtype.bits / 8;
+      result->data = reinterpret_cast<void *>(
+          reinterpret_cast<uintptr_t>(dl_tensor.data) + dl_tensor.byte_offset +
+          offset * n * type_byte_size);
+    }
+
+    result->ndim = dl_tensor.ndim - 1;
+    result->shape = new int64_t[result->ndim];
+    std::copy(dl_tensor.shape + 1, dl_tensor.shape + dl_tensor.ndim,
+              result->shape);
+
+    Tensor r(nullptr);
+    r.tensor_ = std::move(result);
+    return r;
+  }
+
+  const Tensor operator[](int64_t n) const {
+    return const_cast<Tensor *>(this)->operator[](n);
   }
 
  private:
@@ -188,7 +254,43 @@ class Tensor {
   }
 
  private:
-  std::unique_ptr<DLManagedTensor, details::DLPackManagedTensorDeleter> tensor_;
+  struct ReshapeNeedRealloc {
+   public:
+    ReshapeNeedRealloc(const std::initializer_list<int64_t> &shape_list)
+        : shape_list_(shape_list) {}
+
+    bool operator()(details::DLManagedTensorPtr &ptr) const {
+      int64_t numel = std::accumulate(
+          ptr->dl_tensor.shape, ptr->dl_tensor.shape + ptr->dl_tensor.ndim, 1,
+          std::multiplies<>());
+      if (numel >= std::accumulate(shape_list_.begin(), shape_list_.end(), 1,
+                                   std::multiplies<>())) {
+        if (ptr->dl_tensor.ndim != static_cast<int>(shape_list_.size())) {
+          ptr->dl_tensor.ndim = shape_list_.size();
+          delete[] ptr->dl_tensor.shape;
+          ptr->dl_tensor.shape = new int64_t[shape_list_.size()];
+        }
+        std::copy(shape_list_.begin(), shape_list_.end(), ptr->dl_tensor.shape);
+        ptr->dl_tensor.ndim = shape_list_.size();
+        return false;
+      }
+      return true;
+    }
+
+    template <typename T>
+    bool operator()(T &) const {
+      return true;
+    }
+
+   private:
+    const std::initializer_list<int64_t> &shape_list_;
+  };
+
+  const DLTensor &to_dl_tensor() const {
+    return absl::visit(details::VisitDLTensor(), tensor_);
+  }
+
+  details::TensorPayload tensor_;
 };
 
 }  // namespace core
