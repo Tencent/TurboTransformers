@@ -41,10 +41,10 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   int b_rows = B_shape[B_ndim - 2];
   int b_cols = B_shape[B_ndim - 1];
 
-  int a_batch_size =
-      std::accumulate(A_shape, A_shape + A_ndim - 2, 1, std::multiplies<>());
-  int b_batch_size =
-      std::accumulate(B_shape, B_shape + B_ndim - 2, 1, std::multiplies<>());
+  int a_batch_size = std::accumulate(A_shape, A_shape + A_ndim - 2, 1,
+                                     std::multiplies<int64_t>());
+  int b_batch_size = std::accumulate(B_shape, B_shape + B_ndim - 2, 1,
+                                     std::multiplies<int64_t>());
 
   FT_ENFORCE_EQ(a_batch_size, b_batch_size, "BatchSize mismatch");
 
@@ -59,8 +59,8 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
 
   int c_rows = C_shape[C_ndim - 2];
   int c_cols = C_shape[C_ndim - 1];
-  int c_batch_size =
-      std::accumulate(C_shape, C_shape + C_ndim - 2, 1, std::multiplies<>());
+  int c_batch_size = std::accumulate(C_shape, C_shape + C_ndim - 2, 1,
+                                     std::multiplies<int64_t>());
 
   FT_ENFORCE_EQ(c_rows, M, "C shape mismatch");
   FT_ENFORCE_EQ(c_cols, N, "C shape mismatch");

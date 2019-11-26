@@ -209,7 +209,7 @@ class Tensor {
     } else {
       int64_t offset =
           std::accumulate(dl_tensor.shape + 1, dl_tensor.shape + dl_tensor.ndim,
-                          1, std::multiplies<>());
+                          1, std::multiplies<int64_t>());
 
       int type_byte_size = dl_tensor.dtype.bits / 8;
       result->data = reinterpret_cast<void *>(
@@ -262,9 +262,9 @@ class Tensor {
     bool operator()(details::DLManagedTensorPtr &ptr) const {
       int64_t numel = std::accumulate(
           ptr->dl_tensor.shape, ptr->dl_tensor.shape + ptr->dl_tensor.ndim, 1,
-          std::multiplies<>());
+          std::multiplies<int64_t>());
       if (numel >= std::accumulate(shape_list_.begin(), shape_list_.end(), 1,
-                                   std::multiplies<>())) {
+                                   std::multiplies<int64_t>())) {
         if (ptr->dl_tensor.ndim != static_cast<int>(shape_list_.size())) {
           ptr->dl_tensor.ndim = shape_list_.size();
           delete[] ptr->dl_tensor.shape;
