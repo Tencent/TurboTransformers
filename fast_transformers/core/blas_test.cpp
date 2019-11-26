@@ -123,7 +123,6 @@ TEST_CASE("blas-gemm-intermediate") {
 }
 
 TEST_CASE("blas-gemm-intermediate-pad") {
-  int k_pad = 0;
   int m = 1 * 128, k_param = 12 * 64 * 4, n_param = 12 * 64 * 4;
   int pad_size = 0;
   for (int k_pad = 0; k_pad <= pad_size; k_pad += 4) {
