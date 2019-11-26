@@ -21,9 +21,7 @@ namespace kernels {
     output_tensor = tf.transpose(output_tensor, [0, 2, 1, 3])
     return output_tensor
  * **/
-template <typename T>
-extern void TransposeForScore(T* output, const T* input,
-                              const std::vector<int64_t>& shape);
+extern void TransposeForScore(core::Tensor* output, const core::Tensor& input);
 
 // input (batch_size, seq_length, 3, head_num, *size_per_head)
 //(3, batch_size, head_num, seq_length, *size_per_head)
