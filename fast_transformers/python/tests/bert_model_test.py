@@ -16,8 +16,7 @@ class TestBertModel(unittest.TestCase):
         self.tokenizer = BertTokenizer.from_pretrained(model_id)
         self.torch_model = BertModel.from_pretrained(model_id)
         self.torch_model.eval()
-        self.ft_embedding = fast_transformers.BertModel.from_pretrained(
-            model_id)
+        self.ft_model = fast_transformers.BertModel.from_pretrained(model_id)
 
     def test_bert_model(self):
         num_iter = 100
@@ -29,10 +28,10 @@ class TestBertModel(unittest.TestCase):
             for it in range(num_iter):
                 torch_result = self.torch_model(input_ids)
         print(f'BertEmb Plain PyTorch QPS {num_iter / t.elapsed}')
-        ft_result = self.ft_embedding(input_ids)
+        ft_result = self.ft_model(input_ids)
         with contexttimer.Timer() as t:
             for it in range(num_iter):
-                ft_result = self.ft_embedding(input_ids)
+                ft_result = self.ft_model(input_ids)
 
         print(f'BertEmb FastTransform QPS {num_iter / t.elapsed}')
         torch_result = (torch_result[0][:, 0]).numpy()
