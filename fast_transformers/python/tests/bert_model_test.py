@@ -22,6 +22,7 @@ class TestBertModel(unittest.TestCase):
     def test_bert_model(self):
         num_iter = 100
         input_ids = self.tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求。')
+        input_ids = torch.tensor([input_ids], dtype=torch.long)
 
         self.torch_model(input_ids)
         with contexttimer.Timer() as t:
