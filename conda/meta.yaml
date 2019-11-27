@@ -1,6 +1,6 @@
 package:
   name: fast-transformers
-  version: "0.1.1a0"
+  version: "0.1.1a1"
 
 source:
   path: ..
