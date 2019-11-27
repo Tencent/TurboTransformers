@@ -11,10 +11,11 @@ from transformers.modeling_bert import BertAttention as TorchBertAttention
 from transformers.modeling_bert import BertLayer as TorchBertLayer
 from transformers.modeling_bert import BertEncoder as TorchBertEncoder
 from transformers.modeling_bert import BertModel as TorchBertModel
+import enum
 
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
-    'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel'
+    'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType'
 ]
 
 
@@ -228,12 +229,22 @@ class SequencePool(cxx.SequencePool):
         return convert_returns_as_type(output_tensor, return_type)
 
 
+class PoolingType(enum.Enum):
+    FIRST = "First"
+    LAST = "Last"
+    MEAN = "Mean"
+    MAX = "Max"
+
+
 class BertModel:
-    def __init__(self, embeddings: BertEmbeddings, encoder: BertEncoder,
-                 seq_pool: SequencePool):
+    _pooling_layers = {
+        enum_val: SequencePool(enum_val.value)
+        for enum_val in PoolingType
+    }
+
+    def __init__(self, embeddings: BertEmbeddings, encoder: BertEncoder):
         self.embeddings = embeddings
         self.encoder = encoder
-        self.seq_pool = seq_pool
         self.prepare = cxx.PrepareBertMasks()
 
     def __call__(self,
@@ -241,6 +252,7 @@ class BertModel:
                  attention_masks: Optional[AnyTensor] = None,
                  token_type_ids: Optional[AnyTensor] = None,
                  position_ids: Optional[AnyTensor] = None,
+                 pooling_type: PoolingType = PoolingType.FIRST,
                  hidden_cache: Optional[AnyTensor] = None,
                  output: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None):
@@ -267,15 +279,12 @@ class BertModel:
                                     return_type=ReturnType.FAST_TRANSFORMERS,
                                     output=hidden_cache)
 
-        return self.seq_pool(hidden_cache,
-                             return_type=return_type,
-                             output_tensor=output)
+        return self._pooling_layers[pooling_type](hidden_cache,
+                                                  return_type=return_type,
+                                                  output_tensor=output)
 
     @staticmethod
-    def from_torch(model: TorchBertModel, pooling_type=None):
+    def from_torch(model: TorchBertModel):
         embeddings = BertEmbeddings.from_torch(model.embeddings)
         encoder = BertEncoder.from_torch(model.encoder)
-        if pooling_type is None:
-            pooling_type = 'First'
-        seq_pool = SequencePool(pooling_type)
-        return BertModel(embeddings, encoder, seq_pool)
+        return BertModel(embeddings, encoder)
