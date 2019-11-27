@@ -294,4 +294,5 @@ class BertModel:
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
         model = BertModel.from_torch(torch_model)
         model.config = torch_model.config
+        model._torch_model = torch_model  # prevent destroy torch model.
         return model
