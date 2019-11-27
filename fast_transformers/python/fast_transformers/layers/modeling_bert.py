@@ -279,3 +279,10 @@ class BertModel:
             pooling_type = 'First'
         seq_pool = SequencePool(pooling_type)
         return BertModel(embeddings, encoder, seq_pool)
+
+    @staticmethod
+    def from_pretrained(model_id_or_path: str):
+        torch_model = TorchBertModel.from_pretrained(model_id_or_path)
+        model = BertModel.from_torch(torch_model)
+        model.config = torch_model.config
+        return model

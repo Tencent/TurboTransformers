@@ -11,15 +11,14 @@ import fast_transformers
 def create_test_bert_emb(batch_size: int, seq_length: int):
     class TestBertEmbedding(unittest.TestCase):
         def setUp(self) -> None:
+            model_id = "bert-base-chinese"
             torch.set_grad_enabled(False)
             torch.set_num_threads(1)
-            self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
-            cfg = BertConfig(
-                vocab_size_or_config_json_file=self.tokenizer.vocab_size)
-            self.torch_model = BertModel(cfg)
+            self.tokenizer = BertTokenizer.from_pretrained()
+            self.torch_model = BertModel(model_id)
             self.torch_model.eval()
-            self.ft_embedding = fast_transformers.BertModel.from_torch(
-                self.torch_model)
+            self.ft_embedding = fast_transformers.BertModel.from_pretrained(
+                model_id)
 
         def test_embedding(self):
             num_iter = 100
