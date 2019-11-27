@@ -14,7 +14,7 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
             model_id = "bert-base-chinese"
             torch.set_grad_enabled(False)
             torch.set_num_threads(1)
-            self.tokenizer = BertTokenizer.from_pretrained()
+            self.tokenizer = BertTokenizer.from_pretrained(model_id)
             self.torch_model = BertModel(model_id)
             self.torch_model.eval()
             self.ft_embedding = fast_transformers.BertModel.from_pretrained(
