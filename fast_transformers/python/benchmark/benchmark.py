@@ -49,6 +49,7 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
         py_profile.dump_stats(
             f"ft_{batch_size}_{seq_len}_{num_threads}.py_profile")
 
+    model(input_ids)
     with contexttimer.Timer() as t:
         for _ in range(n):
             model(input_ids)
@@ -80,7 +81,7 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int,
                               high=cfg.vocab_size - 1,
                               size=(batch_size, seq_len),
                               dtype=torch.long)
-
+    model(input_ids)
     with contexttimer.Timer() as t:
         for _ in range(n):
             model(input_ids)
@@ -163,8 +164,8 @@ def onnxruntime_benchmark_creator(backend: str):
         p.close()
         import contexttimer
         import os
-        import onnx
         import onnxruntime.backend
+        import onnx
         import numpy
         if not onnxruntime.backend.supports_device(backend):
             raise RuntimeError(
@@ -174,11 +175,16 @@ def onnxruntime_benchmark_creator(backend: str):
         os.environ['MKL_NUM_THREADS'] = str(num_threads)
 
         model = onnx.load_model(f=temp_fn)
-        model = onnxruntime.backend.prepare(model=model, device=backend)
+        model = onnxruntime.backend.prepare(
+            model=model,
+            device=backend,
+            graph_optimization_level=onnxruntime.GraphOptimizationLevel.
+            ORT_ENABLE_ALL)
         input_ids = numpy.random.randint(low=0,
                                          high=vocab_size - 1,
                                          size=(batch_size, seq_len),
                                          dtype=numpy.int64)
+        model.run(inputs=[input_ids])
 
         with contexttimer.Timer() as t:
             for _ in range(n):
