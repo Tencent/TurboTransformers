@@ -45,10 +45,10 @@ bash run_benchmark.sh
 ```
 
 ### 使用示例
-Fast_transformers提供了简单的调用接口，提供兼容huggingface/transformers pytorch模型的调用方式。
+Fast_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
 下面代码片段展示了如何将huggingface预训练BERT模型导入fast_transformer并进行一次BERT encoder的计算。
 
-```
+```python 
 import torch
 import transformers
 import contexttimer
