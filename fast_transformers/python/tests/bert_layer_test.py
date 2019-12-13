@@ -6,6 +6,7 @@ import torch.jit
 import torch.onnx
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertLayer
+import os
 
 import fast_transformers
 
@@ -13,7 +14,8 @@ import fast_transformers
 class TestBertLayer(unittest.TestCase):
     def setUp(self) -> None:
         torch.set_grad_enabled(False)
-        self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
+        self.tokenizer = BertTokenizer.from_pretrained(
+            os.path.join(os.path.dirname(__file__), 'test-model'))
         self.cfg = BertConfig(
             vocab_size_or_config_json_file=self.tokenizer.vocab_size,
             attention_probs_dropout_prob=0.0,
