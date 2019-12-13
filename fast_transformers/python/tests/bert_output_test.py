@@ -1,11 +1,8 @@
 import unittest
 
 import contexttimer
-import onnx
 import torch
 import torch.jit
-import torch.onnx
-from onnxruntime.backend import backend
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertOutput
 
@@ -40,20 +37,6 @@ def create_shape_test(batch_size: int, seq_length: int):
                                                    self.attention_output
                                                ])
 
-            torch.onnx.export(
-                self.torch_bertout,
-                (self.intermediate_output, self.attention_output),
-                'bertout.onnx')
-
-            if not backend.supports_device('MKL-DNN'):
-                self.onnx_bertout = backend.prepare(onnx.load('bertout.onnx'),
-                                                    device="CPU")
-                print("Using CPU ONNX")
-            else:
-                self.onnx_bertout = backend.prepare(onnx.load('bertout.onnx'),
-                                                    device="MKL-DNN")
-                print("Using MKL-DNN ONNX")
-
         def test_bertout(self):
             with open(f"bert_output_qps_{batch_size}_{seq_length:03}.txt",
                       "w") as of:
@@ -75,19 +58,6 @@ def create_shape_test(batch_size: int, seq_length: int):
                                          self.attention_output)
                 print(
                     f'BertOut({batch_size}, {seq_length:03}) Jit QPS {num_steps / t.elapsed}',
-                    file=of)
-
-                onnx_input_feeds = [
-                    self.intermediate_output.numpy(),
-                    self.attention_output.numpy()
-                ]
-                self.onnx_bertout.run(inputs=onnx_input_feeds)
-
-                with contexttimer.Timer() as t:
-                    for it in range(num_steps):
-                        self.onnx_bertout.run(inputs=onnx_input_feeds)
-                print(
-                    f'BertOut({batch_size}, {seq_length:03}) ONNX QPS {num_steps / t.elapsed}',
                     file=of)
 
                 ft_result = self.ft_bertout(self.intermediate_output,
