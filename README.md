@@ -44,16 +44,16 @@ bash run_benchmark.sh
 Fast_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
 下面代码片段展示了如何将huggingface预训练BERT模型导入fast_transformer并进行一次BERT encoder的计算。
 
-```python 
+```python
 import torch
 import transformers
 import contexttimer
 import fast_transformers
 # 使用4个线程运行fast_transformers
-fast_transformers.set_num_threads(4) 
+fast_transformers.set_num_threads(4)
 # 调用transformers提供的预训练模型
 model = transformers.BertModel.from_pretrained(
-    "bert-base-chinese")  
+    "bert-base-chinese")
 # 预训练模型的配置
 cfg = model.config
 #随机生成文本序列
