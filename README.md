@@ -28,6 +28,7 @@ docker pull ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1a1-dev
 ```
 sh conda/build.sh
 ```
+
 3. 在docker内进行单测 (optional)
 
 ```
