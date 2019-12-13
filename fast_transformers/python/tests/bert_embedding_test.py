@@ -8,13 +8,15 @@ import torch.jit
 import torch.onnx
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertEmbeddings, BertConfig
+import os
 
 
 def create_test_bert_emb(batch_size: int, seq_length: int):
     class TestBertEmbedding(unittest.TestCase):
         def setUp(self) -> None:
             torch.set_grad_enabled(False)
-            self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
+            self.tokenizer = BertTokenizer.from_pretrained(
+                os.path.join(os.path.dirname(__file__), 'test-model'))
             cfg = BertConfig(
                 vocab_size_or_config_json_file=self.tokenizer.vocab_size)
             self.torch_embedding = BertEmbeddings(cfg)

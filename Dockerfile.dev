@@ -18,16 +18,16 @@ RUN CGO_ENABLED=0 GOOS=linux go get -u -v github.com/google/pprof
 FROM continuumio/miniconda3
 COPY --from=PProfBuilder /go/bin/pprof /bin/pprof
 
-RUN mkdir -p /opt/
-COPY --from=OnnxRTBuilder /src/onnxruntime/build/Linux/Release/dist/onnxruntime-*.whl \
-    /opt/
 # Try to install deps by anaconda
 # NOTE:  1. MKL is installed with pytorch.
 #           Fast-Transformers will use the same MKL from PyTorch
 RUN /opt/conda/bin/conda install pytorch cpuonly -c pytorch && \
     /opt/conda/bin/conda install curl conda-verify conda-build mkl-include cmake -c anaconda &&  \
-    /opt/conda/bin/conda install git graphviz gperftools -c conda-forge  && \
+    /opt/conda/bin/conda install git graphviz gperftools git-lfs -c conda-forge  && \
     /opt/conda/bin/conda clean -afy
+
+COPY --from=OnnxRTBuilder /src/onnxruntime/build/Linux/Release/dist/onnxruntime-*.whl \
+    /opt/
 RUN pip install /opt/onnxruntime-*.whl
 # Install c++ compiler only
 RUN apt-get update && apt-get install -y g++ && rm -rf /var/lib/apt/lists/*

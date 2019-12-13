@@ -5,6 +5,7 @@ import torch
 import torch.jit
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertOutput
+import os
 
 import fast_transformers
 
@@ -13,7 +14,8 @@ def create_shape_test(batch_size: int, seq_length: int):
     class TestBertOut(unittest.TestCase):
         def setUp(self) -> None:
             torch.set_grad_enabled(False)
-            self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
+            self.tokenizer = BertTokenizer.from_pretrained(
+                os.path.join(os.path.dirname(__file__), 'test-model'))
             self.cfg = BertConfig(
                 vocab_size_or_config_json_file=self.tokenizer.vocab_size)
             self.intermediate_size = self.cfg.intermediate_size  # 3072;

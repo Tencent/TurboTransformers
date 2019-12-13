@@ -1,5 +1,5 @@
 import unittest
-
+import os
 import contexttimer
 import torch
 import torch.jit
@@ -14,7 +14,8 @@ class TestBertEncoder(unittest.TestCase):
     def setUp(self) -> None:
         torch.set_grad_enabled(False)
         torch.set_num_threads(1)
-        self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
+        self.tokenizer = BertTokenizer.from_pretrained(
+            os.path.join(os.path.dirname(__file__), 'test-model'))
         self.cfg = BertConfig(
             vocab_size_or_config_json_file=self.tokenizer.vocab_size,
             attention_probs_dropout_prob=0.0,

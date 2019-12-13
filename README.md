@@ -1,6 +1,6 @@
 ### fast_transformers: 基于CPU的快速Transformer推理工具
 
-Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，这对高效部署Transformer线上服务带来了巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为fast_transformers的基于Intel多核CPU的Transformer实现。fast_transformers充发挥CPU的核间并行和指令级并行能力，并支持变长输入序列处理，避免了补零的额外计算。fast_transformer在多种CPU硬件上获得了超过pytorch和目前主流优化引擎（如onnxruntime-mkldnn 和torch JIT）的性能表现。使用4~8个线程时，fast_transformer在10~128长度的序列处理任务中，相比已开源最优实现取得平均20%以上的加速效果。并且，它对短序列的处理速度提升更为显著。fast_transformers已经应用于模式识别中心的多个线上服务服务场景。
+Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，这对高效部署Transformer线上服务带来了巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为fast_transformers的基于Intel多核CPU的Transformer实现。fast_transformers充发挥CPU的核间并行和指令级并行能力，并支持变长输入序列处理，避免了补零的额外计算。fast_transformer在多种CPU硬件上获得了超过pytorch和目前主流优化引擎（如onnxruntime-mkldnn 和torch JIT）的性能表现。使用4/8个线程时，fast_transformer在10~128长度的序列处理任务中，相比已开源最优实现取得平均20%以上的加速效果。并且，它对短序列的处理速度提升更为显著。fast_transformers已经应用于模式识别中心的多个线上服务服务场景。
 
 ### 安装
 1.1 本机构建docker镜像和容器
@@ -28,6 +28,7 @@ docker pull ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1a1-dev
 ```
 sh conda/build.sh
 ```
+
 3. 在docker内进行单测 (optional)
 
 ```
@@ -44,16 +45,16 @@ bash run_benchmark.sh
 Fast_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
 下面代码片段展示了如何将huggingface预训练BERT模型导入fast_transformer并进行一次BERT encoder的计算。
 
-```python 
+```python
 import torch
 import transformers
 import contexttimer
 import fast_transformers
 # 使用4个线程运行fast_transformers
-fast_transformers.set_num_threads(4) 
+fast_transformers.set_num_threads(4)
 # 调用transformers提供的预训练模型
 model = transformers.BertModel.from_pretrained(
-    "bert-base-chinese")  
+    "bert-base-chinese")
 # 预训练模型的配置
 cfg = model.config
 #随机生成文本序列

@@ -8,13 +8,15 @@ from transformers.modeling_bert import BertConfig, BertAttention
 import fast_transformers
 from transformers import BertTokenizer
 import onnxruntime.backend
+import os
 
 
 def create_test(batch_size, seq_length):
     class TestBertAttention(unittest.TestCase):
         def setUp(self) -> None:
             torch.set_grad_enabled(False)
-            self.tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
+            self.tokenizer = BertTokenizer.from_pretrained(
+                os.path.join(os.path.dirname(__file__), 'test-model'))
 
             # Get Torch attention
             self.cfg = BertConfig(
