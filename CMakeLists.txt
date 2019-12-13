@@ -14,13 +14,7 @@ hunter_add_package(Eigen)
 find_package(Eigen3 CONFIG REQUIRED)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
-add_definitions(
-        -DEIGEN_USE_THREADS # support openmp
-        -DEIGEN_USE_MKL_ALL # support mkl
-        -DEIGEN_NO_MALLOC  # if any eigen code needs malloc, just raise a compilation error
-        -DEIGEN_DEFAULT_TO_ROW_MAJOR
-        -DEIGEN_FAST_MATH=1 # fast math for cos/sin/...
-)
+
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
@@ -55,9 +49,26 @@ message(STATUS "Blas provider is ${BLAS_PROVIDER}")
 
 if (${BLAS_PROVIDER} STREQUAL "mkl")
     find_package(MKL REQUIRED)
-    message(STATUS ${find_package})
+    add_definitions(
+            -DEIGEN_USE_THREADS # support openmp
+            -DEIGEN_USE_MKL_ALL # support mkl
+            -DEIGEN_NO_MALLOC  # if any eigen code needs malloc, just raise a compilation error
+            -DEIGEN_DEFAULT_TO_ROW_MAJOR
+            -DEIGEN_FAST_MATH=1 # fast math for cos/sin/...
+    )
+
+
 elseif (${BLAS_PROVIDER} STREQUAL "openblas")
-    message(SEND_ERROR "Not implemented")
+    hunter_add_package(OpenBLAS)
+    find_package(OpenBLAS CONFIG REQUIRED)
+
+    add_definitions(
+            -DEIGEN_USE_THREADS # support openmp
+            -DEIGEN_NO_MALLOC  # if any eigen code needs malloc, just raise a compilation error
+            -DEIGEN_DEFAULT_TO_ROW_MAJOR
+            -DEIGEN_FAST_MATH=1 # fast math for cos/sin/...
+    )
+
 else ()
     message(SEND_ERROR "Blas Provider must in (openblas, mkl)")
 endif ()
