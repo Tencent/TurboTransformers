@@ -1,5 +1,5 @@
 import unittest
-
+import os
 import contexttimer
 import torch
 from transformers import BertTokenizer
@@ -10,7 +10,7 @@ import fast_transformers
 
 class TestBertModel(unittest.TestCase):
     def setUp(self) -> None:
-        model_id = "bert-base-chinese"
+        model_id = os.path.join(os.path.dirname(__file__), 'test-model')
         torch.set_grad_enabled(False)
         torch.set_num_threads(1)
         self.tokenizer = BertTokenizer.from_pretrained(model_id)
