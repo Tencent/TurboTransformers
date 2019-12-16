@@ -11,7 +11,7 @@ add_library(activation activation.cpp)
 target_link_libraries(activation eigen-tensor tensor aligned_scratchpad)
 if(WITH_GPU)
 add_library(gpu_activation_kernel gpu_activation_kernel.cu)
-target_link_libraries(gpu_activation_kernel tensor enforce -lcudart -lcuda)
+target_link_libraries(gpu_activation_kernel -lcudart -lcuda)
 target_link_libraries(activation gpu_activation_kernel)
 endif()
 
