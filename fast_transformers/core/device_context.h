@@ -1,11 +1,11 @@
 #pragma once
 
-#include <vector>
+#include <dlpack/dlpack.h>
 #include <map>
 #include <set>
-#include "macros.h"
+#include <vector>
 #include "fast_transformers/core/enforce.h"
-#include <dlpack/dlpack.h>
+#include "macros.h"
 
 #ifdef WITH_CUDA
 #include "fast_transformers/core/nvcommon.h"
@@ -14,7 +14,7 @@
 namespace fast_transformers {
 namespace core {
 
-class DeviceContext { 
+class DeviceContext {
  public:
   virtual ~DeviceContext() noexcept(false) {}
 
@@ -45,12 +45,10 @@ class CublasHandleHolder {
     cublasSetStream(handle_, stream);
   }
 
-  ~CublasHandleHolder() noexcept(false) {
-    cublasDestroy(handle_);
-  }
+  ~CublasHandleHolder() noexcept(false) { cublasDestroy(handle_); }
 
   template <typename Callback>
-  inline void Call(Callback &&callback) const {
+  inline void Call(Callback&& callback) const {
     callback(handle_);
   }
 
@@ -60,6 +58,10 @@ class CublasHandleHolder {
   cublasHandle_t handle_;
 };
 
+/*
+Initialize DeviceContext with DLContext, although currently DLContext is not
+defined.
+ */
 class CUDADeviceContext : public DeviceContext {
  public:
   explicit CUDADeviceContext(DLContext context);
@@ -83,7 +85,6 @@ class CUDADeviceContext : public DeviceContext {
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
 
-
 template <>
 struct DefaultDeviceContextType<kDLGPU> {
   using TYPE = CUDADeviceContext;
@@ -104,9 +105,9 @@ class DeviceContextPool {
   // init singleton in hungrey pattern
   static DeviceContextPool& Instance() {
 #ifdef WITH_CUDA
-  	static DeviceContextPool pool({kDLCPU, kDLGPU});
+    static DeviceContextPool pool({kDLCPU, kDLGPU});
 #else
-	static DeviceContextPool pool({kDLCPU});
+    static DeviceContextPool pool({kDLCPU});
 #endif
     return pool;
   }
@@ -117,14 +118,14 @@ class DeviceContextPool {
   const typename DefaultDeviceContextType<device_type>::TYPE* GetByDLDeviceType(
       const DLDeviceType& place) {
     return reinterpret_cast<
-        const typename DefaultDeviceContextType<device_type>::TYPE*>(Get(place));
+        const typename DefaultDeviceContextType<device_type>::TYPE*>(
+        Get(place));
   }
 
   size_t size() const { return device_contexts_.size(); }
 
  private:
-  std::map<DLDeviceType, std::unique_ptr<DeviceContext>>
-      device_contexts_;
+  std::map<DLDeviceType, std::unique_ptr<DeviceContext>> device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 
