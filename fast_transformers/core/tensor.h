@@ -10,6 +10,10 @@
 #include "fast_transformers/core/enforce.h"
 #include "fast_transformers/core/memory.h"
 
+#ifdef WITH_CUDA
+#include "fast_transformers/core/nvcommon.h"
+#endif
+
 namespace fast_transformers {
 
 namespace core {
@@ -187,9 +191,25 @@ class Tensor {
     os << "first 10 elems: (";
     int cnt = 10;
     double sum = 0.;
-    for (int i = 0; i < numel(); ++i) {
-      sum += data<T>()[i];
-      if (cnt-- >= 0) os << data<T>()[i] << ", ";
+
+    if (device_type() == kDLCPU) {
+      for (int i = 0; i < numel(); ++i) {
+        sum += data<T>()[i];
+        if (cnt-- >= 0) os << data<T>()[i] << ", ";
+      }
+    } else if (device_type() == kDLGPU) {
+#ifdef WITH_CUDA
+      auto n = numel();
+      T * cpu_data = new T [n];
+      FT_Memcpy(cpu_data, data<T>(), n, FT_GPU2CPU);
+      for (int i = 0; i < n; ++i) {
+        sum += cpu_data[i];
+        if (cnt-- >= 0) os << cpu_data[i] << ", ";
+      }
+      delete [] cpu_data;
+#else
+      FT_THROW("Please Compile with WITH_CUDA");
+#endif
     }
     os << ")\n";
     os << "sum is " << sum << std::endl;

@@ -2,6 +2,9 @@
 #include "fast_transformers/core/tensor.h"
 #include "catch2/catch.hpp"
 
+namespace fast_transformers {
+namespace core {
+
 TEST_CASE("TensorTest", "[tensor_allocate]") {
   REQUIRE_THROWS(FT_THROW("Test"));
   fast_transformers::core::Tensor test_tensor(
@@ -19,3 +22,30 @@ TEST_CASE("TensorTest2", "[tensor_init]") {
   REQUIRE(test_tensor.n_dim() == 2);
   REQUIRE(test_tensor.numel() == 3 * 4);
 }
+
+#ifdef WITH_CUDA
+template<typename T>
+inline void Fill(Tensor& tensor) {
+  T *gpu_data = tensor.mutableData<T>();
+  auto size = tensor.numel();
+  T * cpu_data = new T [size];
+  srand((unsigned)time(NULL));
+  for(int64_t i = 0; i < size; ++i) {
+    cpu_data[i] = rand()/static_cast<T>(RAND_MAX);
+  }
+  FT_Memcpy(gpu_data, cpu_data, size, FT_CPU2GPU);
+  delete [] cpu_data;
+}
+
+TEST_CASE("TensorTest3", "GPU init") {
+  fast_transformers::core::Tensor test_tensor(
+      fast_transformers::core::NewDLPackTensorT<float>({3, 4}, kDLGPU, 0));
+  Fill<float>(test_tensor);
+  test_tensor.Print<float>(std::cout);
+  REQUIRE(test_tensor.n_dim() == 2);
+  REQUIRE(test_tensor.numel() == 3 * 4);
+}
+#endif
+
+} // namespace core
+} // namespace fast_transformers

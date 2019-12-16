@@ -8,7 +8,7 @@ HunterGate(
         SHA1 "e14bc153a7f16d6a5eeec845fb0283c8fad8c358"
 )
 
-project(fast_transformers)
+project(fast_transformers LANGUAGES CXX C CUDA)
 
 hunter_add_package(Eigen)
 find_package(Eigen3 CONFIG REQUIRED)
@@ -25,9 +25,20 @@ add_definitions(
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
 
+option(WITH_GPU "Build with GPU" ON)
+if(WITH_GPU)
+  find_package(CUDA REQUIRED)
+  add_definitions(-DWITH_CUDA)
+  set(CUDA_PATH "/data1/qspace/kanowang/common/cuda-9.0")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_52,code=\\\"sm_52,compute_52\\\" -rdc=true")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}  -Xcompiler -Wall -std=c++11 --expt-relaxed-constexpr --expt-extended-lambda")
+  include_directories(${CUDA_PATH}/include)
+  link_directories(${CUDA_PATH}/lib64)
+  message(STATUS "Fast Transformer is built with GPU")
+endif()
 option(CUDA_VERSION "Set cuda version of torch, in (`92`, `101`), default is None" NONE)
 option(WITH_PROFILER "Compile with gperftools" OFF)
-set(MKLROOT "/opt/intel/mkl" CACHE PATH "The mkl library root")
+set(MKLROOT "/data1/qspace/jiaruifang/intel/mkl" CACHE PATH "The mkl library root")
 set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl]")
 set(FAST_TRANSFORMERS_VERSION 0.1.1a0)
 
