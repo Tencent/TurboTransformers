@@ -10,3 +10,4 @@ build2
 .git
 *.pyc
 *.gperf
+Dockerfile.dev

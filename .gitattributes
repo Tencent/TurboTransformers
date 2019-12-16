@@ -1,0 +1,2 @@
+benchmark/result/*.xlsx filter=lfs diff=lfs merge=lfs -text
+fast_transformers/python/tests/test-model/* filter=lfs diff=lfs merge=lfs -text

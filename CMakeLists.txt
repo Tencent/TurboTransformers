@@ -46,7 +46,7 @@ option(CUDA_VERSION "Set cuda version of torch, in (`92`, `101`), default is Non
 option(WITH_PROFILER "Compile with gperftools" OFF)
 set(MKLROOT "/opt/intel/mkl" CACHE PATH "The mkl library root")
 set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl]")
-set(FAST_TRANSFORMERS_VERSION 0.1.1a0)
+set(FAST_TRANSFORMERS_VERSION 0.1.1)
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL Intel)
     message(STATUS "Fast Transformer is built with a intel compiler!")
