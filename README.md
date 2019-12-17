@@ -22,7 +22,7 @@ export no_proxy=git.code.oa.com
 ```
 sh tool/build_conda_package.sh
 # conda包会在 /workspace/dist/*.tar.bz2中
-# 在本容器外其他环境使用fast_transformer时只需要conda ft_root_path/dist/install *.tar.bz2
+# 在本容器外其他环境使用fast_transformer时只需要python -m pip install your_root_path/dist/*.tar.bz2
 ```
 
 3. 在docker内进行单测 (optional)
