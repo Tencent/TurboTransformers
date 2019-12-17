@@ -7,31 +7,31 @@ Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了
 本机构建（编译ONNX-runtime时间会很长）
 ```
 sh tools/build_docker.sh
+# optional: 构建编译环境时需要联网，腾讯内网需要设置代理
+export EXTRA_ARGS="--build-arg http_proxy=http://devnet-proxy.oa.com:8080 --build-arg https_proxy=http:/ /devnet-proxy.oa.com:8080"
 docker run -it --rm -v your/path/fast_transformers:/workspace --name=your_container_name REPOSITORY:TAG /bin/bash
 cd /workspace
-# optional:安装需要联网，腾讯内网请设置代理
+# optional:在编译环境内安装是也需要联网，腾讯内网请设置代理
 export http_proxy=http://devnet-proxy.oa.com:8080
 export https_proxy=http://devnet-proxy.oa.com:8080
 export no_proxy=git.code.oa.com
 ```
-1.2 从腾讯云的dockerhub上pull已有镜像
-A. WXG的腾讯云dockerhub账号
-```
-docker pull ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1a1-dev
-```
-B. CSIG的腾讯云dockerhub账号
-```
-docker pull ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1a1-dev
-```
+
 2. 在docker内安装conda和pip包
 
 ```
-sh conda/build.sh
+sh tool/build_conda_package.sh
+# conda包会在 /workspace/dist/*.tar.bz2中
+# 在本容器外其他环境使用fast_transformer时只需要conda ft_root_path/dist/install *.tar.bz2
 ```
 
 3. 在docker内进行单测 (optional)
 
 ```
+cd /workspace
+# 下载预训练模型，需要git lfs，sudo yum install git-lfs
+git lfs install
+git lfs pull
 sh tools/build_run_unittests.sh $PWD
 ```
 4. 在docker内运行benchmark (optional)
