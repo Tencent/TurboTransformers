@@ -1,5 +1,6 @@
 #define CATCH_CONFIG_MAIN
 #include "fast_transformers/core/tensor.h"
+
 #include "catch2/catch.hpp"
 
 namespace fast_transformers {
@@ -33,7 +34,7 @@ inline void Fill(Tensor &tensor) {
   for (int64_t i = 0; i < size; ++i) {
     cpu_data[i] = rand() / static_cast<T>(RAND_MAX);
   }
-  FT_Memcpy(gpu_data, cpu_data.get(), size * sizeof(T), kCPU2GPU);
+  FT_Memcpy(gpu_data, cpu_data.get(), size * sizeof(T), MemcpyFlag::kCPU2GPU);
 }
 
 TEST_CASE("TensorTest3", "GPU init") {

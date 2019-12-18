@@ -1,4 +1,6 @@
 #pragma once
+#include <memory.h>
+
 #include "fast_transformers/core/cuda_error.h"
 #include "macros.h"
 

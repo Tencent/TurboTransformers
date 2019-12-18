@@ -3,10 +3,12 @@
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
+#include "fast_transformers/core/enforce.h"
 namespace fast_transformers {
 namespace core {
 #define PRINT_FUNC_NAME_()                                          \
@@ -28,7 +30,7 @@ static const char *_CUDAGetErrorEnum(cudaError_t error) {
     }                                   \
   } while (0)
 
-static const string _CUDAGetErrorEnum(cublasStatus_t error) {
+static const std::string _CUDAGetErrorEnum(cublasStatus_t error) {
   GetErrorNumCaseImpl(CUBLAS_STATUS_NOT_INITIALIZED);
   GetErrorNumCaseImpl(CUBLAS_STATUS_ALLOC_FAILED);
   GetErrorNumCaseImpl(CUBLAS_STATUS_INVALID_VALUE);
@@ -54,21 +56,22 @@ struct CudaStatusType {};
   }
 
 DEFINE_CUDA_STATUS_TYPE(cudaError_t, cudaSuccess);
-DEFINE_CUDA_STATUS_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS);
 DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
 }  // namespace details
 
-#define FT_ENFORCE_CUDA_SUCCESS(COND, ...)                                   \
-  do {                                                                       \
-    auto __cond__ = (COND);                                                  \
-    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                         \
-    constexpr auto __success_type__ =                                        \
-        details::CudaStatusType<__CUDA_STATUS_TYPE__>::kSuccess;             \
-    if (FT_UNLIKELY(__cond__ != __success_type__)) {                         \
-      FT_THROW(std::string("[FT_ERROR] CUDA runtime error: ") +              \
-               details::_CUDAGetErrorEnum(__cond__) + " " + __FILE__ + ":" + \
-               std::to_string(__LINE__) + " \n");                            \
-    }                                                                        \
+#define FT_ENFORCE_CUDA_SUCCESS(COND, ...)                                     \
+  do {                                                                         \
+    auto __cond__ = (COND);                                                    \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                           \
+    constexpr auto __success_type__ =                                          \
+        details::CudaStatusType<__CUDA_STATUS_TYPE__>::kSuccess;               \
+    if (FT_UNLIKELY(__cond__ != __success_type__)) {                           \
+      std::string error_msg = std::string("[FT_ERROR] CUDA runtime error: ") + \
+                              details::_CUDAGetErrorEnum(__cond__) + " " +     \
+                              __FILE__ + ":" + std::to_string(__LINE__) +      \
+                              " \n";                                           \
+      FT_THROW(error_msg.c_str());                                             \
+    }                                                                          \
   } while (0)
 
 #undef DEFINE_CUDA_STATUS_TYPE

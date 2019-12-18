@@ -16,9 +16,9 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-static template <typename T>
-void AddBiasGeLUActKernel(const T* bias_data, T* out_data, int64_t batch_size,
-                          int64_t feature_dim) {
+template <typename T>
+static void AddBiasGeLUActKernel(const T* bias, T* out, int64_t batch_size,
+                                 int64_t feature_dim) {
   static core::AlignedScratchpad<float> scratchpad;
   float* buff = scratchpad.mutable_data(batch_size * feature_dim);
 #pragma omp parallel for
@@ -38,7 +38,7 @@ void AddBiasGeLUActKernel(const T* bias_data, T* out_data, int64_t batch_size,
   }
 }
 
-static template void AddBiasGeLUActKernel<float>(const float* bias_data,
+template static void AddBiasGeLUActKernel<float>(const float* bias_data,
                                                  float* out_data,
                                                  int64_t batch_size,
                                                  int64_t feature_dim);
@@ -55,7 +55,7 @@ void AddBiasGeLUAct(const core::Tensor& bias_tensor, core::Tensor* out_tensor) {
     AddBiasGeLUActKernel(bias, out, m, n);
   } else if (out_tensor->device_type() == kDLGPU) {
 #ifdef FT_WITH_CUDA
-    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::Instance();
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
     GPUAddBiasGeLUActKernel<T>(bias, out, m, n, cuda_ctx.stream());
 #endif
   } else {

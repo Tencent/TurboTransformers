@@ -207,7 +207,7 @@ class Tensor {
         if (cnt-- >= 0) os << cpu_data[i] << ", ";
       }
 #else
-      FT_THROW("No CUDA supported, Please Compile with FT_FT_WITH_CUDA");
+      FT_THROW("No CUDA supported, Please Compile with FT_WITH_CUDA");
 #endif
     }
     os << ")\n";

@@ -4,7 +4,6 @@
 
 #include "fast_transformers/core/aligned_scratchpad.h"
 #include "fast_transformers/core/blas.h"
-#include "fast_transformers/core/eigen-tensor.h"
 #include "fast_transformers/core/memory.h"
 #include "fast_transformers/layers/kernels/activation.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"

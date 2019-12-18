@@ -1,5 +1,5 @@
-
 #include "fast_transformers/core/cuda_device_context.h"
+
 #include "fast_transformers/core/enforce.h"
 
 namespace fast_transformers {
