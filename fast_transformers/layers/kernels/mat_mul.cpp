@@ -1,5 +1,9 @@
 #include "mat_mul.h"
 
+#ifdef FT_WITH_CUDA
+#include "fast_transformers/core/cuda_device_context.h"
+#endif
+
 namespace fast_transformers {
 namespace layers {
 namespace kernels {
@@ -17,15 +21,36 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   int K_b = b_trans ? b_cols : b_rows;
   FT_ENFORCE_EQ(K_a, K_b, "matrix shape mismatch");
 
-  CBLAS_TRANSPOSE transA = a_trans ? CblasTrans : CblasNoTrans;
-  CBLAS_TRANSPOSE transB = b_trans ? CblasTrans : CblasNoTrans;
+  if (A.device_type() == kDLCPU && B.device_type() == kDLCPU &&
+      out->device_type() == kDLCPU) {
+    CBLAS_TRANSPOSE transA = a_trans ? CblasTrans : CblasNoTrans;
+    CBLAS_TRANSPOSE transB = b_trans ? CblasTrans : CblasNoTrans;
 
-  int lda = (transA == CblasNoTrans) ? K_a : M;
-  int ldb = (transB == CblasNoTrans) ? N : K_a;
-  int ldc = N;
+    int lda = (transA == CblasNoTrans) ? K_a : M;
+    int ldb = (transB == CblasNoTrans) ? N : K_a;
+    int ldc = N;
 
-  cblas_sgemm(CblasRowMajor, transA, transB, M, N, K_a, alpha, A.data<float>(),
-              lda, B.data<float>(), ldb, beta, out->mutableData<float>(), ldc);
+    cblas_sgemm(CblasRowMajor, transA, transB, M, N, K_a, alpha,
+                A.data<float>(), lda, B.data<float>(), ldb, beta,
+                out->mutableData<float>(), ldc);
+  } else if (A.device_type() == kDLGPU && B.device_type() == kDLGPU &&
+             out->device_type() == kDLGPU) {
+#ifdef WITH_CUDA
+    cublasOperation_t transA = a_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t transB = b_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+    int lda = (transA == CUBLAS_OP_N) ? K_a : M;
+    int ldb = (transB == CUBLAS_OP_N) ? N : K_a;
+    int ldc = N;
+
+    core::DeviceContextPool& pool = core::CUDADeviceContext::GetInstance();
+    gpu_ctx.CublasCall([&](cublasHandle_t handle) {
+      cublasSgemm(handle, transB, transA, N, M, K_a, &alpha, B.data<float>(),
+                  ldb, A.data<float>(), lda, &beta, out->mutableData<float>(),
+                  ldc);
+    });
+#endif
+  }
 }
 void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
                  bool b_trans, float alpha, core::Tensor* C, float beta) {
@@ -70,9 +95,9 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   int offsetB = b_rows * b_cols;
   int offsetC = c_rows * c_cols;
 
-  std::unique_ptr<const float* []> A_array(new const float*[a_batch_size]);
-  std::unique_ptr<const float* []> B_array(new const float*[b_batch_size]);
-  std::unique_ptr<float* []> C_array(new float*[c_batch_size]);
+  std::unique_ptr<const float*[]> A_array(new const float*[a_batch_size]);
+  std::unique_ptr<const float*[]> B_array(new const float*[b_batch_size]);
+  std::unique_ptr<float*[]> C_array(new float*[c_batch_size]);
 
   auto* a_ptr = A.data<float>();
   auto* b_ptr = B.data<float>();

@@ -1,5 +1,7 @@
 #include "fast_transformers/layers/bert_output.h"
+
 #include <loguru.hpp>
+
 #include "fast_transformers/core/memory.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
 #include "fast_transformers/layers/kernels/mat_mul.h"
@@ -24,7 +26,8 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
                             const core::Tensor &input_tensor,
                             core::Tensor *output_tensor) const {
   output_tensor->Reshape<float>(
-      {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(0)});
+      {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(0)},
+      hidden_states.device_type());
   kernels::MatMul(hidden_states, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
   kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
