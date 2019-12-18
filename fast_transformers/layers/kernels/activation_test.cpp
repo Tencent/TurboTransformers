@@ -6,8 +6,8 @@
 #include "fast_transformers/core/enforce.h"
 #include "loguru.hpp"
 
-#ifdef WITH_CUDA
-#include "fast_transformers/core/nvcommon.h"
+#ifdef FT_WITH_CUDA
+#include "fast_transformers/core/cuda_error.h"
 #include "fast_transformers/core/memory.h"
 #endif
 
@@ -30,35 +30,38 @@ void AddBiasGeLUActNaive(const float* bias, float* out, int64_t m, int64_t n) {
 
 using Tensor = fast_transformers::core::Tensor;
 
-#ifdef WITH_CUDA
-template<typename T>
+#ifdef FT_WITH_CUDA
+template <typename T>
 inline void FillCPUGPU(Tensor& cpu_tensor, Tensor& gpu_tensor) {
-  T *gpu_data = gpu_tensor.mutableData<T>();
-  T *cpu_data = cpu_tensor.mutableData<T>();
+  T* gpu_data = gpu_tensor.mutableData<T>();
+  T* cpu_data = cpu_tensor.mutableData<T>();
   auto size = cpu_tensor.numel();
   srand((unsigned)time(NULL));
-  for(int64_t i = 0; i < size; ++i) {
-    cpu_data[i] = rand()/static_cast<T>(RAND_MAX);
+  for (int64_t i = 0; i < size; ++i) {
+    cpu_data[i] = rand() / static_cast<T>(RAND_MAX);
   }
-  fast_transformers::core::FT_Memcpy<T>(gpu_data, cpu_data, size, fast_transformers::core::FT_CPU2GPU);
+  fast_transformers::core::FT_Memcpy(
+      gpu_data, cpu_data, size * sizeof(T),
+      ::fast_transformers::core::MemcpyFlag::kCPU2GPU);
 }
 
-template<typename T>
+template <typename T>
 inline bool CompareCPUGPU(const Tensor& cpu_tensor, const Tensor& gpu_tensor) {
-  const T *gpu_data = gpu_tensor.data<T>();
-  const T *cpu_data = cpu_tensor.data<T>();
+  const T* gpu_data = gpu_tensor.data<T>();
+  const T* cpu_data = cpu_tensor.data<T>();
   auto size = cpu_tensor.numel();
 
-  T* gpu_data_ref = new T [size];
-  fast_transformers::core::FT_Memcpy<T>(gpu_data_ref, gpu_data, size, fast_transformers::core::FT_GPU2CPU);
+  std::unique_ptr<T[]> gpu_data_ref(new T[size]);
+  fast_transformers::core::FT_Memcpy(
+      gpu_data_ref.get(), gpu_data, size,
+      fast_transformers::core::MemcpyFlag::kGPU2CPU);
   bool ret = true;
-  for(int64_t i = 0; i < size; ++i) {
-    if(fabs(gpu_data_ref[i] - cpu_data[i]) > 1e-3) {
+  for (int64_t i = 0; i < size; ++i) {
+    if (std::fab(gpu_data_ref[i] - cpu_data[i]) > 1e-3) {
       ret = false;
       break;
     }
   }
-  delete [] gpu_data_ref;
   return ret;
 }
 
@@ -71,16 +74,20 @@ TEST_CASE("CPU and GPU result correctness") {
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
       fast_transformers::core::Tensor gpu_bias(
-          fast_transformers::core::NewDLPackTensorT<float>({hidden_size}, kDLGPU, 0));
+          fast_transformers::core::NewDLPackTensorT<float>({hidden_size},
+                                                           kDLGPU, 0));
 
       fast_transformers::core::Tensor cpu_bias(
-          fast_transformers::core::NewDLPackTensorT<float>({hidden_size}, kDLCPU, 0));
+          fast_transformers::core::NewDLPackTensorT<float>({hidden_size},
+                                                           kDLCPU, 0));
 
       fast_transformers::core::Tensor gpu_out(
-          fast_transformers::core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}, kDLGPU, 0));
+          fast_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, seq_length, hidden_size}, kDLGPU, 0));
 
       fast_transformers::core::Tensor cpu_out(
-          fast_transformers::core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}, kDLCPU, 0));
+          fast_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, seq_length, hidden_size}, kDLCPU, 0));
 
       FillCPUGPU<float>(cpu_bias, gpu_bias);
       FillCPUGPU<float>(cpu_out, gpu_out);
@@ -92,7 +99,7 @@ TEST_CASE("CPU and GPU result correctness") {
         AddBiasGeLUAct<float>(gpu_bias, &gpu_out);
       }
       REQUIRE(CompareCPUGPU<float>(cpu_out, gpu_out));
-    } //for
+    }  // for
 }
 #endif
 
@@ -172,21 +179,20 @@ TEST_CASE("activation_cpu_test") {
     }
 }
 
-#ifdef WITH_CUDA
-template<typename T>
+#ifdef FT_WITH_CUDA
+template <typename T>
 inline void Fill(fast_transformers::core::Tensor& tensor) {
-  T *gpu_data = tensor.mutableData<T>();
+  T* gpu_data = tensor.mutableData<T>();
   auto size = tensor.numel();
-  T * cpu_data = new T [size];
+  std::unique_ptr<T> cpu_data(new T[size]);
   srand((unsigned)time(NULL));
-  for(int64_t i = 0; i < size; ++i) {
-    cpu_data[i] = rand()/static_cast<T>(RAND_MAX);
+  for (int64_t i = 0; i < size; ++i) {
+    cpu_data[i] = rand() / static_cast<T>(RAND_MAX);
   }
-  fast_transformers::core::FT_Memcpy<T>(gpu_data, cpu_data, size, fast_transformers::core::FT_CPU2GPU);
-  delete [] cpu_data;
+  fast_transformers::core::FT_Memcpy(
+      gpu_data, cpu_data.get(), size * sizeof(T),
+      fast_transformers::core::MemcpyFlag::kCPU2GPU);
 }
-
-
 
 TEST_CASE("activation_gpu_test") {
   int64_t hidden_size = 12 * 64;
@@ -202,11 +208,13 @@ TEST_CASE("activation_gpu_test") {
       auto n = hidden_size;
 
       fast_transformers::core::Tensor bias(
-          fast_transformers::core::NewDLPackTensorT<float>({hidden_size}, kDLGPU, 0));
+          fast_transformers::core::NewDLPackTensorT<float>({hidden_size},
+                                                           kDLGPU, 0));
       Fill<float>(bias);
 
       fast_transformers::core::Tensor out(
-          fast_transformers::core::NewDLPackTensorT<float>({batch_size, seq_length, hidden_size}, kDLGPU, 0));
+          fast_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, seq_length, hidden_size}, kDLGPU, 0));
       Fill<float>(out);
 
       LOG_S(INFO) << "batch_size: " << batch_size

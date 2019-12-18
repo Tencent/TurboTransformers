@@ -7,11 +7,10 @@ static void DLManagedTensorDeletor(DLManagedTensor *self) {
     return;
   }
   if (self->dl_tensor.data != nullptr) {
-    if(self->dl_tensor.ctx.device_type == kDLCPU) {
+    if (self->dl_tensor.ctx.device_type == kDLCPU) {
       free(self->dl_tensor.data);
-    }
-    else if (self->dl_tensor.ctx.device_type == kDLGPU) {
-#ifdef WITH_CUDA
+    } else if (self->dl_tensor.ctx.device_type == kDLGPU) {
+#ifdef FT_WITH_CUDA
       cuda_free(self->dl_tensor.data);
 #endif
     }
@@ -46,7 +45,7 @@ DLManagedTensor *NewDLPackTensor(std::initializer_list<int64_t> shape_list,
   if (device == kDLCPU) {
     newTensor->dl_tensor.data = align_alloc(numel * (bits / 8));
   } else if (device == kDLGPU) {
-#ifdef WITH_CUDA
+#ifdef FT_WITH_CUDA
     newTensor->dl_tensor.data = cuda_alloc(numel * (bits / 8));
 #endif
   } else {

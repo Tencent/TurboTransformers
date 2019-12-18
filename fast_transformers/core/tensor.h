@@ -10,8 +10,8 @@
 #include "fast_transformers/core/enforce.h"
 #include "fast_transformers/core/memory.h"
 
-#ifdef WITH_CUDA
-#include "fast_transformers/core/nvcommon.h"
+#ifdef FT_WITH_CUDA
+#include "fast_transformers/core/cuda_error.h"
 #endif
 
 namespace fast_transformers {
@@ -198,17 +198,16 @@ class Tensor {
         if (cnt-- >= 0) os << data<T>()[i] << ", ";
       }
     } else if (device_type() == kDLGPU) {
-#ifdef WITH_CUDA
+#ifdef FT_WITH_CUDA
       auto n = numel();
-      T * cpu_data = new T [n];
-      FT_Memcpy(cpu_data, data<T>(), n, FT_GPU2CPU);
+      std::unique_ptr<T[]> cpu_data(new T[n]);
+      FT_Memcpy(cpu_data.get(), data<T>(), n * sizeof(T), MemcpyFlag::kGPU2CPU);
       for (int i = 0; i < n; ++i) {
         sum += cpu_data[i];
         if (cnt-- >= 0) os << cpu_data[i] << ", ";
       }
-      delete [] cpu_data;
 #else
-      FT_THROW("Please Compile with WITH_CUDA");
+      FT_THROW("No CUDA supported, Please Compile with FT_FT_WITH_CUDA");
 #endif
     }
     os << ")\n";

@@ -20,35 +20,28 @@ add_executable(enforce_test enforce_test.cpp)
 target_link_libraries(enforce_test Catch2 enforce)
 add_test(NAME enforce_test COMMAND enforce_test)
 
-if(WITH_GPU)
-add_library(nvcommon nvcommon.cpp)
-target_link_libraries(nvcommon -lcudart -lcuda -lcublas)
-endif(WITH_GPU)
-
 add_library(memory memory.cpp)
 target_link_libraries(memory enforce)
-if(WITH_GPU)
-  target_link_libraries(memory nvcommon)
-endif(WITH_GPU)
 
 add_library(tensor tensor.cpp)
 target_link_libraries(tensor dlpack blas memory absl::variant)
-if(WITH_GPU)
-  target_link_libraries(tensor nvcommon)
-endif(WITH_GPU)
 
 add_executable(tensor_test tensor_test.cpp)
 target_link_libraries(tensor_test Catch2 tensor)
 add_test(NAME tensor_test COMMAND tensor_test)
 
-add_library(device_context device_context.cpp)
-target_link_libraries(device_context tensor)
-if(WITH_GPU)
-  target_link_libraries(device_context nvcommon)
-endif(WITH_GPU)
+if (FT_WITH_GPU)
+  add_library(cuda_error cuda_error.cpp)
+  target_link_libraries(cuda_error -lcudart -lcuda -lcublas)
 
-add_executable(device_context_test device_context_test.cpp)
-target_link_libraries(device_context_test device_context Catch2 tensor)
+  add_library(cuda_device_context cuda_device_context.cpp)
+  target_link_libraries(cuda_device_context cuda_error enforce)
+
+  add_executable(device_context_test device_context_test.cpp)
+  target_link_libraries(device_context_test cuda_device_context Catch2 tensor)
+  target_link_libraries(tensor cuda_error)
+endif (FT_WITH_GPU)
+
 
 add_library(profiler profiler.cpp)
 set(PROFILER_DEPS loguru enforce)

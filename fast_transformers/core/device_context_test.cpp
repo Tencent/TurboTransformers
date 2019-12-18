@@ -1,19 +1,18 @@
 #define CATCH_CONFIG_MAIN
-#include "fast_transformers/core/device_context.h"
+#ifdef FT_WITH_CUDA
+#include "fast_transformers/core/cuda_device_context.h"
+#endif
 #include "catch2/catch.hpp"
 
 namespace fast_transformers {
 namespace core {
 
-TEST_CASE("device_context", "init pool") {
-  DeviceContextPool& pool = DeviceContextPool::Instance();
-  auto cpu_ctx = pool.Get(kDLCPU);
-  REQUIRE(cpu_ctx != nullptr);
-  auto gpu_ctx = pool.Get(kDLGPU);
-  REQUIRE(gpu_ctx != nullptr);
-  REQUIRE(pool.size() == 2);
+#ifdef FT_WITH_CUDA
+TEST_CASE("CUDADeviceContext", "ini") {
+  CUDADeviceContext& cuda_ctx = CUDADeviceContext::Instance();
+  auto stream = cuda_ctx.stream();
 }
+#endif
 
 }  // namespace core
 }  // namespace fast_transformers
-
