@@ -1,6 +1,8 @@
 #define CATCH_CONFIG_MAIN
 #include "fast_transformers/layers/kernels/activation.h"
+
 #include <chrono>
+
 #include "catch2/catch.hpp"
 #include "fast_transformers/core/aligned_scratchpad.h"
 #include "fast_transformers/core/enforce.h"
@@ -53,11 +55,11 @@ inline bool CompareCPUGPU(const Tensor& cpu_tensor, const Tensor& gpu_tensor) {
 
   std::unique_ptr<T[]> gpu_data_ref(new T[size]);
   fast_transformers::core::FT_Memcpy(
-      gpu_data_ref.get(), gpu_data, size,
+      gpu_data_ref.get(), gpu_data, size * sizeof(T),
       fast_transformers::core::MemcpyFlag::kGPU2CPU);
   bool ret = true;
   for (int64_t i = 0; i < size; ++i) {
-    if (std::fab(gpu_data_ref[i] - cpu_data[i]) > 1e-3) {
+    if (std::abs(gpu_data_ref[i] - cpu_data[i]) > 1e-3) {
       ret = false;
       break;
     }
@@ -187,7 +189,7 @@ inline void Fill(fast_transformers::core::Tensor& tensor) {
   std::unique_ptr<T> cpu_data(new T[size]);
   srand((unsigned)time(NULL));
   for (int64_t i = 0; i < size; ++i) {
-    cpu_data[i] = rand() / static_cast<T>(RAND_MAX);
+    cpu_data.get()[i] = rand() / static_cast<T>(RAND_MAX);
   }
   fast_transformers::core::FT_Memcpy(
       gpu_data, cpu_data.get(), size * sizeof(T),

@@ -29,9 +29,9 @@ void add_bias_act(T* out, const T* bias, int batch_size, int feature_dim)
     reg_bias = __ldg(&bias[i * blockDim.x + tid]);
     row_id = blockIdx.x;
 
-    while(row_id < m){
-      val = out[tid + i * blockDim.x + row_id * n]+ reg_bias;
-      out[tid + i * blockDim.x + row_id * n] = gelu<T>(val);
+    while(row_id < batch_size){
+      val = out[tid + i * blockDim.x + row_id * feature_dim] + reg_bias;
+      out[tid + i * blockDim.x + row_id * feature_dim] = gelu<T>(val);
       row_id += gridDim.x;
     }
   }
