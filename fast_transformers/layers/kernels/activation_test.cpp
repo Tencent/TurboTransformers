@@ -119,11 +119,11 @@ TEST_CASE("activation_cpu_test") {
       auto n = hidden_size;
 
       fast_transformers::core::Tensor bias(nullptr);
-      bias.Reshape<float>({n});
+      bias.Reshape<float>({n}, kDLCPU);
       fast_transformers::core::Tensor out(nullptr);
-      out.Reshape<float>({m, n});
+      out.Reshape<float>({m, n}, kDLCPU);
       fast_transformers::core::Tensor out_parallel(nullptr);
-      out_parallel.Reshape<float>({m, n});
+      out_parallel.Reshape<float>({m, n}, kDLCPU);
 
       float* bias_ptr = bias.mutableData<float>();
       float* out_ptr = out.mutableData<float>();

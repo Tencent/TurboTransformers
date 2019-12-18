@@ -19,7 +19,7 @@ namespace core {
 #ifdef FT_WITH_CUDA
 namespace details {
 
-static const char *_CUDAGetErrorEnum(cudaError_t error) {
+static const std::string _CUDAGetErrorEnum(cudaError_t error) {
   return cudaGetErrorString(error);
 }
 

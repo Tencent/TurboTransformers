@@ -1,4 +1,5 @@
 #include "fast_transformers/core/memory.h"
+
 #include <cstring>
 
 #ifdef FT_WITH_CUDA
@@ -22,13 +23,15 @@ void* cuda_alloc(size_t sz) {
   FT_ENFORCE_CUDA_SUCCESS(cudaMalloc((void**)&(device_mem), sz));
   return device_mem;
 #else
+  FT_THROW("Please compile with CUDA");
 #endif
 }
 
 void* cuda_free(void* data) {
 #ifdef FT_WITH_CUDA
-  cudaFree(data);
+  FT_ENFORCE_CUDA_SUCCESS(cudaFree(data));
 #else
+  FT_THROW("Please compile with CUDA");
 #endif
 }
 
@@ -39,11 +42,15 @@ void FT_Memcpy(void* dst_data, const void* src_data, size_t data_size,
 #ifdef FT_WITH_CUDA
     FT_ENFORCE_CUDA_SUCCESS(cudaMemcpy(((void*)dst_data), ((void*)src_data),
                                        data_size, cudaMemcpyDeviceToHost));
+#else
+    FT_THROW("Please compile with CUDA");
 #endif
   } else if (flag == MemcpyFlag::kCPU2GPU) {
 #ifdef FT_WITH_CUDA
     FT_ENFORCE_CUDA_SUCCESS(cudaMemcpy(((void*)dst_data), ((void*)src_data),
                                        data_size, cudaMemcpyHostToDevice));
+#else
+    FT_THROW("Please compile with CUDA");
 #endif
   } else if (flag == MemcpyFlag::kCPU2CPU) {
     std::memcpy(dst_data, src_data, data_size);

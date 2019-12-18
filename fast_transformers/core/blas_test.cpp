@@ -1,7 +1,20 @@
 #define CATCH_CONFIG_MAIN
 #include "fast_transformers/core/blas.h"
+
+#include <omp.h>
+
 #include <chrono>
+#include <cstdlib>
+#include <ctime>
+
 #include "catch2/catch.hpp"
+#include "fast_transformers/core/tensor.h"
+#include "fast_transformers/layers/kernels/mat_mul.h"
+
+#ifdef WITH_CUDA
+#include "fast_transformers/core/memory.h"
+#include "fast_transformers/core/nvcommon.h"
+#endif
 
 namespace fast_transformers {
 namespace core {
@@ -19,6 +32,7 @@ TEST_CASE("blas-gemm") {
   REQUIRE(float_eq(C[2], 22));
   REQUIRE(float_eq(C[3], 29));
 }
+
 TEST_CASE("blas-batch-gemm") {
   const float A1[] = {1, 2, 3, 4};
   const float B1[] = {2, 3, 4, 5};
@@ -56,175 +70,131 @@ TEST_CASE("blas-sscal") {
   REQUIRE(float_eq(vec[1], 4));
 }
 
-TEST_CASE("blas-gemm-no-merge") {
-  int m = 1 * 128, k = 12 * 64, n = 12 * 64;
-  float* A = new float[m * k];
-  float* B = new float[k * n];
-  float* C = new float[m * n];
-  static constexpr float alpha = 1., beta = 0.;
-
-  auto start = std::chrono::system_clock::now();
-  for (int it = 0; it < 100; ++it)
-    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha, A, k,
-                B, k, beta, C, n);
-
-  auto end = std::chrono::system_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  std::cout << "blas-gemm-no-merge cost:"
-            << double(duration.count()) *
-                   std::chrono::microseconds::period::num /
-                   std::chrono::microseconds::period::den
-            << "sec" << std::endl;
+inline void RandomMatrix(float* m, const int mSize, float LO = 0.,
+                         float HI = 1.) {
+  srand(static_cast<unsigned>(time(0)));
+  for (int i = 0; i < mSize; i++)
+    m[i] = LO + static_cast<float>(rand()) /
+                    (static_cast<float>(RAND_MAX / (HI - LO)));
 }
 
-TEST_CASE("blas-gemm-merge") {
-  int m = 1 * 128, k = 12 * 64, n = 12 * 64 * 3;
-  float* A = new float[m * k];
-  float* B = new float[k * n];
-  float* C = new float[m * n];
-  static constexpr float alpha = 1., beta = 0.;
-
-  auto start = std::chrono::system_clock::now();
-  for (int it = 0; it < 100; ++it)
-    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha, A, k,
-                B, k, beta, C, n);
-  auto end = std::chrono::system_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  std::cout << "blas-gemm-merge cost:"
-            << double(duration.count()) *
-                   std::chrono::microseconds::period::num /
-                   std::chrono::microseconds::period::den
-            << "sec" << std::endl;
+#ifdef WITH_CUDA
+template <typename T>
+inline void FillCPUGPU(Tensor& cpu_tensor, Tensor& gpu_tensor) {
+  T* gpu_data = gpu_tensor.mutableData<T>();
+  T* cpu_data = cpu_tensor.mutableData<T>();
+  auto size = cpu_tensor.numel();
+  srand((unsigned)time(NULL));
+  for (int64_t i = 0; i < size; ++i) {
+    cpu_data[i] = rand() / static_cast<T>(RAND_MAX);
+  }
+  fast_transformers::core::FT_Memcpy<T>(gpu_data, cpu_data, size,
+                                        fast_transformers::core::FT_CPU2GPU);
 }
 
-TEST_CASE("blas-gemm-intermediate") {
-  int m = 1 * 128, k = 12 * 64 * 4, n = 12 * 64;
-  float* A = new float[m * k];
-  float* B = new float[k * n];
-  float* C = new float[m * n];
-  static constexpr float alpha = 1., beta = 0.;
+template <typename T>
+inline bool CompareCPUGPU(const Tensor& cpu_tensor, const Tensor& gpu_tensor) {
+  const T* gpu_data = gpu_tensor.data<T>();
+  const T* cpu_data = cpu_tensor.data<T>();
+  auto size = cpu_tensor.numel();
 
-  auto start = std::chrono::system_clock::now();
-  int step = 100;
-  for (int it = 0; it < step; ++it)
-    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha, A, k,
-                B, k, beta, C, n);
-  auto end = std::chrono::system_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  double eslape = double(duration.count()) *
-                  std::chrono::microseconds::period::num /
-                  std::chrono::microseconds::period::den;
-  double FLOP = m * n * k * 2. * step / 1e9;
-  std::cout << "blas-gemm-intermediate cost:" << eslape << " sec, "
-            << FLOP / eslape << " GFLOPS" << std::endl;
+  T* gpu_data_ref = new T[size];
+  fast_transformers::core::FT_Memcpy<T>(gpu_data_ref, gpu_data, size,
+                                        fast_transformers::core::FT_GPU2CPU);
+  bool ret = true;
+  double sum1 = 0., sum2 = 0.;
+  for (int64_t i = 0; i < size; ++i) {
+    if (fabs(gpu_data_ref[i] - cpu_data[i]) > 1e-3) {
+      ret = false;
+      break;
+    }
+    sum1 += gpu_data_ref[i];
+    sum2 += cpu_data[i];
+  }
+  std::cout << "sum1: " << sum1 << ", sum2: " << sum2 << std::endl;
+  delete[] gpu_data_ref;
+  return ret;
 }
 
-TEST_CASE("blas-gemm-intermediate-pad") {
-  int m = 1 * 128, k_param = 12 * 64 * 4, n_param = 12 * 64 * 4;
-  int pad_size = 0;
-  for (int k_pad = 0; k_pad <= pad_size; k_pad += 4) {
-    int k = k_param + k_pad;
-    int n = n_param;
-    float* A = new float[m * k];
-    float* B = new float[k * n];
-    float* C = new float[m * n];
-    static constexpr float alpha = 1., beta = 0.;
+TEST_CASE("check cpu and gpu correctness Trans Notrans") {
+  int64_t k, n;
+  std::vector<int64_t> test_list{5, 10, 15, 20};
+  for (auto m : test_list) {
+    k = 12 * 64, n = 12 * 64 * 3;
+    std::initializer_list<int64_t> input_shape{m, k};
+    std::initializer_list<int64_t> weight_shape{k, n};
+    std::initializer_list<int64_t> output_shape{m, n};
+    using fast_transformers::core::NewDLPackTensorT;
 
-    auto start = std::chrono::system_clock::now();
-    int step = 100;
-    for (int it = 0; it < step; ++it)
-      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha, A, k,
-                  B, k, beta, C, n);
-    auto end = std::chrono::system_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    double eslape = double(duration.count()) *
-                    std::chrono::microseconds::period::num /
-                    std::chrono::microseconds::period::den;
-    double FLOP = m * n * k_param * 2. * step / 1e9;
-    std::cout << "[NoTrans-Trans] blas-gemm-intermediate pad, " << k_pad
-              << " cost: " << eslape << " sec, " << FLOP / eslape << " GFLOPS"
-              << std::endl;
-  }
-  std::cout << "<<<<<<<<<<<<<<<<<" << std::endl;
-  for (int k_pad = 0; k_pad <= pad_size; k_pad += 4) {
-    int k = k_param + k_pad;
-    int n = n_param;
-    float* A = new float[m * k];
-    float* B = new float[k * n];
-    float* C = new float[m * n];
-    static constexpr float alpha = 1., beta = 0.;
+    core::Tensor cpu_input_tensor(
+        NewDLPackTensorT<float>(input_shape, kDLCPU, 0));
+    core::Tensor gpu_input_tensor(
+        NewDLPackTensorT<float>(input_shape, kDLGPU, 0));
 
-    auto start = std::chrono::system_clock::now();
-    int step = 100;
-    for (int it = 0; it < step; ++it)
-      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha, A,
-                  k, B, n, beta, C, n);
-    auto end = std::chrono::system_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    double eslape = double(duration.count()) *
-                    std::chrono::microseconds::period::num /
-                    std::chrono::microseconds::period::den;
-    double FLOP = m * n * k_param * 2. * step / 1e9;
-    std::cout << "[NoTrans-NoTrans] blas-gemm-intermediate pad, " << k_pad
-              << " cost: " << eslape << " sec, " << FLOP / eslape << " GFLOPS"
-              << std::endl;
-  }
-  std::cout << "<<<<<<<<<<<<<<<<<" << std::endl;
-  for (int n_pad = 0; n_pad <= pad_size; n_pad += 4) {
-    int k = k_param;
-    int n = n_param + n_pad;
-    float* A = new float[m * k];
-    float* B = new float[k * n];
-    float* C = new float[m * n];
-    static constexpr float alpha = 1., beta = 0.;
+    FillCPUGPU<float>(cpu_input_tensor, gpu_input_tensor);
 
-    auto start = std::chrono::system_clock::now();
-    int step = 100;
-    for (int it = 0; it < step; ++it)
-      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha, A,
-                  k, B, n, beta, C, n);
-    auto end = std::chrono::system_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    double eslape = double(duration.count()) *
-                    std::chrono::microseconds::period::num /
-                    std::chrono::microseconds::period::den;
-    double FLOP = m * n * k_param * 2. * step / 1e9;
-    std::cout << "[NoTrans-NoTrans] blas-gemm-intermediate n_pad, " << n_pad
-              << " cost: " << eslape << " sec, " << FLOP / eslape << " GFLOPS"
-              << std::endl;
-  }
-  std::cout << "<<<<<<<<<<<<<<<<<" << std::endl;
-  for (int n_pad = 0; n_pad <= pad_size; n_pad += 4) {
-    int k = k_param;
-    int n = n_param + n_pad;
-    float* A = new float[m * k];
-    float* B = new float[k * n];
-    float* C = new float[m * n];
-    static constexpr float alpha = 1., beta = 0.;
+    core::Tensor cpu_weight_tensor(
+        NewDLPackTensorT<float>(weight_shape, kDLCPU, 0));
+    core::Tensor gpu_weight_tensor(
+        NewDLPackTensorT<float>(weight_shape, kDLGPU, 0));
+    FillCPUGPU<float>(cpu_weight_tensor, gpu_weight_tensor);
 
-    auto start = std::chrono::system_clock::now();
-    int step = 100;
-    for (int it = 0; it < step; ++it)
-      cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, m, n, k, alpha, A, m,
-                  B, n, beta, C, n);
-    auto end = std::chrono::system_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    double eslape = double(duration.count()) *
-                    std::chrono::microseconds::period::num /
-                    std::chrono::microseconds::period::den;
-    double FLOP = m * n * k_param * 2. * step / 1e9;
-    std::cout << "[Trans-NoTrans] blas-gemm-intermediate n_pad, " << n_pad
-              << " cost: " << eslape << " sec, " << FLOP / eslape << " GFLOPS"
-              << std::endl;
+    core::Tensor cpu_output_tensor(
+        NewDLPackTensorT<float>(output_shape, kDLCPU, 0));
+    core::Tensor gpu_output_tensor(
+        NewDLPackTensorT<float>(output_shape, kDLGPU, 0));
+    FillCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+
+    layers::kernels::MatMul(cpu_input_tensor, false, cpu_weight_tensor, false,
+                            1.0, &cpu_output_tensor, 0.0);
+
+    layers::kernels::MatMul(gpu_input_tensor, false, gpu_weight_tensor, false,
+                            1.0, &gpu_output_tensor, 0.0);
+
+    CompareCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
   }
 }
+
+TEST_CASE("check cpu and gpu correctness NoTrans Trans") {
+  int64_t k, n;
+  std::vector<int64_t> test_list{5, 10, 15, 20};
+  for (auto m : test_list) {
+    k = 12 * 64, n = 12 * 64 * 3;
+    std::initializer_list<int64_t> input_shape{m, k};
+    std::initializer_list<int64_t> weight_shape{k, n};
+    std::initializer_list<int64_t> output_shape{m, n};
+    using fast_transformers::core::NewDLPackTensorT;
+
+    core::Tensor cpu_input_tensor(
+        NewDLPackTensorT<float>(input_shape, kDLCPU, 0));
+    core::Tensor gpu_input_tensor(
+        NewDLPackTensorT<float>(input_shape, kDLGPU, 0));
+
+    FillCPUGPU<float>(cpu_input_tensor, gpu_input_tensor);
+
+    core::Tensor cpu_weight_tensor(
+        NewDLPackTensorT<float>(weight_shape, kDLCPU, 0));
+    core::Tensor gpu_weight_tensor(
+        NewDLPackTensorT<float>(weight_shape, kDLGPU, 0));
+    FillCPUGPU<float>(cpu_weight_tensor, gpu_weight_tensor);
+
+    core::Tensor cpu_output_tensor(
+        NewDLPackTensorT<float>(output_shape, kDLCPU, 0));
+    core::Tensor gpu_output_tensor(
+        NewDLPackTensorT<float>(output_shape, kDLGPU, 0));
+    FillCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+
+    layers::kernels::MatMul(cpu_input_tensor, false, cpu_weight_tensor, true,
+                            1.0, &cpu_output_tensor, 0.0);
+
+    layers::kernels::MatMul(gpu_input_tensor, false, gpu_weight_tensor, true,
+                            1.0, &gpu_output_tensor, 0.0);
+
+    CompareCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+  }
+}
+
+#endif
 
 }  // namespace core
 }  // namespace fast_transformers
