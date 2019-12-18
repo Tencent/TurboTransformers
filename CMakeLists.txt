@@ -8,7 +8,7 @@ HunterGate(
         SHA1 "e14bc153a7f16d6a5eeec845fb0283c8fad8c358"
 )
 
-option(WITH_GPU "Build with GPU" ON)
+option(WITH_GPU "Build with GPU" OFF)
 
 if (WITH_GPU)
   project(fast_transformers LANGUAGES CXX C CUDA)
@@ -34,7 +34,7 @@ set(CMAKE_CXX_STANDARD 14)
 if (WITH_GPU)
   find_package(CUDA REQUIRED)
   add_definitions(-DFT_WITH_CUDA)
-  set(CUDA_PATH "/data1/qspace/kanowang/common/cuda-9.0" CACHE PATH "The cuda library root")
+  set(CUDA_PATH "/usr/local/cuda" CACHE PATH "The cuda library root")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_52,code=\\\"sm_52,compute_52\\\" -rdc=true")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}  -Xcompiler -Wall -std=c++11 --expt-relaxed-constexpr --expt-extended-lambda")
   include_directories(${CUDA_INCLUDE_DIRS})
