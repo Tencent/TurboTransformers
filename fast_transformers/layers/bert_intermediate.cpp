@@ -11,9 +11,6 @@
 #include "fast_transformers/layers/kernels/softmax.h"
 #include "fast_transformers/layers/kernels/transpose.h"
 
-#ifdef FT_WITH_CUDA
-#include "fast_transformers/core/cuda_device_context.h"
-#endif
 namespace fast_transformers {
 namespace layers {
 
@@ -23,7 +20,6 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(0)},
       input_tensor.device_type());
 
-  core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
   kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
 
