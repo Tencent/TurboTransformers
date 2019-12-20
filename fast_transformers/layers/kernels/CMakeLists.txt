@@ -3,6 +3,13 @@ target_link_libraries(layer_norm tensor)
 
 add_library(softmax softmax.cpp)
 target_link_libraries(softmax tensor)
+if (WITH_GPU)
+  add_library(gpu_softmax_kernel gpu_softmax_kernel.cu)
+  target_link_libraries(gpu_softmax_kernel cudart cuda)
+  target_link_libraries(softmax gpu_softmax_kernel)
+endif()
+
+
 
 add_library(transpose transpose.cpp)
 target_link_libraries(transpose tensor)
