@@ -35,7 +35,7 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
                 out->mutableData<float>(), ldc);
   } else if (A.device_type() == kDLGPU && B.device_type() == kDLGPU &&
              out->device_type() == kDLGPU) {
-#ifdef WITH_CUDA
+#ifdef FT_WITH_CUDA
     cublasOperation_t transA = a_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
     cublasOperation_t transB = b_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
 
@@ -43,13 +43,16 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
     int ldb = (transB == CUBLAS_OP_N) ? N : K_a;
     int ldc = N;
 
-    core::DeviceContextPool& pool = core::CUDADeviceContext::GetInstance();
+    auto& gpu_ctx = ::fast_transformers::core::CUDADeviceContext::GetInstance();
     gpu_ctx.CublasCall([&](cublasHandle_t handle) {
       cublasSgemm(handle, transB, transA, N, M, K_a, &alpha, B.data<float>(),
                   ldb, A.data<float>(), lda, &beta, out->mutableData<float>(),
                   ldc);
     });
 #endif
+  } else {
+    FT_THROW(
+        "your device type is currently not supported for intermediate layer");
   }
 }
 void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
