@@ -85,14 +85,14 @@ void softmax_kernel(T* qk_buf_, const T* attr_mask, const int batch_size, const 
 {
     int batch_id = blockIdx.x / head_num;
     int qk_offset = blockIdx.x * seq_len * seq_len;
-    int mask_offset = batch_id;
 
     __shared__ float s_sum, s_max;
 
     for(int i = 0; i < seq_len; ++i)
     {
       float qk = threadIdx.x < seq_len ? (float)qk_buf_[threadIdx.x + qk_offset] : 0.0f;
-      float mask_val = threadIdx.x < seq_len ? (float)attr_mask[threadIdx.x % seq_len + mask_offset] : 0.0f;
+      float mask_val = threadIdx.x < seq_len ? (float)attr_mask[threadIdx.x % seq_len + batch_id * seq_len
+      ] : 0.0f;
 
       //mask_val = (1.0f - mask_val) * -10000.0f;
 
@@ -118,7 +118,6 @@ void softmax_kernel(T* qk_buf_, const T* attr_mask, const int batch_size, const 
         qk_buf_[threadIdx.x + qk_offset] = (T)(qk / s_sum);
 
       qk_offset += seq_len;
-      mask_offset += seq_len;
     }
 }
 
@@ -137,6 +136,7 @@ void softmax_kernel_v2(T* qk_buf_, const T* attr_mask, const int batch_size, con
     __shared__ float s_sum, s_max;
 
     float qk = threadIdx.x < seq_len ? (float)qk_buf_[threadIdx.x + qk_offset] : 0.0f;
+    //float mask_val = threadIdx.x < seq_len ? (float)attr_mask[threadIdx.x + mask_offset] :0.0f;
     float mask_val = threadIdx.x < seq_len ? (float)attr_mask[threadIdx.x + mask_offset] :0.0f;
 
     //mask_val = (1.0f - mask_val) * -10000.0f;
