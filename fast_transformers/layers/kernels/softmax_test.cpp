@@ -46,7 +46,8 @@ TEST_CASE("softmax CPU and GPU correctness") {
 
   static core::AlignedScratchpad<float> buf;
   std::vector<int64_t> batch_size_list{1, 20, 24};
-  std::vector<int64_t> seq_length_list{16, 32, 48, 64, 128};
+  // std::vector<int64_t> seq_length_list{16, 32, 48, 64, 128};
+  std::vector<int64_t> seq_length_list{64, 128};
 
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
@@ -63,16 +64,16 @@ TEST_CASE("softmax CPU and GPU correctness") {
 
       fast_transformers::core::Tensor attr_mask_gpu(
           fast_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, seq_length}, kDLGPU, 0));
-      ::fast_transformers::test::Fill<float>(attr_mask_gpu, 0.0, 0.0);
+              {batch_size, seq_length}, kDLGPU, 0));
+      //::fast_transformers::test::Fill<float>(attr_mask_gpu, 0.0, 0.0);
 
       fast_transformers::core::Tensor attr_mask_cpu(
           fast_transformers::core::NewDLPackTensorT<float>(
               {batch_size, seq_length}, kDLCPU, 0));
-      ::fast_transformers::test::Fill<float>(attr_mask_cpu, 0.0, 0.0);
+      //::fast_transformers::test::Fill<float>(attr_mask_cpu, 0.0, 0.0);
 
-      //::fast_transformers::test::FillCPUGPU<float>(attr_mask_cpu,
-      // attr_mask_gpu);
+      ::fast_transformers::test::FillCPUGPU<float>(attr_mask_cpu,
+                                                   attr_mask_gpu);
 
       LOG_S(INFO) << "batch_size: " << batch_size
                   << " seq_length: " << seq_length;
