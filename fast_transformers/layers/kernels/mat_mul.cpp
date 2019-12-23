@@ -98,30 +98,54 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   int offsetB = b_rows * b_cols;
   int offsetC = c_rows * c_cols;
 
-  std::unique_ptr<const float*[]> A_array(new const float*[a_batch_size]);
-  std::unique_ptr<const float*[]> B_array(new const float*[b_batch_size]);
-  std::unique_ptr<float*[]> C_array(new float*[c_batch_size]);
+  if (A.device_type() == kDLCPU && B.device_type() == kDLCPU &&
+      C->device_type() == kDLCPU) {
+    std::unique_ptr<const float*[]> A_array(new const float*[a_batch_size]);
+    std::unique_ptr<const float*[]> B_array(new const float*[b_batch_size]);
+    std::unique_ptr<float*[]> C_array(new float*[c_batch_size]);
 
-  auto* a_ptr = A.data<float>();
-  auto* b_ptr = B.data<float>();
-  auto* c_ptr = C->mutableData<float>();
+    auto* a_ptr = A.data<float>();
+    auto* b_ptr = B.data<float>();
+    auto* c_ptr = C->mutableData<float>();
 
-  for (int i = 0; i < a_batch_size; ++i) {
-    A_array[i] = a_ptr + i * offsetA;
-    B_array[i] = b_ptr + i * offsetB;
-    C_array[i] = c_ptr + i * offsetC;
+    for (int i = 0; i < a_batch_size; ++i) {
+      A_array[i] = a_ptr + i * offsetA;
+      B_array[i] = b_ptr + i * offsetB;
+      C_array[i] = c_ptr + i * offsetC;
+    }
+    auto transA = a_trans ? CblasTrans : CblasNoTrans;
+    auto transB = b_trans ? CblasTrans : CblasNoTrans;
+
+    int lda = (transA == CblasNoTrans) ? K_a : M;
+    int ldb = (transB == CblasNoTrans) ? N : K_a;
+    int ldc = N;
+
+    cblas_sgemm_batch(CblasRowMajor, &transA, &transB, &M, &N, &K_a, &alpha,
+                      A_array.get(), &lda, B_array.get(), &ldb, &beta,
+                      C_array.get(), &ldc, 1, &a_batch_size);
+  } else if (A.device_type() == kDLGPU && B.device_type() == kDLGPU &&
+             C->device_type() == kDLGPU) {
+#ifdef FT_WITH_CUDA
+    auto transA = a_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
+    auto transB = b_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+    int lda = (transA == CblasNoTrans) ? K_a : M;
+    int ldb = (transB == CblasNoTrans) ? N : K_a;
+    int ldc = N;
+
+    auto& gpu_ctx = ::fast_transformers::core::CUDADeviceContext::GetInstance();
+    gpu_ctx.CublasCall([&](cublasHandle_t handle) {
+      cublasSgemmStridedBatched(handle, transB, transA, N, M, K_a, &alpha,
+                                B.data<float>(), ldb, offsetB, A.data<float>(),
+                                lda, offsetA, &beta, C->mutableData<float>(),
+                                ldc, offsetC, a_batch_size);
+    });
+#endif
+  } else {
+    FT_THROW("device_type is not supported!");
   }
-  auto transA = a_trans ? CblasTrans : CblasNoTrans;
-  auto transB = b_trans ? CblasTrans : CblasNoTrans;
-
-  int lda = (transA == CblasNoTrans) ? K_a : M;
-  int ldb = (transB == CblasNoTrans) ? N : K_a;
-  int ldc = N;
-
-  cblas_sgemm_batch(CblasRowMajor, &transA, &transB, &M, &N, &K_a, &alpha,
-                    A_array.get(), &lda, B_array.get(), &ldb, &beta,
-                    C_array.get(), &ldc, 1, &a_batch_size);
 }
+
 }  // namespace kernels
 }  // namespace layers
 }  // namespace fast_transformers
