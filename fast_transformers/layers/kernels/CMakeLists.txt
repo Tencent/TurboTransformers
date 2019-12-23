@@ -52,3 +52,6 @@ target_link_libraries(mat_mul tensor enforce)
 if (WITH_GPU)
   target_link_libraries(mat_mul cuda_device_context)
 endif()
+
+add_executable(mat_mul_test mat_mul_test.cpp)
+target_link_libraries(mat_mul_test blas Catch2 mat_mul tensor)
