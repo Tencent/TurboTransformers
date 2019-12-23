@@ -77,6 +77,37 @@ void GPUSplitAddBiasTransposeForScore<float>(const float* input_data, const floa
      cudaStream_t stream);
 
 
+//copyright nvidia
+template<typename T>
+static __global__
+void transpose(const T* src, T* dst, const int batch_size, const int seq_len, const int head_num, const int size_per_head)
+{
+  int batch_id = blockIdx.x / (head_num * seq_len);
+  int seq_id = blockIdx.x % seq_len;
+  int head_id = (blockIdx.x % (head_num * seq_len))/ seq_len;
+  dst[batch_id * (head_num * seq_len * size_per_head) + seq_id * head_num * size_per_head
+    + head_id * size_per_head + threadIdx.x] = src[blockIdx.x * size_per_head + threadIdx.x];
+}
+
+template <typename T>
+void GPUTransposeForScore(const T* input_data, T* output_data,
+     int64_t batch_size, int64_t seq_len, int64_t num_attention_heads,
+     int64_t size_per_head, cudaStream_t stream) {
+
+  const int seq_per_block = 1;
+  dim3 grid, block;
+  grid.x = batch_size * num_attention_heads
+    * seq_len / seq_per_block;
+  block.x = seq_per_block * size_per_head;
+  transpose<T><<<grid, block, 0, stream>>>(input_data, output_data
+      , batch_size, seq_len, num_attention_heads, size_per_head);
+}
+
+template
+void GPUTransposeForScore<float>(const float* input_data, float* output_data,
+     int64_t batch_size, int64_t seq_len, int64_t num_attention_heads,
+     int64_t size_per_head, cudaStream_t stream);
+
 }  // namespace kernels
 }  // namespace layers
 }  // namespace fast_transformers
