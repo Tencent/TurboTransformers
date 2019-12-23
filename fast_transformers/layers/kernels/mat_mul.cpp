@@ -129,9 +129,14 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
     auto transA = a_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
     auto transB = b_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
 
-    int lda = (transA == CblasNoTrans) ? K_a : M;
-    int ldb = (transB == CblasNoTrans) ? N : K_a;
+    // int lda = (transA == CUBLAS_OP_N) ? K_a : M;
+    int lda = (transA == CUBLAS_OP_N) ? K_a : M;
+    int ldb = (transB == CUBLAS_OP_N) ? N : K_a;
     int ldc = N;
+
+    std::cerr << "ldb " << ldb << " offsetB " << offsetB << std::endl;
+    std::cerr << "lda " << lda << " offsetA " << offsetA << std::endl;
+    std::cerr << "ldc " << ldc << " offsetC " << offsetC << std::endl;
 
     auto& gpu_ctx = ::fast_transformers::core::CUDADeviceContext::GetInstance();
     gpu_ctx.CublasCall([&](cublasHandle_t handle) {
