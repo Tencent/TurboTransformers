@@ -36,6 +36,8 @@ bool CompareCPUGPU(const Tensor& cpu_tensor, const Tensor& gpu_tensor) {
   bool ret = true;
   for (int64_t i = 0; i < size; ++i) {
     if (std::abs(gpu_data_ref[i] - cpu_data[i]) > 1e-3) {
+      std::cerr << "@ " << i << ": " << gpu_data_ref[i] << " vs " << cpu_data[i]
+                << std::endl;
       ret = false;
       break;
     }

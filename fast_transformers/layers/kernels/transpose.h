@@ -1,7 +1,7 @@
 #pragma once
+#include <fast_transformers/core/tensor.h>
 #include <stdint.h>
 
-#include <fast_transformers/core/tensor.h>
 #include <cmath>
 #include <numeric>
 #include <vector>
@@ -23,9 +23,9 @@ namespace kernels {
  * **/
 extern void TransposeForScore(core::Tensor* output, const core::Tensor& input);
 
-// input (batch_size, seq_length, 3, head_num, *size_per_head)
-//(3, batch_size, head_num, seq_length, *size_per_head)
+// input: (batch_size, seq_length, 3, head_num, *size_per_head)
 // bias: (3, head_num, size_per_head)
+// output: (3, batch_size, num_attention_heads, seq_length, size_per_head)
 extern void SplitAddBiasTransposeForScore(core::Tensor* output,
                                           const core::Tensor& input_tensor,
                                           const core::Tensor& bias_tensor);
