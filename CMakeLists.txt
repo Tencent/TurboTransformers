@@ -8,7 +8,7 @@ HunterGate(
         SHA1 "e14bc153a7f16d6a5eeec845fb0283c8fad8c358"
 )
 
-option(WITH_GPU "Build with GPU" ON)
+option(WITH_GPU "Build with GPU" OFF)
 
 if (WITH_GPU)
   project(fast_transformers LANGUAGES CXX C CUDA)
@@ -20,21 +20,20 @@ hunter_add_package(Eigen)
 find_package(Eigen3 CONFIG REQUIRED)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
-add_definitions(
-        -DEIGEN_USE_THREADS # support openmp
-        -DEIGEN_USE_MKL_ALL # support mkl
-        -DEIGEN_NO_MALLOC  # if any eigen code needs malloc, just raise a compilation error
-        -DEIGEN_DEFAULT_TO_ROW_MAJOR
-        -DEIGEN_FAST_MATH=1 # fast math for cos/sin/...
-)
+
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
 
 if (WITH_GPU)
   find_package(CUDA REQUIRED)
+  if (CUDA_FOUND)
+    set(CUDA_PATH ${CUDA_TOOLKIT_ROOT_DIR} CACHE PATH "The cuda library root")
+  else ()
+    message(WARNING "CUDA is not found, set CUDA_PATH as /usr/local/bin")
+    set(CUDA_PATH "/usr/local/bin/" CACHE PATH "The cuda library root")
+  endif()
   add_definitions(-DFT_WITH_CUDA)
-  set(CUDA_PATH "/data1/qspace/kanowang/common/cuda-9.0" CACHE PATH "The cuda library root")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_52,code=\\\"sm_52,compute_52\\\" -rdc=true")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}  -Xcompiler -Wall -std=c++11 --expt-relaxed-constexpr --expt-extended-lambda")
   include_directories(${CUDA_INCLUDE_DIRS})
@@ -72,9 +71,26 @@ message(STATUS "Blas provider is ${BLAS_PROVIDER}")
 
 if (${BLAS_PROVIDER} STREQUAL "mkl")
     find_package(MKL REQUIRED)
-    message(STATUS ${find_package})
+    add_definitions(
+            -DEIGEN_USE_THREADS # support openmp
+            -DEIGEN_USE_MKL_ALL # support mkl
+            -DEIGEN_NO_MALLOC  # if any eigen code needs malloc, just raise a compilation error
+            -DEIGEN_DEFAULT_TO_ROW_MAJOR
+            -DEIGEN_FAST_MATH=1 # fast math for cos/sin/...
+    )
+
+
 elseif (${BLAS_PROVIDER} STREQUAL "openblas")
-    message(SEND_ERROR "Not implemented")
+    hunter_add_package(OpenBLAS)
+    find_package(OpenBLAS CONFIG REQUIRED)
+
+    add_definitions(
+            -DEIGEN_USE_THREADS # support openmp
+            -DEIGEN_NO_MALLOC  # if any eigen code needs malloc, just raise a compilation error
+            -DEIGEN_DEFAULT_TO_ROW_MAJOR
+            -DEIGEN_FAST_MATH=1 # fast math for cos/sin/...
+    )
+
 else ()
     message(SEND_ERROR "Blas Provider must in (openblas, mkl)")
 endif ()
