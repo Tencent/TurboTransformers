@@ -7,31 +7,31 @@ Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了
 本机构建（编译ONNX-runtime时间会很长）
 ```
 sh tools/build_docker.sh
+# optional: 构建编译环境时需要联网，腾讯内网需要设置代理
+export EXTRA_ARGS="--build-arg http_proxy=http://devnet-proxy.oa.com:8080 --build-arg https_proxy=http:/ /devnet-proxy.oa.com:8080"
 docker run -it --rm -v your/path/fast_transformers:/workspace --name=your_container_name REPOSITORY:TAG /bin/bash
 cd /workspace
-# optional:安装需要联网，腾讯内网请设置代理
+# optional:在编译环境内安装是也需要联网，腾讯内网请设置代理
 export http_proxy=http://devnet-proxy.oa.com:8080
 export https_proxy=http://devnet-proxy.oa.com:8080
 export no_proxy=git.code.oa.com
 ```
-1.2 从腾讯云的dockerhub上pull已有镜像
-A. WXG的腾讯云dockerhub账号
-```
-docker pull ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1a1-dev
-```
-B. CSIG的腾讯云dockerhub账号
-```
-docker pull ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1a1-dev
-```
+
 2. 在docker内安装conda和pip包
 
 ```
-sh conda/build.sh
+sh tool/build_conda_package.sh
+# conda包会在 /workspace/dist/*.tar.bz2中
+# 在本容器外其他环境使用fast_transformer时只需要python -m pip install your_root_path/dist/*.tar.bz2
 ```
 
 3. 在docker内进行单测 (optional)
 
 ```
+cd /workspace
+# 下载预训练模型，需要git lfs，sudo yum install git-lfs
+git lfs install
+git lfs pull
 sh tools/build_run_unittests.sh $PWD
 ```
 4. 在docker内运行benchmark (optional)
@@ -48,24 +48,36 @@ Fast_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch
 ```python
 import torch
 import transformers
-import contexttimer
 import fast_transformers
+
 # 使用4个线程运行fast_transformers
 fast_transformers.set_num_threads(4)
 # 调用transformers提供的预训练模型
 model = transformers.BertModel.from_pretrained(
     "bert-base-chinese")
+model.eval()
 # 预训练模型的配置
 cfg = model.config
+batch_size = 2
+seq_len = 128
 #随机生成文本序列
+torch.manual_seed(1)
 input_ids = torch.randint(low=0,
                             high=cfg.vocab_size - 1,
                             size=(batch_size, seq_len),
                             dtype=torch.long)
+torch.set_grad_enabled(False)
+torch_res = model(input_ids) # sequence_output, pooled_output, (hidden_states), (attentions)
+print(torch_res[0][:,0,:])  # 获取encoder得到的第一个隐状态
+# tensor([[-1.4238,  1.0980, -0.3257,  ...,  0.7149, -0.3883, -0.1134],
+#        [-0.8828,  0.6565, -0.6298,  ...,  0.2776, -0.4459, -0.2346]])
+
 # 构建bert-encoder的模型，输出first方式pooling的结果
-model = fast_transformers.BertModel.from_torch(model, pooling_type=PoolingType.FIRST)
-# 获得encoder结果
-res = model(input_ids)
+ft_model = fast_transformers.BertModel.from_torch(model)
+res = ft_model(input_ids)
+print(res)
+# tensor([[-1.4292,  1.0934, -0.3270,  ...,  0.7212, -0.3893, -0.1172],
+#         [-0.8878,  0.6571, -0.6331,  ...,  0.2759, -0.4496, -0.2375]])
 ```
 更多使用接口可以参考 ./benchmark/benchmark.py文件
 
