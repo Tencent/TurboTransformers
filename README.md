@@ -48,24 +48,36 @@ Fast_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch
 ```python
 import torch
 import transformers
-import contexttimer
 import fast_transformers
+
 # 使用4个线程运行fast_transformers
 fast_transformers.set_num_threads(4)
 # 调用transformers提供的预训练模型
 model = transformers.BertModel.from_pretrained(
     "bert-base-chinese")
+model.eval()
 # 预训练模型的配置
 cfg = model.config
+batch_size = 2
+seq_len = 128
 #随机生成文本序列
+torch.manual_seed(1)
 input_ids = torch.randint(low=0,
                             high=cfg.vocab_size - 1,
                             size=(batch_size, seq_len),
                             dtype=torch.long)
+torch.set_grad_enabled(False)
+torch_res = model(input_ids) # sequence_output, pooled_output, (hidden_states), (attentions)
+print(torch_res[0][:,0,:])  # 获取encoder得到的第一个隐状态
+# tensor([[-1.4238,  1.0980, -0.3257,  ...,  0.7149, -0.3883, -0.1134],
+#        [-0.8828,  0.6565, -0.6298,  ...,  0.2776, -0.4459, -0.2346]])
+
 # 构建bert-encoder的模型，输出first方式pooling的结果
-model = fast_transformers.BertModel.from_torch(model, pooling_type=PoolingType.FIRST)
-# 获得encoder结果
-res = model(input_ids)
+ft_model = fast_transformers.BertModel.from_torch(model)
+res = ft_model(input_ids)
+print(res)
+# tensor([[-1.4292,  1.0934, -0.3270,  ...,  0.7212, -0.3893, -0.1172],
+#         [-0.8878,  0.6571, -0.6331,  ...,  0.2759, -0.4496, -0.2375]])
 ```
 更多使用接口可以参考 ./benchmark/benchmark.py文件
 
