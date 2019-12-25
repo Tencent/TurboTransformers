@@ -10,6 +10,10 @@
 #include "fast_transformers/core/enforce.h"
 #include "fast_transformers/core/memory.h"
 
+#ifdef FT_WITH_CUDA
+#include "fast_transformers/core/cuda_error.h"
+#endif
+
 namespace fast_transformers {
 
 namespace core {
@@ -139,10 +143,12 @@ class Tensor {
 
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
   template <typename T>
-  T *Reshape(std::initializer_list<int64_t> shape_list) {
+  T *Reshape(std::initializer_list<int64_t> shape_list,
+             DLDeviceType device_type) {
     // if Need Realloc
     if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
-      tensor_ = details::DLManagedTensorPtr(NewDLPackTensorT<T>(shape_list));
+      tensor_ = details::DLManagedTensorPtr(
+          NewDLPackTensorT<T>(shape_list, device_type));
     }
     return this->template mutableData<T>();
   }
@@ -187,9 +193,24 @@ class Tensor {
     os << "first 10 elems: (";
     int cnt = 10;
     double sum = 0.;
-    for (int i = 0; i < numel(); ++i) {
-      sum += data<T>()[i];
-      if (cnt-- >= 0) os << data<T>()[i] << ", ";
+
+    if (device_type() == kDLCPU) {
+      for (int i = 0; i < numel(); ++i) {
+        sum += data<T>()[i];
+        if (cnt-- >= 0) os << data<T>()[i] << ", ";
+      }
+    } else if (device_type() == kDLGPU) {
+#ifdef FT_WITH_CUDA
+      auto n = numel();
+      std::unique_ptr<T[]> cpu_data(new T[n]);
+      FT_Memcpy(cpu_data.get(), data<T>(), n * sizeof(T), MemcpyFlag::kGPU2CPU);
+      for (int i = 0; i < n; ++i) {
+        sum += cpu_data[i];
+        if (cnt-- >= 0) os << cpu_data[i] << ", ";
+      }
+#else
+      FT_THROW("No CUDA supported, Please Compile with FT_WITH_CUDA");
+#endif
     }
     os << ")\n";
     os << "sum is " << sum << std::endl;

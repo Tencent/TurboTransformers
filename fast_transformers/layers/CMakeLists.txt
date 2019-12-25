@@ -4,7 +4,6 @@ add_library(bert_embedding bert_embedding.cpp)
 target_link_libraries(bert_embedding loguru layer_norm)
 
 add_library(bert_attention bert_attention.cpp)
-#target_include_directories(bert_attention PRIVATE "${MKL_INCLUDE_DIR}")
 target_link_libraries(bert_attention tensor blas loguru enforce softmax transpose aligned_scratchpad)
 
 add_library(bert_intermediate bert_intermediate.cpp)
