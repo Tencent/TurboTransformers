@@ -74,7 +74,7 @@ template<typename T>
 void GPUAddBiasLayerNorm(T* out, const T* input, const T* bias,
   const T* gamma, const T* beta, int m, int n, cudaStream_t stream)
 {
-  //assert(n > 1024);
+  //assert(n < 1024);
   dim3 grid(m);
   dim3 block(n);
   add_bias_input_layernorm<T><<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);

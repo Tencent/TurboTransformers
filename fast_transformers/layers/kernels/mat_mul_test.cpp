@@ -66,7 +66,6 @@ TEST_CASE("blas-sscal") {
   REQUIRE(float_eq(vec[1], 4));
 }
 
-/*
 TEST_CASE("check matmul cpu and gpu correctness NoTrans Notrans") {
   int64_t k, n;
   std::vector<int64_t> test_list{5, 10, 15, 20};
@@ -144,7 +143,7 @@ TEST_CASE("check matmul cpu and gpu correctness Notrans Trans") {
     CompareCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
   }
 }
-*/
+
 TEST_CASE("check batch_matmul cpu and gpu correctness Notrans NoTrans") {
   std::vector<int64_t> seq_list{5, 10, 15, 20};
   std::vector<int64_t> batch_list{1, 10, 20};
