@@ -3,6 +3,7 @@ cmake-build-*
 venv
 .vscode
 build
+build_docker
 *.onnx
 onnxruntime_profile_*json
 tmp
