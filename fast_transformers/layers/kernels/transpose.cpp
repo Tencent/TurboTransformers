@@ -35,16 +35,30 @@ static void TransposeForScoreImpl(float* output, const float* input,
 }
 
 void TransposeForScore(core::Tensor* output, const core::Tensor& input) {
-  TransposeForScoreImpl(output->mutableData<float>(), input.data<float>(),
-                        output->shape(0), output->shape(1), input.shape(1),
-                        input.shape(3));
+  auto batch_size = output->shape(0);
+  auto seq_length = output->shape(1);
+  auto num_attention_heads = input.shape(1);
+  auto width = input.shape(3);
+
+  if (input.device_type() == kDLCPU && output->device_type() == kDLCPU) {
+    TransposeForScoreImpl(output->mutableData<float>(), input.data<float>(),
+                          output->shape(0), output->shape(1), input.shape(1),
+                          input.shape(3));
+  } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
+#ifdef FT_WITH_CUDA
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUTransposeForScore<float>(
+        input.data<float>(), output->mutableData<float>(), batch_size,
+        seq_length, num_attention_heads, width, cuda_ctx.stream());
+#endif
+  } else {
+    FT_THROW("device_type is not supported");
+  }
 }
 
 void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
                                    const core::Tensor& input_tensor,
                                    const core::Tensor& bias_tensor) {
-  FT_ENFORCE_EQ(bias_tensor.n_dim(), 3,
-                "bias should be (3, seq_length, size_per_head)");
   FT_ENFORCE_EQ(output_tensor->n_dim(), 5,
                 "bias should be (3, batch_size, seq_length, "
                 "num_attention_heads, size_per_head)");

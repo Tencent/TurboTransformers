@@ -134,10 +134,6 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
     int ldb = (transB == CUBLAS_OP_N) ? N : K_a;
     int ldc = N;
 
-    std::cerr << "ldb " << ldb << " offsetB " << offsetB << std::endl;
-    std::cerr << "lda " << lda << " offsetA " << offsetA << std::endl;
-    std::cerr << "ldc " << ldc << " offsetC " << offsetC << std::endl;
-
     auto& gpu_ctx = ::fast_transformers::core::CUDADeviceContext::GetInstance();
     gpu_ctx.CublasCall([&](cublasHandle_t handle) {
       cublasSgemmStridedBatched(handle, transB, transA, N, M, K_a, &alpha,

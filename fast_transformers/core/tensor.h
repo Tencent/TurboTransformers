@@ -118,7 +118,7 @@ class Tensor {
     auto &dl_tensor = to_dl_tensor();
     FT_ENFORCE_LT(pos, dl_tensor.ndim,
                   "The index(%d) is out of the range[0...%d]", pos,
-                  dl_tensor.ndim);
+                  dl_tensor.ndim - 1);
     return dl_tensor.shape[pos];
   }
 

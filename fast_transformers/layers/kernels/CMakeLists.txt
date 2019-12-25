@@ -11,6 +11,10 @@ add_library(activation activation.cpp)
 target_link_libraries(activation tensor aligned_scratchpad)
 
 if (WITH_GPU)
+  add_library(gpu_layer_norm_kernel gpu_layer_norm_kernel.cu)
+  target_link_libraries(gpu_layer_norm_kernel cudart cuda)
+  target_link_libraries(layer_norm gpu_layer_norm_kernel)
+
   add_library(gpu_softmax_kernel gpu_softmax_kernel.cu)
   target_link_libraries(gpu_softmax_kernel cudart cuda)
   target_link_libraries(softmax gpu_softmax_kernel)

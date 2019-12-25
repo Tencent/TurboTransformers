@@ -85,8 +85,6 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
 }
 
 void BertAttention::EnforceShapeAndType() const {
-  FT_ENFORCE_EQ(layer_norm_weight_.device_type(), kDLCPU,
-                "Only CPU supportted");
   if (loguru::current_verbosity_cutoff() > 3) {
     std::ostringstream os;
     layer_norm_weight_.Print<float>(os);
