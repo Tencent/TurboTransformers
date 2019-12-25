@@ -3,7 +3,10 @@ add_library(blas blas_${BLAS_PROVIDER}.cpp)
 if (${BLAS_PROVIDER} STREQUAL "mkl")
     target_link_libraries(blas PRIVATE ${MKL_LIBRARIES})
     target_include_directories(blas PUBLIC ${MKL_INCLUDE_DIR})
-    target_compile_definitions(blas PUBLIC -DFT_BLAS_PROVIDER=MKL)
+    target_compile_definitions(blas PUBLIC -DFT_BLAS_USE_MKL)
+elseif(${BLAS_PROVIDER} STREQUAL "openblas")
+    target_link_libraries(blas PUBLIC OpenBLAS::OpenBLAS PRIVATE Eigen3::Eigen)
+    target_compile_definitions(blas PUBLIC -DFT_BLAS_USE_OPENBLAS)
 endif ()
 
 

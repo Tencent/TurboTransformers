@@ -43,8 +43,12 @@ PYBIND11_MODULE(fast_transformers_cxx, m) {
   m.def("enable_gperf", &core::EnableGperf);
   m.def("disable_gperf", &core::DisableGperf);
   m.def("set_num_threads", [](int n_th) {
-    // The order seems important. Set MKL NUM_THREADS before OMP.
+  // The order seems important. Set MKL NUM_THREADS before OMP.
+#ifdef FT_BLAS_USE_MKL
     mkl_set_num_threads(n_th);
+#else
+    openblas_set_num_threads(n_th);
+#endif
 #ifdef _OPENMP
     omp_set_num_threads(n_th);
 #endif
