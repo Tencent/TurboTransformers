@@ -11,9 +11,6 @@
 #include "fast_transformers/layers/kernels/softmax.h"
 #include "fast_transformers/layers/kernels/transpose.h"
 
-#ifdef FT_WITH_CUDA
-#include "fast_transformers/core/cuda_device_context.h"
-#endif
 namespace fast_transformers {
 namespace layers {
 
@@ -23,26 +20,10 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(0)},
       input_tensor.device_type());
 
-  /*
-  auto size = output_tensor->numel();
-  std::unique_ptr<float[]> gpu_data_ref(new float[size]);
-  srand((unsigned)time(NULL));
-  for (int64_t i = 0; i < size; ++i) {
-    gpu_data_ref.get()[i] = rand() / static_cast<float>(RAND_MAX);
-  }
-  fast_transformers::core::FT_Memcpy(
-      output_tensor->mutableData<float>(),
-      gpu_data_ref.get(), size * sizeof(float),
-      ::fast_transformers::core::MemcpyFlag::kCPU2GPU);
-      */
-
-  core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
   kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
 
-  cuda_ctx.Wait();
   kernels::AddBiasGeLUAct<float>(dense_bias_, output_tensor);
-  cuda_ctx.Wait();
 }
 
 void BertIntermediate::EnforceShapeAndType() const {
