@@ -1,15 +1,47 @@
 #include "fast_transformers/layers/kernels/activation.h"
+#ifdef FT_WITH_CUDA
+#include "fast_transformers/core/cuda_device_context.h"
+#endif
 
 #include <immintrin.h>
 
 #include <numeric>
 
 #include "fast_transformers/core/aligned_scratchpad.h"
-#include "fast_transformers/core/eigen-tensor.h"
+#ifdef FT_WITH_CUDA
+#include "fast_transformers/layers/kernels/gpu_activation_kernel.h"
+#endif
 
 namespace fast_transformers {
 namespace layers {
 namespace kernels {
+
+template <typename T>
+static void AddBiasGeLUActKernel(const T* bias, T* out, int64_t batch_size,
+                                 int64_t feature_dim) {
+  static core::AlignedScratchpad<float> scratchpad;
+  float* buff = scratchpad.mutable_data(batch_size * feature_dim);
+#pragma omp parallel for
+  for (int64_t i = 0; i < batch_size; ++i) {
+    int64_t k = 0;
+#pragma omp simd
+    for (int64_t j = feature_dim * i; j < feature_dim * (i + 1); ++j) {
+      float tmp_ = out[j] + bias[k++];
+      buff[j] = (0.7978845608028654f * (tmp_ + 0.044715f * tmp_ * tmp_ * tmp_));
+    }
+    vsTanh(feature_dim, &buff[i * feature_dim], &buff[i * feature_dim]);
+    k = 0;
+#pragma omp simd
+    for (int64_t j = feature_dim * i; j < feature_dim * (i + 1); ++j) {
+      out[j] = (out[j] + bias[k++]) * 0.5f * (1.0f + buff[j]);
+    }
+  }
+}
+
+template static void AddBiasGeLUActKernel<float>(const float* bias_data,
+                                                 float* out_data,
+                                                 int64_t batch_size,
+                                                 int64_t feature_dim);
 
 template <typename T>
 void AddBiasGeLUAct(const core::Tensor& bias_tensor, core::Tensor* out_tensor) {
@@ -19,47 +51,16 @@ void AddBiasGeLUAct(const core::Tensor& bias_tensor, core::Tensor* out_tensor) {
   int64_t m = out_tensor->rows();
   int64_t n = out_tensor->cols();
 
-  static core::AlignedScratchpad<float> scratchpad;
-  float* buff = scratchpad.mutable_data(n * m);
-
-#ifdef __USE_INTEL_COMPILER__
-#pragma omp parallel for
-  for (int64_t i = 0; i < m; ++i) {
-    int64_t k = 0;
-    __m256 const_1 = _mm256_set1_ps(0.7978845608028654);
-    __m256 const_2 = _mm256_set1_ps(0.044715);
-    __m256 const_3 = _mm256_set1_ps(0.5);
-    __m256 const_4 = _mm256_set1_ps(1.0);
-
-#pragma unroll(4)
-    for (int64_t j = n * i; j < n * (i + 1); j += 8) {
-      __m256 out_vect = _mm256_load_ps(out + j);
-      __m256 bias_vect = _mm256_load_ps(bias + k);
-      __m256 tmp_ = out_vect + bias_vect;
-      __m256 tmp2_ =
-          _mm256_tanh_ps(const_1 * (tmp_ + const_2 * tmp_ * tmp_ * tmp_));
-      out_vect = (tmp_)*const_3 * (const_4 + tmp2_);
-      _mm256_store_ps(out + j, out_vect);
-      k += 8;
-    }
-  }
-#else
-#pragma omp parallel for
-  for (int64_t i = 0; i < m; ++i) {
-    int64_t k = 0;
-#pragma omp simd
-    for (int64_t j = n * i; j < n * (i + 1); ++j) {
-      float tmp_ = out[j] + bias[k++];
-      buff[j] = (0.7978845608028654f * (tmp_ + 0.044715f * tmp_ * tmp_ * tmp_));
-    }
-    vsTanh(n, &buff[i * n], &buff[i * n]);
-    k = 0;
-#pragma omp simd
-    for (int64_t j = n * i; j < n * (i + 1); ++j) {
-      out[j] = (out[j] + bias[k++]) * 0.5f * (1.0f + buff[j]);
-    }
-  }
+  if (out_tensor->device_type() == kDLCPU) {
+    AddBiasGeLUActKernel(bias, out, m, n);
+  } else if (out_tensor->device_type() == kDLGPU) {
+#ifdef FT_WITH_CUDA
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUAddBiasGeLUActKernel<T>(bias, out, m, n, cuda_ctx.stream());
 #endif
+  } else {
+    FT_THROW("device_type is not supported");
+  }
 }
 
 template void AddBiasGeLUAct<float>(const core::Tensor& bias_tensor,
