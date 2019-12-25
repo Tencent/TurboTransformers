@@ -11,9 +11,6 @@
 #include "fast_transformers/layers/kernels/softmax.h"
 #include "fast_transformers/layers/kernels/transpose.h"
 
-#ifdef FT_WITH_CUDA
-#include "fast_transformers/core/cuda_device_context.h"
-#endif
 namespace fast_transformers {
 namespace layers {
 
