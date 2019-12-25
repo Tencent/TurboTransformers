@@ -8,7 +8,6 @@ HunterGate(
         SHA1 "e14bc153a7f16d6a5eeec845fb0283c8fad8c358"
 )
 
-#option(CUDA_VERSION "Set cuda version of torch, in (`92`, `101`), default is None" NONE)
 option(WITH_PROFILER "Compile with gperftools" OFF)
 option(WITH_GPU "Build with GPU" OFF)
 
