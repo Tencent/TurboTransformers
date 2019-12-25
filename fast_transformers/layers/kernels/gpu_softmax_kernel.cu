@@ -1,4 +1,5 @@
 #include "fast_transformers/layers/kernels/gpu_softmax_kernel.h"
+#include "fast_transformers/layers/kernels/gpu_common.h"
 #include <immintrin.h>
 #include <numeric>
 #include <cuda_runtime.h>
@@ -9,79 +10,9 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-/**
- * Multi-head attetion open sourced
- */
-#define FINAL_MASK 0xffffffff
-
-template <typename T>
-__inline__ __device__
-T warpReduceSum(T val)
-{
-  for(int mask = 16; mask > 0; mask >>= 1)
-    val += __shfl_xor_sync(FINAL_MASK, val, mask, 32);
-  return val;
-}
-
-/* Calculate the sum of all elements in a block */
-template <typename T>
-  __inline__ __device__
-T blockReduceSum(T val)
-{
-  static __shared__ T shared[32];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-
-  val = warpReduceSum<T>(val);
-
-  if(lane == 0)
-    shared[wid] = val;
-
-  __syncthreads();
-
-  val = (threadIdx.x < (blockDim.x >> 5 )) ? shared[lane] : (T)(0.0f);
-  val = warpReduceSum<T>(val);
-
-  return val;
-}
-
-template <typename T>
-  __inline__ __device__
-T warpReduceMax(T val)
-{
-  for(int mask = 16; mask > 0; mask >>= 1)
-    val = max(val, __shfl_xor_sync(FINAL_MASK, val, mask, 32));
-  return val;
-}
-
-/* Calculate the maximum of all elements in a block */
-template <typename T>
-  __inline__ __device__
-T blockReduceMax(T val)
-{
-  static __shared__ T shared[32];
-  int lane = threadIdx.x & 0x1f; // in-warp idx
-  int wid = threadIdx.x >> 5;  // warp idx
-
-  val = warpReduceMax(val); // get maxx in each warp
-
-  if(lane == 0) // record in-warp maxx by warp Idx
-    shared[wid] = val;
-
-  __syncthreads();
-
-
-  val = (threadIdx.x < (blockDim.x >> 5 )) ? shared[lane] : -1e20f;
-  val = warpReduceMax(val);
-
-  return val;
-}
-
-
-template <typename T>
 __global__
-void softmax_kernel(T* qk_buf_, const T* attr_mask, const int batch_size, const int head_num, const int seq_len,
-  const T scaler)
+void softmax_kernel(float* qk_buf_, const float* attr_mask, const int batch_size, const int head_num, const int seq_len,
+  const float scaler)
 {
     int batch_id = blockIdx.x / head_num;
     int qk_offset = blockIdx.x * seq_len * seq_len;
@@ -115,16 +46,15 @@ void softmax_kernel(T* qk_buf_, const T* attr_mask, const int batch_size, const 
       __syncthreads();
 
       if(threadIdx.x < seq_len)
-        qk_buf_[threadIdx.x + qk_offset] = (T)(qk / s_sum);
+        qk_buf_[threadIdx.x + qk_offset] = (float)(qk / s_sum);
 
       qk_offset += seq_len;
     }
 }
 
 
-template <typename T>
 __global__
-void softmax_kernel_v2(T* qk_buf_, const T* attr_mask, const int batch_size, const int head_num,
+void softmax_kernel_v2(float* qk_buf_, const float* attr_mask, const int batch_size, const int head_num,
   const int seq_len, const float scaler)
 {
     int batch_id = blockIdx.x / head_num / seq_len;
@@ -157,7 +87,7 @@ void softmax_kernel_v2(T* qk_buf_, const T* attr_mask, const int batch_size, con
     __syncthreads();
 
     if(threadIdx.x < seq_len)
-      qk_buf_[threadIdx.x + qk_offset] = (T)(qk_tmp / s_sum);
+      qk_buf_[threadIdx.x + qk_offset] = (float)(qk_tmp / s_sum);
 }
 
 void GPUSoftmaxMask(float* qk_buf, const float* attr_mask,
@@ -176,20 +106,18 @@ void GPUSoftmaxMask(float* qk_buf, const float* attr_mask,
     block.x = 512;
   else
     block.x = 1024;
-  //assert(n > 1024);
   if(batch_size * head_num <= 120)
   {
     grid.x = batch_size * head_num * seq_len;
-    softmax_kernel_v2<float><<<grid, block, 0, stream>>>(qk_buf, attr_mask, batch_size, head_num, seq_len, scale);
+    softmax_kernel_v2<<<grid, block, 0, stream>>>(qk_buf, attr_mask, batch_size, head_num, seq_len, scale);
   }
   else
   {
     grid.x = batch_size * head_num;
-    softmax_kernel<float><<<grid, block, 0, stream>>>(qk_buf, attr_mask, batch_size, head_num, seq_len, scale);
+    softmax_kernel<<<grid, block, 0, stream>>>(qk_buf, attr_mask, batch_size, head_num, seq_len, scale);
   }
 }
 
-#undef FINAL_MASK
 
 }  // namespace kernels
 }  // namespace layers
