@@ -8,7 +8,7 @@ HunterGate(
         SHA1 "e14bc153a7f16d6a5eeec845fb0283c8fad8c358"
 )
 
-option(WITH_GPU "Build with GPU" ON)
+option(WITH_GPU "Build with GPU" OFF)
 
 if (WITH_GPU)
   project(fast_transformers LANGUAGES CXX C CUDA)
