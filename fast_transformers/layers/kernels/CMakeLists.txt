@@ -20,6 +20,7 @@ add_executable(activation_test activation_test.cpp)
 target_link_libraries(activation_test activation Catch2 loguru enforce aligned_scratchpad)
 if (WITH_GPU)
   target_link_libraries(activation_test cuda_error cuda_device_context memory)
+  add_test(NAME activation_test COMMAND activation_test)
 endif()
 
 add_library(seq_pool seq_pool.cpp)
