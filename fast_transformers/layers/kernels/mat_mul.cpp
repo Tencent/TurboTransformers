@@ -49,7 +49,11 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
                   ldb, A.data<float>(), lda, &beta, out->mutableData<float>(),
                   ldc);
     });
+#else
+    FT_THROW("CUDA is not supported for MatMul");
 #endif
+  } else {
+    FT_THROW("device_type %d is not supported for MatMul", A.device_type());
   }
 }
 void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
