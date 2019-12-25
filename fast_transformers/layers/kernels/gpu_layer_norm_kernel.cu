@@ -1,4 +1,5 @@
 #include "fast_transformers/layers/kernels/gpu_layer_norm_kernel.h"
+#include "fast_transformers/layers/kernels/gpu_common.h"
 #include <immintrin.h>
 #include <numeric>
 #include <cuda_runtime.h>
@@ -9,40 +10,8 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-#define FINAL_MASK 0xffffffff
-
-template <typename T>
-static __inline__ __device__
-T warpReduceSum(T val)
-{
-  for(int mask = 16; mask > 0; mask >>= 1)
-    val += __shfl_xor_sync(FINAL_MASK, val, mask, 32);
-  return val;
-}
-
-template <typename T>
-static __inline__ __device__
-T blockReduceSum(T val)
-{
-  static __shared__ T shared[32];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-
-  val = warpReduceSum<T>(val);
-
-  if(lane == 0)
-    shared[wid] = val;
-  __syncthreads();
-
-  val = (threadIdx.x < (blockDim.x >> 5 )) ? shared[lane] : (T)0.0f;
-  val = warpReduceSum(val);
-  return val;
-}
-
-
-template <typename T>
 static __global__
-void add_bias_input_layernorm(T* out, const T* input, const T* bias, const T* gamma, const T* beta, int m, int n)
+void add_bias_input_layernorm(float* out, const float* input, const float* bias, const float* gamma, const float* beta, int m, int n)
 {
   int tid = threadIdx.x;
 
@@ -67,23 +36,23 @@ void add_bias_input_layernorm(T* out, const T* input, const T* bias, const T* ga
 
   for(int i = tid; i < n; i += blockDim.x)
     out[blockIdx.x * n + i] =
-	    (T)(((local_out - s_mean) * rsqrtf(s_variance)) * (float)(__ldg(&gamma[i])) + (float)(__ldg(&beta[i])));
+	    (float)(((local_out - s_mean) * rsqrtf(s_variance)) * (float)(__ldg(&gamma[i])) + (float)(__ldg(&beta[i])));
 }
 
-template<typename T>
-void GPUAddBiasLayerNorm(T* out, const T* input, const T* bias,
-  const T* gamma, const T* beta, int m, int n, cudaStream_t stream)
+void GPUAddBiasLayerNorm(float* out, const float* input, const float* bias,
+  const float* gamma, const float* beta, int m, int n, cudaStream_t stream)
 {
-  //assert(n < 1024);
   dim3 grid(m);
   dim3 block(n);
-  add_bias_input_layernorm<T><<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);
+  if (n > 1024) {
+    throw std::runtime_error("GPUAddBiasLayerNorm thread block size large than 1024");
+  }
+  add_bias_input_layernorm<<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);
 }
 
-template void GPUAddBiasLayerNorm<float>(float* out, const float* input, const float* bias,
+template<>
+void GPUAddBiasLayerNorm(float* out, const float* input, const float* bias,
   const float* gamma, const float* beta, int m, int n, cudaStream_t stream);
-
-#undef FINAL_MASK
 
 }  // namespace kernels
 }  // namespace layers
