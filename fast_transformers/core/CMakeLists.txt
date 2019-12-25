@@ -9,10 +9,6 @@ endif ()
 
 target_link_libraries(blas PRIVATE ${CMAKE_DL_LIBS})
 
-add_executable(blas_test blas_test.cpp)
-target_link_libraries(blas_test blas Catch2 mat_mul tensor)
-add_test(NAME blas_test COMMAND blas_test)
-
 add_library(enforce enforce.cpp)
 target_link_libraries(enforce PUBLIC absl::stacktrace absl::symbolize absl::strings absl::str_format)
 
