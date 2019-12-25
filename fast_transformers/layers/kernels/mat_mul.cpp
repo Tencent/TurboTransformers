@@ -141,7 +141,7 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
     });
 #endif
   } else {
-    FT_THROW("device_type %d is not supported!", A.device_type();
+    FT_THROW("device_type %d is not supported!", A.device_type());
   }
 }
 

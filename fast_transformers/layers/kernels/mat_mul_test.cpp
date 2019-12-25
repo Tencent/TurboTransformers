@@ -13,9 +13,6 @@ namespace fast_transformers {
 namespace core {
 static bool float_eq(float a, float b) { return std::abs(a - b) < 1e-5; }
 
-using ::fast_transformers::test::CompareCPUGPU;
-using ::fast_transformers::test::FillCPUGPU;
-
 TEST_CASE("blas-gemm") {
   float A[] = {1, 2, 3, 4};
   float B[] = {2, 3, 4, 5};
@@ -65,6 +62,10 @@ TEST_CASE("blas-sscal") {
   REQUIRE(float_eq(vec[0], 2));
   REQUIRE(float_eq(vec[1], 4));
 }
+
+#ifdef FT_WITH_CUDA
+using ::fast_transformers::test::CompareCPUGPU;
+using ::fast_transformers::test::FillCPUGPU;
 
 TEST_CASE("check matmul cpu and gpu correctness NoTrans Notrans") {
   int64_t k, n;
@@ -227,6 +228,8 @@ TEST_CASE("check batch_matmul cpu and gpu correctness Notrans Trans") {
     }
   }
 }
+
+#endif
 
 }  // namespace core
 }  // namespace fast_transformers

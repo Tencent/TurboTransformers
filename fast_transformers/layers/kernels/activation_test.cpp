@@ -101,6 +101,7 @@ TEST_CASE("activation CPU benchmark") {
     }
 }
 
+#ifdef FT_WITH_CUDA
 TEST_CASE("activation CPU and GPU correctness") {
   int64_t hidden_size = 12 * 64;
 
@@ -182,6 +183,7 @@ TEST_CASE("activation GPU benchmark") {
       }
     }
 }
+#endif
 
 }  // namespace kernels
 }  // namespace layers
