@@ -29,7 +29,7 @@ void softmax_kernel(float* qk_buf_, const float* attr_mask, const int batch_size
 
       float tmp = threadIdx.x < seq_len ? (float)(qk * (float)scaler + mask_val): -1e20f;
 
-      float max_val = blockReduceMax<float>(tmp);
+      float max_val = blockReduceMax(tmp);
 
       if(threadIdx.x == 0)
         s_max = max_val;
@@ -37,7 +37,7 @@ void softmax_kernel(float* qk_buf_, const float* attr_mask, const int batch_size
 
       qk = threadIdx.x < seq_len ? __expf(tmp - s_max) : 0.0f;
 
-      float sum_val = blockReduceSum<float>(qk);
+      float sum_val = blockReduceSum(qk);
 
       if(threadIdx.x == 0)
       {
@@ -58,9 +58,7 @@ void softmax_kernel_v2(float* qk_buf_, const float* attr_mask, const int batch_s
   const int seq_len, const float scaler)
 {
     int batch_id = blockIdx.x / head_num / seq_len;
-    int seq_id = blockIdx.x % seq_len;
     int qk_offset = blockIdx.x * seq_len;
-    //int mask_offset = batch_id * seq_len * seq_len + seq_id * seq_len;
     int mask_offset = batch_id * seq_len;
 
     __shared__ float s_sum, s_max;
@@ -72,13 +70,13 @@ void softmax_kernel_v2(float* qk_buf_, const float* attr_mask, const int batch_s
     //mask_val = (1.0f - mask_val) * -10000.0f;
 
     float tmp = threadIdx.x < seq_len ? (float)(qk * (float)scaler + mask_val) : -1e20f;
-    float max_val = blockReduceMax<float>(tmp);
+    float max_val = blockReduceMax(tmp);
     if(threadIdx.x == 0)
       s_max = max_val;
     __syncthreads();
 
     float qk_tmp = threadIdx.x < seq_len ? __expf((float)(tmp - s_max)) : 0.0f;
-    float sum_val = blockReduceSum<float>(qk_tmp);
+    float sum_val = blockReduceSum(qk_tmp);
 
     if(threadIdx.x == 0)
     {
@@ -90,6 +88,7 @@ void softmax_kernel_v2(float* qk_buf_, const float* attr_mask, const int batch_s
       qk_buf_[threadIdx.x + qk_offset] = (float)(qk_tmp / s_sum);
 }
 
+template<>
 void GPUSoftmaxMask(float* qk_buf, const float* attr_mask,
                         int64_t batch_size, int64_t head_num, int64_t seq_len,
                         float scale, cudaStream_t stream) {
