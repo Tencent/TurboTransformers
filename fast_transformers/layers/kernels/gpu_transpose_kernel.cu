@@ -1,4 +1,4 @@
-#include "fast_transformers/layers/kernels/gpu_activation_kernel.h"
+#include "fast_transformers/layers/kernels/gpu_transpose_kernel.h"
 #include <immintrin.h>
 #include <numeric>
 #include <cuda_runtime.h>
@@ -89,8 +89,7 @@ void GPUTransposeForScore(const float* input_data, float* output_data,
     * seq_len / seq_per_block;
   block.x = seq_per_block * size_per_head;
   if (block.x > 1024) {
-    throw std::runtime_error("GPUTransposeForScore
-		    thread block size large than 1024");
+    throw std::runtime_error("GPUTransposeForScore thread block size large than 1024");
   }
   transpose<<<grid, block, 0, stream>>>(input_data, output_data
       , batch_size, seq_len, num_attention_heads, size_per_head);

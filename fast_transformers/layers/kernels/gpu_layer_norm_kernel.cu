@@ -24,12 +24,12 @@ void add_bias_input_layernorm(float* out, const float* input, const float* bias,
   for(int i = tid; i < n; i += blockDim.x)
     local_out += (float)(out[blockIdx.x * n + i] + input[blockIdx.x * n + i] + __ldg(&bias[i]));
 
-  mean = blockReduceSum<float>(local_out);
+  mean = blockReduceSum(local_out);
   if(threadIdx.x == 0)
     s_mean = mean / n;
   __syncthreads();
 
-  variance = blockReduceSum<float>((local_out - s_mean) * (local_out - s_mean));
+  variance = blockReduceSum((local_out - s_mean) * (local_out - s_mean));
   if(threadIdx.x == 0)
     s_variance = variance / n + 1e-6f;
   __syncthreads();
@@ -39,6 +39,7 @@ void add_bias_input_layernorm(float* out, const float* input, const float* bias,
 	    (float)(((local_out - s_mean) * rsqrtf(s_variance)) * (float)(__ldg(&gamma[i])) + (float)(__ldg(&beta[i])));
 }
 
+template<>
 void GPUAddBiasLayerNorm(float* out, const float* input, const float* bias,
   const float* gamma, const float* beta, int m, int n, cudaStream_t stream)
 {
@@ -49,10 +50,6 @@ void GPUAddBiasLayerNorm(float* out, const float* input, const float* bias,
   }
   add_bias_input_layernorm<<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);
 }
-
-template<>
-void GPUAddBiasLayerNorm(float* out, const float* input, const float* bias,
-  const float* gamma, const float* beta, int m, int n, cudaStream_t stream);
 
 }  // namespace kernels
 }  // namespace layers
