@@ -28,7 +28,7 @@ void AddBiasGeLUActNaive(const float* bias, float* out, int64_t m, int64_t n) {
 TEST_CASE("activation CPU benchmark") {
   int64_t hidden_size = 12 * 64;
 
-  const int step = 100;
+  const int step = 10;
 
   std::vector<int64_t> batch_size_list{1, 20, 24};
   std::vector<int64_t> seq_length_list{8, 16, 32, 48, 64, 128};
@@ -143,7 +143,7 @@ TEST_CASE("activation CPU and GPU correctness") {
 TEST_CASE("activation GPU benchmark") {
   int64_t hidden_size = 12 * 64;
 
-  const int step = 100;
+  const int step = 10;
 
   std::vector<int64_t> batch_size_list{1, 20, 24};
   std::vector<int64_t> seq_length_list{8, 16, 32, 48, 64, 128};

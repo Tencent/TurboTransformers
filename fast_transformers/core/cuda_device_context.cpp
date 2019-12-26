@@ -18,6 +18,12 @@ void CUDADeviceContext::Wait() const {
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
+int CUDADeviceContext::device_count() const {
+  int count = 0;
+  FT_ENFORCE_CUDA_SUCCESS(cudaGetDeviceCount(&count));
+  return count;
+}
+
 CUDADeviceContext::~CUDADeviceContext() {
   Wait();
   cublas_handle_.reset();
