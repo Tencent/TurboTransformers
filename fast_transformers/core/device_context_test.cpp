@@ -10,6 +10,7 @@ namespace core {
 #ifdef FT_WITH_CUDA
 TEST_CASE("CUDADeviceContext", "ini") {
   CUDADeviceContext& cuda_ctx = CUDADeviceContext::GetInstance();
+  cuda_ctx.Wait();
 }
 #endif
 
