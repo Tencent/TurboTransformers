@@ -144,11 +144,11 @@ class Tensor {
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
   template <typename T>
   T *Reshape(std::initializer_list<int64_t> shape_list,
-             DLDeviceType device_type) {
+             DLDeviceType device_type, int device_id) {
     // if Need Realloc
     if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
       tensor_ = details::DLManagedTensorPtr(
-          NewDLPackTensorT<T>(shape_list, device_type));
+          NewDLPackTensorT<T>(shape_list, device_type, device_id));
     }
     return this->template mutableData<T>();
   }
@@ -169,6 +169,12 @@ class Tensor {
     auto &dltensor = to_dl_tensor();
     return dltensor.ctx.device_type;
   }
+
+  int device_id() const {
+    auto &dltensor = to_dl_tensor();
+    return dltensor.ctx.device_id;
+  }
+
   bool is_null() const {
     return absl::holds_alternative<absl::monostate>(tensor_);
   }

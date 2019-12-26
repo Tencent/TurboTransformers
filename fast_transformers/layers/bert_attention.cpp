@@ -13,9 +13,16 @@ namespace layers {
 void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
                                core::Tensor* output) const {
+  FT_ENFORCE_EQ(
+      input_tensor.device_id(), attention_mask.device_id(),
+      "The input_tensor and attention_mask should have a shape device id");
+  FT_ENFORCE_EQ(
+      input_tensor.device_type(), attention_mask.device_type(),
+      "The input_tensor and attention_mask should have a shape device type");
   FT_ENFORCE_EQ(input_tensor.n_dim(), 3,
                 "The input ids should be a matrix with shape [BatchSize, "
                 "SeqLen, HiddenSize].");
+
   auto batch_size = input_tensor.shape(0);
   auto seq_length = input_tensor.shape(1);
   auto hidden_size = input_tensor.shape(2);
@@ -25,12 +32,12 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
            << ", seq_length: " << seq_length << ", hidden_size: " << hidden_size
            << ", size_per_head: " << size_per_head;
   output->Reshape<float>({batch_size, seq_length, hidden_size},
-                         input_tensor.device_type());
+                         input_tensor.device_type(), input_tensor.device_id());
 
   // 1. temp_qkv = MatMul(input)
   static core::Tensor temp_qkv(nullptr);
   temp_qkv.Reshape<float>({3, batch_size, seq_length, hidden_size},
-                          input_tensor.device_type());
+                          input_tensor.device_type(), input_tensor.device_id());
 
   kernels::MatMul(input_tensor, false, qkv_weight_, true, 1.0, &temp_qkv, 0.0);
 
@@ -40,7 +47,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   static core::Tensor qkv(nullptr);
   qkv.Reshape<float>(
       {3, batch_size, num_attention_heads_, seq_length, size_per_head},
-      input_tensor.device_type());
+      input_tensor.device_type(), input_tensor.device_id());
 
   kernels::SplitAddBiasTransposeForScore(&qkv, temp_qkv, qkv_bias_);
 
@@ -53,7 +60,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   static core::Tensor att_score(nullptr);
   att_score.Reshape<float>(
       {batch_size, num_attention_heads_, seq_length, seq_length},
-      input_tensor.device_type());
+      input_tensor.device_type(), input_tensor.device_id());
 
   kernels::BatchMatMul(q, false, k, true, 1.0, &att_score, 0.0);
 
@@ -65,14 +72,14 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   static core::Tensor context_layer(nullptr);
   context_layer.Reshape<float>(
       {batch_size, num_attention_heads_, seq_length, size_per_head},
-      input_tensor.device_type());
+      input_tensor.device_type(), input_tensor.device_id());
   kernels::BatchMatMul(att_score, false, v, false, 1.0, &context_layer, 0.0);
 
   // 6. self_att_out = transpose(ctx)
   static core::Tensor self_attr_out(nullptr);
   self_attr_out.Reshape<float>(
       {batch_size, seq_length, num_attention_heads_ * size_per_head},
-      input_tensor.device_type());
+      input_tensor.device_type(), input_tensor.device_id());
 
   kernels::TransposeForScore(&self_attr_out, context_layer);
 
