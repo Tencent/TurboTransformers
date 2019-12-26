@@ -20,7 +20,7 @@ add_custom_command(OUTPUT ${PY_PACKAGE_DIR}/.timestamp
 add_custom_target(fast_transformers ALL DEPENDS ${PY_PACKAGE_DIR}/.timestamp)
 
 if (WITH_GPU)
-  file(GLOB PY_TEST_FILES tests/gpu*_test.py)
+  file(GLOB PY_TEST_FILES tests/gpu_bert_layer_test.py)
 else ()
   file(GLOB PY_TEST_FILES tests/[^gpu]*_test.py)
 endif ()

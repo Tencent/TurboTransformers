@@ -49,6 +49,7 @@ class CUDADeviceContext {
   }
 
   cudaStream_t stream() const;
+  int device_count() const;
 
  private:
   cudaStream_t stream_;
