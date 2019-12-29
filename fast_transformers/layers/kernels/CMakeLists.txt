@@ -33,7 +33,7 @@ add_executable(activation_test activation_test.cpp)
 target_link_libraries(activation_test activation Catch2 loguru enforce aligned_scratchpad)
 if (WITH_GPU)
   target_link_libraries(activation_test cuda_error cuda_device_context memory)
-  add_test(NAME activation_test COMMAND activation_test)
+  # add_test(NAME activation_test COMMAND activation_test)
 endif()
 
 add_executable(softmax_test softmax_test.cpp)
@@ -60,3 +60,7 @@ endif()
 
 add_executable(mat_mul_test mat_mul_test.cpp)
 target_link_libraries(mat_mul_test blas Catch2 mat_mul tensor)
+
+
+add_executable(mat_mul_benchmark mat_mul_benchmark.cpp)
+target_link_libraries(mat_mul_benchmark blas Catch2 mat_mul tensor)
