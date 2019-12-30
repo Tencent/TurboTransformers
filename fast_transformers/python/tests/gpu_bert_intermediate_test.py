@@ -16,10 +16,10 @@ def create_test(batch_size, seq_length):
             torch.set_num_threads(1)
             if torch.cuda.is_available():
                 self.test_device = torch.device('cuda:0')
-                self.device = "CPU"
+                self.device = "GPU"
             else:
                 self.test_device = torch.device('cpu')
-                self.device = "GPU"
+                self.device = "CPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -129,8 +129,9 @@ def create_test(batch_size, seq_length):
 
 with open("bert_intermediate_res.txt", "w") as fh:
     fh.write(", torch, fast_transformers\n")
-for batch_size in [1, 2]:
+for batch_size in [1, 20]:
     for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
         create_test(batch_size, seq_length)
+
 if __name__ == '__main__':
     unittest.main()
