@@ -258,6 +258,14 @@ class Tensor {
     return const_cast<Tensor *>(this)->operator[](n);
   }
 
+  bool CheckTypeId(const Tensor &t) const {
+    if (t.device_id() == device_id() && t.device_type() == device_type()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
  private:
   template <typename T>
   static void PrintArray(std::ostream &os, const T *data, size_t n) {

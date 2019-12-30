@@ -14,11 +14,9 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
                                core::Tensor* output) const {
   FT_ENFORCE_EQ(
-      input_tensor.device_id(), attention_mask.device_id(),
-      "The input_tensor and attention_mask should have a shape device id");
-  FT_ENFORCE_EQ(
-      input_tensor.device_type(), attention_mask.device_type(),
-      "The input_tensor and attention_mask should have a shape device type");
+      input_tensor.CheckTypeId(attention_mask), true,
+      "The input_tensor and attention_mask should have a shape device type.");
+
   FT_ENFORCE_EQ(input_tensor.n_dim(), 3,
                 "The input ids should be a matrix with shape [BatchSize, "
                 "SeqLen, HiddenSize].");
