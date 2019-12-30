@@ -16,8 +16,10 @@ def create_test(batch_size, seq_length):
             torch.set_num_threads(1)
             if torch.cuda.is_available():
                 self.test_device = torch.device('cuda:0')
+                self.device = "CPU"
             else:
                 self.test_device = torch.device('cpu')
+                self.device = "GPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -68,14 +70,18 @@ def create_test(batch_size, seq_length):
             #get torch result
             ft_result = self.ft_intermediate(input_tensor)
 
+            ft_qps = 0
+            ft_time = 0
             if torch.cuda.is_available():
-                print(
-                    f"BertIntermediate \"({batch_size},{seq_length:03})\" GPU FastTransform QPS,  {num_iter / ft_elapsed}, time, {ft_elapsed / num_iter}"
-                )
+                ft_qps = num_iter / ft_elapsed
+                ft_time = ft_elapsed / num_iter
             else:
-                print(
-                    f"BertIntermediate \"({batch_size},{seq_length:03})\" CPU FastTransform QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
-                )
+                ft_qps = num_iter / t.elapsed
+                ft_time = t.elapsed / num_iter
+
+            print(
+                f"BertIntermediate \"({batch_size},{seq_length:03})\" {self.device} FastTransform QPS,  {ft_qps}, time, {ft_time}"
+            )
 
             #warmup
             torch_result = self.torch_intermediate(input_tensor)
@@ -96,13 +102,15 @@ def create_test(batch_size, seq_length):
                 torch_elapsed = start.elapsed_time(end) / 1e3
 
             if torch.cuda.is_available():
-                print(
-                    f"BertIntermediate, \"({batch_size},{seq_length:03})\", GPU Torch {num_iter / torch_elapsed}, {num_iter / torch_elapsed}"
-                )
+                torch_qps = num_iter / torch_elapsed
+                torch_time = torch_elapsed / num_iter
             else:
-                print(
-                    f"BertIntermediate \"({batch_size},{seq_length:03})\" CPU Torch QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
-                )
+                torch_qps = num_iter / t.elapsed
+                torch_time = t.elapsed / num_iter
+
+            print(
+                f"BertIntermediate \"({batch_size},{seq_length:03})\" {self.device} Torch QPS,  {torch_qps}, time, {torch_time}"
+            )
             torch_result = torch_result.cpu().numpy()
             ft_result = ft_result.cpu().numpy()
             #print("diff ", numpy.max(torch_result - ft_result))
@@ -110,10 +118,17 @@ def create_test(batch_size, seq_length):
             self.assertTrue(
                 numpy.allclose(torch_result, ft_result, rtol=1e-4, atol=1e-3))
 
+            with open("bert_intermediate_res.txt", "a") as fh:
+                fh.write(
+                    f"\"({batch_size},{seq_length:03})\", {torch_qps}, {ft_qps}\n"
+                )
+
     globals(
     )[f"TestBertIntermediate_{batch_size}_{seq_length:03}"] = TestBertIntermediate
 
 
+with open("bert_intermediate_res.txt", "w") as fh:
+    fh.write(", torch, fast_transformers\n")
 for batch_size in [1, 2]:
     for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
         create_test(batch_size, seq_length)
