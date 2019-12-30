@@ -55,11 +55,13 @@ class CUDADeviceContext {
 
   void* allocate(size_t size);
   void free(void* memory, size_t size);
+  void FreeCache(size_t size);
 
  private:
   cudaStream_t stream_;
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::multimap<size_t, void*> allocations_;
+  size_t allocation_size_;
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
