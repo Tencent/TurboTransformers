@@ -36,7 +36,7 @@ def create_test(batch_size, seq_length):
                 self.torch_intermediate)
 
         def test_intermediate(self):
-            num_iter = 2000
+            num_iter = 100
             hidden_size = self.cfg.hidden_size
             input_tensor = torch.rand(size=(batch_size, seq_length,
                                             hidden_size),
@@ -50,10 +50,10 @@ def create_test(batch_size, seq_length):
                 start = torch.cuda.Event(enable_timing=True)
                 end = torch.cuda.Event(enable_timing=True)
                 ft_elapsed = 0.
-                ft_result = None
                 start.record()
 
             with contexttimer.Timer() as t:
+                ft_result = None
                 for it in range(num_iter):
                     ft_result = self.ft_intermediate(
                         input_tensor,
@@ -129,7 +129,7 @@ def create_test(batch_size, seq_length):
 
 with open("bert_intermediate_res.txt", "w") as fh:
     fh.write(", torch, fast_transformers\n")
-for batch_size in [1, 20]:
+for batch_size in [1, 2]:
     for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
         create_test(batch_size, seq_length)
 

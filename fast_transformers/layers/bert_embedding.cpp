@@ -71,11 +71,6 @@ void BERTEmbedding::operator()(const core::Tensor &input_ids,
                             output_tensor);
 }
 void BERTEmbedding::EnforceShapeAndType() const {
-  LOG_S(3) << ">>>>> init BERTEmbedding <<<<<<<<";
-  FT_ENFORCE_EQ(word_embedings_.device_type(), kDLCPU, "Only CPU supportted");
-
-  LOG_S(3) << ">>>>> Assert OK <<<<<<<<";
-
   if (loguru::current_verbosity_cutoff() >= 3) {
     std::ostringstream os;
     os << ">>>>> word_embedings_ <<<<<<<<" << std::endl;

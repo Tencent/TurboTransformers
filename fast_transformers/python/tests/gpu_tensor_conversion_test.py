@@ -6,8 +6,14 @@ from fast_transformers.layers.modeling_bert import convert2ft_tensor
 
 class TestDLPack(unittest.TestCase):
     def test_dlpack(self):
-        cuda = torch.device('cuda:0')
-        a = torch.rand(size=(4, 3), dtype=torch.float32, device=cuda)
+        if torch.cuda.is_available():
+            self.test_device = torch.device('cuda:0')
+        else:
+            self.test_device = torch.device('cpu')
+
+        a = torch.rand(size=(4, 3),
+                       dtype=torch.float32,
+                       device=self.test_device)
         tensor = convert2ft_tensor(a)
         self.assertIsNotNone(tensor)
         b = dlpack.from_dlpack(tensor.to_dlpack())

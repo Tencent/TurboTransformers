@@ -11,8 +11,8 @@ namespace layers {
 namespace kernels {
 
 __global__
-void softmax_kernel(float* qk_buf_, const float* attr_mask, const int batch_size, const int head_num, const int seq_len,
-  const float scaler)
+void softmax_kernel(float* qk_buf_, const float* attr_mask, int batch_size, int head_num, int seq_len,
+  float scaler)
 {
     int batch_id = blockIdx.x / head_num;
     int qk_offset = blockIdx.x * seq_len * seq_len;
