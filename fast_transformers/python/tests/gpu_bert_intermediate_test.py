@@ -44,43 +44,65 @@ def create_test(batch_size, seq_length):
             #warmup
             ft_result = self.ft_intermediate(input_tensor)
 
-            start = torch.cuda.Event(enable_timing=True)
-            end = torch.cuda.Event(enable_timing=True)
-            ft_elapsed = 0.
-            ft_result = None
-            start.record()
-            for it in range(num_iter):
-                ft_result = self.ft_intermediate(
-                    input_tensor,
-                    output=ft_result,
-                    return_type=fast_transformers.ReturnType.FAST_TRANSFORMERS)
+            if torch.cuda.is_available():
+                start = torch.cuda.Event(enable_timing=True)
+                end = torch.cuda.Event(enable_timing=True)
+                ft_elapsed = 0.
+                ft_result = None
+                start.record()
+
+            with contexttimer.Timer() as t:
+                for it in range(num_iter):
+                    ft_result = self.ft_intermediate(
+                        input_tensor,
+                        output=ft_result,
+                        return_type=fast_transformers.ReturnType.
+                        FAST_TRANSFORMERS)
             end.record()
-            torch.cuda.synchronize()
-            # in ms, rescale to sec
-            ft_elapsed = start.elapsed_time(end) / 1e3
+
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+                # in ms, rescale to sec
+                ft_elapsed = start.elapsed_time(end) / 1e3
 
             #get torch result
             ft_result = self.ft_intermediate(input_tensor)
 
-            print(
-                f"BertIntermediate ({batch_size},{seq_length:03}) FastTransform QPS,  {num_iter / ft_elapsed}, time, {ft_elapsed / num_iter}"
-            )
+            if torch.cuda.is_available():
+                print(
+                    f"BertIntermediate \"({batch_size},{seq_length:03})\" GPU FastTransform QPS,  {num_iter / ft_elapsed}, time, {ft_elapsed / num_iter}"
+                )
+            else:
+                print(
+                    f"BertIntermediate \"({batch_size},{seq_length:03})\" CPU FastTransform QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
+                )
 
             #warmup
             torch_result = self.torch_intermediate(input_tensor)
             torch_elapsed = 0.
 
-            start = torch.cuda.Event(enable_timing=True)
-            end = torch.cuda.Event(enable_timing=True)
-            start.record()
-            for it in range(num_iter):
-                torch_result = self.torch_intermediate(input_tensor)
-            end.record()
-            torch.cuda.synchronize()
-            torch_elapsed = start.elapsed_time(end) / 1e3
-            print(
-                f"BertIntermediate ({batch_size},{seq_length:03}) Torch QPS,  {num_iter / torch_elapsed}, time, {torch_elapsed / num_iter}"
-            )
+            if torch.cuda.is_available():
+                start = torch.cuda.Event(enable_timing=True)
+                end = torch.cuda.Event(enable_timing=True)
+                start.record()
+
+            with contexttimer.Timer() as t:
+                for it in range(num_iter):
+                    torch_result = self.torch_intermediate(input_tensor)
+
+            if torch.cuda.is_available():
+                end.record()
+                torch.cuda.synchronize()
+                torch_elapsed = start.elapsed_time(end) / 1e3
+
+            if torch.cuda.is_available():
+                print(
+                    f"BertIntermediate, \"({batch_size},{seq_length:03})\", GPU Torch {num_iter / torch_elapsed}, {num_iter / torch_elapsed}"
+                )
+            else:
+                print(
+                    f"BertIntermediate \"({batch_size},{seq_length:03})\" CPU Torch QPS,  {num_iter / t.elapsed}, time, {t.elapsed / num_iter}"
+                )
             torch_result = torch_result.cpu().numpy()
             ft_result = ft_result.cpu().numpy()
             #print("diff ", numpy.max(torch_result - ft_result))
