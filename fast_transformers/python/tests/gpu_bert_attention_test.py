@@ -10,14 +10,18 @@ from transformers import BertTokenizer
 import onnxruntime.backend
 import os
 
+fname = "ft_attention.txt"
+
 
 def create_test(batch_size, seq_length):
     class TestBertAttention(unittest.TestCase):
         def setUp(self) -> None:
             if torch.cuda.is_available():
                 self.test_device = torch.device('cuda:0')
+                self.device = "GPU"
             else:
                 self.test_device = torch.device('cpu')
+                self.device = "CPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -51,12 +55,11 @@ def create_test(batch_size, seq_length):
             self.attention_mask = (1.0 - self.attention_mask) * -10000.0
 
         def test_bertattention(self):
-            self.num_iter = 50
+            num_iter = 50
             # Torch
             model = lambda: self.torch_attention(self.input_tensor, self.
                                                  attention_mask)
-            torch_attention_result = self.run_model("Torch", model,
-                                                    self.num_iter)
+            torch_attention_result = self.run_model("Torch", model, num_iter)
 
             ft_self_attention_result = self.ft_attention(
                 self.input_tensor, self.attention_mask)
@@ -64,12 +67,12 @@ def create_test(batch_size, seq_length):
             if torch.cuda.is_available():
                 start = torch.cuda.Event(enable_timing=True)
                 end = torch.cuda.Event(enable_timing=True)
-                ft_elapsed = 0.
+                ft_elapsed = 1e-3
                 ft_result = None
                 start.record()
 
             with contexttimer.Timer() as t:
-                for it in range(self.num_iter):
+                for it in range(num_iter):
                     ft_self_attention_result = self.ft_attention(
                         self.input_tensor, self.attention_mask)
 
@@ -79,19 +82,27 @@ def create_test(batch_size, seq_length):
                 # in ms, rescale to sec
                 ft_elapsed = start.elapsed_time(end) / 1e3
 
+            ft_qps = 0
+            ft_time = 0
             if torch.cuda.is_available():
-                print(
-                    f"BertAttention \"({batch_size}, {seq_length})\", FT GPU QPS, {self.num_iter / ft_elapsed}, Elapse {ft_elapsed/ self.num_iter}"
-                )
+                ft_qps = num_iter / ft_elapsed
+                ft_time = ft_elapsed / num_iter
             else:
-                print(
-                    f"BertAttention \"({batch_size}, {seq_length})\", FT CPU QPS, {self.num_iter / t.elapsed}, Elapse {t.elapsed / self.num_iter}"
-                )
+                ft_qps = num_iter / t.elapsed
+                ft_time = t.elapsed / num_iter
 
+            print(
+                f"BertAttention \"({batch_size},{seq_length:03})\" {self.device} FastTransform QPS,  {ft_qps}, time, {ft_time}"
+            )
             self.assertTrue(
                 torch.max(
                     torch.abs(torch_attention_result[0] -
                               ft_self_attention_result)) < 1e-4)
+
+            with open(fname, "a") as fh:
+                fh.write(
+                    f"\"({batch_size},{seq_length:03})\", {self.torch_qps}, {ft_qps}\n"
+                )
 
         def run_model(self, model_name, model, num_iter=50):
             # warmup
@@ -111,23 +122,24 @@ def create_test(batch_size, seq_length):
                 torch.cuda.synchronize()
                 torch_elapsed = start.elapsed_time(end) / 1e3
 
-            # rescale to second
             if torch.cuda.is_available():
-                print("BertAttention\"({}, {})\" {} QPS, {}, GPU Elapse{}".
-                      format(batch_size, seq_length, model_name,
-                             num_iter / torch_elapsed,
-                             torch_elapsed / num_iter))
+                self.torch_qps = num_iter / torch_elapsed
+                self.torch_time = torch_elapsed / num_iter
             else:
-                print("BertAttention\"({}, {})\" {} QPS, {}, CPU Elapse{}".
-                      format(batch_size, seq_length, model_name,
-                             num_iter / t.elapsed, t.elapsed / num_iter))
+                self.torch_qps = num_iter / t.elapsed
+                self.torch_time = t.elapsed / num_iter
 
+            print(
+                f"BertAttention \"({batch_size},{seq_length:03})\" {self.device} Torch QPS,  {self.torch_qps}, time, {self.torch_time}"
+            )
             return torch_attention_result
 
     globals()[f"TestBertAtt{batch_size}_{seq_length:3}"] = TestBertAttention
 
 
-for batch_size in [1, 2]:
+with open(fname, "w") as fh:
+    fh.write(", torch, fast_transformers\n")
+for batch_size in [1, 20]:
     for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
         create_test(batch_size, seq_length)
 
