@@ -58,9 +58,9 @@ def create_test(batch_size, seq_length):
                         output=ft_result,
                         return_type=fast_transformers.ReturnType.
                         FAST_TRANSFORMERS)
-            end.record()
 
             if torch.cuda.is_available():
+                end.record()
                 torch.cuda.synchronize()
                 # in ms, rescale to sec
                 ft_elapsed = start.elapsed_time(end) / 1e3
