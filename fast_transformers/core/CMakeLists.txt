@@ -36,7 +36,7 @@ if (WITH_GPU)
   target_link_libraries(cuda_allocator cuda_error enforce memory)
 
   add_executable(device_context_test device_context_test.cpp)
-  target_link_libraries(device_context_test cuda_device_context Catch2 tenctesor)
+  target_link_libraries(device_context_test cuda_device_context Catch2 tensor)
 
   target_link_libraries(tensor cuda_error cuda_allocator cuda_device_context)
   target_link_libraries(memory cuda_error)
