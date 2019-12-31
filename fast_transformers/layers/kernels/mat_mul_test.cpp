@@ -65,7 +65,7 @@ TEST_CASE("blas-sscal") {
 
 #ifdef FT_WITH_CUDA
 using ::fast_transformers::test::CompareCPUGPU;
-using ::fast_transformers::test::FillCPUGPU;
+using ::fast_transformers::test::FillDataForCPUGPUTensors;
 
 TEST_CASE("check matmul cpu and gpu correctness NoTrans Notrans") {
   int64_t k, n;
@@ -82,19 +82,19 @@ TEST_CASE("check matmul cpu and gpu correctness NoTrans Notrans") {
     core::Tensor gpu_input_tensor(
         NewDLPackTensorT<float>(input_shape, kDLGPU, 0));
 
-    FillCPUGPU<float>(cpu_input_tensor, gpu_input_tensor);
+    FillDataForCPUGPUTensors<float>(cpu_input_tensor, gpu_input_tensor);
 
     core::Tensor cpu_weight_tensor(
         NewDLPackTensorT<float>(weight_shape, kDLCPU, 0));
     core::Tensor gpu_weight_tensor(
         NewDLPackTensorT<float>(weight_shape, kDLGPU, 0));
-    FillCPUGPU<float>(cpu_weight_tensor, gpu_weight_tensor);
+    FillDataForCPUGPUTensors<float>(cpu_weight_tensor, gpu_weight_tensor);
 
     core::Tensor cpu_output_tensor(
         NewDLPackTensorT<float>(output_shape, kDLCPU, 0));
     core::Tensor gpu_output_tensor(
         NewDLPackTensorT<float>(output_shape, kDLGPU, 0));
-    FillCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+    FillDataForCPUGPUTensors<float>(cpu_output_tensor, gpu_output_tensor);
 
     layers::kernels::MatMul(cpu_input_tensor, false, cpu_weight_tensor, false,
                             1.0, &cpu_output_tensor, 0.0);
@@ -121,19 +121,19 @@ TEST_CASE("check matmul cpu and gpu correctness Notrans Trans") {
     core::Tensor gpu_input_tensor(
         NewDLPackTensorT<float>(input_shape, kDLGPU, 0));
 
-    FillCPUGPU<float>(cpu_input_tensor, gpu_input_tensor);
+    FillDataForCPUGPUTensors<float>(cpu_input_tensor, gpu_input_tensor);
 
     core::Tensor cpu_weight_tensor(
         NewDLPackTensorT<float>(weight_shape, kDLCPU, 0));
     core::Tensor gpu_weight_tensor(
         NewDLPackTensorT<float>(weight_shape, kDLGPU, 0));
-    FillCPUGPU<float>(cpu_weight_tensor, gpu_weight_tensor);
+    FillDataForCPUGPUTensors<float>(cpu_weight_tensor, gpu_weight_tensor);
 
     core::Tensor cpu_output_tensor(
         NewDLPackTensorT<float>(output_shape, kDLCPU, 0));
     core::Tensor gpu_output_tensor(
         NewDLPackTensorT<float>(output_shape, kDLGPU, 0));
-    FillCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+    FillDataForCPUGPUTensors<float>(cpu_output_tensor, gpu_output_tensor);
 
     layers::kernels::MatMul(cpu_input_tensor, false, cpu_weight_tensor, true,
                             1.0, &cpu_output_tensor, 0.0);
@@ -161,19 +161,19 @@ TEST_CASE("check batch_matmul cpu and gpu correctness Notrans NoTrans") {
           NewDLPackTensorT<float>(input_shape, kDLCPU, 0));
       core::Tensor gpu_input_tensor(
           NewDLPackTensorT<float>(input_shape, kDLGPU, 0));
-      FillCPUGPU<float>(cpu_input_tensor, gpu_input_tensor);
+      FillDataForCPUGPUTensors<float>(cpu_input_tensor, gpu_input_tensor);
 
       core::Tensor cpu_weight_tensor(
           NewDLPackTensorT<float>(weight_shape, kDLCPU, 0));
       core::Tensor gpu_weight_tensor(
           NewDLPackTensorT<float>(weight_shape, kDLGPU, 0));
-      FillCPUGPU<float>(cpu_weight_tensor, gpu_weight_tensor);
+      FillDataForCPUGPUTensors<float>(cpu_weight_tensor, gpu_weight_tensor);
 
       core::Tensor cpu_output_tensor(
           NewDLPackTensorT<float>(output_shape, kDLCPU, 0));
       core::Tensor gpu_output_tensor(
           NewDLPackTensorT<float>(output_shape, kDLGPU, 0));
-      FillCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+      FillDataForCPUGPUTensors<float>(cpu_output_tensor, gpu_output_tensor);
 
       layers::kernels::BatchMatMul(cpu_input_tensor, false, cpu_weight_tensor,
                                    false, 1.0, &cpu_output_tensor, 0.0);
@@ -204,19 +204,19 @@ TEST_CASE("check batch_matmul cpu and gpu correctness Notrans Trans") {
           NewDLPackTensorT<float>(input_shape, kDLCPU, 0));
       core::Tensor gpu_input_tensor(
           NewDLPackTensorT<float>(input_shape, kDLGPU, 0));
-      FillCPUGPU<float>(cpu_input_tensor, gpu_input_tensor);
+      FillDataForCPUGPUTensors<float>(cpu_input_tensor, gpu_input_tensor);
 
       core::Tensor cpu_weight_tensor(
           NewDLPackTensorT<float>(weight_shape, kDLCPU, 0));
       core::Tensor gpu_weight_tensor(
           NewDLPackTensorT<float>(weight_shape, kDLGPU, 0));
-      FillCPUGPU<float>(cpu_weight_tensor, gpu_weight_tensor);
+      FillDataForCPUGPUTensors<float>(cpu_weight_tensor, gpu_weight_tensor);
 
       core::Tensor cpu_output_tensor(
           NewDLPackTensorT<float>(output_shape, kDLCPU, 0));
       core::Tensor gpu_output_tensor(
           NewDLPackTensorT<float>(output_shape, kDLGPU, 0));
-      FillCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+      FillDataForCPUGPUTensors<float>(cpu_output_tensor, gpu_output_tensor);
 
       layers::kernels::BatchMatMul(cpu_input_tensor, false, cpu_weight_tensor,
                                    true, 1.0, &cpu_output_tensor, 0.0);

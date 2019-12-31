@@ -60,7 +60,10 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
                                    const core::Tensor& input_tensor,
                                    const core::Tensor& bias_tensor) {
   FT_ENFORCE_EQ(output_tensor->n_dim(), 5,
-                "bias should be (3, batch_size, seq_length, "
+                "output_tensor should be (weight_num, batch_size, seq_length, "
+                "num_attention_heads, size_per_head)");
+  FT_ENFORCE_EQ(output_tensor->shape(0), 3,
+                "output_tensor should be (3, batch_size, seq_length, "
                 "num_attention_heads, size_per_head)");
 
   auto batch_size = output_tensor->shape(1);
@@ -71,6 +74,13 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
   auto input = input_tensor.data<float>();
   auto bias = bias_tensor.data<float>();
   auto output = output_tensor->mutableData<float>();
+
+  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(bias_tensor), true,
+                "SplitAddBiasTransposeForScore: input_tensor and bias_tensor "
+                "are not on the same device.");
+  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(*output_tensor), true,
+                "SplitAddBiasTransposeForScore: input_tensor and output_tensor "
+                "are not on the same device.");
 
   if (output_tensor->device_type() == kDLCPU &&
       input_tensor.device_type() == kDLCPU &&

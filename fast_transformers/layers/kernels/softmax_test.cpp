@@ -85,7 +85,8 @@ TEST_CASE("softmax CPU and GPU correctness") {
           fast_transformers::core::NewDLPackTensorT<float>(
               {batch_size, num_attention_heads, seq_length, seq_length}, kDLCPU,
               0));
-      ::fast_transformers::test::FillCPUGPU<float>(qk_buf_cpu, qk_buf_gpu);
+      ::fast_transformers::test::FillDataForCPUGPUTensors<float>(qk_buf_cpu,
+                                                                 qk_buf_gpu);
 
       fast_transformers::core::Tensor attr_mask_gpu(
           fast_transformers::core::NewDLPackTensorT<float>(
@@ -95,8 +96,8 @@ TEST_CASE("softmax CPU and GPU correctness") {
           fast_transformers::core::NewDLPackTensorT<float>(
               {batch_size, seq_length}, kDLCPU, 0));
 
-      ::fast_transformers::test::FillCPUGPU<float>(attr_mask_cpu,
-                                                   attr_mask_gpu);
+      ::fast_transformers::test::FillDataForCPUGPUTensors<float>(attr_mask_cpu,
+                                                                 attr_mask_gpu);
 
       ApplyMaskAndSoftmax(&qk_buf_gpu, attr_mask_gpu, scaler);
 

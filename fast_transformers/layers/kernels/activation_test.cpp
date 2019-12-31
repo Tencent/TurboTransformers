@@ -126,8 +126,10 @@ TEST_CASE("activation CPU and GPU correctness") {
           fast_transformers::core::NewDLPackTensorT<float>(
               {batch_size, seq_length, hidden_size}, kDLCPU, 0));
 
-      ::fast_transformers::test::FillCPUGPU<float>(cpu_bias, gpu_bias);
-      ::fast_transformers::test::FillCPUGPU<float>(cpu_out, gpu_out);
+      ::fast_transformers::test::FillDataForCPUGPUTensors<float>(cpu_bias,
+                                                                 gpu_bias);
+      ::fast_transformers::test::FillDataForCPUGPUTensors<float>(cpu_out,
+                                                                 gpu_out);
 
       LOG_S(INFO) << "batch_size: " << batch_size
                   << " seq_length: " << seq_length;

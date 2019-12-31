@@ -14,7 +14,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
                                core::Tensor* output) const {
   FT_ENFORCE_EQ(
-      input_tensor.CheckTypeId(attention_mask), true,
+      input_tensor.IsOnSameDevice(attention_mask), true,
       "The input_tensor and attention_mask should have a shape device type.");
 
   FT_ENFORCE_EQ(input_tensor.n_dim(), 3,
