@@ -1,5 +1,6 @@
 #pragma once
 #include <memory.h>
+#include <map>
 
 #include "fast_transformers/core/cuda_error.h"
 #include "macros.h"
@@ -27,10 +28,6 @@ class CublasHandleHolder {
   cublasHandle_t handle_;
 };
 
-/*
-Initialize DeviceContext with DLContext, although currently DLContext is not
-defined.
- */
 class CUDADeviceContext {
  public:
   explicit CUDADeviceContext();
@@ -49,6 +46,7 @@ class CUDADeviceContext {
   }
 
   cudaStream_t stream() const;
+  int device_count() const;
 
  private:
   cudaStream_t stream_;
