@@ -57,7 +57,7 @@ void BERTEmbedding::operator()(const core::Tensor &input_ids,
 
   FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
   output_tensor->Reshape<float>({batch_size, seq_length, hidden_size},
-                                input_ids.device_type());
+                                input_ids.device_type(), input_ids.device_id());
   LOG_S(3) << "Look up word embedding";
   LookupEmbedding</*Add=*/false>(*output_tensor, word_embedings_, input_ids);
   LOG_S(3) << "Look up token type embedding";
@@ -71,11 +71,6 @@ void BERTEmbedding::operator()(const core::Tensor &input_ids,
                             output_tensor);
 }
 void BERTEmbedding::EnforceShapeAndType() const {
-  LOG_S(3) << ">>>>> init BERTEmbedding <<<<<<<<";
-  FT_ENFORCE_EQ(word_embedings_.device_type(), kDLCPU, "Only CPU supportted");
-
-  LOG_S(3) << ">>>>> Assert OK <<<<<<<<";
-
   if (loguru::current_verbosity_cutoff() >= 3) {
     std::ostringstream os;
     os << ">>>>> word_embedings_ <<<<<<<<" << std::endl;

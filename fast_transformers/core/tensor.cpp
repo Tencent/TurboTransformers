@@ -1,5 +1,10 @@
 #include "tensor.h"
 
+#ifdef FT_WITH_CUDA
+#include "fast_transformers/core/cuda_allocator.h"
+#include "fast_transformers/core/cuda_device_context.h"
+#endif
+
 namespace fast_transformers {
 namespace core {
 static void DLManagedTensorDeletor(DLManagedTensor *self) {
@@ -11,7 +16,12 @@ static void DLManagedTensorDeletor(DLManagedTensor *self) {
       free(self->dl_tensor.data);
     } else if (self->dl_tensor.ctx.device_type == kDLGPU) {
 #ifdef FT_WITH_CUDA
-      cuda_free(self->dl_tensor.data);
+      auto ndim = self->dl_tensor.ndim;
+      size_t numel =
+          std::accumulate(self->dl_tensor.shape, self->dl_tensor.shape + ndim,
+                          1, std::multiplies<int64_t>());
+      CUDAAllocator &cuda_allocator = CUDAAllocator::GetInstance();
+      cuda_allocator.free(self->dl_tensor.data, numel);
 #endif
     }
   }
@@ -46,7 +56,9 @@ DLManagedTensor *NewDLPackTensor(std::initializer_list<int64_t> shape_list,
     newTensor->dl_tensor.data = align_alloc(numel * (bits / 8));
   } else if (device == kDLGPU) {
 #ifdef FT_WITH_CUDA
-    newTensor->dl_tensor.data = cuda_alloc(numel * (bits / 8));
+    CUDAAllocator &cuda_allocator = CUDAAllocator::GetInstance();
+    size_t size = numel * (bits / 8);
+    newTensor->dl_tensor.data = cuda_allocator.allocate(size);
 #endif
   } else {
     FT_THROW("only cpu and gpu are supported!");

@@ -18,11 +18,10 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
                                   core::Tensor* output_tensor) const {
   output_tensor->Reshape<float>(
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(0)},
-      input_tensor.device_type());
+      input_tensor.device_type(), input_tensor.device_id());
 
   kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
-
   kernels::AddBiasGeLUAct<float>(dense_bias_, output_tensor);
 }
 

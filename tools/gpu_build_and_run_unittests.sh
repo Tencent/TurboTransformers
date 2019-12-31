@@ -14,4 +14,5 @@ rm -rf ${BUILD_ROOT} || true
 mkdir -p ${BUILD_ROOT}
 cd ${BUILD_ROOT}
 cmake -DCMAKE_BUILD_TYPE=Release ${SRC_ROOT}
+make -j ${nproc}
 ctest --output-on-failure
