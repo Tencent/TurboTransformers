@@ -30,8 +30,8 @@ TEST_CASE("split_add_transpose CPU and GPU correctness") {
           fast_transformers::core::NewDLPackTensorT<float>(
               {batch_size, seq_length, 3, num_attention_heads, 64}, kDLCPU, 0));
 
-      ::fast_transformers::test::FillCPUGPU<float>(input_tensor_cpu,
-                                                   input_tensor_gpu);
+      ::fast_transformers::test::FillDataForCPUGPUTensors<float>(
+          input_tensor_cpu, input_tensor_gpu);
 
       fast_transformers::core::Tensor bias_tensor_gpu(
           fast_transformers::core::NewDLPackTensorT<float>(
@@ -41,8 +41,8 @@ TEST_CASE("split_add_transpose CPU and GPU correctness") {
           fast_transformers::core::NewDLPackTensorT<float>(
               {3, num_attention_heads, 64}, kDLCPU, 0));
 
-      ::fast_transformers::test::FillCPUGPU<float>(bias_tensor_cpu,
-                                                   bias_tensor_gpu);
+      ::fast_transformers::test::FillDataForCPUGPUTensors<float>(
+          bias_tensor_cpu, bias_tensor_gpu);
 
       fast_transformers::core::Tensor output_tensor_gpu(
           fast_transformers::core::NewDLPackTensorT<float>(

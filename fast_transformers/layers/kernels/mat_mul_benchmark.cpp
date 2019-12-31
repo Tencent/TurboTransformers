@@ -68,7 +68,6 @@ inline void _CreateBenchmark(DLDeviceType device_type, bool trans_weight,
   }
 }
 
-/*
 TEST_CASE("MatMul CPU benchmark") {
   int64_t k = 12 * 64, n = 12 * 64 * 3;
   std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
@@ -84,17 +83,13 @@ TEST_CASE("Attention QKV MatMul GPU benchmark") {
   std::cout << "weight trans" << std::endl;
   _CreateBenchmark(kDLGPU, true, {n, k}, m_list);
 
-
   std::cout << "batch = 20" << std::endl;
-  for(auto& m : m_list)
-    m *= 20;
+  for (auto& m : m_list) m *= 20;
   std::cout << "weight no trans" << std::endl;
   _CreateBenchmark(kDLGPU, false, {k, n}, m_list);
   std::cout << "weight trans" << std::endl;
   _CreateBenchmark(kDLGPU, true, {n, k}, m_list);
-
 }
-*/
 
 TEST_CASE("Attention Intermediate GPU benchmark") {
   std::cout << "Intermediate Layer Benchmark" << std::endl;

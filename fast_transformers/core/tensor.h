@@ -258,7 +258,7 @@ class Tensor {
     return const_cast<Tensor *>(this)->operator[](n);
   }
 
-  bool CheckTypeId(const Tensor &t) const {
+  bool IsOnSameDevice(const Tensor &t) const {
     if (t.device_id() == device_id() && t.device_type() == device_type()) {
       return true;
     } else {

@@ -10,7 +10,7 @@ using Tensor = fast_transformers::core::Tensor;
 
 #ifdef FT_WITH_CUDA
 template <typename T>
-void FillCPUGPU(Tensor& cpu_tensor, Tensor& gpu_tensor) {
+void FillDataForCPUGPUTensors(Tensor& cpu_tensor, Tensor& gpu_tensor) {
   T* gpu_data = gpu_tensor.mutableData<T>();
   T* cpu_data = cpu_tensor.mutableData<T>();
   auto size = cpu_tensor.numel();
