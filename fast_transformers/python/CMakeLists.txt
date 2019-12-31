@@ -19,7 +19,7 @@ add_custom_command(OUTPUT ${PY_PACKAGE_DIR}/.timestamp
         DEPENDS fast_transformers_cxx ${PY_PROJ_FILES})
 add_custom_target(fast_transformers ALL DEPENDS ${PY_PACKAGE_DIR}/.timestamp)
 
-file(GLOB PY_TEST_FILES tests/gpu_*_test.py)
+file(GLOB PY_TEST_FILES tests/*_test.py)
 
 foreach (py_test_file ${PY_TEST_FILES})
     get_filename_component(py_test_trg_name ${py_test_file} NAME_WE)
