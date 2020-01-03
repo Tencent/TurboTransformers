@@ -34,11 +34,6 @@ static void AddBiasGeLUActKernel(const T* bias, T* out, int64_t batch_size,
   }
 }
 
-template static void AddBiasGeLUActKernel<float>(const float* bias_data,
-                                                 float* out_data,
-                                                 int64_t batch_size,
-                                                 int64_t feature_dim);
-
 template <typename T>
 void AddBiasGeLUAct(const core::Tensor& bias_tensor, core::Tensor* out_tensor) {
   T* out = out_tensor->mutableData<T>();

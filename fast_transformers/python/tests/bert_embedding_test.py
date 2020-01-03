@@ -2,10 +2,8 @@ import unittest
 
 import contexttimer
 import fast_transformers
-import onnxruntime.backend as backend
 import torch
 import torch.jit
-import torch.onnx
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertEmbeddings, BertConfig
 import os
@@ -21,21 +19,6 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
                 vocab_size_or_config_json_file=self.tokenizer.vocab_size)
             self.torch_embedding = BertEmbeddings(cfg)
             self.torch_embedding.eval()
-            torch.onnx.export(
-                self.torch_embedding,
-                (torch.ones(size=(batch_size, seq_length), dtype=torch.long),
-                 torch.ones(size=(batch_size, seq_length), dtype=torch.long),
-                 torch.ones(size=(batch_size, seq_length), dtype=torch.long)),
-                f="bert-emb.onnx",
-                output_names=['emb'])
-
-            if not backend.supports_device('MKL-DNN'):
-                self.onnx_embedding = backend.prepare("bert-emb.onnx",
-                                                      device='CPU')
-            else:
-                self.onnx_embedding = backend.prepare("bert-emb.onnx",
-                                                      device='MKL-DNN')
-            backend.prepare(self.onnx_embedding, "CPU-MKL-DNN")
 
             self.torch_script_embedding = torch.jit.trace(
                 self.torch_embedding,
@@ -62,19 +45,6 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
             self.torch_embedding(input_ids, token_type_ids, position_ids)
             self.torch_script_embedding(input_ids, token_type_ids,
                                         position_ids)
-
-            onnx_inputs = [
-                input_ids.numpy(),
-                token_type_ids.numpy(),
-                position_ids.numpy()
-            ]
-            self.onnx_embedding.run(onnx_inputs)
-            with contexttimer.Timer() as t:
-                for it in range(num_iter):
-                    self.onnx_embedding.run(onnx_inputs)
-            print(
-                f'BertEmb({batch_size}, {seq_length:03}) ONNX (with mkl-dnn) QPS {num_iter / t.elapsed}'
-            )
 
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
