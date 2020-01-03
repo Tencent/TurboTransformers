@@ -25,9 +25,12 @@ namespace layers {
 void BertOutput::operator()(const core::Tensor &hidden_states,
                             const core::Tensor &input_tensor,
                             core::Tensor *output_tensor) const {
+  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(hidden_states), true,
+                "BertOutput: The input_tensor and hidden_states should have a "
+                "shape device type.");
   output_tensor->Reshape<float>(
       {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(0)},
-      hidden_states.device_type());
+      hidden_states.device_type(), hidden_states.device_id());
   kernels::MatMul(hidden_states, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
   kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,

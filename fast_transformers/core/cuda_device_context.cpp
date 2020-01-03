@@ -1,6 +1,7 @@
 #include "fast_transformers/core/cuda_device_context.h"
 
 #include "fast_transformers/core/enforce.h"
+#include "fast_transformers/core/memory.h"
 
 namespace fast_transformers {
 namespace core {
@@ -18,10 +19,17 @@ void CUDADeviceContext::Wait() const {
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
+int CUDADeviceContext::device_count() const {
+  int count = 0;
+  FT_ENFORCE_CUDA_SUCCESS(cudaGetDeviceCount(&count));
+  return count;
+}
+
 CUDADeviceContext::~CUDADeviceContext() {
   Wait();
   cublas_handle_.reset();
   FT_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
 }
+
 }  // namespace core
 }  // namespace fast_transformers

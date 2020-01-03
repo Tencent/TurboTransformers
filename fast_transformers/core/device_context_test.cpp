@@ -8,10 +8,11 @@ namespace fast_transformers {
 namespace core {
 
 #ifdef FT_WITH_CUDA
-TEST_CASE("CUDADeviceContext", "ini") {
+TEST_CASE("CUDADeviceContext", "init") {
   CUDADeviceContext& cuda_ctx = CUDADeviceContext::GetInstance();
   cuda_ctx.Wait();
 }
+
 #endif
 
 }  // namespace core

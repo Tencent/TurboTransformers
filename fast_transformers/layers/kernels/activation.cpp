@@ -1,12 +1,10 @@
 #include "fast_transformers/layers/kernels/activation.h"
-#ifdef FT_WITH_CUDA
-#include "fast_transformers/core/cuda_device_context.h"
-#endif
 
 #include <numeric>
 
 #include "fast_transformers/core/aligned_scratchpad.h"
 #ifdef FT_WITH_CUDA
+#include "fast_transformers/core/cuda_device_context.h"
 #include "fast_transformers/layers/kernels/gpu_activation_kernel.h"
 #endif
 

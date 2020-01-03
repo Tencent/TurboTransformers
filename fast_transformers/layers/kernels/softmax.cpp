@@ -1,14 +1,17 @@
 #include "fast_transformers/layers/kernels/softmax.h"
 
 #include <cmath>
+#ifdef FT_WITH_CUDA
+#include "fast_transformers/core/cuda_device_context.h"
+#include "fast_transformers/layers/kernels/gpu_softmax_kernel.h"
+#endif
 
 namespace fast_transformers {
 namespace layers {
 namespace kernels {
 static constexpr float g_epsilon = 1e-6f;
-static void SoftmaxMask(float* qk_buf, const float* attr_mask,
-                        int64_t batch_size, int64_t head_num, int64_t seq_len,
-                        float scale) {
+void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
+                 int64_t head_num, int64_t seq_len, float scale) {
   int64_t M = batch_size * head_num * seq_len;
   int64_t N = seq_len;
 #pragma omp parallel for
@@ -40,8 +43,19 @@ void ApplyMaskAndSoftmax(core::Tensor* inout, const core::Tensor& att_mask,
   auto batch_size = inout->shape(0);
   auto num_att_heads = inout->shape(1);
   auto seq_len = inout->shape(2);
-  SoftmaxMask(inout->mutableData<float>(), att_mask.data<float>(), batch_size,
-              num_att_heads, seq_len, scale);
+  if (inout->device_type() == kDLCPU) {
+    SoftmaxMask(inout->mutableData<float>(), att_mask.data<float>(), batch_size,
+                num_att_heads, seq_len, scale);
+  } else if (inout->device_type() == kDLGPU) {
+#ifdef FT_WITH_CUDA
+    auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUSoftmaxMask(inout->mutableData<float>(), att_mask.data<float>(),
+                   batch_size, num_att_heads, seq_len, scale,
+                   cuda_ctx.stream());
+#endif
+  } else {
+    FT_THROW("device_type is not supported");
+  }
 }
 
 }  // namespace kernels

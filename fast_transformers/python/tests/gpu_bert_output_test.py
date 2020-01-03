@@ -13,6 +13,11 @@ import fast_transformers
 def create_shape_test(batch_size: int, seq_length: int):
     class TestBertOut(unittest.TestCase):
         def setUp(self) -> None:
+            if torch.cuda.is_available():
+                self.test_device = torch.device('cuda:0')
+            else:
+                self.test_device = torch.device('cpu')
+
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
                 os.path.join(os.path.dirname(__file__), 'test-model'))
@@ -22,25 +27,23 @@ def create_shape_test(batch_size: int, seq_length: int):
             self.hidden_size = self.cfg.hidden_size  # 768
             self.torch_bertout = BertOutput(self.cfg)
             self.torch_bertout.eval()
+            if torch.cuda.is_available():
+                self.torch_bertout.to(self.test_device)
 
             self.ft_bertout = fast_transformers.BertOutput.from_torch(
                 self.torch_bertout)
 
             self.intermediate_output = torch.rand(
                 size=(batch_size, seq_length, self.intermediate_size),
-                dtype=torch.float32)
+                dtype=torch.float32,
+                device=self.test_device)
             self.attention_output = torch.rand(size=(batch_size, seq_length,
                                                      self.hidden_size),
-                                               dtype=torch.float32)
-
-            self.jit_bertout = torch.jit.trace(self.torch_bertout,
-                                               example_inputs=[
-                                                   self.intermediate_output,
-                                                   self.attention_output
-                                               ])
+                                               dtype=torch.float32,
+                                               device=self.test_device)
 
         def test_bertout(self):
-            with open(f"bert_output_qps_{batch_size}_{seq_length:03}.txt",
+            with open(f"gpu_bert_output_qps_{batch_size}_{seq_length:03}.txt",
                       "w") as of:
                 num_steps = 100
                 torch_result = self.torch_bertout(self.intermediate_output,
@@ -52,14 +55,6 @@ def create_shape_test(batch_size: int, seq_length: int):
 
                 print(
                     f"BertOut({batch_size}, {seq_length:03}) Torch QPS {num_steps / t.elapsed}",
-                    file=of)
-
-                with contexttimer.Timer() as t:
-                    for it in range(num_steps):
-                        self.jit_bertout(self.intermediate_output,
-                                         self.attention_output)
-                print(
-                    f'BertOut({batch_size}, {seq_length:03}) Jit QPS {num_steps / t.elapsed}',
                     file=of)
 
                 ft_result = self.ft_bertout(self.intermediate_output,
