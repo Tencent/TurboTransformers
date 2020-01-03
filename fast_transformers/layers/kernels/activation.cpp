@@ -3,8 +3,6 @@
 #include "fast_transformers/core/cuda_device_context.h"
 #endif
 
-#include <immintrin.h>
-
 #include <numeric>
 
 #include "fast_transformers/core/aligned_scratchpad.h"

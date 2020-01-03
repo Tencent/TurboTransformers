@@ -1,7 +1,5 @@
 #include "fast_transformers/layers/kernels/softmax.h"
 
-#include <immintrin.h>
-
 #include <cmath>
 
 namespace fast_transformers {
