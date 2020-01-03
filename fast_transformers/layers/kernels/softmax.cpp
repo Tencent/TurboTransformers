@@ -1,7 +1,5 @@
 #include "fast_transformers/layers/kernels/softmax.h"
 
-#include <immintrin.h>
-
 #include <cmath>
 #ifdef FT_WITH_CUDA
 #include "fast_transformers/core/cuda_device_context.h"

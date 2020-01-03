@@ -1,7 +1,5 @@
 #include "fast_transformers/layers/kernels/activation.h"
 
-#include <immintrin.h>
-
 #include <numeric>
 
 #include "fast_transformers/core/aligned_scratchpad.h"
