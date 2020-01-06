@@ -18,3 +18,8 @@ target_link_libraries(sequence_pool tensor seq_pool)
 
 add_library(prepare_bert_masks prepare_bert_masks.cpp)
 target_link_libraries(prepare_bert_masks eigen-tensor)
+
+
+if (WITH_GPU)
+  target_link_libraries(bert_embedding gpu_embedding_kernel)
+endif ()

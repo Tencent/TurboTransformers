@@ -99,8 +99,6 @@ def create_test(batch_size, seq_length):
                 end.record()
                 torch.cuda.synchronize()
                 torch_elapsed = start.elapsed_time(end) / 1e3
-
-            if torch.cuda.is_available():
                 torch_qps = num_iter / torch_elapsed
                 torch_time = torch_elapsed / num_iter
             else:

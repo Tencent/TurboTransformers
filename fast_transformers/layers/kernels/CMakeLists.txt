@@ -26,6 +26,9 @@ if (WITH_GPU)
   add_library(gpu_transpose_kernel gpu_transpose_kernel.cu)
   target_link_libraries(gpu_transpose_kernel cudart cuda)
   target_link_libraries(transpose gpu_transpose_kernel)
+
+  add_library(gpu_embedding_kernel gpu_embedding_kernel.cu)
+  target_link_libraries(gpu_embedding_kernel cudart cuda)
 endif()
 
 
