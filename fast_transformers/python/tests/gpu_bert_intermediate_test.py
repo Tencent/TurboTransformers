@@ -11,15 +11,14 @@ import os
 
 
 def create_test(batch_size, seq_length):
+    if not torch.cuda.is_available():
+        return
+
     class TestBertIntermediate(unittest.TestCase):
         def setUp(self) -> None:
             torch.set_num_threads(1)
-            if torch.cuda.is_available():
-                self.test_device = torch.device('cuda:0')
-                self.device = "GPU"
-            else:
-                self.test_device = torch.device('cpu')
-                self.device = "CPU"
+            self.test_device = torch.device('cuda:0')
+            self.device = "GPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -43,7 +42,7 @@ def create_test(batch_size, seq_length):
                                       dtype=torch.float32,
                                       device=self.test_device)
 
-            #warmup
+            # warmup
             ft_result = self.ft_intermediate(input_tensor)
 
             if torch.cuda.is_available():
@@ -67,7 +66,7 @@ def create_test(batch_size, seq_length):
                 # in ms, rescale to sec
                 ft_elapsed = start.elapsed_time(end) / 1e3
 
-            #get torch result
+            # get torch result
             ft_result = self.ft_intermediate(input_tensor)
 
             ft_qps = 0
@@ -83,7 +82,7 @@ def create_test(batch_size, seq_length):
                 f"BertIntermediate \"({batch_size},{seq_length:03})\" {self.device} FastTransform QPS,  {ft_qps}, time, {ft_time}"
             )
 
-            #warmup
+            # warmup
             torch_result = self.torch_intermediate(input_tensor)
             torch_elapsed = 0.
 
@@ -113,7 +112,7 @@ def create_test(batch_size, seq_length):
             )
             torch_result = torch_result.cpu().numpy()
             ft_result = ft_result.cpu().numpy()
-            #print("diff ", numpy.max(torch_result - ft_result))
+            # print("diff ", numpy.max(torch_result - ft_result))
 
             self.assertTrue(
                 numpy.allclose(torch_result, ft_result, rtol=1e-4, atol=1e-3))

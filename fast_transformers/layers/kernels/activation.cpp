@@ -1,7 +1,5 @@
 #include "fast_transformers/layers/kernels/activation.h"
 
-#include <immintrin.h>
-
 #include <numeric>
 
 #include "fast_transformers/core/aligned_scratchpad.h"
@@ -35,11 +33,6 @@ static void AddBiasGeLUActKernel(const T* bias, T* out, int64_t batch_size,
     }
   }
 }
-
-template static void AddBiasGeLUActKernel<float>(const float* bias_data,
-                                                 float* out_data,
-                                                 int64_t batch_size,
-                                                 int64_t feature_dim);
 
 template <typename T>
 void AddBiasGeLUAct(const core::Tensor& bias_tensor, core::Tensor* out_tensor) {
