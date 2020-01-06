@@ -3,7 +3,6 @@ import os
 import contexttimer
 import torch
 import torch.jit
-import torch.onnx
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertEncoder
 

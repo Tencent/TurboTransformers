@@ -1,6 +1,5 @@
 #include "fast_transformers/layers/kernels/gpu_layer_norm_kernel.h"
 #include "fast_transformers/layers/kernels/gpu_common.h"
-#include <immintrin.h>
 #include <numeric>
 #include <cuda_runtime.h>
 

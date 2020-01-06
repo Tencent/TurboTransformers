@@ -7,13 +7,15 @@ import torch.onnx
 from transformers.modeling_bert import BertConfig, BertAttention
 import fast_transformers
 from transformers import BertTokenizer
-import onnxruntime.backend
 import os
 
 fname = "ft_attention.txt"
 
 
 def create_test(batch_size, seq_length):
+    if not torch.cuda.is_available():
+        return
+
     class TestBertAttention(unittest.TestCase):
         def setUp(self) -> None:
             if torch.cuda.is_available():

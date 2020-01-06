@@ -1,7 +1,5 @@
 #include "fast_transformers/layers/kernels/seq_pool.h"
 
-#include <immintrin.h>
-
 #include <cmath>
 #include <cstdint>
 #include <limits>
