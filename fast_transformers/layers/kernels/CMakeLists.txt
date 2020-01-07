@@ -52,6 +52,14 @@ if (WITH_GPU)
 endif()
 
 
+add_executable(layer_norm_test layer_norm_test.cpp)
+target_link_libraries(layer_norm_test layer_norm Catch2 loguru enforce aligned_scratchpad)
+if (WITH_GPU)
+  target_link_libraries(layer_norm_test cuda_error cuda_device_context memory)
+endif()
+
+
+
 add_library(seq_pool seq_pool.cpp)
 target_link_libraries(seq_pool tensor enforce)
 

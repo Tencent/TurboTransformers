@@ -19,6 +19,8 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
       std::multiplies<int64_t>());
 
   auto out = out_tensor->mutableData<T>();
+  const auto gamma_ptr = gamma.data<T>();
+  const auto beta_ptr = beta.data<T>();
 
   if (out_tensor->device_type() == kDLCPU) {
 #pragma omp parallel for
@@ -38,8 +40,6 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
       // 1 / sqrt(var)
       var = 1.f / sqrtf(var + g_epsilon);
 
-      auto beta_ptr = beta.data<T>();
-      auto gamma_ptr = gamma.data<T>();
 #pragma omp simd
       for (int64_t i = 0; i < feature_dim; ++i) {
         int64_t j = batch_idx * feature_dim + i;
@@ -48,10 +48,8 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
     }
   } else if (out_tensor->device_type() == kDLGPU) {
 #ifdef FT_WITH_CUDA
-    const auto beta_ptr = beta.data<T>();
-    const auto gamma_ptr = gamma.data<T>();
     auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPULayerNorm(out, gamma_ptr, beta_ptr, feature_dim, batch_size,
+    GPULayerNorm(out, gamma_ptr, beta_ptr, batch_size, feature_dim,
                  cuda_ctx.stream());
 #endif
   } else {

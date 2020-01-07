@@ -25,6 +25,9 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
             self.device = "GPU"
             self.torch_embedding.eval()
 
+            if torch.cuda.is_available():
+                self.torch_embedding.to(self.test_device)
+
             self.ft_embedding = fast_transformers.BertEmbeddings.from_torch(
                 self.torch_embedding)
 
@@ -90,6 +93,9 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
             ft_qps = 0
             ft_time = 0
             if torch.cuda.is_available():
+                end.record()
+                torch.cuda.synchronize()
+                ft_elapsed = start.elapsed_time(end) / 1e3
                 ft_qps = num_iter / ft_elapsed
                 ft_time = ft_elapsed / num_iter
             else:

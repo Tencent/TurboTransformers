@@ -47,8 +47,8 @@ static void LookupEmbedding(core::Tensor &out_tensor,
   } else if (out_tensor.device_type() == kDLGPU) {
 #ifdef FT_WITH_CUDA
     auto &cuda_ctx = core::CUDADeviceContext::GetInstance();
-    kernels::GPULookupKernel<Add>(out, embedding, ids, vocab_size, hidden_size,
-                                  num_ids, cuda_ctx.stream());
+    kernels::GPULookupKernel(out, embedding, ids, vocab_size, hidden_size,
+                             num_ids, Add, cuda_ctx.stream());
 #endif
   } else {
     FT_THROW("device_type is not supported");
