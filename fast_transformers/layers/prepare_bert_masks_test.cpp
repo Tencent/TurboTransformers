@@ -19,11 +19,11 @@ TEST_CASE("prepare_bert_masks CPU and GPU correctness") {
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
       fast_transformers::core::Tensor gpu_inputs(
-          fast_transformers::core::NewDLPackTensorT<float>(
+          fast_transformers::core::NewDLPackTensorT<int64_t>(
               {batch_size, seq_length}, kDLGPU, 0));
 
       fast_transformers::core::Tensor cpu_inputs(
-          fast_transformers::core::NewDLPackTensorT<float>(
+          fast_transformers::core::NewDLPackTensorT<int64_t>(
               {batch_size, seq_length}, kDLCPU, 0));
 
       fast_transformers::core::Tensor* gpu_att_mask;
