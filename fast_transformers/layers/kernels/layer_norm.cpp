@@ -13,6 +13,9 @@ static constexpr float g_epsilon = 1e-12;
 template <typename T>
 void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
                core::Tensor* out_tensor) {
+  FT_ENFORCE_EQ(gamma.IsOnSameDevice(beta), true,
+                "LayerNorm gamma and beta must be on the same device");
+
   auto feature_dim = out_tensor->shape(out_tensor->n_dim() - 1);
   int64_t batch_size = std::accumulate(
       &out_tensor->shape(0), &out_tensor->shape(0) + out_tensor->n_dim() - 1, 1,
@@ -67,6 +70,16 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
                       const core::Tensor& gamma_tensor,
                       const core::Tensor& beta_tensor,
                       core::Tensor* out_tensor) {
+  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(bias_tensor), true,
+                "AddBiasLayerNorm input_tensor and bias_tensor must be on the "
+                "same device");
+  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(gamma_tensor), true,
+                "AddBiasLayerNorm input_tensor and gamma_tensor must be on the "
+                "same device");
+  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(beta_tensor), true,
+                "AddBiasLayerNorm input_tensor and beta_tensor must be on the "
+                "same device");
+
   T* out = out_tensor->mutableData<T>();
   const T* input = input_tensor.data<T>();
   const T* bias = bias_tensor.data<T>();
@@ -77,11 +90,7 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
   int64_t n = input_tensor.cols();
   // TODO(florianzhao): Check the dim of bias_tensor, gamma_tensor, beta_tensor,
   // out_tensor
-  if (input_tensor.device_type() == kDLCPU &&
-      bias_tensor.device_type() == kDLCPU &&
-      gamma_tensor.device_type() == kDLCPU &&
-      beta_tensor.device_type() == kDLCPU &&
-      out_tensor->device_type() == kDLCPU) {
+  if (input_tensor.device_type() == kDLCPU) {
 #pragma omp parallel for
     for (int64_t batch_idx = 0; batch_idx < m; ++batch_idx) {
       float mean = 0;
@@ -105,11 +114,7 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
         out[j] = beta[i] + gamma[i] * var * (out[j] - mean);
       }
     }
-  } else if (input_tensor.device_type() == kDLGPU &&
-             bias_tensor.device_type() == kDLGPU &&
-             gamma_tensor.device_type() == kDLGPU &&
-             beta_tensor.device_type() == kDLGPU &&
-             out_tensor->device_type() == kDLGPU) {
+  } else if (input_tensor.device_type() == kDLGPU) {
 #ifdef FT_WITH_CUDA
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
     GPUAddBiasLayerNorm(out, input, bias, gamma, beta, m, n, cuda_ctx.stream());
