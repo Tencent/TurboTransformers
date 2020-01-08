@@ -295,7 +295,12 @@ class BertModel:
                                     output=hidden_cache)
 
         # hidden_states:ft_tensor, return torch_tensor
-        return PyPooling(hidden_cache, pooling_type)
+        output_tensor = PyPooling(hidden_cache, pooling_type)
+        if return_type == ReturnType.FAST_TRANSFORMERS:
+            return _try_convert(output_tensor, return_type)
+        else:
+            return output_tensor
+
         # return self._pooling_layers[pooling_type](hidden_cache,
         #                                           return_type=return_type,
         #                                           output_tensor=output)
