@@ -32,7 +32,7 @@ def create_test(batch_size, seq_length):
             self.torch_encoder_layer = BertEncoder(self.cfg)
             self.torch_encoder_layer.eval()
             if torch.cuda.is_available():
-                self.torch_intermediate.to(self.test_device)
+                self.torch_encoder_layer.to(self.test_device)
 
             self.batch_size = 1
             self.seq_length = 40
@@ -45,7 +45,7 @@ def create_test(batch_size, seq_length):
 
             self.attention_mask = torch.ones(
                 (self.batch_size, self.seq_length),
-                dtype=torch.long,
+                dtype=torch.float32,
                 device=self.test_device)
             self.attention_mask = self.attention_mask[:, None, None, :]
             self.attention_mask = (1.0 - self.attention_mask) * -10000.0
@@ -54,7 +54,7 @@ def create_test(batch_size, seq_length):
                 self.torch_encoder_layer)
 
         def test_bert_encoder(self):
-            self.num_iter = 100
+            num_iter = 100
 
             ft_bert_layer_result = self.ft_bert_encoder(
                 self.input_tensor, self.attention_mask)
@@ -66,7 +66,7 @@ def create_test(batch_size, seq_length):
 
             with contexttimer.Timer() as t:
                 ft_bert_layer_result = None
-                for it in range(self.num_iter):
+                for it in range(num_iter):
                     ft_bert_layer_result = self.ft_bert_encoder(
                         self.input_tensor,
                         self.attention_mask,
@@ -100,7 +100,7 @@ def create_test(batch_size, seq_length):
                 start.record()
 
             with contexttimer.Timer() as t:
-                for it in range(self.num_iter):
+                for it in range(num_iter):
                     torch_bert_layer_result = self.torch_encoder_layer(
                         self.input_tensor, self.attention_mask,
                         [None] * self.cfg.num_hidden_layers)
@@ -123,6 +123,12 @@ def create_test(batch_size, seq_length):
             # print(diff)
             self.assertTrue(torch.max(diff) < 1e-3)
 
+    globals(
+    )[f"TestBertEncoder_{batch_size}_{seq_length:03}"] = TestBertEncoder
 
+
+for batch_size in [1, 2]:
+    for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
+        create_test(batch_size, seq_length)
 if __name__ == '__main__':
     unittest.main()
