@@ -20,20 +20,20 @@ class TestBertModel(unittest.TestCase):
 
     def test_bert_model(self):
         num_iter = 100
-        input_ids = self.tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求。')
+        input_ids = self.tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求?')
         input_ids = torch.tensor([input_ids], dtype=torch.long)
 
         self.torch_model(input_ids)
         with contexttimer.Timer() as t:
             for it in range(num_iter):
                 torch_result = self.torch_model(input_ids)
-        print(f'BertEmb Plain PyTorch QPS {num_iter / t.elapsed}')
+        print(f'BertModel Plain PyTorch QPS {num_iter / t.elapsed}')
         ft_result = self.ft_model(input_ids)
         with contexttimer.Timer() as t:
             for it in range(num_iter):
                 ft_result = self.ft_model(input_ids)
 
-        print(f'BertEmb FastTransform QPS {num_iter / t.elapsed}')
+        print(f'BertModel FastTransform QPS {num_iter / t.elapsed}')
         torch_result = (torch_result[0][:, 0]).numpy()
         ft_result = ft_result.numpy()
 

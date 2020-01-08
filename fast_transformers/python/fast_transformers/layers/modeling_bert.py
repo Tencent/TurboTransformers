@@ -229,27 +229,26 @@ class SequencePool(cxx.SequencePool):
         return convert_returns_as_type(output_tensor, return_type)
 
 
-def PyPooling(input_ft_tensor, pool_type):
-    input_torch = convert_returns_as_type(input_ft_tensor,
-                                          ReturnType.FAST_TRANSFORMERS)
-    if pool_type == "First":
-        return input_torch[:, 0, :]
-    elif pool_type == "Last":
-        seq_len = input.shape[1]
-        return input_torch[:, seq_len - 1, :]
-    elif pool_type == "Mean":
-        return np.mean(input_torch, axis=1)
-    elif pool_type == "Max":
-        return np.max(input_torch, axis=1)
-    else:
-        raise "{} is not support.".format(pool_type)
-
-
 class PoolingType(enum.Enum):
     FIRST = "First"
     LAST = "Last"
     MEAN = "Mean"
     MAX = "Max"
+
+
+def PyPooling(input_ft_tensor, pool_type):
+    input_torch = convert_returns_as_type(input_ft_tensor, ReturnType.TORCH)
+    if pool_type == PoolingType.FIRST:
+        return input_torch[:, 0, :]
+    elif pool_type == PoolingType.LAST:
+        seq_len = input.shape[1]
+        return input_torch[:, seq_len - 1, :]
+    elif pool_type == PoolingType.MEAN:
+        return np.mean(input_torch, axis=1)
+    elif pool_type == PoolingType.MAX:
+        return np.max(input_torch, axis=1)
+    else:
+        raise "{} is not support.".format(pool_type)
 
 
 class BertModel:
@@ -295,10 +294,11 @@ class BertModel:
                                     return_type=ReturnType.FAST_TRANSFORMERS,
                                     output=hidden_cache)
 
-        # return PyPooling(hidden_cache, return_type=return_type)
-        return self._pooling_layers[pooling_type](hidden_cache,
-                                                  return_type=return_type,
-                                                  output_tensor=output)
+        # hidden_states:ft_tensor, return torch_tensor
+        return PyPooling(hidden_cache, pooling_type)
+        # return self._pooling_layers[pooling_type](hidden_cache,
+        #                                           return_type=return_type,
+        #                                           output_tensor=output)
 
     @staticmethod
     def from_torch(model: TorchBertModel):
@@ -307,8 +307,11 @@ class BertModel:
         return BertModel(embeddings, encoder)
 
     @staticmethod
-    def from_pretrained(model_id_or_path: str):
+    def from_pretrained(model_id_or_path: str, device_name: str = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
+        if 'cuda' in device_name and torch.cuda.is_available():
+            device = torch.device(device_name)
+            torch_model.to(device)
         model = BertModel.from_torch(torch_model)
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
