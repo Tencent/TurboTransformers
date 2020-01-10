@@ -14,13 +14,13 @@ template <bool Add>
 static void LookupEmbedding(core::Tensor &out_tensor,
                             const core::Tensor &embedding_table,
                             const core::Tensor &ids_tensor) {
-  FT_ENFORCE_EQ(
-      out_tensor.IsOnSameDevice(embedding_table), true,
-      "The out_tensor and embedding_table should have a shape device type.");
+  FT_ENFORCE_EQ(out_tensor.IsOnSameDevice(embedding_table), true,
+                "The out_tensor and embedding_table should have the same shape "
+                "and device type.");
 
-  FT_ENFORCE_EQ(
-      out_tensor.IsOnSameDevice(ids_tensor), true,
-      "The out_tensor and ids_tensor should have a shape device type.");
+  FT_ENFORCE_EQ(out_tensor.IsOnSameDevice(ids_tensor), true,
+                "The out_tensor and embedding_table should have the same shape "
+                "and device type.");
 
   const auto *embedding = embedding_table.data<float>();
   const auto *ids = ids_tensor.data<int64_t>();
@@ -49,6 +49,8 @@ static void LookupEmbedding(core::Tensor &out_tensor,
     auto &cuda_ctx = core::CUDADeviceContext::GetInstance();
     kernels::GPULookupKernel(out, embedding, ids, vocab_size, hidden_size,
                              num_ids, Add, cuda_ctx.stream());
+#else
+    FT_THROW("The current code is not compiled with CUDA.");
 #endif
   } else {
     FT_THROW("device_type is not supported");

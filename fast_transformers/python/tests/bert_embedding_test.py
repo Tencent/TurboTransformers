@@ -83,6 +83,6 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
 for batch_size in [1, 2]:
     for seq_length in [10, 20, 40, 80, 100, 120]:
         create_test_bert_emb(batch_size, seq_length)
-# create_test_bert_emb(2, 10)
+
 if __name__ == '__main__':
     unittest.main()
