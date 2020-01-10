@@ -29,9 +29,6 @@ if (WITH_GPU)
 
   add_library(gpu_embedding_kernel gpu_embedding_kernel.cu)
   target_link_libraries(gpu_embedding_kernel cudart cuda)
-
-  add_library(gpu_utils gpu_utils.cu)
-  target_link_libraries(gpu_utils cudart cuda)
 endif()
 
 
