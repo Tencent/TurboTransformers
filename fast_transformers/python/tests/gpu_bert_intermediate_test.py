@@ -113,7 +113,6 @@ def create_test(batch_size, seq_length):
             torch_result = torch_result.cpu().numpy()
             ft_result = ft_result.cpu().numpy()
 
-            # print("diff ", numpy.max(torch_result - ft_result))
             self.assertTrue(
                 numpy.allclose(torch_result, ft_result, rtol=1e-4, atol=1e-3))
 
