@@ -51,6 +51,8 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
     auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
     GPULayerNorm(out, gamma_ptr, beta_ptr, batch_size, feature_dim,
                  cuda_ctx.stream());
+#else
+    FT_THROW("The current code is not compiled with CUDA.");
 #endif
   } else {
     FT_THROW("device_type is not supported");
