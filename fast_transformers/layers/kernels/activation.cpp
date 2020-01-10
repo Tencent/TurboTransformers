@@ -1,7 +1,5 @@
 #include "fast_transformers/layers/kernels/activation.h"
-
 #include <numeric>
-
 #include "fast_transformers/core/aligned_scratchpad.h"
 #ifdef FT_WITH_CUDA
 #include "fast_transformers/core/cuda_device_context.h"

@@ -1,8 +1,8 @@
-#include "fast_transformers/layers/kernels/gpu_transpose_kernel.h"
-
-#include <numeric>
 #include <cuda_runtime.h>
+#include <immintrin.h>
 #include <cstdio>
+#include <numeric>
+#include "fast_transformers/layers/kernels/gpu_transpose_kernel.h"
 
 namespace fast_transformers {
 namespace layers {
@@ -12,10 +12,10 @@ namespace kernels {
    (batch_size, seq_len, weight_num, num_attention_heads, size_per_head) ->
    (weight_num, batch_size, head_num, seq_len, size_per_head)
    */
-static __global__
-void split_add_bias_transpose_for_score(const float* input_data, const float* bias_data, float* output_data,
-  const int batch_size, const int seq_len, const int head_num, const int size_per_head, const int word_per_block)
-{
+static __global__ void split_add_bias_transpose_for_score(
+    const float* input_data, const float* bias_data, float* output_data,
+    const int batch_size, const int seq_len, const int head_num,
+    const int size_per_head, const int word_per_block) {
   const float* data_ptr;
   float* buf_ptr;
   const float* bias_ptr;
@@ -35,14 +35,14 @@ void split_add_bias_transpose_for_score(const float* input_data, const float* bi
 
   float bias = __ldg(&bias_ptr[threadIdx.x]);
 
-  for(int i = row_offset; i < row_offset + word_per_block; ++i)
-  {
-    if(i >= m) break;
+  for (int i = row_offset; i < row_offset + word_per_block; ++i) {
+    if (i >= m) break;
     int seq_id = i % seq_len;
     int batch_id = i / seq_len;
 
-    int target_id = batch_id * (seq_len * head_num * size_per_head) + head_id * seq_len * size_per_head +
-      seq_id * size_per_head + hidden_id;
+    int target_id = batch_id * (seq_len * head_num * size_per_head) +
+                    head_id * seq_len * size_per_head + seq_id * size_per_head +
+                    hidden_id;
     float tmp = data_ptr[threadIdx.x] + bias;
 
     buf_ptr[target_id] = tmp;
@@ -50,49 +50,54 @@ void split_add_bias_transpose_for_score(const float* input_data, const float* bi
   }
 }
 
-template<>
-void GPUSplitAddBiasTransposeForScore(const float* input_data, const float* bias_data, float* out_data,
-     int64_t batch_size, int64_t seq_len, int64_t weight_num,
-     int64_t num_attention_heads, int64_t size_per_head,
-     cudaStream_t stream) {
+template <>
+void GPUSplitAddBiasTransposeForScore(
+    const float* input_data, const float* bias_data, float* out_data,
+    int64_t batch_size, int64_t seq_len, int64_t weight_num,
+    int64_t num_attention_heads, int64_t size_per_head, cudaStream_t stream) {
   const int word_per_block = 32;
   const int n = num_attention_heads * size_per_head;
   const int m = batch_size * seq_len;
   if (n > 1024) {
-    throw std::runtime_error("GPUSplitAddBiasTransposeForScore thread block size large than 1024");
+    throw std::runtime_error(
+        "GPUSplitAddBiasTransposeForScore thread block size large than 1024");
   }
-  //x, y
-  dim3 grid(3 * (m+word_per_block-1) / word_per_block);
+  // x, y
+  dim3 grid(3 * (m + word_per_block - 1) / word_per_block);
   dim3 block(n);
-  split_add_bias_transpose_for_score<<<grid, block, 0, stream>>>(input_data, bias_data, out_data,
-      batch_size, seq_len, num_attention_heads, size_per_head, word_per_block);
+  split_add_bias_transpose_for_score<<<grid, block, 0, stream>>>(
+      input_data, bias_data, out_data, batch_size, seq_len, num_attention_heads,
+      size_per_head, word_per_block);
 }
 
-//copyright nvidia
-static __global__
-void transpose(const float* src, float* dst, const int batch_size, const int seq_len, const int head_num, const int size_per_head)
-{
+// copyright nvidia
+static __global__ void transpose(const float* src, float* dst,
+                                 const int batch_size, const int seq_len,
+                                 const int head_num, const int size_per_head) {
   int batch_id = blockIdx.x / (head_num * seq_len);
   int seq_id = blockIdx.x % seq_len;
-  int head_id = (blockIdx.x % (head_num * seq_len))/ seq_len;
-  dst[batch_id * (head_num * seq_len * size_per_head) + seq_id * head_num * size_per_head
-    + head_id * size_per_head + threadIdx.x] = src[blockIdx.x * size_per_head + threadIdx.x];
+  int head_id = (blockIdx.x % (head_num * seq_len)) / seq_len;
+  dst[batch_id * (head_num * seq_len * size_per_head) +
+      seq_id * head_num * size_per_head + head_id * size_per_head +
+      threadIdx.x] = src[blockIdx.x * size_per_head + threadIdx.x];
 }
 
-template<>
+template <>
 void GPUTransposeForScore(const float* input_data, float* output_data,
-     int64_t batch_size, int64_t seq_len, int64_t num_attention_heads,
-     int64_t size_per_head, cudaStream_t stream) {
+                          int64_t batch_size, int64_t seq_len,
+                          int64_t num_attention_heads, int64_t size_per_head,
+                          cudaStream_t stream) {
   const int seq_per_block = 1;
   dim3 grid, block;
-  grid.x = batch_size * num_attention_heads
-    * seq_len / seq_per_block;
+  grid.x = batch_size * num_attention_heads * seq_len / seq_per_block;
   block.x = seq_per_block * size_per_head;
   if (block.x > 1024) {
-    throw std::runtime_error("GPUTransposeForScore thread block size large than 1024");
+    throw std::runtime_error(
+        "GPUTransposeForScore thread block size large than 1024");
   }
-  transpose<<<grid, block, 0, stream>>>(input_data, output_data
-      , batch_size, seq_len, num_attention_heads, size_per_head);
+  transpose<<<grid, block, 0, stream>>>(input_data, output_data, batch_size,
+                                        seq_len, num_attention_heads,
+                                        size_per_head);
 }
 
 }  // namespace kernels
