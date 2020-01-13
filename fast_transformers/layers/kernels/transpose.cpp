@@ -1,5 +1,5 @@
 #include "fast_transformers/layers/kernels/transpose.h"
-//#include "fast_transformers/core/enforce.h"
+#include "fast_transformers/core/common.h"
 
 #include <cstring>
 #ifdef FT_WITH_CUDA
@@ -35,17 +35,16 @@ static void TransposeForScoreImpl(float* output, const float* input,
 }
 
 void TransposeForScore(core::Tensor* output, const core::Tensor& input) {
-  auto batch_size = output->shape(0);
-  auto seq_length = output->shape(1);
-  auto num_attention_heads = input.shape(1);
-  auto width = input.shape(3);
-
   if (input.device_type() == kDLCPU && output->device_type() == kDLCPU) {
     TransposeForScoreImpl(output->mutableData<float>(), input.data<float>(),
                           output->shape(0), output->shape(1), input.shape(1),
                           input.shape(3));
   } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
 #ifdef FT_WITH_CUDA
+    auto batch_size = output->shape(0);
+    auto seq_length = output->shape(1);
+    auto num_attention_heads = input.shape(1);
+    auto width = input.shape(3);
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
     GPUTransposeForScore<float>(
         input.data<float>(), output->mutableData<float>(), batch_size,
@@ -75,13 +74,13 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
   auto bias = bias_tensor.data<float>();
   auto output = output_tensor->mutableData<float>();
 
-  FT_ENFORCE_EQ(core::Tensor::is_same_device_ctx(input_tensor.device_ctx(),
-                                                 bias_tensor.device_ctx()),
+  FT_ENFORCE_EQ(core::is_same_device_ctx(input_tensor.device_ctx(),
+                                         bias_tensor.device_ctx()),
                 true,
                 "SplitAddBiasTransposeForScore: input_tensor and bias_tensor "
                 "should have the same device type and device id.");
-  FT_ENFORCE_EQ(core::Tensor::is_same_device_ctx(input_tensor.device_ctx(),
-                                                 output_tensor->device_ctx()),
+  FT_ENFORCE_EQ(core::is_same_device_ctx(input_tensor.device_ctx(),
+                                         output_tensor->device_ctx()),
                 true,
                 "SplitAddBiasTransposeForScore: input_tensor and output_tensor "
                 "should have the same device type and device id.");

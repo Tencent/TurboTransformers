@@ -1,6 +1,6 @@
 #include "fast_transformers/layers/bert_attention.h"
-
 #include "fast_transformers/core/aligned_scratchpad.h"
+#include "fast_transformers/core/common.h"
 #include "fast_transformers/core/memory.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
 #include "fast_transformers/layers/kernels/mat_mul.h"
@@ -13,8 +13,8 @@ namespace layers {
 void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
                                core::Tensor* output) const {
-  FT_ENFORCE_EQ(core::Tensor::is_same_device_ctx(input_tensor.device_ctx(),
-                                                 attention_mask.device_ctx()),
+  FT_ENFORCE_EQ(core::is_same_device_ctx(input_tensor.device_ctx(),
+                                         attention_mask.device_ctx()),
                 true,
                 "The input_tensor and attention_mask should have the same "
                 "device type and device id.");

@@ -13,7 +13,10 @@ static __global__ void lookup(float* dst, const float* embedding_table,
   int64_t id = ids[blockIdx.x];
   int hidden_idx = threadIdx.x;
   int hidden_size = blockDim.x;
-  // assert(id < vocab_size);
+  // TODO(jiaruifang): There should have a checker to check the range of id.
+  if (id > vocab_size) {
+    asm("trap;");
+  }
 
   float val = __ldg(&embedding_table[id * hidden_size + hidden_idx]);
   if (IsAdd) {
