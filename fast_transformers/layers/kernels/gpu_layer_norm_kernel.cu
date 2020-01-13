@@ -22,22 +22,29 @@ inline __device__ void get_mean_variance(float val, float* s_mean,
   __syncthreads();
 }
 
-static __global__ void add_bias_input_layernorm(float* out, const float* input,
-                                                const float* bias,
-                                                const float* gamma,
-                                                const float* beta, int m,
-                                                int n) {
+template <bool isAdd>
+static __global__ void layer_norm_kernel(float* out, const float* input,
+                                         const float* bias, const float* gamma,
+                                         const float* beta, int m, int n) {
+  int tid = threadIdx.x;
   __shared__ float s_mean;
   __shared__ float s_variance;
   float mean = 0.0f;
   float variance = 0.0f;
 
   float local_out = 0.0f;
-  for (int i = tid; i < n; i += blockDim.x)
-    local_out +=
-        out[blockIdx.x * n + i] + input[blockIdx.x * n + i] + __ldg(&bias[i]);
+  if (isAdd) {
+    for (int i = tid; i < n; i += blockDim.x) {
+      local_out +=
+          out[blockIdx.x * n + i] + input[blockIdx.x * n + i] + __ldg(&bias[i]);
+    }
+  } else {
+    for (int i = tid; i < n; i += blockDim.x) {
+      local_out += (out[blockIdx.x * n + i]);
+    }
+  }
 
-  get_mean_variance(local_out, &s_mean, &s_variance, n, threadIdx.x);
+  get_mean_variance(local_out, &s_mean, &s_variance, n, tid);
   for (int i = tid; i < n; i += blockDim.x) {
     out[blockIdx.x * n + i] =
         (local_out - s_mean) * s_variance * __ldg(&gamma[i]) + __ldg(&beta[i]);
@@ -54,25 +61,8 @@ void GPUAddBiasLayerNorm(float* out, const float* input, const float* bias,
     throw std::runtime_error(
         "GPUAddBiasLayerNorm thread block size large than 1024");
   }
-  add_bias_input_layernorm<<<grid, block, 0, stream>>>(out, input, bias, gamma,
-                                                       beta, m, n);
-}
-
-static __global__ void layernorm(float* out, const float* gamma,
-                                 const float* beta, int m, int n) {
-  __shared__ float s_mean;
-  __shared__ float s_variance;
-
-  float local_out = 0.0f;
-  for (int i = tid; i < n; i += blockDim.x)
-    local_out += (out[blockIdx.x * n + i]);
-
-  get_mean_variance(local_out, &s_mean, &s_variance, n, threadIdx.x);
-
-  for (int i = tid; i < n; i += blockDim.x) {
-    out[blockIdx.x * n + i] =
-        (local_out - s_mean) * s_variance * __ldg(&gamma[i]) + __ldg(&beta[i]);
-  }
+  layer_norm_kernel<true>
+      <<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);
 }
 
 template <>
@@ -84,7 +74,9 @@ void GPULayerNorm(float* out, const float* gamma, const float* beta, int m,
     throw std::runtime_error(
         "GPUAddBiasLayerNorm thread block size large than 1024");
   }
-  layernorm<<<grid, block, 0, stream>>>(out, gamma, beta, m, n);
+  float* dummy = nullptr;
+  layer_norm_kernel<false>
+      <<<grid, block, 0, stream>>>(out, out, dummy, gamma, beta, m, n);
 }
 
 }  // namespace kernels
