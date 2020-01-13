@@ -14,8 +14,6 @@ namespace layers {
 namespace kernels {
 
 #ifdef FT_WITH_CUDA
-
-void get_start() { return start = std::chrono::system_clock::now(); }
 TEST_CASE("layer_norm CPU and GPU correctness") {
   int64_t hidden_size = 12 * 64;
 
@@ -135,7 +133,6 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
         AddBiasLayerNorm<float>(gpu_input, gpu_bias, gpu_gamma, gpu_beta,
                                 &gpu_out);
       }
-      if (device_type == kDLGPU) cudaDeviceSynchronize();
       auto end = std::chrono::system_clock::system_clock::now();
       auto duration =
           std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -143,7 +140,7 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
                     std::chrono::microseconds::period::num /
                     std::chrono::microseconds::period::den / step;
       std::cout << "AddBiasLayerNorm cost:"
-                << data_size * seq_length * hidden_size * sizeof(float) / 1e9 /
+                << batch_size * seq_length * hidden_size * sizeof(float) / 1e9 /
                        elapse
                 << "GB/s";
     }  // for

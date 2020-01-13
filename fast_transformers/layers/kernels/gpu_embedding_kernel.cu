@@ -34,8 +34,13 @@ void GPULookupKernel(float* dst, const float* embedding_table,
         "GPULookupKernel currently does not support a hidden_size larger than "
         "1024");
   }
-  add_lookup<<<grid, block, 0, stream>>>
-      <is_add>(dst, embedding_table, ids, vocab_size);
+  if (is_add) {
+    lookup<true>
+        <<<grid, block, 0, stream>>>(dst, embedding_table, ids, vocab_size);
+  } else {
+    lookup<false>
+        <<<grid, block, 0, stream>>>(dst, embedding_table, ids, vocab_size);
+  }
 }
 
 }  // namespace kernels
