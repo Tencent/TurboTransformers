@@ -27,7 +27,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
 
 if(WITH_GPU)
-  set(CUDA_PATH "/data1/qspace/kanowang/common/cuda-9.0" CACHE PATH "The cuda library root")
+  set(CUDA_PATH "/usr/local/cuda" CACHE PATH "The cuda library root")
   include(cuda)
   add_definitions(-DFT_WITH_CUDA)
 endif()

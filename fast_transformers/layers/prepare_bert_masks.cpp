@@ -86,5 +86,6 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
                               att_mask->numel());
   }
 }
+
 }  // namespace layers
 }  // namespace fast_transformers

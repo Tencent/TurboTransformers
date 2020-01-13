@@ -174,6 +174,10 @@ class Tensor {
     auto &dltensor = to_dl_tensor();
     return dltensor.ctx.device_id;
   }
+  DLContext device_ctx() const {
+    auto &dltensor = to_dl_tensor();
+    return dltensor.ctx;
+  }
 
   bool is_null() const {
     return absl::holds_alternative<absl::monostate>(tensor_);
