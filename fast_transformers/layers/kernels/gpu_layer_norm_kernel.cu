@@ -4,20 +4,29 @@
 #include "fast_transformers/layers/kernels/gpu_common.h"
 #include "fast_transformers/layers/kernels/gpu_layer_norm_kernel.h"
 
-// copy from
-// https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer
-
 namespace fast_transformers {
 namespace layers {
 namespace kernels {
+
+inline __device__ void get_mean_variance(float val, float* s_mean,
+                                         float* s_variance, int n, int tid) {
+  float sum1 = val, sum2 = val * val;
+  blockReduceSumTwoElemInline(&sum1, &sum2);
+  float mean = sum1 / n;
+  float mean_2 = sum2 / n;
+
+  if (tid == 0) {
+    *s_mean = mean;
+    *s_variance = rsqrtf(mean_2 - mean * mean + 1e-6f);
+  }
+  __syncthreads();
+}
 
 static __global__ void add_bias_input_layernorm(float* out, const float* input,
                                                 const float* bias,
                                                 const float* gamma,
                                                 const float* beta, int m,
                                                 int n) {
-  int tid = threadIdx.x;
-
   __shared__ float s_mean;
   __shared__ float s_variance;
   float mean = 0.0f;
@@ -25,24 +34,14 @@ static __global__ void add_bias_input_layernorm(float* out, const float* input,
 
   float local_out = 0.0f;
   for (int i = tid; i < n; i += blockDim.x)
-    local_out += (float)(out[blockIdx.x * n + i] + input[blockIdx.x * n + i] +
-                         __ldg(&bias[i]));
+    local_out +=
+        out[blockIdx.x * n + i] + input[blockIdx.x * n + i] + __ldg(&bias[i]);
 
-  mean = blockReduceSum(local_out);
-  if (threadIdx.x == 0) s_mean = mean / n;
-  __syncthreads();
-
-  variance = blockReduceSum((local_out - s_mean) * (local_out - s_mean));
-  if (threadIdx.x == 0) {
-    s_variance = variance / n + 1e-6f;
-    s_variance = rsqrtf(s_variance);
+  get_mean_variance(local_out, &s_mean, &s_variance, n, threadIdx.x);
+  for (int i = tid; i < n; i += blockDim.x) {
+    out[blockIdx.x * n + i] =
+        (local_out - s_mean) * s_variance * __ldg(&gamma[i]) + __ldg(&beta[i]);
   }
-  __syncthreads();
-
-  for (int i = tid; i < n; i += blockDim.x)
-    out[blockIdx.x * n + i] = (float)(((local_out - s_mean) * s_variance) *
-                                          (float)(__ldg(&gamma[i])) +
-                                      (float)(__ldg(&beta[i])));
 }
 
 template <>
@@ -61,32 +60,19 @@ void GPUAddBiasLayerNorm(float* out, const float* input, const float* bias,
 
 static __global__ void layernorm(float* out, const float* gamma,
                                  const float* beta, int m, int n) {
-  int tid = threadIdx.x;
-
   __shared__ float s_mean;
   __shared__ float s_variance;
-  float mean = 0.0f;
-  float variance = 0.0f;
 
   float local_out = 0.0f;
   for (int i = tid; i < n; i += blockDim.x)
     local_out += (out[blockIdx.x * n + i]);
 
-  mean = blockReduceSum(local_out);
-  if (threadIdx.x == 0) s_mean = mean / n;
-  __syncthreads();
+  get_mean_variance(local_out, &s_mean, &s_variance, n, threadIdx.x);
 
-  variance = blockReduceSum((local_out - s_mean) * (local_out - s_mean));
-  if (threadIdx.x == 0) {
-    s_variance = variance / n + 1e-6f;
-    s_variance = rsqrtf(s_variance);
+  for (int i = tid; i < n; i += blockDim.x) {
+    out[blockIdx.x * n + i] =
+        (local_out - s_mean) * s_variance * __ldg(&gamma[i]) + __ldg(&beta[i]);
   }
-  __syncthreads();
-
-  for (int i = tid; i < n; i += blockDim.x)
-    out[blockIdx.x * n + i] = (float)(((local_out - s_mean) * s_variance) *
-                                          (float)(__ldg(&gamma[i])) +
-                                      (float)(__ldg(&beta[i])));
 }
 
 template <>
@@ -96,8 +82,7 @@ void GPULayerNorm(float* out, const float* gamma, const float* beta, int m,
   dim3 block(n);
   if (n > 1024) {
     throw std::runtime_error(
-        "GPUAddBiasLayerNorm currently dose not support hidden_size large than "
-        "1024!");
+        "GPUAddBiasLayerNorm thread block size large than 1024");
   }
   layernorm<<<grid, block, 0, stream>>>(out, gamma, beta, m, n);
 }

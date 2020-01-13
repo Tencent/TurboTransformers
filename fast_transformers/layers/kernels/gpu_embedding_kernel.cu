@@ -31,7 +31,8 @@ void GPULookupKernel(float* dst, const float* embedding_table,
   dim3 block(hidden_size);
   if (block.x > 1024) {
     throw std::runtime_error(
-        "GPULookupKernel currently dose not support a hidden_size than 1024");
+        "GPULookupKernel currently does not support a hidden_size larger than "
+        "1024");
   }
   add_lookup<<<grid, block, 0, stream>>>
       <is_add>(dst, embedding_table, ids, vocab_size);

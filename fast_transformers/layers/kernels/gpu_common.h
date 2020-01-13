@@ -17,28 +17,63 @@ namespace kernels {
 
 #define FINAL_MASK 0xffffffff
 
-__inline__ __device__ float warpReduceSum(float val) {
-  for (int mask = 16; mask > 0; mask >>= 1)
-    val += __shfl_xor_sync(FINAL_MASK, val, mask, 32);
-  return val;
+// reduce two values to reduce syncthreads overhead
+__inline__ __device__ void warpReduceSumTwoElemInline(float* val1,
+                                                      float* val2) {
+  for (int mask = 16; mask > 0; mask >>= 1) {
+    *val1 += __shfl_xor_sync(FINAL_MASK, *val1, mask, 32);
+    *val2 += __shfl_xor_sync(FINAL_MASK, *val2, mask, 32);
+  }
 }
 
 /* Calculate the sum of all elements in a block */
-__inline__ __device__ float blockReduceSum(float val) {
-  static __shared__ float shared[32];
+__inline__ __device__ void blockReduceSumTwoElemInline(float* val1,
+                                                       float* val2) {
+  static __shared__ float shared1[32];
+  static __shared__ float shared2[32];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
 
-  val = warpReduceSum(val);
+  warpReduceSumTwoElemInline(val1, val2);
 
-  if (lane == 0) shared[wid] = val;
+  if (lane == 0) {
+    shared1[wid] = *val1;
+    shared2[wid] = *val2;
+  }
 
   __syncthreads();
 
-  val = (threadIdx.x < (blockDim.x >> 5)) ? shared[lane] : (float)(0.0f);
-  val = warpReduceSum(val);
+  *val1 = (threadIdx.x < (blockDim.x >> 5)) ? shared1[lane] : (float)(0.0f);
+  *val2 = (threadIdx.x < (blockDim.x >> 5)) ? shared2[lane] : (float)(0.0f);
+  warpReduceSumTwoElemInline(val1, val2);
+}
 
-  return val;
+// inline reduce two values to remove syncthreads overhead
+__inline__ __device__ void warpReduceSumv2(float* val1, float* val2) {
+  for (int mask = 16; mask > 0; mask >>= 1) {
+    *val1 += __shfl_xor_sync(FINAL_MASK, *val1, mask, 32);
+    *val2 += __shfl_xor_sync(FINAL_MASK, *val2, mask, 32);
+  }
+}
+
+__inline__ __device__ void blockReduceSumv2(float* val1, float* val2) {
+  static __shared__ float shared1[32];
+  static __shared__ float shared2[32];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  warpReduceSumv2(val1, val2);
+
+  if (lane == 0) {
+    shared1[wid] = *val1;
+    shared2[wid] = *val2;
+  }
+
+  __syncthreads();
+
+  *val1 = (threadIdx.x < (blockDim.x >> 5)) ? shared1[lane] : (float)(0.0f);
+  *val2 = (threadIdx.x < (blockDim.x >> 5)) ? shared2[lane] : (float)(0.0f);
+  warpReduceSumv2(val1, val2);
 }
 
 __inline__ __device__ float warpReduceMax(float val) {
