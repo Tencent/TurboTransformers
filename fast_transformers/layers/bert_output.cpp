@@ -25,9 +25,9 @@ namespace layers {
 void BertOutput::operator()(const core::Tensor &hidden_states,
                             const core::Tensor &input_tensor,
                             core::Tensor *output_tensor) const {
-  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(hidden_states), true,
-                "BertOutput: The input_tensor and hidden_states should have a "
-                "shape device type.");
+  FT_ENFORCE_EQ(core::Tensor::is_same_device(input_tensor, hidden_states), true,
+                "BertOutput: The input_tensor and hidden_states should have "
+                "the same device type and device id.");
   output_tensor->Reshape<float>(
       {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(0)},
       hidden_states.device_type(), hidden_states.device_id());

@@ -75,12 +75,13 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
   auto bias = bias_tensor.data<float>();
   auto output = output_tensor->mutableData<float>();
 
-  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(bias_tensor), true,
+  FT_ENFORCE_EQ(core::Tensor::is_same_device(input_tensor, bias_tensor), true,
                 "SplitAddBiasTransposeForScore: input_tensor and bias_tensor "
-                "are not on the same device.");
-  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(*output_tensor), true,
+                "should have the same device type and device id.");
+  FT_ENFORCE_EQ(core::Tensor::is_same_device(input_tensor, *output_tensor),
+                true,
                 "SplitAddBiasTransposeForScore: input_tensor and output_tensor "
-                "are not on the same device.");
+                "should have the same device type and device id.");
 
   if (output_tensor->device_type() == kDLCPU &&
       input_tensor.device_type() == kDLCPU &&

@@ -175,6 +175,26 @@ class Tensor {
     return dltensor.ctx.device_id;
   }
 
+  static bool is_same_device(const Tensor &t1, const Tensor &t2) {
+    if (t1.device_id() != t2.device_id() ||
+        t1.device_type() != t2.device_type()) {
+      return false;
+    }
+    return true;
+  }
+
+  static bool is_same_shape(const Tensor &t1, const Tensor &t2) {
+    if (t1.n_dim() != t2.n_dim()) {
+      return false;
+    }
+    for (size_t i = 0; i < t1.n_dim(); ++i) {
+      if (t1.shape(i) != t2.shape(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   bool is_null() const {
     return absl::holds_alternative<absl::monostate>(tensor_);
   }
