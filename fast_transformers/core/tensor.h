@@ -174,10 +174,13 @@ class Tensor {
     auto &dltensor = to_dl_tensor();
     return dltensor.ctx.device_id;
   }
+  DLContext device_ctx() const {
+    auto &dltensor = to_dl_tensor();
+    return dltensor.ctx;
+  }
 
-  static bool is_same_device(const Tensor &t1, const Tensor &t2) {
-    if (t1.device_id() != t2.device_id() ||
-        t1.device_type() != t2.device_type()) {
+  static bool is_same_device_ctx(DLContext t1, DLContext t2) {
+    if (t1.device_id != t2.device_id || t1.device_type != t2.device_type) {
       return false;
     }
     return true;
