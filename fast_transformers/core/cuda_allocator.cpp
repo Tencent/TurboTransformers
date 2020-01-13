@@ -15,7 +15,8 @@ struct BadAlloc : public std::exception {
   std::string err_str_;
 };
 
-CUDAAllocator::~CUDAAllocator() { FreeCache(-1UL); }
+CUDAAllocator::~CUDAAllocator() { /*FreeCache(-1UL);*/
+}
 
 void CUDAAllocator::FreeCache(size_t size) {
   if (FT_UNLIKELY(size == 0)) return;

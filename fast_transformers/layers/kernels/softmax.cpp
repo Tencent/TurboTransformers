@@ -52,6 +52,8 @@ void ApplyMaskAndSoftmax(core::Tensor* inout, const core::Tensor& att_mask,
     GPUSoftmaxMask(inout->mutableData<float>(), att_mask.data<float>(),
                    batch_size, num_att_heads, seq_len, scale,
                    cuda_ctx.stream());
+#else
+    FT_THROW("The current code is not compiled with CUDA.");
 #endif
   } else {
     FT_THROW("device_type is not supported");

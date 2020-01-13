@@ -1,13 +1,10 @@
 #include "prepare_bert_masks.h"
+
 #include <stdint.h>
 
-#ifdef FT_WITH_CUDA
-#include "fast_transformers/layers/kernels/gpu_utils.h"
-#endif
-//#include "fast_transformers/core/eigen-tensor.h"
+#include "fast_transformers/core/eigen-tensor.h"
 namespace fast_transformers {
 namespace layers {
-
 void PrepareBertMasks::operator()(const core::Tensor& inputs,
                                   core::Tensor* att_mask,
                                   core::Tensor* seq_type,

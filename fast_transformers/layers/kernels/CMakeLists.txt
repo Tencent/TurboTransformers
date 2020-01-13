@@ -1,14 +1,14 @@
 add_library(layer_norm layer_norm.cpp)
-target_link_libraries(layer_norm tensor)
+target_link_libraries(layer_norm tensor common)
 
 add_library(softmax softmax.cpp)
-target_link_libraries(softmax tensor)
+target_link_libraries(softmax tensor common)
 
 add_library(transpose transpose.cpp)
-target_link_libraries(transpose tensor)
+target_link_libraries(transpose tensor common)
 
 add_library(activation activation.cpp)
-target_link_libraries(activation tensor aligned_scratchpad)
+target_link_libraries(activation tensor aligned_scratchpad common)
 
 if (WITH_GPU)
   add_library(gpu_layer_norm_kernel gpu_layer_norm_kernel.cu)
@@ -29,9 +29,6 @@ if (WITH_GPU)
 
   add_library(gpu_embedding_kernel gpu_embedding_kernel.cu)
   target_link_libraries(gpu_embedding_kernel cudart cuda)
-
-  add_library(gpu_utils gpu_utils.cu)
-  target_link_libraries(gpu_utils cudart cuda)
 endif()
 
 
@@ -67,7 +64,7 @@ add_library(seq_pool seq_pool.cpp)
 target_link_libraries(seq_pool tensor enforce)
 
 add_library(mat_mul mat_mul.cpp)
-target_link_libraries(mat_mul tensor enforce)
+target_link_libraries(mat_mul tensor enforce common)
 if (WITH_GPU)
   target_link_libraries(mat_mul cuda_device_context)
 endif()

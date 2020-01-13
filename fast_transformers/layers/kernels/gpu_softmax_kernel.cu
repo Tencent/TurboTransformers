@@ -28,7 +28,6 @@ __global__ void softmax_kernel(float* qk_buf_, const float* attr_mask,
             : 0.0f;
 
     // mask_val = (1.0f - mask_val) * -10000.0f;
-
     float tmp =
         threadIdx.x < seq_len ? (float)(qk * (float)scaler + mask_val) : -1e20f;
 
