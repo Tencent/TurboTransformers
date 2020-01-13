@@ -88,3 +88,4 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
 }
 
 }  // namespace layers
+}  // namespace fast_transformers
