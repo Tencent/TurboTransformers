@@ -229,29 +229,6 @@ class SequencePool(cxx.SequencePool):
         return convert_returns_as_type(output_tensor, return_type)
 
 
-def PyPooling(input_ft_tensor, pool_type):
-    input_torch = convert_returns_as_type(input_ft_tensor,
-                                          ReturnType.FAST_TRANSFORMERS)
-    if pool_type == "First":
-        return input_torch[:, 0, :]
-    elif pool_type == "Last":
-        seq_len = input.shape[1]
-        return input_torch[:, seq_len - 1, :]
-    elif pool_type == "Mean":
-        return np.mean(input_torch, axis=1)
-    elif pool_type == "Max":
-        return np.max(input_torch, axis=1)
-    else:
-        raise "{} is not support.".format(pool_type)
-
-
-class PoolingType(enum.Enum):
-    FIRST = "First"
-    LAST = "Last"
-    MEAN = "Mean"
-    MAX = "Max"
-
-
 class BertModel:
     _pooling_layers = {
         enum_val: SequencePool(enum_val.value)
@@ -295,7 +272,6 @@ class BertModel:
                                     return_type=ReturnType.FAST_TRANSFORMERS,
                                     output=hidden_cache)
 
-        # return PyPooling(hidden_cache, return_type=return_type)
         return self._pooling_layers[pooling_type](hidden_cache,
                                                   return_type=return_type,
                                                   output_tensor=output)
