@@ -32,16 +32,14 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
       // seq_type.zeros_like(inputs)
       seq_type->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)},
                                  inputs.device_type(), inputs.device_id());
-      core::ft_fill<kDLCPU>(seq_type->mutableData<int64_t>(),
-                            sizeof(int64_t) * seq_type->numel(),
+      core::ft_fill<kDLCPU>(seq_type->mutableData<int64_t>(), seq_type->numel(),
                             static_cast<int64_t>(0));
     }
 
     if (att_mask->is_null()) {
       att_mask->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)},
                                  inputs.device_type(), inputs.device_id());
-      core::ft_fill<kDLCPU>(att_mask->mutableData<int64_t>(),
-                            sizeof(int64_t) * att_mask->numel(),
+      core::ft_fill<kDLCPU>(att_mask->mutableData<int64_t>(), att_mask->numel(),
                             static_cast<int64_t>(1));
     }
 
@@ -70,16 +68,14 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
       // seq_type.zeros_like(inputs)
       seq_type->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)},
                                  inputs.device_type(), inputs.device_id());
-      core::ft_fill<kDLGPU>(seq_type->mutableData<int64_t>(),
-                            sizeof(int64_t) * seq_type->numel(),
+      core::ft_fill<kDLGPU>(seq_type->mutableData<int64_t>(), seq_type->numel(),
                             static_cast<int64_t>(0));
     }
 
     if (att_mask->is_null()) {
       att_mask->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)},
                                  inputs.device_type(), inputs.device_id());
-      core::ft_fill<kDLGPU>(att_mask->mutableData<int64_t>(),
-                            sizeof(int64_t) * att_mask->numel(),
+      core::ft_fill<kDLGPU>(att_mask->mutableData<int64_t>(), att_mask->numel(),
                             static_cast<int64_t>(1));
     }
 
