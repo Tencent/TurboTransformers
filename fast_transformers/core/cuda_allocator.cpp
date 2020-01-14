@@ -16,7 +16,7 @@ struct BadAlloc : public std::exception {
 };
 
 CUDAAllocator::~CUDAAllocator() {
-  // TODO(jiaruifang) How to free device memory safely. We should not release
+  // FIXME(jiaruifang) How to free device memory safely. We should not release
   // memory in the deconstructor of a Singleton.
   // https://stackoverflow.com/questions/35815597/cuda-call-fails-in-destructor
   /*FreeCache(-1UL);*/
