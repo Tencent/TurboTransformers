@@ -26,8 +26,8 @@ namespace layers {
 void BertOutput::operator()(const core::Tensor &hidden_states,
                             const core::Tensor &input_tensor,
                             core::Tensor *output_tensor) const {
-  FT_ENFORCE_EQ(core::is_same_device_ctx(input_tensor.device_ctx(),
-                                         hidden_states.device_ctx()),
+  FT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
+                                                 hidden_states.device_ctx()),
                 true,
                 "BertOutput: The input_tensor and hidden_states should have "
                 "the same device type and device id.");

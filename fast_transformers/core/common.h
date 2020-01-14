@@ -8,6 +8,7 @@
 
 namespace fast_transformers {
 namespace core {
+namespace common {
 
 extern bool is_same_device_ctx(DLContext t1, DLContext t2);
 
@@ -44,6 +45,8 @@ void ft_fill(T* data, int64_t size, T val) {
   }
 }
 
+// TODO(jiaruifang): this function should better pass a function in.
+// how can we pass a lambda function as __device__ to cuda?
 template <DLDeviceType device>
 void ft_transform(int64_t* src_data, float* dst_data, int64_t size) {
   if (device == kDLCPU) {
@@ -60,5 +63,6 @@ void ft_transform(int64_t* src_data, float* dst_data, int64_t size) {
   }
 }
 
+}  // namespace common
 }  // namespace core
 }  // namespace fast_transformers
