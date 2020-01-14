@@ -12,6 +12,9 @@ endif ()
 
 target_link_libraries(blas PRIVATE ${CMAKE_DL_LIBS})
 
+add_library(common common.cpp)
+target_link_libraries(common tensor)
+
 add_library(enforce enforce.cpp)
 target_link_libraries(enforce PUBLIC absl::stacktrace absl::symbolize absl::strings absl::str_format PRIVATE ${RT_LIBRARY})
 

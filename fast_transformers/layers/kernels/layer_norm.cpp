@@ -19,31 +19,43 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
       std::multiplies<int64_t>());
 
   auto out = out_tensor->mutableData<T>();
+  const auto gamma_ptr = gamma.data<T>();
+  const auto beta_ptr = beta.data<T>();
 
+  if (out_tensor->device_type() == kDLCPU) {
 #pragma omp parallel for
-  for (int64_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
-    T mean = static_cast<T>(0);
-    T var = static_cast<T>(0);
+    for (int64_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
+      T mean = static_cast<T>(0);
+      T var = static_cast<T>(0);
 #pragma omp simd reduction(+ : mean)
-    for (int64_t i = batch_idx * feature_dim; i < (batch_idx + 1) * feature_dim;
-         i++) {
-      T t = out[i];
-      mean += t;
-      var += t * t;
-    }
-    mean = mean / feature_dim;
-    var = var / feature_dim - mean * mean;
+      for (int64_t i = batch_idx * feature_dim;
+           i < (batch_idx + 1) * feature_dim; i++) {
+        T t = out[i];
+        mean += t;
+        var += t * t;
+      }
+      mean = mean / feature_dim;
+      var = var / feature_dim - mean * mean;
 
-    // 1 / sqrt(var)
-    var = 1.f / sqrtf(var + g_epsilon);
+      // 1 / sqrt(var)
+      var = 1.f / sqrtf(var + g_epsilon);
 
-    auto beta_ptr = beta.data<T>();
-    auto gamma_ptr = gamma.data<T>();
 #pragma omp simd
-    for (int64_t i = 0; i < feature_dim; ++i) {
-      int64_t j = batch_idx * feature_dim + i;
-      out[j] = beta_ptr[i] + gamma_ptr[i] * var * (out[j] - mean);
+      for (int64_t i = 0; i < feature_dim; ++i) {
+        int64_t j = batch_idx * feature_dim + i;
+        out[j] = beta_ptr[i] + gamma_ptr[i] * var * (out[j] - mean);
+      }
     }
+  } else if (out_tensor->device_type() == kDLGPU) {
+#ifdef FT_WITH_CUDA
+    auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPULayerNorm(out, gamma_ptr, beta_ptr, batch_size, feature_dim,
+                 cuda_ctx.stream());
+#else
+    FT_THROW("The current code is not compiled with CUDA.");
+#endif
+  } else {
+    FT_THROW("device_type is not supported");
   }
 }
 
