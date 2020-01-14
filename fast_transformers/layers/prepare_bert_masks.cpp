@@ -1,6 +1,6 @@
 #include "prepare_bert_masks.h"
 #include <stdint.h>
-
+#include "fast_transformers/core/common.h"
 #ifdef FT_WITH_CUDA
 #include "fast_transformers/layers/kernels/gpu_utils.h"
 #endif
@@ -8,6 +8,8 @@
 namespace fast_transformers {
 namespace layers {
 
+// FIXME(jiaruifang) Do we have a better way to use C++ template to make this
+// function more concisely?
 void PrepareBertMasks::operator()(const core::Tensor& inputs,
                                   core::Tensor* att_mask,
                                   core::Tensor* seq_type,
@@ -21,7 +23,7 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
 
       // fill range
       for (int64_t row_id = 0; row_id < inputs.shape(0); ++row_id) {
-        std::iota(pos_ids_ptr, pos_ids_ptr + inputs.shape(1), 0);
+        core::ft_seqence<kDLCPU>(pos_ids_ptr, inputs.shape(1));
         pos_ids_ptr += inputs.shape(1);
       }
     }
@@ -30,25 +32,26 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
       // seq_type.zeros_like(inputs)
       seq_type->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)},
                                  inputs.device_type(), inputs.device_id());
-      std::memset(seq_type->mutableData<int64_t>(), 0,
-                  sizeof(int64_t) * seq_type->numel());
+      core::ft_fill<kDLCPU>(seq_type->mutableData<int64_t>(),
+                            sizeof(int64_t) * seq_type->numel(),
+                            static_cast<int64_t>(0));
     }
 
     if (att_mask->is_null()) {
       att_mask->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)},
                                  inputs.device_type(), inputs.device_id());
-      std::fill(att_mask->mutableData<int64_t>(),
-                att_mask->mutableData<int64_t>() + att_mask->numel(), 1);
+      core::ft_fill<kDLCPU>(att_mask->mutableData<int64_t>(),
+                            sizeof(int64_t) * att_mask->numel(),
+                            static_cast<int64_t>(1));
     }
 
     // cast att_mask to float
     extended_attention_mask->Reshape<float>(
         {att_mask->shape(0), 1, 1, att_mask->shape(1)}, inputs.device_type(),
         inputs.device_id());
-    std::transform(att_mask->data<int64_t>(),
-                   att_mask->data<int64_t>() + att_mask->numel(),
-                   extended_attention_mask->mutableData<float>(),
-                   [](int64_t v) { return -10000.0f * (1 - v); });
+    core::ft_transform<kDLCPU>(att_mask->mutableData<int64_t>(),
+                               extended_attention_mask->mutableData<float>(),
+                               att_mask->numel());
   } else if (inputs.device_type() == kDLGPU) {
 #ifdef FT_WITH_CUDA
     if (position_ids->is_null()) {
@@ -58,7 +61,7 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
 
       // fill range
       for (int64_t row_id = 0; row_id < inputs.shape(0); ++row_id) {
-        kernels::gpu_sequence(pos_ids_ptr, inputs.shape(1));
+        core::ft_seqence<kDLGPU>(pos_ids_ptr, inputs.shape(1));
         pos_ids_ptr += inputs.shape(1);
       }
     }
@@ -67,24 +70,26 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
       // seq_type.zeros_like(inputs)
       seq_type->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)},
                                  inputs.device_type(), inputs.device_id());
-      kernels::gpu_fill(seq_type->mutableData<int64_t>(), seq_type->numel(),
-                        int64_t(0));
+      core::ft_fill<kDLGPU>(seq_type->mutableData<int64_t>(),
+                            sizeof(int64_t) * seq_type->numel(),
+                            static_cast<int64_t>(0));
     }
 
     if (att_mask->is_null()) {
       att_mask->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)},
                                  inputs.device_type(), inputs.device_id());
-      kernels::gpu_fill(att_mask->mutableData<int64_t>(), att_mask->numel(),
-                        int64_t(1));
+      core::ft_fill<kDLGPU>(att_mask->mutableData<int64_t>(),
+                            sizeof(int64_t) * att_mask->numel(),
+                            static_cast<int64_t>(1));
     }
 
     // cast att_mask to float
     extended_attention_mask->Reshape<float>(
         {att_mask->shape(0), 1, 1, att_mask->shape(1)}, inputs.device_type(),
         inputs.device_id());
-    kernels::gpu_transform(att_mask->mutableData<int64_t>(),
-                           extended_attention_mask->mutableData<float>(),
-                           att_mask->numel());
+    core::ft_transform<kDLGPU>(att_mask->mutableData<int64_t>(),
+                               extended_attention_mask->mutableData<float>(),
+                               att_mask->numel());
 #else
     FT_THROW("The current code is not compiled with CUDA.");
 #endif
