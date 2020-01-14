@@ -37,7 +37,7 @@ void ft_fill(T* data, int64_t size, T val) {
 #ifdef FT_WITH_CUDA
     layers::kernels::gpu_fill(data, size, val);
 #else
-    FT_THROW("code is not compiled with CUDA.")
+    FT_THROW("code is not compiled with CUDA.");
 #endif
   } else {
     FT_THROW("device_type is not supported");
@@ -53,7 +53,7 @@ void ft_transform(int64_t* src_data, float* dst_data, int64_t size) {
 #ifdef FT_WITH_CUDA
     layers::kernels::gpu_transform(src_data, dst_data, size);
 #else
-    FT_THROW("code is not compiled with CUDA.")
+    FT_THROW("code is not compiled with CUDA.");
 #endif
   } else {
     FT_THROW("device_type is not supported");

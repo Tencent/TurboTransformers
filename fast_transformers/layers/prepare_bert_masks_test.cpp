@@ -26,15 +26,15 @@ TEST_CASE("prepare_bert_masks CPU and GPU correctness") {
           fast_transformers::core::NewDLPackTensorT<int64_t>(
               {batch_size, seq_length}, kDLCPU, 0));
 
-      fast_transformers::core::Tensor* gpu_att_mask;
-      fast_transformers::core::Tensor* cpu_att_mask;
-      fast_transformers::core::Tensor* gpu_seq_type;
-      fast_transformers::core::Tensor* cpu_seq_type;
+      fast_transformers::core::Tensor gpu_att_mask(nullptr);
+      fast_transformers::core::Tensor cpu_att_mask(nullptr);
+      fast_transformers::core::Tensor gpu_seq_type(nullptr);
+      fast_transformers::core::Tensor cpu_seq_type(nullptr);
 
-      fast_transformers::core::Tensor* gpu_position_ids;
-      fast_transformers::core::Tensor* cpu_position_ids;
-      fast_transformers::core::Tensor* gpu_extended_attention_mask;
-      fast_transformers::core::Tensor* cpu_extended_attention_mask;
+      fast_transformers::core::Tensor gpu_position_ids(nullptr);
+      fast_transformers::core::Tensor cpu_position_ids(nullptr);
+      fast_transformers::core::Tensor gpu_extended_attention_mask(nullptr);
+      fast_transformers::core::Tensor cpu_extended_attention_mask(nullptr);
 
       ::fast_transformers::test::FillDataForCPUGPUTensors<int64_t>(cpu_inputs,
                                                                    gpu_inputs);
@@ -43,19 +43,20 @@ TEST_CASE("prepare_bert_masks CPU and GPU correctness") {
                   << " seq_length: " << seq_length;
       {
         PrepareBertMasks func;
-        func(cpu_inputs, cpu_att_mask, cpu_seq_type, cpu_position_ids,
-             cpu_extended_attention_mask);
-        func(gpu_inputs, gpu_att_mask, gpu_seq_type, gpu_position_ids,
-             gpu_extended_attention_mask);
+        func(cpu_inputs, &cpu_att_mask, &cpu_seq_type, &cpu_position_ids,
+             &cpu_extended_attention_mask);
+
+        func(gpu_inputs, &gpu_att_mask, &gpu_seq_type, &gpu_position_ids,
+             &gpu_extended_attention_mask);
       }
-      REQUIRE(::fast_transformers::test::CompareCPUGPU<float>(*cpu_att_mask,
-                                                              *gpu_att_mask));
+      REQUIRE(::fast_transformers::test::CompareCPUGPU<int64_t>(cpu_att_mask,
+                                                                gpu_att_mask));
       REQUIRE(::fast_transformers::test::CompareCPUGPU<float>(
-          *cpu_extended_attention_mask, *gpu_extended_attention_mask));
-      REQUIRE(::fast_transformers::test::CompareCPUGPU<int64_t>(*cpu_seq_type,
-                                                                *gpu_seq_type));
+          cpu_extended_attention_mask, gpu_extended_attention_mask));
+      REQUIRE(::fast_transformers::test::CompareCPUGPU<int64_t>(cpu_seq_type,
+                                                                gpu_seq_type));
       REQUIRE(::fast_transformers::test::CompareCPUGPU<int64_t>(
-          *cpu_position_ids, *gpu_position_ids));
+          cpu_position_ids, gpu_position_ids));
     }  // for
 }
 #endif
