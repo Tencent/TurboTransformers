@@ -8,8 +8,6 @@
 namespace fast_transformers {
 namespace layers {
 
-// FIXME(jiaruifang) Do we have a better way to use C++ template to make this
-// function more concisely?
 void PrepareBertMasks::operator()(const core::Tensor& inputs,
                                   core::Tensor* att_mask,
                                   core::Tensor* seq_type,
