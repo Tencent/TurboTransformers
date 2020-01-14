@@ -2,6 +2,7 @@
 
 namespace fast_transformers {
 namespace core {
+namespace common {
 
 bool is_same_device_ctx(DLContext t1, DLContext t2) {
   if (t1.device_id != t2.device_id || t1.device_type != t2.device_type) {
@@ -77,5 +78,6 @@ void ft_transform(int64_t* src_data, float* dst_data, int64_t size,
   }
 }
 
+}  // namespace common
 }  // namespace core
 }  // namespace fast_transformers
