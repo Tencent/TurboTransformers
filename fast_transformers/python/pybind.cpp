@@ -1,5 +1,6 @@
 #include "absl/memory/memory.h"
 #include "fast_transformers/core/blas.h"
+#include "fast_transformers/core/config.h"
 #include "fast_transformers/core/eigen-tensor.h"
 #include "fast_transformers/core/profiler.h"
 #include "fast_transformers/core/tensor.h"
@@ -33,10 +34,23 @@ static void DLPack_Capsule_Destructor(PyObject *data) {
   }
 }
 
+static void BindConfig(py::module &m) {
+  py::enum_<core::BlasProvider>(m, "BlasProvider")
+      .value("MKL", core::BlasProvider::MKL)
+      .value("OpenBlas", core::BlasProvider::OpenBlas);
+  m.def("is_with_cuda", core::IsWithCUDA)
+      .def("get_blas_provider", core::GetBlasProvider);
+}
+
 PYBIND11_MODULE(fast_transformers_cxx, m) {
   char *argv[] = {strdup("fast_transformers_cxx"), nullptr};
   int argc = 1;
   loguru::init(argc, argv);
+
+  auto config_module =
+      m.def_submodule("config", "compile configuration of fast transformers");
+
+  BindConfig(config_module);
 
   m.def("set_stderr_verbose_level",
         [](int v) { loguru::g_stderr_verbosity = v; });

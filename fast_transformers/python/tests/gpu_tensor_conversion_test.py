@@ -2,14 +2,15 @@ import torch
 import torch.utils.dlpack as dlpack
 import unittest
 from fast_transformers.layers.modeling_bert import convert2ft_tensor
+import fast_transformers
 
 
 class TestDLPack(unittest.TestCase):
     def test_dlpack(self):
-        if torch.cuda.is_available():
-            self.test_device = torch.device('cuda:0')
-        else:
-            self.test_device = torch.device('cpu')
+        if not torch.cuda.is_available(
+        ) or not fast_transformers.config.is_with_cuda():
+            return
+        self.test_device = torch.device('cuda:0')
 
         a = torch.rand(size=(4, 3),
                        dtype=torch.float32,
