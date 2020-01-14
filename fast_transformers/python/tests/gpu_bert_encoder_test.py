@@ -120,7 +120,6 @@ def create_test(batch_size, seq_length):
             )
 
             diff = torch.abs(torch_bert_layer_result[0] - ft_bert_layer_result)
-            # print(diff)
             self.assertTrue(torch.max(diff) < 1e-3)
 
     globals(

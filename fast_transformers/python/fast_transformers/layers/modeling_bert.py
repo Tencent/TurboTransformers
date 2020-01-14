@@ -229,6 +229,13 @@ class SequencePool(cxx.SequencePool):
         return convert_returns_as_type(output_tensor, return_type)
 
 
+class PoolingType(enum.Enum):
+    FIRST = "First"
+    LAST = "Last"
+    MEAN = "Mean"
+    MAX = "Max"
+
+
 class BertModel:
     _pooling_layers = {
         enum_val: SequencePool(enum_val.value)
