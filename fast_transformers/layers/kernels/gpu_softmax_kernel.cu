@@ -1,5 +1,4 @@
 #include <cuda_runtime.h>
-#include <immintrin.h>
 #include <numeric>
 #include "fast_transformers/layers/kernels/gpu_common.h"
 #include "fast_transformers/layers/kernels/gpu_softmax_kernel.h"
