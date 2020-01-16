@@ -1,13 +1,13 @@
+import fast_transformers
+
 import unittest
+import os
 
 import contexttimer
 import torch
 import torch.jit
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertOutput
-import os
-
-import fast_transformers
 
 
 def create_shape_test(batch_size: int, seq_length: int):

@@ -1,3 +1,5 @@
+import fast_transformers
+
 import unittest
 import os
 import contexttimer
@@ -5,8 +7,6 @@ import torch
 import torch.jit
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertEncoder
-
-import fast_transformers
 
 
 class TestBertEncoder(unittest.TestCase):
