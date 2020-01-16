@@ -2,6 +2,9 @@ add_subdirectory(kernels)
 
 add_library(bert_embedding bert_embedding.cpp)
 target_link_libraries(bert_embedding loguru layer_norm)
+if (WITH_GPU)
+  target_link_libraries(bert_embedding gpu_embedding_kernel)
+endif ()
 
 add_library(bert_attention bert_attention.cpp)
 target_link_libraries(bert_attention tensor blas loguru enforce softmax transpose aligned_scratchpad)

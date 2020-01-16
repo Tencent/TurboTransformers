@@ -2,10 +2,9 @@ cmake_minimum_required(VERSION 3.10)
 cmake_policy(SET CMP0079 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(${CMAKE_CURRENT_SOURCE_DIR}/hunter-gate/cmake/HunterGate.cmake)
-
 HunterGate(
-        URL "https://github.com/cpp-pm/hunter/archive/v0.23.240.tar.gz"
-        SHA1 "ca19f3769e6c80cfdd19d8b12ba5102c27b074e0"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.240.tar.gz"
+    SHA1 "ca19f3769e6c80cfdd19d8b12ba5102c27b074e0"
 )
 
 option(WITH_PROFILER "Compile with gperftools" OFF)
@@ -22,12 +21,13 @@ find_package(Eigen3 CONFIG REQUIRED)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
 
+find_package(Threads REQUIRED)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
 
 if(WITH_GPU)
-  set(CUDA_PATH "/data1/qspace/kanowang/common/cuda-9.0" CACHE PATH "The cuda library root")
+  set(CUDA_PATH "/usr/local/cuda" CACHE PATH "The cuda library root")
   include(cuda)
   add_definitions(-DFT_WITH_CUDA)
 endif()
@@ -43,7 +43,6 @@ endif ()
 
 set(CMAKE_CXX_FLAGS "-Wall")
 set(CMAKE_C_FLAGS "-Wall")
-
 add_subdirectory(3rd)
 enable_testing()
 
@@ -100,7 +99,6 @@ IF (UNIX AND NOT APPLE)
     if (NOT RT_LIBRARY)
         message(SEND_ERROR "Cannot find librt from")
     ENDIF ()
-    target_link_libraries(absl_base PRIVATE ${RT_LIBRARY})
 ENDIF ()
 
 

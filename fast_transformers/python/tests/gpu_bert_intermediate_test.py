@@ -100,8 +100,6 @@ def create_test(batch_size, seq_length):
                 end.record()
                 torch.cuda.synchronize()
                 torch_elapsed = start.elapsed_time(end) / 1e3
-
-            if torch.cuda.is_available():
                 torch_qps = num_iter / torch_elapsed
                 torch_time = torch_elapsed / num_iter
             else:
@@ -113,7 +111,6 @@ def create_test(batch_size, seq_length):
             )
             torch_result = torch_result.cpu().numpy()
             ft_result = ft_result.cpu().numpy()
-            # print("diff ", numpy.max(torch_result - ft_result))
 
             self.assertTrue(
                 numpy.allclose(torch_result, ft_result, rtol=1e-4, atol=1e-3))

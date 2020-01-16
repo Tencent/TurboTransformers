@@ -19,8 +19,12 @@ def create_test(batch_size, seq_length):
 
     class TestBertAttention(unittest.TestCase):
         def setUp(self) -> None:
-            self.test_device = torch.device('cuda:0')
-            self.device = "GPU"
+            if torch.cuda.is_available():
+                self.test_device = torch.device('cuda:0')
+                self.device = "GPU"
+            else:
+                self.test_device = torch.device('cpu')
+                self.device = "CPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(

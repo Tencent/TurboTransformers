@@ -15,7 +15,12 @@ struct BadAlloc : public std::exception {
   std::string err_str_;
 };
 
-CUDAAllocator::~CUDAAllocator() { FreeCache(-1UL); }
+CUDAAllocator::~CUDAAllocator() {
+  // FIXME(jiaruifang) How to free device memory safely. We should not release
+  // memory in the deconstructor of a Singleton.
+  // https://stackoverflow.com/questions/35815597/cuda-call-fails-in-destructor
+  /*FreeCache(-1UL);*/
+}
 
 void CUDAAllocator::FreeCache(size_t size) {
   if (FT_UNLIKELY(size == 0)) return;
