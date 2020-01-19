@@ -40,18 +40,16 @@ def create_test():
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
                     torch_result = self.torch_model(input_ids)
-            print(f'BertEmb Plain PyTorch QPS {num_iter / t.elapsed}')
+            print(f'BertModel Plain PyTorch QPS {num_iter / t.elapsed}')
             ft_result = self.ft_model(input_ids)
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
                     ft_result = self.ft_model(input_ids)
 
-            print(f'BertEmb FastTransform QPS {num_iter / t.elapsed}')
+            print(f'BertModel FastTransform QPS {num_iter / t.elapsed}')
             torch_result = (torch_result[0][:, 0]).cpu().numpy()
             ft_result = ft_result.cpu().numpy()
 
-            # diff is 0.003478855
-            # print("max diff is ", numpy.max(numpy.abs(torch_result - ft_result)))
             self.assertTrue(
                 numpy.allclose(torch_result, ft_result, atol=5e-3, rtol=1e-4))
 

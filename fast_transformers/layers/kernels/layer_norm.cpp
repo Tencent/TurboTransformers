@@ -1,5 +1,5 @@
 #include "fast_transformers/layers/kernels/layer_norm.h"
-
+#include "fast_transformers/core/common.h"
 #ifdef FT_WITH_CUDA
 #include "fast_transformers/core/cuda_device_context.h"
 #include "fast_transformers/layers/kernels/gpu_layer_norm_kernel.h"
@@ -13,8 +13,9 @@ static constexpr float g_epsilon = 1e-12;
 template <typename T>
 void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
                core::Tensor* out_tensor) {
-  FT_ENFORCE_EQ(gamma.IsOnSameDevice(beta), true,
-                "LayerNorm gamma and beta must be on the same device");
+  FT_ENFORCE_EQ(
+      core::common::is_same_device_ctx(gamma.device_ctx(), beta.device_ctx()),
+      true, "LayerNorm gamma and beta must be on the same device context.");
 
   auto feature_dim = out_tensor->shape(out_tensor->n_dim() - 1);
   int64_t batch_size = std::accumulate(
@@ -72,15 +73,21 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
                       const core::Tensor& gamma_tensor,
                       const core::Tensor& beta_tensor,
                       core::Tensor* out_tensor) {
-  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(bias_tensor), true,
-                "AddBiasLayerNorm input_tensor and bias_tensor must be on the "
-                "same device");
-  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(gamma_tensor), true,
-                "AddBiasLayerNorm input_tensor and gamma_tensor must be on the "
-                "same device");
-  FT_ENFORCE_EQ(input_tensor.IsOnSameDevice(beta_tensor), true,
-                "AddBiasLayerNorm input_tensor and beta_tensor must be on the "
-                "same device");
+  FT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
+                                                 bias_tensor.device_ctx()),
+                true,
+                "AddBiasLayerNorm input_tensor and bias_tensor"
+                "should have the same device context.");
+  FT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
+                                                 gamma_tensor.device_ctx()),
+                true,
+                "AddBiasLayerNorm input_tensor and gamma_tensor"
+                "should have the same device context.");
+  FT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
+                                                 beta_tensor.device_ctx()),
+                true,
+                "AddBiasLayerNorm input_tensor and beta_tensor"
+                "should have the same device context.");
 
   T* out = out_tensor->mutableData<T>();
   const T* input = input_tensor.data<T>();

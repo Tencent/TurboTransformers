@@ -1,6 +1,5 @@
 #include "absl/memory/memory.h"
 #include "fast_transformers/core/blas.h"
-#include "fast_transformers/core/eigen-tensor.h"
 #include "fast_transformers/core/profiler.h"
 #include "fast_transformers/core/tensor.h"
 #include "fast_transformers/layers/bert_attention.h"
