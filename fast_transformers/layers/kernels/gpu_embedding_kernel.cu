@@ -1,5 +1,4 @@
 #include <cuda_runtime.h>
-#include <immintrin.h>
 #include <numeric>
 #include "fast_transformers/layers/kernels/gpu_embedding_kernel.h"
 
