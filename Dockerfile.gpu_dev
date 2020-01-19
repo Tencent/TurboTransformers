@@ -2,7 +2,7 @@ FROM nvidia/cuda:9.0-devel-ubuntu16.04
 
 # System packages
 RUN apt-get update && \
-    apt-get install -y curl git wget bzip2 build-essential g++ && rm -rf /var/lib/apt/lists/*
+    apt-get install -y curl git wget bzip2 build-essential ninja-build g++ && rm -rf /var/lib/apt/lists/*
 
 # Install miniconda
 ENV PATH=/opt/miniconda3/bin:${PATH} CONDA_PREFIX=/opt/miniconda3
@@ -10,7 +10,7 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     bash Miniconda3-latest-Linux-x86_64.sh -p /opt/miniconda3 -b && \
     rm Miniconda3-latest-Linux-x86_64.sh && \
     conda update -y conda && \
-    conda install pytorch cudatoolkit=9.0 -c pytorch && \
+    conda install mkl mkl-service -c anaconda && \
     conda install curl conda-verify conda-build mkl-include cmake -c anaconda && \
     conda install git git-lfs -c conda-forge  && \
     conda clean -afy
