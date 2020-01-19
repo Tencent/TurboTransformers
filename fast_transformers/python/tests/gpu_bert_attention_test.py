@@ -1,11 +1,11 @@
-import unittest
+import fast_transformers
 
+import unittest
 import contexttimer
 import torch
 import torch.jit
 import torch.onnx
 from transformers.modeling_bert import BertConfig, BertAttention
-import fast_transformers
 from transformers import BertTokenizer
 import os
 
@@ -13,7 +13,8 @@ fname = "ft_attention.txt"
 
 
 def create_test(batch_size, seq_length):
-    if not torch.cuda.is_available():
+    if not torch.cuda.is_available(
+    ) or not fast_transformers.config.is_with_cuda():
         return
 
     class TestBertAttention(unittest.TestCase):
