@@ -15,9 +15,18 @@ target_link_libraries(bert_intermediate loguru activation mat_mul)
 add_library(bert_output bert_output.cpp)
 target_link_libraries(bert_output loguru activation mat_mul)
 
-
 add_library(sequence_pool sequence_pool.cpp)
 target_link_libraries(sequence_pool tensor seq_pool)
 
 add_library(prepare_bert_masks prepare_bert_masks.cpp)
-target_link_libraries(prepare_bert_masks eigen-tensor)
+target_link_libraries(prepare_bert_masks tensor common)
+
+if (WITH_GPU)
+  target_link_libraries(prepare_bert_masks gpu_utils)
+endif ()
+
+add_executable(prepare_bert_masks_test prepare_bert_masks_test.cpp)
+target_link_libraries(prepare_bert_masks_test prepare_bert_masks Catch2 loguru enforce aligned_scratchpad)
+if (WITH_GPU)
+  target_link_libraries(prepare_bert_masks_test cuda_error cuda_device_context memory)
+endif()

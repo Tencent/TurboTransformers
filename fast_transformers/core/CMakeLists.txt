@@ -16,7 +16,10 @@ add_library(config config.cpp)
 target_link_libraries(config PUBLIC blas)
 
 add_library(common common.cpp)
-target_link_libraries(common tensor)
+target_link_libraries(common tensor dlpack)
+if (WITH_GPU)
+    target_link_libraries(common gpu_utils)
+endif ()
 
 add_library(enforce enforce.cpp)
 target_link_libraries(enforce PUBLIC absl::stacktrace absl::symbolize absl::strings absl::str_format PRIVATE ${RT_LIBRARY})
