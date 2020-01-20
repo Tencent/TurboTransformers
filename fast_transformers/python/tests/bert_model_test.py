@@ -1,49 +1,64 @@
-import fast_transformers
-
-import os
 import unittest
-
+import os
 import contexttimer
-import numpy
 import torch
 from transformers import BertTokenizer
-from transformers.modeling_bert import BertModel
+from transformers.modeling_bert import BertModel, BertConfig
+import numpy
+import fast_transformers
 
 
-class TestBertModel(unittest.TestCase):
-    def setUp(self) -> None:
-        model_id = os.path.join(os.path.dirname(__file__), 'test-model')
-        torch.set_grad_enabled(False)
-        torch.set_num_threads(1)
-        self.tokenizer = BertTokenizer.from_pretrained(model_id)
-        self.torch_model = BertModel.from_pretrained(model_id)
-        self.torch_model.eval()
-        self.ft_model = fast_transformers.BertModel.from_pretrained(model_id)
+def create_test():
+    class TestBertModel(unittest.TestCase):
+        def setUp(self) -> None:
+            model_id = os.path.join(os.path.dirname(__file__), 'test-model')
+            torch.set_grad_enabled(False)
+            torch.set_num_threads(1)
+            if torch.cuda.is_available():
+                self.test_device = torch.device('cpu:0')
+                self.device = "CPU"
+            else:
+                self.test_device = torch.device('cuda:0')
+                self.device = "GPU"
 
-    def test_bert_model(self):
-        num_iter = 100
-        input_ids = self.tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求?')
-        input_ids = torch.tensor([input_ids], dtype=torch.long)
+            self.tokenizer = BertTokenizer.from_pretrained(model_id)
+            self.torch_model = BertModel.from_pretrained(model_id)
+            self.torch_model.eval()
 
-        self.torch_model(input_ids)
-        with contexttimer.Timer() as t:
-            for it in range(num_iter):
-                torch_result = self.torch_model(input_ids)
-        print(f'BertModel Plain PyTorch QPS {num_iter / t.elapsed}')
-        ft_result = self.ft_model(input_ids)
-        with contexttimer.Timer() as t:
-            for it in range(num_iter):
-                ft_result = self.ft_model(input_ids)
+            if torch.cuda.is_available():
+                self.torch_model.to(self.test_device)
 
-        print(f'BertModel FastTransform QPS {num_iter / t.elapsed}')
-        torch_result = (torch_result[0][:, 0]).numpy()
-        ft_result = ft_result.numpy()
+            self.ft_model = fast_transformers.BertModel.from_pretrained(
+                model_id, self.test_device)
 
-        # diff is 0.003478855
-        # print("max diff is ", numpy.max(numpy.abs(torch_result - ft_result)))
-        self.assertTrue(
-            numpy.allclose(torch_result, ft_result, atol=5e-3, rtol=1e-4))
+        def test_bert_model(self):
+            num_iter = 100
+            input_ids = self.tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求?')
+            input_ids = torch.tensor([input_ids],
+                                     dtype=torch.long,
+                                     device=self.test_device)
 
+            self.torch_model(input_ids)
+            with contexttimer.Timer() as t:
+                for it in range(num_iter):
+                    torch_result = self.torch_model(input_ids)
+            print(f'BertModel Plain PyTorch QPS {num_iter / t.elapsed}')
+            ft_result = self.ft_model(input_ids)
+            with contexttimer.Timer() as t:
+                for it in range(num_iter):
+                    ft_result = self.ft_model(input_ids)
+
+            print(f'BertModel FastTransform QPS {num_iter / t.elapsed}')
+            torch_result = (torch_result[0][:, 0]).cpu().numpy()
+            ft_result = ft_result.cpu().numpy()
+
+            self.assertTrue(
+                numpy.allclose(torch_result, ft_result, atol=5e-3, rtol=1e-4))
+
+    globals()[f"TestBertModel"] = TestBertModel
+
+
+create_test()
 
 if __name__ == '__main__':
     unittest.main()
