@@ -1,11 +1,13 @@
-import unittest
+import fast_transformers
+
 import os
+import unittest
+
 import contexttimer
+import numpy
 import torch
 from transformers import BertTokenizer
-from transformers.modeling_bert import BertModel, BertConfig
-import numpy
-import fast_transformers
+from transformers.modeling_bert import BertModel
 
 
 class TestBertModel(unittest.TestCase):

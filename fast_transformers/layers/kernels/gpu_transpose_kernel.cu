@@ -1,5 +1,4 @@
 #include <cuda_runtime.h>
-#include <immintrin.h>
 #include <cstdio>
 #include <numeric>
 #include "fast_transformers/layers/kernels/gpu_transpose_kernel.h"

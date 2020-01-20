@@ -1,66 +1,66 @@
-### fast_transformers: »ùÓÚCPUµÄ¿ìËÙTransformerÍÆÀí¹¤¾ß
+### fast_transformers: åŸºäºCPUçš„å¿«é€ŸTransformeræ¨ç†å·¥å…·
 
-TransformerÊÇ½üÁ½ÄêÀ´NLPÁìÓò×îÖØÒªµÄÄ£ĞÍ´´ĞÂ£¬ÔÚ´øÀ´¸ü¸ßµÄÄ£ĞÍ¾«¶ÈµÄÍ¬Ê±Ò²ÒıÈëÁË¸ü¶àµÄ¼ÆËãÁ¿£¬Õâ¶Ô¸ßĞ§²¿ÊğTransformerÏßÉÏ·şÎñ´øÀ´ÁË¾Ş´óÌôÕ½¡£Ãæ¶Ô·á¸»µÄTransformerµÄÏßÉÏ·şÎñ³¡¾°£¬Î¢ĞÅÄ£Ê½Ê¶±ğÖĞĞÄ¿ªÔ´ÁËÃûÎªfast_transformersµÄ»ùÓÚIntel¶àºËCPUµÄTransformerÊµÏÖ¡£fast_transformers³ä·¢»ÓCPUµÄºË¼ä²¢ĞĞºÍÖ¸Áî¼¶²¢ĞĞÄÜÁ¦£¬²¢Ö§³Ö±ä³¤ÊäÈëĞòÁĞ´¦Àí£¬±ÜÃâÁË²¹ÁãµÄ¶îÍâ¼ÆËã¡£fast_transformerÔÚ¶àÖÖCPUÓ²¼şÉÏ»ñµÃÁË³¬¹ıpytorchºÍÄ¿Ç°Ö÷Á÷ÓÅ»¯ÒıÇæ£¨Èçonnxruntime-mkldnn ºÍtorch JIT£©µÄĞÔÄÜ±íÏÖ¡£Ê¹ÓÃ4/8¸öÏß³ÌÊ±£¬fast_transformerÔÚ10~128³¤¶ÈµÄĞòÁĞ´¦ÀíÈÎÎñÖĞ£¬Ïà±ÈÒÑ¿ªÔ´×îÓÅÊµÏÖÈ¡µÃÆ½¾ù20%ÒÔÉÏµÄ¼ÓËÙĞ§¹û¡£²¢ÇÒ£¬Ëü¶Ô¶ÌĞòÁĞµÄ´¦ÀíËÙ¶ÈÌáÉı¸üÎªÏÔÖø¡£fast_transformersÒÑ¾­Ó¦ÓÃÓÚÄ£Ê½Ê¶±ğÖĞĞÄµÄ¶à¸öÏßÉÏ·şÎñ·şÎñ³¡¾°¡£
+Transformeræ˜¯è¿‘ä¸¤å¹´æ¥NLPé¢†åŸŸæœ€é‡è¦çš„æ¨¡å‹åˆ›æ–°ï¼Œåœ¨å¸¦æ¥æ›´é«˜çš„æ¨¡å‹ç²¾åº¦çš„åŒæ—¶ä¹Ÿå¼•å…¥äº†æ›´å¤šçš„è®¡ç®—é‡ï¼Œè¿™å¯¹é«˜æ•ˆéƒ¨ç½²Transformerçº¿ä¸ŠæœåŠ¡å¸¦æ¥äº†å·¨å¤§æŒ‘æˆ˜ã€‚é¢å¯¹ä¸°å¯Œçš„Transformerçš„çº¿ä¸ŠæœåŠ¡åœºæ™¯ï¼Œå¾®ä¿¡æ¨¡å¼è¯†åˆ«ä¸­å¿ƒå¼€æºäº†åä¸ºfast_transformersçš„åŸºäºIntelå¤šæ ¸CPUçš„Transformerå®ç°ã€‚fast_transformerså……å‘æŒ¥CPUçš„æ ¸é—´å¹¶è¡Œå’ŒæŒ‡ä»¤çº§å¹¶è¡Œèƒ½åŠ›ï¼Œå¹¶æ”¯æŒå˜é•¿è¾“å…¥åºåˆ—å¤„ç†ï¼Œé¿å…äº†è¡¥é›¶çš„é¢å¤–è®¡ç®—ã€‚fast_transformeråœ¨å¤šç§CPUç¡¬ä»¶ä¸Šè·å¾—äº†è¶…è¿‡pytorchå’Œç›®å‰ä¸»æµä¼˜åŒ–å¼•æ“ï¼ˆå¦‚onnxruntime-mkldnn å’Œtorch JITï¼‰çš„æ€§èƒ½è¡¨ç°ã€‚ä½¿ç”¨4/8ä¸ªçº¿ç¨‹æ—¶ï¼Œfast_transformeråœ¨10~128é•¿åº¦çš„åºåˆ—å¤„ç†ä»»åŠ¡ä¸­ï¼Œç›¸æ¯”å·²å¼€æºæœ€ä¼˜å®ç°å–å¾—å¹³å‡20%ä»¥ä¸Šçš„åŠ é€Ÿæ•ˆæœã€‚å¹¶ä¸”ï¼Œå®ƒå¯¹çŸ­åºåˆ—çš„å¤„ç†é€Ÿåº¦æå‡æ›´ä¸ºæ˜¾è‘—ã€‚fast_transformerså·²ç»åº”ç”¨äºæ¨¡å¼è¯†åˆ«ä¸­å¿ƒçš„å¤šä¸ªçº¿ä¸ŠæœåŠ¡æœåŠ¡åœºæ™¯ã€‚
 
-### °²×°
-1.1 ±¾»ú¹¹½¨docker¾µÏñºÍÈİÆ÷
-±¾»ú¹¹½¨£¨±àÒëONNX-runtimeÊ±¼ä»áºÜ³¤£©
+### å®‰è£…
+1.1 æœ¬æœºæ„å»ºdockeré•œåƒå’Œå®¹å™¨
+æœ¬æœºæ„å»ºï¼ˆç¼–è¯‘ONNX-runtimeæ—¶é—´ä¼šå¾ˆé•¿ï¼‰
 ```
 sh tools/build_docker.sh
-# optional: ¹¹½¨±àÒë»·¾³Ê±ĞèÒªÁªÍø£¬ÌÚÑ¶ÄÚÍøĞèÒªÉèÖÃ´úÀí
+# optional: æ„å»ºç¼–è¯‘ç¯å¢ƒæ—¶éœ€è¦è”ç½‘ï¼Œè…¾è®¯å†…ç½‘éœ€è¦è®¾ç½®ä»£ç†
 export EXTRA_ARGS="--build-arg http_proxy=http://devnet-proxy.oa.com:8080 --build-arg https_proxy=http:/ /devnet-proxy.oa.com:8080"
 docker run -it --rm -v your/path/fast_transformers:/workspace --name=your_container_name REPOSITORY:TAG /bin/bash
 cd /workspace
-# optional:ÔÚ±àÒë»·¾³ÄÚ°²×°ÊÇÒ²ĞèÒªÁªÍø£¬ÌÚÑ¶ÄÚÍøÇëÉèÖÃ´úÀí
+# optional:åœ¨ç¼–è¯‘ç¯å¢ƒå†…å®‰è£…æ˜¯ä¹Ÿéœ€è¦è”ç½‘ï¼Œè…¾è®¯å†…ç½‘è¯·è®¾ç½®ä»£ç†
 export http_proxy=http://devnet-proxy.oa.com:8080
 export https_proxy=http://devnet-proxy.oa.com:8080
 export no_proxy=git.code.oa.com
 ```
 
-2. ÔÚdockerÄÚ°²×°condaºÍpip°ü
+2. åœ¨dockerå†…å®‰è£…condaå’ŒpipåŒ…
 
 ```
 sh tool/build_conda_package.sh
-# conda°ü»áÔÚ /workspace/dist/*.tar.bz2ÖĞ
-# ÔÚ±¾ÈİÆ÷ÍâÆäËû»·¾³Ê¹ÓÃfast_transformerÊ±Ö»ĞèÒªpython -m pip install your_root_path/dist/*.tar.bz2
+# condaåŒ…ä¼šåœ¨ /workspace/dist/*.tar.bz2ä¸­
+# åœ¨æœ¬å®¹å™¨å¤–å…¶ä»–ç¯å¢ƒä½¿ç”¨fast_transformeræ—¶åªéœ€è¦python -m pip install your_root_path/dist/*.tar.bz2
 ```
 
-3. ÔÚdockerÄÚ½øĞĞµ¥²â (optional)
+3. åœ¨dockerå†…è¿›è¡Œå•æµ‹ (optional)
 
 ```
 cd /workspace
-# ÏÂÔØÔ¤ÑµÁ·Ä£ĞÍ£¬ĞèÒªgit lfs£¬sudo yum install git-lfs
+# ä¸‹è½½é¢„è®­ç»ƒæ¨¡å‹ï¼Œéœ€è¦git lfsï¼Œsudo yum install git-lfs
 git lfs install
 git lfs pull
 sh tools/build_run_unittests.sh $PWD
 ```
-4. ÔÚdockerÄÚÔËĞĞbenchmark (optional)
+4. åœ¨dockerå†…è¿è¡Œbenchmark (optional)
 
 ```
 cd benchmark
 bash run_benchmark.sh
 ```
 
-### Ê¹ÓÃÊ¾Àı
-Fast_transformersÌá¹©ÁË¼òµ¥µÄµ÷ÓÃ½Ó¿Ú£¬Ìá¹©¼æÈİhuggingface/transformers [pytorch](https://github.com/huggingface "pytorch")Ä£ĞÍµÄµ÷ÓÃ·½Ê½¡£
-ÏÂÃæ´úÂëÆ¬¶ÎÕ¹Ê¾ÁËÈçºÎ½«huggingfaceÔ¤ÑµÁ·BERTÄ£ĞÍµ¼Èëfast_transformer²¢½øĞĞÒ»´ÎBERT encoderµÄ¼ÆËã¡£
+### ä½¿ç”¨ç¤ºä¾‹
+Fast_transformersæä¾›äº†ç®€å•çš„è°ƒç”¨æ¥å£ï¼Œæä¾›å…¼å®¹huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")æ¨¡å‹çš„è°ƒç”¨æ–¹å¼ã€‚
+ä¸‹é¢ä»£ç ç‰‡æ®µå±•ç¤ºäº†å¦‚ä½•å°†huggingfaceé¢„è®­ç»ƒBERTæ¨¡å‹å¯¼å…¥fast_transformerå¹¶è¿›è¡Œä¸€æ¬¡BERT encoderçš„è®¡ç®—ã€‚
 
 ```python
 import torch
 import transformers
 import fast_transformers
 
-# Ê¹ÓÃ4¸öÏß³ÌÔËĞĞfast_transformers
+# ä½¿ç”¨4ä¸ªçº¿ç¨‹è¿è¡Œfast_transformers
 fast_transformers.set_num_threads(4)
-# µ÷ÓÃtransformersÌá¹©µÄÔ¤ÑµÁ·Ä£ĞÍ
+# è°ƒç”¨transformersæä¾›çš„é¢„è®­ç»ƒæ¨¡å‹
 model = transformers.BertModel.from_pretrained(
     "bert-base-chinese")
 model.eval()
-# Ô¤ÑµÁ·Ä£ĞÍµÄÅäÖÃ
+# é¢„è®­ç»ƒæ¨¡å‹çš„é…ç½®
 cfg = model.config
 batch_size = 2
 seq_len = 128
-#Ëæ»úÉú³ÉÎÄ±¾ĞòÁĞ
+#éšæœºç”Ÿæˆæ–‡æœ¬åºåˆ—
 torch.manual_seed(1)
 input_ids = torch.randint(low=0,
                             high=cfg.vocab_size - 1,
@@ -68,43 +68,43 @@ input_ids = torch.randint(low=0,
                             dtype=torch.long)
 torch.set_grad_enabled(False)
 torch_res = model(input_ids) # sequence_output, pooled_output, (hidden_states), (attentions)
-print(torch_res[0][:,0,:])  # »ñÈ¡encoderµÃµ½µÄµÚÒ»¸öÒş×´Ì¬
+print(torch_res[0][:,0,:])  # è·å–encoderå¾—åˆ°çš„ç¬¬ä¸€ä¸ªéšçŠ¶æ€
 # tensor([[-1.4238,  1.0980, -0.3257,  ...,  0.7149, -0.3883, -0.1134],
 #        [-0.8828,  0.6565, -0.6298,  ...,  0.2776, -0.4459, -0.2346]])
 
-# ¹¹½¨bert-encoderµÄÄ£ĞÍ£¬Êä³öfirst·½Ê½poolingµÄ½á¹û
+# æ„å»ºbert-encoderçš„æ¨¡å‹ï¼Œè¾“å‡ºfirstæ–¹å¼poolingçš„ç»“æœ
 ft_model = fast_transformers.BertModel.from_torch(model)
 res = ft_model(input_ids)
 print(res)
 # tensor([[-1.4292,  1.0934, -0.3270,  ...,  0.7212, -0.3893, -0.1172],
 #         [-0.8878,  0.6571, -0.6331,  ...,  0.2759, -0.4496, -0.2375]])
 ```
-¸ü¶àÊ¹ÓÃ½Ó¿Ú¿ÉÒÔ²Î¿¼ ./benchmark/benchmark.pyÎÄ¼ş
+æ›´å¤šä½¿ç”¨æ¥å£å¯ä»¥å‚è€ƒ ./benchmark/benchmark.pyæ–‡ä»¶
 
 
-## ĞÔÄÜ
-ÎÒÃÇÔÚÈıÖÖÓ²¼şÆ½Ì¨²âÊÔÁËfast_transformersµÄĞÔÄÜ±íÏÖ¡£
-ÎÒÃÇÑ¡Ôñ[pytorch](https://github.com/huggingface "pytorch")£¬[pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit")ºÍ[onnxruntime-mkldnn]( https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn")ÊµÏÖ×÷Îª¶Ô±È¡£ĞÔÄÜ²âÊÔ½á¹ûÎªµü´ú150´ÎµÄ¾ùÖµ¡£ÎªÁË±ÜÃâ¶à´Î²âÊÔÊ±£¬ÉÏ´Îµü´úµÄÊı¾İÔÚcacheÖĞ»º´æµÄÏÖÏó£¬Ã¿´Î²âÊÔ²ÉÓÃËæ»úÊı¾İ£¬²¢ÔÚ¼ÆËãºóË¢ĞÂµÄcacheÊı¾İ¡£
+## æ€§èƒ½
+æˆ‘ä»¬åœ¨ä¸‰ç§ç¡¬ä»¶å¹³å°æµ‹è¯•äº†fast_transformersçš„æ€§èƒ½è¡¨ç°ã€‚
+æˆ‘ä»¬é€‰æ‹©[pytorch](https://github.com/huggingface "pytorch")ï¼Œ[pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit")å’Œ[onnxruntime-mkldnn]( https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn")å®ç°ä½œä¸ºå¯¹æ¯”ã€‚æ€§èƒ½æµ‹è¯•ç»“æœä¸ºè¿­ä»£150æ¬¡çš„å‡å€¼ã€‚ä¸ºäº†é¿å…å¤šæ¬¡æµ‹è¯•æ—¶ï¼Œä¸Šæ¬¡è¿­ä»£çš„æ•°æ®åœ¨cacheä¸­ç¼“å­˜çš„ç°è±¡ï¼Œæ¯æ¬¡æµ‹è¯•é‡‡ç”¨éšæœºæ•°æ®ï¼Œå¹¶åœ¨è®¡ç®—ååˆ·æ–°çš„cacheæ•°æ®ã€‚
 
 
 * Intel Xeon 61xx
 
 
-ÔÚ61xxÉÏ£¬ËÄÖÖTransformerÊµÏÖĞÔÄÜ¶Ô±È½á¹ûÈçÏÂÃæÁ½ÕÅÍ¼ËùÊ¾¡£¿ÉÒÔ¹Û²ìµ½ÔÚÏß³ÌÊıÎª1Ê±£¬ËÄÖÖÊµÏÖµÄ²î±ğ²¢²»´ó¡£Ëæ×ÅÏß³ÌÊıÔö¶à£¬fast_transformersµÄĞÔÄÜÓÅÊÆÖğ²½Ôö´ó£¬µ±Ïß³ÌÎª8Ê±¼ÓËÙĞ§¹û×îÎªÃ÷ÏÔ¡£ÁíÍâ£¬Ëæ×Åseq_length³¤¶ÈÔö³¤£¬fast_transformersµÄ¼ÓËÙĞ§¹û¼õÈõ£¬Ô­ÒòÊÇ´ËÊ±GEMMÔËËãÊ±¼äÕ¼±ÈÔö´ó£¬ºËĞÄÈÚºÏ´øÀ´ÔöÒæ¼õÉÙ¡£
+åœ¨61xxä¸Šï¼Œå››ç§Transformerå®ç°æ€§èƒ½å¯¹æ¯”ç»“æœå¦‚ä¸‹é¢ä¸¤å¼ å›¾æ‰€ç¤ºã€‚å¯ä»¥è§‚å¯Ÿåˆ°åœ¨çº¿ç¨‹æ•°ä¸º1æ—¶ï¼Œå››ç§å®ç°çš„å·®åˆ«å¹¶ä¸å¤§ã€‚éšç€çº¿ç¨‹æ•°å¢å¤šï¼Œfast_transformersçš„æ€§èƒ½ä¼˜åŠ¿é€æ­¥å¢å¤§ï¼Œå½“çº¿ç¨‹ä¸º8æ—¶åŠ é€Ÿæ•ˆæœæœ€ä¸ºæ˜æ˜¾ã€‚å¦å¤–ï¼Œéšç€seq_lengthé•¿åº¦å¢é•¿ï¼Œfast_transformersçš„åŠ é€Ÿæ•ˆæœå‡å¼±ï¼ŒåŸå› æ˜¯æ­¤æ—¶GEMMè¿ç®—æ—¶é—´å æ¯”å¢å¤§ï¼Œæ ¸å¿ƒèåˆå¸¦æ¥å¢ç›Šå‡å°‘ã€‚
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575381653_78_w1546_h784.png" alt="61xxĞÔÄÜ1">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575382049_44_w1676_h845.png" alt="61xxĞÔÄÜ2">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575381653_78_w1546_h784.png" alt="61xxæ€§èƒ½1">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575382049_44_w1676_h845.png" alt="61xxæ€§èƒ½2">
 
 * Intel Xeon 6133
 
-Ïà±È61xxĞÍºÅ£¬Intel Xeon 6133ÏòÁ¿»¯³¤¶È¸ü³¤Îª512 bit£¬²¢ÇÒËüÓµÓĞÒ»¸ö30 MBºË¼ä¹²ÏíL3 cache¡£ÈçÏÂÁ½ÕÅÍ¼Õ¹Ê¾ÁË6133µÄĞÔÄÜ±íÏÖ¡£¶àÏß³ÌµÄ´ó²¿·Öcase£¬fast_transformers½á¹ûÓÅÓÚÆäËûÊµÏÖ¡£±È½ÏÌØÊâµÄcaseÊÇĞòÁĞ³¤¶ÈÎª10ºÍ20µÄÇé¿ö¡£Ôì³ÉÕâÖÖÏÖÏóÊÇÓÉÓÚMKL AVX512 GEMMÀı³ÌµÄÔµ¹Ê£¬ÔÚIntel 6133 CPUÉÏ£¬ÎÒÃÇ·¢ÏÖËæ×Åseq_lengthÔö¼Ó£¬GEMMÔËËãµÄÑÓ³Ù»á³öÏÖÒ»¸öÌø±äµÄÏÖÏó¡£
+ç›¸æ¯”61xxå‹å·ï¼ŒIntel Xeon 6133å‘é‡åŒ–é•¿åº¦æ›´é•¿ä¸º512 bitï¼Œå¹¶ä¸”å®ƒæ‹¥æœ‰ä¸€ä¸ª30 MBæ ¸é—´å…±äº«L3 cacheã€‚å¦‚ä¸‹ä¸¤å¼ å›¾å±•ç¤ºäº†6133çš„æ€§èƒ½è¡¨ç°ã€‚å¤šçº¿ç¨‹çš„å¤§éƒ¨åˆ†caseï¼Œfast_transformersç»“æœä¼˜äºå…¶ä»–å®ç°ã€‚æ¯”è¾ƒç‰¹æ®Šçš„caseæ˜¯åºåˆ—é•¿åº¦ä¸º10å’Œ20çš„æƒ…å†µã€‚é€ æˆè¿™ç§ç°è±¡æ˜¯ç”±äºMKL AVX512 GEMMä¾‹ç¨‹çš„ç¼˜æ•…ï¼Œåœ¨Intel 6133 CPUä¸Šï¼Œæˆ‘ä»¬å‘ç°éšç€seq_lengthå¢åŠ ï¼ŒGEMMè¿ç®—çš„å»¶è¿Ÿä¼šå‡ºç°ä¸€ä¸ªè·³å˜çš„ç°è±¡ã€‚
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575384757_71_w1751_h886.png" alt="6133ĞÔÄÜ1">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575385675_63_w1602_h804.png" alt="6133ĞÔÄÜ2">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575384757_71_w1751_h886.png" alt="6133æ€§èƒ½1">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575385675_63_w1602_h804.png" alt="6133æ€§èƒ½2">
 
 
 * intel i9-9800 CPU
 
-ÈçÏÂÁ½ÕÅÍ¼Õ¹Ê¾ÁËintel i9ÉÏµÄĞÔÄÜ±íÏÖ¡£ÔÙÏß³ÌÊı´óÓÚ1Ê±£¬fast_transformerµÄĞÔÄÜÓÅÓÚÆäËûÊµÏÖ¡£
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575425550_58_w2920_h1474.png" alt="6133ĞÔÄÜ1">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575425573_3_w3042_h1534.png" alt="6133ĞÔÄÜ2">
+å¦‚ä¸‹ä¸¤å¼ å›¾å±•ç¤ºäº†intel i9ä¸Šçš„æ€§èƒ½è¡¨ç°ã€‚å†çº¿ç¨‹æ•°å¤§äº1æ—¶ï¼Œfast_transformerçš„æ€§èƒ½ä¼˜äºå…¶ä»–å®ç°ã€‚
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575425550_58_w2920_h1474.png" alt="6133æ€§èƒ½1">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575425573_3_w3042_h1534.png" alt="6133æ€§èƒ½2">

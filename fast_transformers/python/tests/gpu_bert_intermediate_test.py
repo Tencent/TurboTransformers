@@ -11,7 +11,8 @@ import os
 
 
 def create_test(batch_size, seq_length):
-    if not torch.cuda.is_available():
+    if not torch.cuda.is_available(
+    ) or not fast_transformers.config.is_with_cuda():
         return
 
     class TestBertIntermediate(unittest.TestCase):
