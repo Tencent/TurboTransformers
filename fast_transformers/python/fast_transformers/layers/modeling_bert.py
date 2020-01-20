@@ -315,10 +315,11 @@ class BertModel:
         return BertModel(embeddings, encoder)
 
     @staticmethod
-    def from_pretrained(model_id_or_path: str, device_name: str = "cpu:0"):
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
-        if 'cuda' in device_name and torch.cuda.is_available():
-            device = torch.device(device_name)
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
+        ):
             torch_model.to(device)
         model = BertModel.from_torch(torch_model)
         model.config = torch_model.config

@@ -14,7 +14,7 @@ def create_test():
             model_id = os.path.join(os.path.dirname(__file__), 'test-model')
             torch.set_grad_enabled(False)
             torch.set_num_threads(1)
-            if torch.cuda.is_available():
+            if not torch.cuda.is_available():
                 self.test_device = torch.device('cpu:0')
                 self.device = "CPU"
             else:
