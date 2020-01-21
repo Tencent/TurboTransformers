@@ -1,6 +1,6 @@
 #pragma once
+#include "cub/cub.cuh"
 #include "fast_transformers/core/tensor.h"
-
 namespace fast_transformers {
 namespace layers {
 namespace kernels {

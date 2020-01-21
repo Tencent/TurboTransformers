@@ -1,4 +1,5 @@
 #include "fast_transformers/layers/kernels/layer_norm.h"
+
 #include "fast_transformers/core/common.h"
 #ifdef FT_WITH_CUDA
 #include "fast_transformers/core/cuda_device_context.h"
@@ -53,8 +54,9 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
   } else if (out_tensor->device_type() == kDLGPU) {
 #ifdef FT_WITH_CUDA
     auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPULayerNorm(out, gamma_ptr, beta_ptr, batch_size, feature_dim,
-                 cuda_ctx.stream());
+    T* bias = nullptr;
+    GPULayerNorm</*AddBias*/ false>(out, out, bias, gamma_ptr, beta_ptr,
+                                    batch_size, feature_dim, cuda_ctx.stream());
 #else
     FT_THROW("The current code is not compiled with CUDA.");
 #endif
@@ -126,7 +128,8 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
   } else if (input_tensor.device_type() == kDLGPU) {
 #ifdef FT_WITH_CUDA
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPUAddBiasLayerNorm(out, input, bias, gamma, beta, m, n, cuda_ctx.stream());
+    GPULayerNorm</*AddBias*/ true>(out, input, bias, gamma, beta, m, n,
+                                   cuda_ctx.stream());
 #endif
   } else {
     FT_THROW("device_type is not supported");

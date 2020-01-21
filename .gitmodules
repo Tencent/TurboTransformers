@@ -16,3 +16,6 @@
 [submodule "hunter-gate"]
 	path = hunter-gate
 	url = https://github.com/hunter-packages/gate.git
+[submodule "3rd/cub"]
+	path = 3rd/cub
+	url = https://github.com/NVlabs/cub
