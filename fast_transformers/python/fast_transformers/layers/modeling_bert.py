@@ -236,14 +236,11 @@ class PoolingType(enum.Enum):
     MAX = "Max"
 
 
-# TODO(jiaruifang) Since pooling is the last proceduce of Bert Model,
-# I implement a python version instead of a cuda version.
 def pooling_layers(input_ft_tensor, pool_type):
     input_torch = convert_returns_as_type(input_ft_tensor, ReturnType.TORCH)
     if pool_type == PoolingType.FIRST:
         return input_torch[:, 0, :]
     elif pool_type == PoolingType.LAST:
-        seq_len = input.shape[1]
         return input_torch[:, -1, :]
     elif pool_type == PoolingType.MEAN:
         return np.mean(input_torch, axis=1)
@@ -254,11 +251,6 @@ def pooling_layers(input_ft_tensor, pool_type):
 
 
 class BertModel:
-    _pooling_layers = {
-        enum_val: SequencePool(enum_val.value)
-        for enum_val in PoolingType
-    }
-
     def __init__(self, embeddings: BertEmbeddings, encoder: BertEncoder):
         self.embeddings = embeddings
         self.encoder = encoder
@@ -302,11 +294,6 @@ class BertModel:
             return _try_convert(output_tensor, return_type)
         else:
             return output_tensor
-
-        # TODO (jiaruifang) implement a cuda verison.
-        # return self._pooling_layers[pooling_type](hidden_cache,
-        #                                           return_type=return_type,
-        #                                           output_tensor=output)
 
     @staticmethod
     def from_torch(model: TorchBertModel):
