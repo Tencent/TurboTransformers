@@ -116,8 +116,8 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
       ::fast_transformers::test::FillDataForCPUGPUTensors<float>(cpu_out,
                                                                  gpu_out);
 
-      LOG_S(INFO) << "batch_size: " << batch_size
-                  << " seq_length: " << seq_length;
+      std::cout << "batch_size: " << batch_size
+                << " seq_length: " << seq_length;
       {
         AddBiasLayerNorm<float>(cpu_input, cpu_bias, cpu_gamma, cpu_beta,
                                 &cpu_out);
@@ -139,10 +139,10 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
       auto elapse = double(duration.count()) *
                     std::chrono::microseconds::period::num /
                     std::chrono::microseconds::period::den / step;
-      std::cout << "AddBiasLayerNorm cost:"
+      std::cout << "GPU AddBiasLayerNorm cost, "
                 << batch_size * seq_length * hidden_size * sizeof(float) / 1e9 /
                        elapse
-                << "GB/s";
+                << ", GB/s";
     }  // for
 }
 #endif
