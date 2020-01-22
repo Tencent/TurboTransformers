@@ -1,0 +1,36 @@
+# Build ONNX Runtime for benchmark
+FROM continuumio/miniconda3 as OnnxRTBuilder
+RUN apt-get update && apt-get install -y build-essential
+RUN /opt/conda/bin/conda install mklml cmake curl git numpy -c anaconda
+RUN mkdir /src && cd /src/ && git clone -v https://github.com/microsoft/onnxruntime.git &&\
+    cd onnxruntime && git checkout v1.0.0 && git submodule update --init --recursive
+
+RUN cd /src/onnxruntime &&\
+    mkdir -p /src/onnxruntime/build/Linux/Release &&\
+    ./build.sh --config=Release --update --build --build_wheel --use_mkldnn --use_mklml --parallel
+
+# Build pprof for profile
+FROM golang:1.13.4-stretch as PProfBuilder
+RUN CGO_ENABLED=0 GOOS=linux go get -u -v github.com/google/pprof
+
+
+# Develop image
+FROM continuumio/miniconda3
+COPY --from=PProfBuilder /go/bin/pprof /bin/pprof
+
+# Try to install deps by anaconda
+# NOTE:  1. MKL is installed with pytorch.
+#           Fast-Transformers will use the same MKL from PyTorch
+RUN /opt/conda/bin/conda install pytorch cpuonly -c pytorch && \
+    /opt/conda/bin/conda install curl conda-verify conda-build mkl-include cmake -c anaconda &&  \
+    /opt/conda/bin/conda install git graphviz gperftools git-lfs -c conda-forge  && \
+    /opt/conda/bin/conda clean -afy
+
+COPY --from=OnnxRTBuilder /src/onnxruntime/build/Linux/Release/dist/onnxruntime-*.whl \
+    /opt/
+RUN pip install /opt/onnxruntime-*.whl
+# Install c++ compiler only
+RUN apt-get update && apt-get install -y g++ && rm -rf /var/lib/apt/lists/*
+# OnnxRuntime needs libpython*.so
+# see issue https://github.com/microsoft/onnxruntime/issues/2058
+ENV LD_LIBRARY_PATH /opt/conda/lib

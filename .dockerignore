@@ -1,0 +1,13 @@
+.idea
+cmake-build-*
+venv
+.vscode
+build
+*.onnx
+onnxruntime_profile_*json
+tmp
+build2
+.git
+*.pyc
+*.gperf
+Dockerfile.dev

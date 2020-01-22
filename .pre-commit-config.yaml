@@ -1,0 +1,18 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.4.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-added-large-files
+-   repo: https://github.com/doublify/pre-commit-clang-format
+    rev: master
+    hooks:
+    -   id: clang-format
+        files: \.(c|cc|cxx|cpp|frag|glsl|h|hpp|hxx|ih|ispc|ipp|java|js|m|mm|proto|vert|cu)$
+-   repo: https://github.com/pre-commit/mirrors-yapf
+    rev: 'v0.28.0'
+    hooks:
+        -   id: yapf
