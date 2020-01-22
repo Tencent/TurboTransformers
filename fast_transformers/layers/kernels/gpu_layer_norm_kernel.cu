@@ -34,7 +34,7 @@ template <bool isAdd, int BlockDim, typename T>
 static __global__ void layer_norm_kernel(T *out, const T *input, const T *bias,
                                          const T *gamma, const T *beta, int m,
                                          int n) {
-  using CubBlockReduce = cub::BlockReduce<DataPair<double>, BlockDim>;
+  using CubBlockReduce = cub::BlockReduce<DataPair<float>, BlockDim>;
   __shared__ typename CubBlockReduce::TempStorage temp_storage;
   __shared__ T s_mean;
   __shared__ T s_variance;
@@ -52,13 +52,11 @@ static __global__ void layer_norm_kernel(T *out, const T *input, const T *bias,
 
   auto pair =
       CubBlockReduce(temp_storage)
-          .Reduce(DataPair<double>(val1, val2), DataPairAddFunc<double>());
-  T mean = pair.first / n;
-  T variance = rsqrtf(pair.second / n - mean * mean + 1e-6f);
+          .Reduce(DataPair<float>(val1, val2), DataPairAddFunc<float>());
 
   if (tid == 0) {
-    s_mean = mean;
-    s_variance = variance;
+    s_mean = pair.first / n;
+    s_variance = rsqrtf(pair.second / n - s_mean * s_mean + 1e-6f);
   }
   __syncthreads();
 

@@ -62,6 +62,7 @@ if (WITH_GPU)
 endif()
 
 
+
 add_library(seq_pool seq_pool.cpp)
 target_link_libraries(seq_pool tensor enforce)
 
