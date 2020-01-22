@@ -31,7 +31,7 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
     for (int64_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
       T mean = static_cast<T>(0);
       T var = static_cast<T>(0);
-#pragma omp simd reduction(+ : mean)
+#pragma omp simd reduction(+ : mean, var)
       for (int64_t i = batch_idx * feature_dim;
            i < (batch_idx + 1) * feature_dim; i++) {
         T t = out[i];
@@ -104,7 +104,7 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
     for (int64_t batch_idx = 0; batch_idx < m; ++batch_idx) {
       float mean = 0;
       float var = 0;
-#pragma omp simd reduction(+ : mean)
+#pragma omp simd reduction(+ : mean, var)
       for (int64_t i = batch_idx * n; i < (batch_idx + 1) * n; i++) {
         int64_t j = i - batch_idx * n;
         float t = out[i] = out[i] + input[i] + bias[j];

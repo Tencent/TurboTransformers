@@ -147,6 +147,61 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
 }
 #endif
 
+TEST_CASE("add_bias_layer_norm CPU benchmark") {
+  int64_t hidden_size = 12 * 64;
+
+  std::vector<int64_t> batch_size_list{1, 20};
+  std::vector<int64_t> seq_length_list{8, 16, 32, 48, 64, 128};
+  for (auto batch_size : batch_size_list)
+    for (auto seq_length : seq_length_list) {
+      fast_transformers::core::Tensor cpu_input(
+          fast_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, seq_length, hidden_size}, kDLCPU, 0));
+
+      fast_transformers::core::Tensor cpu_bias(
+          fast_transformers::core::NewDLPackTensorT<float>({hidden_size},
+                                                           kDLCPU, 0));
+
+      fast_transformers::core::Tensor cpu_gamma(
+          fast_transformers::core::NewDLPackTensorT<float>({hidden_size},
+                                                           kDLCPU, 0));
+
+      fast_transformers::core::Tensor cpu_beta(
+          fast_transformers::core::NewDLPackTensorT<float>({hidden_size},
+                                                           kDLCPU, 0));
+
+      fast_transformers::core::Tensor cpu_out(
+          fast_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, seq_length, hidden_size}, kDLCPU, 0));
+
+      test::RandomFillHost(cpu_input.mutableData<float>(), cpu_input.numel());
+      test::RandomFillHost(cpu_bias.mutableData<float>(), cpu_bias.numel());
+      test::RandomFillHost(cpu_gamma.mutableData<float>(), cpu_gamma.numel());
+      test::RandomFillHost(cpu_beta.mutableData<float>(), cpu_beta.numel());
+      test::RandomFillHost(cpu_out.mutableData<float>(), cpu_out.numel());
+
+      std::cout << "batch_size: " << batch_size << " seq_length: " << seq_length
+                << " ";
+
+      int step = 150;
+      auto start = std::chrono::system_clock::now();
+      for (int i = 0; i < step; ++i) {
+        AddBiasLayerNorm<float>(cpu_input, cpu_bias, cpu_gamma, cpu_beta,
+                                &cpu_out);
+      }
+      auto end = std::chrono::system_clock::system_clock::now();
+      auto duration =
+          std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+      auto elapse = double(duration.count()) *
+                    std::chrono::microseconds::period::num /
+                    std::chrono::microseconds::period::den / step;
+      std::cout << "CPU AddBiasLayerNorm cost,"
+                << batch_size * seq_length * hidden_size * sizeof(float) / 1e9 /
+                       elapse
+                << ", GB/s" << std::endl;
+    }  // for
+}
+
 }  // namespace kernels
 }  // namespace layers
 }  // namespace fast_transformers
