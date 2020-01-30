@@ -39,7 +39,7 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
     }
   } else {
     for (int i = tid; i < n; i += blockDim.x) {
-      local_out += (out[blockIdx.x * n + i]);
+      local_out += (input[blockIdx.x * n + i]);
     }
   }
 
