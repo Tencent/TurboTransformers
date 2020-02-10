@@ -8,7 +8,7 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-//#define USE_UNROLL
+#define USE_UNROLL
 // blk_size == 4
 __global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
                                     int batch_size, int head_num, int seq_len,
@@ -463,6 +463,7 @@ void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
         qk_buf, attr_mask, batch_size, head_num, seq_len, scale, blk_size);
   }
 }
+#endif USE_UNROLL
 
 }  // namespace kernels
 }  // namespace layers
