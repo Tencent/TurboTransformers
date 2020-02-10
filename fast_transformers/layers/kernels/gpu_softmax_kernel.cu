@@ -71,7 +71,7 @@ __global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
   }    // for i
 
   // dealing with the reminding lines
-  int blk_size_inner = seq_len % max_blk_inner_size;
+  int blk_size_inner = blk_size % max_blk_inner_size;
   if (blk_size_inner == 0) return;
   if (threadIdx.x < seq_len) {
     for (int j = 0; j < blk_size_inner; ++j) {
@@ -171,7 +171,7 @@ __global__ void softmax_kernel_blk5(float* qk_buf_, const float* attr_mask,
   }    // for i
 
   // dealing with reminding lines
-  int blk_size_inner = seq_len % max_blk_inner_size;
+  int blk_size_inner = blk_size % max_blk_inner_size;
   if (blk_size_inner == 0) return;
   if (threadIdx.x < seq_len) {
     for (int j = 0; j < blk_size_inner; ++j) {
@@ -364,32 +364,23 @@ void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
 
   // block size must be 32x, so warp reduce can work
   block.x = (seq_len + 31) / 32 * 32;
-  if (batch_size * head_num <= 120) {
-    blk_size = 5;
-    // In the senario of BERT inference, high_dim_size is 4x because head_num is
-    // 12
+  blk_size = 12;
+  // In the senario of BERT inference, high_dim_size is 4x because head_num is
+  // 12
+  if (high_dim_size < 40 * 12) {
+    grid.x = high_dim_size;
+    softmax_kernel_blk1<<<grid, block, 0, stream>>>(
+        qk_buf, attr_mask, batch_size, head_num, seq_len, scale);
+  } else {
     if (high_dim_size % blk_size == 0) {
       grid.x = high_dim_size / blk_size;
-      if (blk_size == 5) {
-        softmax_kernel_blk5<<<grid, block, 0, stream>>>(
-            qk_buf, attr_mask, batch_size, head_num, seq_len, scale, blk_size);
-
-      } else if (blk_size == 4) {
-        softmax_kernel_blk4<<<grid, block, 0, stream>>>(
-            qk_buf, attr_mask, batch_size, head_num, seq_len, scale, blk_size);
-      } else {
-        printf("blk_size %d is not supported\n", blk_size);
-      }
+      softmax_kernel_blk4<<<grid, block, 0, stream>>>(
+          qk_buf, attr_mask, batch_size, head_num, seq_len, scale, blk_size);
     } else {
       grid.x = high_dim_size;
       softmax_kernel_blk1<<<grid, block, 0, stream>>>(
           qk_buf, attr_mask, batch_size, head_num, seq_len, scale);
     }
-  } else {
-    blk_size = seq_len;
-    grid.x = batch_size * head_num * seq_len / blk_size;
-    softmax_kernel_blk5<<<grid, block, 0, stream>>>(
-        qk_buf, attr_mask, batch_size, head_num, seq_len, scale, blk_size);
   }
 }
 
