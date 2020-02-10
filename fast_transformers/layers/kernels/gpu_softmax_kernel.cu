@@ -463,7 +463,7 @@ void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
         qk_buf, attr_mask, batch_size, head_num, seq_len, scale, blk_size);
   }
 }
-#endif USE_UNROLL
+#undef USE_UNROLL
 
 }  // namespace kernels
 }  // namespace layers
