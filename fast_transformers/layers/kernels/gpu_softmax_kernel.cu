@@ -8,7 +8,6 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-#define USE_UNROLL
 // blk_size == 4
 __global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
                                     int batch_size, int head_num, int seq_len,
@@ -31,7 +30,6 @@ __global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
   for (i = 0; i < blk_size / max_blk_inner_size * max_blk_inner_size;
        i += max_blk_inner_size) {
     int blk_size_inner = max_blk_inner_size;
-#ifdef USE_UNROLL
     if (threadIdx.x < seq_len) {
       int qk_buf_offset = qk_offset + i * seq_len;
       qk = (float)qk_buf_[qk_buf_offset];
@@ -55,54 +53,20 @@ __global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
       qk_sum_list[2] = qk_list[2] = 0.0;
       qk_sum_list[3] = qk_list[3] = 0.0;
     }
-#else
-    if (threadIdx.x < seq_len) {
-      for (int j = 0; j < blk_size_inner; ++j) {
-        qk = (float)qk_buf_[qk_offset + (i + j) * seq_len];
-        qk_sum_list[j] = qk_list[j] =
-            __expf((float)(qk * (float)scaler + mask_val));
-      }
-    } else {
-      for (int j = 0; j < blk_size_inner; ++j) {
-        qk_sum_list[j] = qk_list[j] = 0.0;
-      }
-    }
-#endif
-
-#ifdef USE_UNROLL
     blockReduceSum_Elem4(qk_sum_list);
-#else
-    for (int j = 0; j < blk_size_inner; ++j) {
-      qk_sum_list[j] = blockReduceSum(qk_list[j]);
-      __syncthreads();
-    }
-#endif
-
     if (tid == 0) {
-#ifdef USE_UNROLL
       s_sum[0] = qk_sum_list[0] + 1e-6f;
       s_sum[1] = qk_sum_list[1] + 1e-6f;
       s_sum[2] = qk_sum_list[2] + 1e-6f;
       s_sum[3] = qk_sum_list[3] + 1e-6f;
-#else
-      for (int j = 0; j < blk_size_inner; ++j) {
-        s_sum[j] = qk_sum_list[j] + 1e-6f;
-      }
-#endif
     }
     __syncthreads();
 
     if (threadIdx.x < seq_len) {
-#ifdef USE_UNROLL
       qk_buf_[qk_offset + seq_len * (i + 0)] = (float)(qk_list[0] / s_sum[0]);
       qk_buf_[qk_offset + seq_len * (i + 1)] = (float)(qk_list[1] / s_sum[1]);
       qk_buf_[qk_offset + seq_len * (i + 2)] = (float)(qk_list[2] / s_sum[2]);
       qk_buf_[qk_offset + seq_len * (i + 3)] = (float)(qk_list[3] / s_sum[3]);
-#else
-      for (int j = 0; j < blk_size_inner; ++j) {
-        qk_buf_[qk_offset + seq_len * (i + j)] = (float)(qk_list[j] / s_sum[j]);
-      }
-#endif
     }  // endif
   }    // for i
 
@@ -159,7 +123,6 @@ __global__ void softmax_kernel_blk5(float* qk_buf_, const float* attr_mask,
   for (i = 0; i < blk_size / max_blk_inner_size * max_blk_inner_size;
        i += max_blk_inner_size) {
     int blk_size_inner = max_blk_inner_size;
-#ifdef USE_UNROLL
     if (threadIdx.x < seq_len) {
       int qk_buf_offset = qk_offset + i * seq_len;
       qk = (float)qk_buf_[qk_buf_offset];
@@ -188,56 +151,22 @@ __global__ void softmax_kernel_blk5(float* qk_buf_, const float* attr_mask,
       qk_sum_list[3] = qk_list[3] = 0.0;
       qk_sum_list[4] = qk_list[4] = 0.0;
     }
-#else
-    if (threadIdx.x < seq_len) {
-      for (int j = 0; j < blk_size_inner; ++j) {
-        qk = (float)qk_buf_[qk_offset + (i + j) * seq_len];
-        qk_sum_list[j] = qk_list[j] =
-            __expf((float)(qk * (float)scaler + mask_val));
-      }
-    } else {
-      for (int j = 0; j < blk_size_inner; ++j) {
-        qk_sum_list[j] = qk_list[j] = 0.0;
-      }
-    }
-#endif
-
-#ifdef USE_UNROLL
     blockReduceSum_Elem5(qk_sum_list, blk_size_inner);
-#else
-    for (int j = 0; j < blk_size_inner; ++j) {
-      qk_sum_list[j] = blockReduceSum(qk_list[j]);
-      __syncthreads();
-    }
-#endif
-
     if (tid == 0) {
-#ifdef USE_UNROLL
       s_sum[0] = qk_sum_list[0] + 1e-6f;
       s_sum[1] = qk_sum_list[1] + 1e-6f;
       s_sum[2] = qk_sum_list[2] + 1e-6f;
       s_sum[3] = qk_sum_list[3] + 1e-6f;
       s_sum[4] = qk_sum_list[4] + 1e-6f;
-#else
-      for (int j = 0; j < blk_size_inner; ++j) {
-        s_sum[j] = qk_sum_list[j] + 1e-6f;
-      }
-#endif
     }
     __syncthreads();
 
     if (threadIdx.x < seq_len) {
-#ifdef USE_UNROLL
       qk_buf_[qk_offset + seq_len * (i + 0)] = (float)(qk_list[0] / s_sum[0]);
       qk_buf_[qk_offset + seq_len * (i + 1)] = (float)(qk_list[1] / s_sum[1]);
       qk_buf_[qk_offset + seq_len * (i + 2)] = (float)(qk_list[2] / s_sum[2]);
       qk_buf_[qk_offset + seq_len * (i + 3)] = (float)(qk_list[3] / s_sum[3]);
       qk_buf_[qk_offset + seq_len * (i + 4)] = (float)(qk_list[4] / s_sum[4]);
-#else
-      for (int j = 0; j < blk_size_inner; ++j) {
-        qk_buf_[qk_offset + seq_len * (i + j)] = (float)(qk_list[j] / s_sum[j]);
-      }
-#endif
     }  // endif
   }    // for i
 
@@ -463,7 +392,6 @@ void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
         qk_buf, attr_mask, batch_size, head_num, seq_len, scale, blk_size);
   }
 }
-#undef USE_UNROLL
 
 }  // namespace kernels
 }  // namespace layers
