@@ -8,7 +8,9 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-// unroll for loop using inner_block_size as 4, so blk_size have to large than 4
+// unroll for loop using unroll size as 4.
+// blk_size can be arbitary positive intergers.
+// For sake of the effecieny blk_size should better be 4x.
 __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
                                        int batch_size, int head_num,
                                        int seq_len, float scaler,
@@ -17,14 +19,13 @@ __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
   int tid = threadIdx.x;
   int qk_offset = tid + blockIdx.x * seq_len * blk_size;
 
-#define MAX_BLK_INNNER_SIZE 4
-  static __shared__ float s_sum[MAX_BLK_INNNER_SIZE];
-  float qk_list[MAX_BLK_INNNER_SIZE];
-  float qk_sum_list[MAX_BLK_INNNER_SIZE];
-  const int max_blk_inner_size = MAX_BLK_INNNER_SIZE;
+  const int loop_unroll_size = 4;
+  static __shared__ float s_sum[loop_unroll_size];
+  float qk_list[loop_unroll_size];
+  float qk_sum_list[loop_unroll_size];
+  const int max_blk_inner_size = loop_unroll_size;
 
-  float mask_val =
-      tid < seq_len ? attr_mask[tid % seq_len + batch_id * seq_len] : 0.0f;
+  float mask_val = tid < seq_len ? attr_mask[tid + batch_id * seq_len] : 0.0f;
   float qk;
   int i;
   for (i = 0; i < blk_size / max_blk_inner_size * max_blk_inner_size;
@@ -94,113 +95,6 @@ __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
       qk_buf_[qk_offset + seq_len * (i + j)] = (qk_list[j] / s_sum[j]);
     }
   }  // endif
-#undef MAX_BLK_INNNER_SIZE
-}
-
-// the original softmax implementation from nvidia but with no max-trick.
-// baseline for comparison
-__global__ void softmax_kernel_nomax_baseline(float* qk_buf_,
-                                              const float* attr_mask,
-                                              int batch_size, int head_num,
-                                              int seq_len, float scaler,
-                                              int blk_size) {
-  int batch_id = blockIdx.x * blk_size / seq_len / head_num;
-  int qk_offset = blockIdx.x * seq_len * seq_len;
-
-  __shared__ float s_sum;
-
-  for (int i = 0; i < blk_size; ++i) {
-    float qk = threadIdx.x < seq_len ? qk_buf_[threadIdx.x + qk_offset] : 0.0f;
-    float mask_val = threadIdx.x < seq_len
-                         ? attr_mask[threadIdx.x % seq_len + batch_id * seq_len]
-                         : 0.0f;
-
-    // mask_val = (1.0f - mask_val) * -10000.0f;
-    qk = threadIdx.x < seq_len ? __expf((qk * scaler + mask_val)) : 0.0f;
-
-    float sum_val = blockReduceSum(qk);
-
-    if (threadIdx.x == 0) {
-      s_sum = sum_val + 1e-6f;
-    }
-    __syncthreads();
-
-    if (threadIdx.x < seq_len) qk_buf_[threadIdx.x + qk_offset] = (qk / s_sum);
-
-    qk_offset += seq_len;
-  }
-}
-
-// jiaruifang optimized version for softmax no max-trick
-__global__ void softmax_kernel_nomax(float* qk_buf_, const float* attr_mask,
-                                     int batch_size, int head_num, int seq_len,
-                                     float scaler, int blk_size) {
-  int batch_id = blockIdx.x * blk_size / seq_len / head_num;
-  int qk_offset = blockIdx.x * seq_len * blk_size;
-
-  __shared__ float s_sum;
-
-  float mask_val = threadIdx.x < seq_len
-                       ? attr_mask[threadIdx.x % seq_len + batch_id * seq_len]
-                       : 0.0f;
-
-  float qk;
-  for (int i = 0; i < blk_size; ++i) {
-    if (threadIdx.x < seq_len) {
-      qk = qk_buf_[threadIdx.x + qk_offset];
-      qk = __expf((qk * scaler + mask_val));
-    } else {
-      qk = 0.0;
-    }
-
-    float sum_val = blockReduceSum(qk);
-
-    if (threadIdx.x == 0) {
-      s_sum = sum_val + 1e-6f;
-    }
-    __syncthreads();
-
-    if (threadIdx.x < seq_len) qk_buf_[threadIdx.x + qk_offset] = (qk / s_sum);
-
-    qk_offset += seq_len;
-  }
-}
-
-// nvidia version seq_len as block size on the high dimension of qk_buf_
-__global__ void softmax_kernel(float* qk_buf_, const float* attr_mask,
-                               int batch_size, int head_num, int seq_len,
-                               float scaler) {
-  int batch_id = blockIdx.x / head_num;
-  int qk_offset = blockIdx.x * seq_len * seq_len;
-
-  __shared__ float s_sum, s_max;
-  float mask_val = threadIdx.x < seq_len
-                       ? attr_mask[threadIdx.x % seq_len + batch_id * seq_len]
-                       : 0.0f;
-
-  for (int i = 0; i < seq_len; ++i) {
-    float qk = threadIdx.x < seq_len ? qk_buf_[threadIdx.x + qk_offset] : 0.0f;
-    // mask_val = (1.0f - mask_val) * -10000.0f;
-    float tmp = threadIdx.x < seq_len ? (qk * scaler + mask_val) : -1e20f;
-
-    float max_val = blockReduceMax(tmp);
-
-    if (threadIdx.x == 0) s_max = max_val;
-    __syncthreads();
-
-    qk = threadIdx.x < seq_len ? __expf(tmp - s_max) : 0.0f;
-
-    float sum_val = blockReduceSum(qk);
-
-    if (threadIdx.x == 0) {
-      s_sum = sum_val + 1e-6f;
-    }
-    __syncthreads();
-
-    if (threadIdx.x < seq_len) qk_buf_[threadIdx.x + qk_offset] = (qk / s_sum);
-
-    qk_offset += seq_len;
-  }
 }
 
 // nvidia version block size on the high dimension is always 1, may lead to
