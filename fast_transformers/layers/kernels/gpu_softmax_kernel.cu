@@ -8,10 +8,11 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-// blk_size == 4
-__global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
-                                    int batch_size, int head_num, int seq_len,
-                                    float scaler, int blk_size) {
+// unroll for loop using inner_block_size as 4, so blk_size have to large than 4
+__global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
+                                       int batch_size, int head_num,
+                                       int seq_len, float scaler,
+                                       int blk_size) {
   int batch_id = blockIdx.x * blk_size / seq_len / head_num;
   int tid = threadIdx.x;
   int qk_offset = tid + blockIdx.x * seq_len * blk_size;
@@ -22,9 +23,8 @@ __global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
   float qk_sum_list[MAX_BLK_INNNER_SIZE];
   const int max_blk_inner_size = MAX_BLK_INNNER_SIZE;
 
-  float mask_val = tid < seq_len
-                       ? (float)attr_mask[tid % seq_len + batch_id * seq_len]
-                       : 0.0f;
+  float mask_val =
+      tid < seq_len ? attr_mask[tid % seq_len + batch_id * seq_len] : 0.0f;
   float qk;
   int i;
   for (i = 0; i < blk_size / max_blk_inner_size * max_blk_inner_size;
@@ -32,21 +32,17 @@ __global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
     int blk_size_inner = max_blk_inner_size;
     if (threadIdx.x < seq_len) {
       int qk_buf_offset = qk_offset + i * seq_len;
-      qk = (float)qk_buf_[qk_buf_offset];
-      qk_sum_list[0] = qk_list[0] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_buf_offset];
+      qk_sum_list[0] = qk_list[0] = __expf((qk * scaler + mask_val));
 
-      qk = (float)qk_buf_[qk_buf_offset + seq_len];
-      qk_sum_list[1] = qk_list[1] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_buf_offset + seq_len];
+      qk_sum_list[1] = qk_list[1] = __expf((qk * scaler + mask_val));
 
-      qk = (float)qk_buf_[qk_buf_offset + 2 * seq_len];
-      qk_sum_list[2] = qk_list[2] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_buf_offset + 2 * seq_len];
+      qk_sum_list[2] = qk_list[2] = __expf((qk * scaler + mask_val));
 
-      qk = (float)qk_buf_[qk_buf_offset + 3 * seq_len];
-      qk_sum_list[3] = qk_list[3] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_buf_offset + 3 * seq_len];
+      qk_sum_list[3] = qk_list[3] = __expf((qk * scaler + mask_val));
     } else {
       qk_sum_list[0] = qk_list[0] = 0.0;
       qk_sum_list[1] = qk_list[1] = 0.0;
@@ -63,10 +59,10 @@ __global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
     __syncthreads();
 
     if (threadIdx.x < seq_len) {
-      qk_buf_[qk_offset + seq_len * (i + 0)] = (float)(qk_list[0] / s_sum[0]);
-      qk_buf_[qk_offset + seq_len * (i + 1)] = (float)(qk_list[1] / s_sum[1]);
-      qk_buf_[qk_offset + seq_len * (i + 2)] = (float)(qk_list[2] / s_sum[2]);
-      qk_buf_[qk_offset + seq_len * (i + 3)] = (float)(qk_list[3] / s_sum[3]);
+      qk_buf_[qk_offset + seq_len * (i + 0)] = (qk_list[0] / s_sum[0]);
+      qk_buf_[qk_offset + seq_len * (i + 1)] = (qk_list[1] / s_sum[1]);
+      qk_buf_[qk_offset + seq_len * (i + 2)] = (qk_list[2] / s_sum[2]);
+      qk_buf_[qk_offset + seq_len * (i + 3)] = (qk_list[3] / s_sum[3]);
     }  // endif
   }    // for i
 
@@ -75,9 +71,8 @@ __global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
   if (blk_size_inner == 0) return;
   if (threadIdx.x < seq_len) {
     for (int j = 0; j < blk_size_inner; ++j) {
-      qk = (float)qk_buf_[qk_offset + (i + j) * seq_len];
-      qk_sum_list[j] = qk_list[j] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_offset + (i + j) * seq_len];
+      qk_sum_list[j] = qk_list[j] = __expf((qk * scaler + mask_val));
     }
   } else {
     for (int j = 0; j < blk_size_inner; ++j) {
@@ -96,7 +91,7 @@ __global__ void softmax_kernel_blk4(float* qk_buf_, const float* attr_mask,
   __syncthreads();
   if (threadIdx.x < seq_len) {
     for (int j = 0; j < blk_size_inner; ++j) {
-      qk_buf_[qk_offset + seq_len * (i + j)] = (float)(qk_list[j] / s_sum[j]);
+      qk_buf_[qk_offset + seq_len * (i + j)] = (qk_list[j] / s_sum[j]);
     }
   }  // endif
 #undef MAX_BLK_INNNER_SIZE
@@ -115,9 +110,8 @@ __global__ void softmax_kernel_blk5(float* qk_buf_, const float* attr_mask,
   float qk_sum_list[MAX_BLK_INNNER_SIZE];
   const int max_blk_inner_size = MAX_BLK_INNNER_SIZE;
 
-  float mask_val = tid < seq_len
-                       ? (float)attr_mask[tid % seq_len + batch_id * seq_len]
-                       : 0.0f;
+  float mask_val =
+      tid < seq_len ? attr_mask[tid % seq_len + batch_id * seq_len] : 0.0f;
   float qk;
   int i;
   for (i = 0; i < blk_size / max_blk_inner_size * max_blk_inner_size;
@@ -125,25 +119,20 @@ __global__ void softmax_kernel_blk5(float* qk_buf_, const float* attr_mask,
     int blk_size_inner = max_blk_inner_size;
     if (threadIdx.x < seq_len) {
       int qk_buf_offset = qk_offset + i * seq_len;
-      qk = (float)qk_buf_[qk_buf_offset];
-      qk_sum_list[0] = qk_list[0] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_buf_offset];
+      qk_sum_list[0] = qk_list[0] = __expf((qk * scaler + mask_val));
 
-      qk = (float)qk_buf_[qk_buf_offset + seq_len];
-      qk_sum_list[1] = qk_list[1] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_buf_offset + seq_len];
+      qk_sum_list[1] = qk_list[1] = __expf((qk * scaler + mask_val));
 
-      qk = (float)qk_buf_[qk_buf_offset + 2 * seq_len];
-      qk_sum_list[2] = qk_list[2] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_buf_offset + 2 * seq_len];
+      qk_sum_list[2] = qk_list[2] = __expf((qk * scaler + mask_val));
 
-      qk = (float)qk_buf_[qk_buf_offset + 3 * seq_len];
-      qk_sum_list[3] = qk_list[3] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_buf_offset + 3 * seq_len];
+      qk_sum_list[3] = qk_list[3] = __expf((qk * scaler + mask_val));
 
-      qk = (float)qk_buf_[qk_buf_offset + 4 * seq_len];
-      qk_sum_list[4] = qk_list[4] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_buf_offset + 4 * seq_len];
+      qk_sum_list[4] = qk_list[4] = __expf((qk * scaler + mask_val));
     } else {
       qk_sum_list[0] = qk_list[0] = 0.0;
       qk_sum_list[1] = qk_list[1] = 0.0;
@@ -162,11 +151,11 @@ __global__ void softmax_kernel_blk5(float* qk_buf_, const float* attr_mask,
     __syncthreads();
 
     if (threadIdx.x < seq_len) {
-      qk_buf_[qk_offset + seq_len * (i + 0)] = (float)(qk_list[0] / s_sum[0]);
-      qk_buf_[qk_offset + seq_len * (i + 1)] = (float)(qk_list[1] / s_sum[1]);
-      qk_buf_[qk_offset + seq_len * (i + 2)] = (float)(qk_list[2] / s_sum[2]);
-      qk_buf_[qk_offset + seq_len * (i + 3)] = (float)(qk_list[3] / s_sum[3]);
-      qk_buf_[qk_offset + seq_len * (i + 4)] = (float)(qk_list[4] / s_sum[4]);
+      qk_buf_[qk_offset + seq_len * (i + 0)] = (qk_list[0] / s_sum[0]);
+      qk_buf_[qk_offset + seq_len * (i + 1)] = (qk_list[1] / s_sum[1]);
+      qk_buf_[qk_offset + seq_len * (i + 2)] = (qk_list[2] / s_sum[2]);
+      qk_buf_[qk_offset + seq_len * (i + 3)] = (qk_list[3] / s_sum[3]);
+      qk_buf_[qk_offset + seq_len * (i + 4)] = (qk_list[4] / s_sum[4]);
     }  // endif
   }    // for i
 
@@ -175,9 +164,8 @@ __global__ void softmax_kernel_blk5(float* qk_buf_, const float* attr_mask,
   if (blk_size_inner == 0) return;
   if (threadIdx.x < seq_len) {
     for (int j = 0; j < blk_size_inner; ++j) {
-      qk = (float)qk_buf_[qk_offset + (i + j) * seq_len];
-      qk_sum_list[j] = qk_list[j] =
-          __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[qk_offset + (i + j) * seq_len];
+      qk_sum_list[j] = qk_list[j] = __expf((qk * scaler + mask_val));
     }
   } else {
     for (int j = 0; j < blk_size_inner; ++j) {
@@ -196,7 +184,7 @@ __global__ void softmax_kernel_blk5(float* qk_buf_, const float* attr_mask,
   __syncthreads();
   if (threadIdx.x < seq_len) {
     for (int j = 0; j < blk_size_inner; ++j) {
-      qk_buf_[qk_offset + seq_len * (i + j)] = (float)(qk_list[j] / s_sum[j]);
+      qk_buf_[qk_offset + seq_len * (i + j)] = (qk_list[j] / s_sum[j]);
     }
   }  // endif
 #undef MAX_BLK_INNNER_SIZE
@@ -215,16 +203,13 @@ __global__ void softmax_kernel_nomax_baseline(float* qk_buf_,
   __shared__ float s_sum;
 
   for (int i = 0; i < blk_size; ++i) {
-    float qk =
-        threadIdx.x < seq_len ? (float)qk_buf_[threadIdx.x + qk_offset] : 0.0f;
-    float mask_val =
-        threadIdx.x < seq_len
-            ? (float)attr_mask[threadIdx.x % seq_len + batch_id * seq_len]
-            : 0.0f;
+    float qk = threadIdx.x < seq_len ? qk_buf_[threadIdx.x + qk_offset] : 0.0f;
+    float mask_val = threadIdx.x < seq_len
+                         ? attr_mask[threadIdx.x % seq_len + batch_id * seq_len]
+                         : 0.0f;
 
     // mask_val = (1.0f - mask_val) * -10000.0f;
-    qk = threadIdx.x < seq_len ? __expf((float)(qk * (float)scaler + mask_val))
-                               : 0.0f;
+    qk = threadIdx.x < seq_len ? __expf((qk * scaler + mask_val)) : 0.0f;
 
     float sum_val = blockReduceSum(qk);
 
@@ -233,8 +218,7 @@ __global__ void softmax_kernel_nomax_baseline(float* qk_buf_,
     }
     __syncthreads();
 
-    if (threadIdx.x < seq_len)
-      qk_buf_[threadIdx.x + qk_offset] = (float)(qk / s_sum);
+    if (threadIdx.x < seq_len) qk_buf_[threadIdx.x + qk_offset] = (qk / s_sum);
 
     qk_offset += seq_len;
   }
@@ -249,16 +233,15 @@ __global__ void softmax_kernel_nomax(float* qk_buf_, const float* attr_mask,
 
   __shared__ float s_sum;
 
-  float mask_val =
-      threadIdx.x < seq_len
-          ? (float)attr_mask[threadIdx.x % seq_len + batch_id * seq_len]
-          : 0.0f;
+  float mask_val = threadIdx.x < seq_len
+                       ? attr_mask[threadIdx.x % seq_len + batch_id * seq_len]
+                       : 0.0f;
 
   float qk;
   for (int i = 0; i < blk_size; ++i) {
     if (threadIdx.x < seq_len) {
-      qk = (float)qk_buf_[threadIdx.x + qk_offset];
-      qk = __expf((float)(qk * (float)scaler + mask_val));
+      qk = qk_buf_[threadIdx.x + qk_offset];
+      qk = __expf((qk * scaler + mask_val));
     } else {
       qk = 0.0;
     }
@@ -270,8 +253,7 @@ __global__ void softmax_kernel_nomax(float* qk_buf_, const float* attr_mask,
     }
     __syncthreads();
 
-    if (threadIdx.x < seq_len)
-      qk_buf_[threadIdx.x + qk_offset] = (float)(qk / s_sum);
+    if (threadIdx.x < seq_len) qk_buf_[threadIdx.x + qk_offset] = (qk / s_sum);
 
     qk_offset += seq_len;
   }
@@ -285,17 +267,14 @@ __global__ void softmax_kernel(float* qk_buf_, const float* attr_mask,
   int qk_offset = blockIdx.x * seq_len * seq_len;
 
   __shared__ float s_sum, s_max;
-  float mask_val =
-      threadIdx.x < seq_len
-          ? (float)attr_mask[threadIdx.x % seq_len + batch_id * seq_len]
-          : 0.0f;
+  float mask_val = threadIdx.x < seq_len
+                       ? attr_mask[threadIdx.x % seq_len + batch_id * seq_len]
+                       : 0.0f;
 
   for (int i = 0; i < seq_len; ++i) {
-    float qk =
-        threadIdx.x < seq_len ? (float)qk_buf_[threadIdx.x + qk_offset] : 0.0f;
+    float qk = threadIdx.x < seq_len ? qk_buf_[threadIdx.x + qk_offset] : 0.0f;
     // mask_val = (1.0f - mask_val) * -10000.0f;
-    float tmp =
-        threadIdx.x < seq_len ? (float)(qk * (float)scaler + mask_val) : -1e20f;
+    float tmp = threadIdx.x < seq_len ? (qk * scaler + mask_val) : -1e20f;
 
     float max_val = blockReduceMax(tmp);
 
@@ -311,8 +290,7 @@ __global__ void softmax_kernel(float* qk_buf_, const float* attr_mask,
     }
     __syncthreads();
 
-    if (threadIdx.x < seq_len)
-      qk_buf_[threadIdx.x + qk_offset] = (float)(qk / s_sum);
+    if (threadIdx.x < seq_len) qk_buf_[threadIdx.x + qk_offset] = (qk / s_sum);
 
     qk_offset += seq_len;
   }
@@ -320,29 +298,26 @@ __global__ void softmax_kernel(float* qk_buf_, const float* attr_mask,
 
 // nvidia version block size on the high dimension is always 1, may lead to
 // low occupancy
-__global__ void softmax_kernel_blk1(float* qk_buf_, const float* attr_mask,
-                                    const int batch_size, const int head_num,
-                                    const int seq_len, const float scaler) {
+__global__ void softmax_kernel_noblk(float* qk_buf_, const float* attr_mask,
+                                     const int batch_size, const int head_num,
+                                     const int seq_len, const float scaler) {
   int batch_id = blockIdx.x / head_num / seq_len;
   int qk_offset = blockIdx.x * seq_len;
   int mask_offset = batch_id * seq_len;
 
   __shared__ float s_sum, s_max;
 
-  float qk =
-      threadIdx.x < seq_len ? (float)qk_buf_[threadIdx.x + qk_offset] : 0.0f;
-  float mask_val = threadIdx.x < seq_len
-                       ? (float)attr_mask[threadIdx.x + mask_offset]
-                       : 0.0f;
+  float qk = threadIdx.x < seq_len ? qk_buf_[threadIdx.x + qk_offset] : 0.0f;
+  float mask_val =
+      threadIdx.x < seq_len ? attr_mask[threadIdx.x + mask_offset] : 0.0f;
 
   // mask_val = (1.0f - mask_val) * -10000.0f;
-  float tmp =
-      threadIdx.x < seq_len ? (float)(qk * (float)scaler + mask_val) : -1e20f;
+  float tmp = threadIdx.x < seq_len ? (qk * scaler + mask_val) : -1e20f;
   float max_val = blockReduceMax(tmp);
   if (threadIdx.x == 0) s_max = max_val;
   __syncthreads();
 
-  float qk_tmp = threadIdx.x < seq_len ? __expf((float)(tmp - s_max)) : 0.0f;
+  float qk_tmp = threadIdx.x < seq_len ? __expf((tmp - s_max)) : 0.0f;
   float sum_val = blockReduceSum(qk_tmp);
 
   if (threadIdx.x == 0) {
@@ -351,7 +326,7 @@ __global__ void softmax_kernel_blk1(float* qk_buf_, const float* attr_mask,
   __syncthreads();
 
   if (threadIdx.x < seq_len)
-    qk_buf_[threadIdx.x + qk_offset] = (float)(qk_tmp / s_sum);
+    qk_buf_[threadIdx.x + qk_offset] = (qk_tmp / s_sum);
 }
 
 template <>
@@ -364,23 +339,17 @@ void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
 
   // block size must be 32x, so warp reduce can work
   block.x = (seq_len + 31) / 32 * 32;
-  blk_size = 12;
+  blk_size = 4;
   // In the senario of BERT inference, high_dim_size is 4x because head_num is
   // 12
-  if (high_dim_size < 40 * 12) {
+  if (high_dim_size < 40 * 12 || high_dim_size % blk_size != 0) {
     grid.x = high_dim_size;
-    softmax_kernel_blk1<<<grid, block, 0, stream>>>(
+    softmax_kernel_noblk<<<grid, block, 0, stream>>>(
         qk_buf, attr_mask, batch_size, head_num, seq_len, scale);
   } else {
-    if (high_dim_size % blk_size == 0) {
-      grid.x = high_dim_size / blk_size;
-      softmax_kernel_blk4<<<grid, block, 0, stream>>>(
-          qk_buf, attr_mask, batch_size, head_num, seq_len, scale, blk_size);
-    } else {
-      grid.x = high_dim_size;
-      softmax_kernel_blk1<<<grid, block, 0, stream>>>(
-          qk_buf, attr_mask, batch_size, head_num, seq_len, scale);
-    }
+    grid.x = high_dim_size / blk_size;
+    softmax_kernel_unroll4<<<grid, block, 0, stream>>>(
+        qk_buf, attr_mask, batch_size, head_num, seq_len, scale, blk_size);
   }
 }
 
