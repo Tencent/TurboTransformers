@@ -62,38 +62,6 @@ __inline__ __device__ void warpReduceSum_Elem4(float* val0, float* val1,
   *(val3) += __shfl_xor_sync(FINAL_MASK, *(val3), 1, 32);
 }
 
-__inline__ __device__ void warpReduceSum_Elem5(float* val_list) {
-  *(val_list + 0) += __shfl_xor_sync(FINAL_MASK, *(val_list + 0), 16, 32);
-  *(val_list + 1) += __shfl_xor_sync(FINAL_MASK, *(val_list + 1), 16, 32);
-  *(val_list + 2) += __shfl_xor_sync(FINAL_MASK, *(val_list + 2), 16, 32);
-  *(val_list + 3) += __shfl_xor_sync(FINAL_MASK, *(val_list + 3), 16, 32);
-  *(val_list + 4) += __shfl_xor_sync(FINAL_MASK, *(val_list + 4), 16, 32);
-
-  *(val_list + 0) += __shfl_xor_sync(FINAL_MASK, *(val_list + 0), 8, 32);
-  *(val_list + 1) += __shfl_xor_sync(FINAL_MASK, *(val_list + 1), 8, 32);
-  *(val_list + 2) += __shfl_xor_sync(FINAL_MASK, *(val_list + 2), 8, 32);
-  *(val_list + 3) += __shfl_xor_sync(FINAL_MASK, *(val_list + 3), 8, 32);
-  *(val_list + 4) += __shfl_xor_sync(FINAL_MASK, *(val_list + 4), 8, 32);
-
-  *(val_list + 0) += __shfl_xor_sync(FINAL_MASK, *(val_list + 0), 4, 32);
-  *(val_list + 1) += __shfl_xor_sync(FINAL_MASK, *(val_list + 1), 4, 32);
-  *(val_list + 2) += __shfl_xor_sync(FINAL_MASK, *(val_list + 2), 4, 32);
-  *(val_list + 3) += __shfl_xor_sync(FINAL_MASK, *(val_list + 3), 4, 32);
-  *(val_list + 4) += __shfl_xor_sync(FINAL_MASK, *(val_list + 4), 4, 32);
-
-  *(val_list + 0) += __shfl_xor_sync(FINAL_MASK, *(val_list + 0), 2, 32);
-  *(val_list + 1) += __shfl_xor_sync(FINAL_MASK, *(val_list + 1), 2, 32);
-  *(val_list + 2) += __shfl_xor_sync(FINAL_MASK, *(val_list + 2), 2, 32);
-  *(val_list + 3) += __shfl_xor_sync(FINAL_MASK, *(val_list + 3), 2, 32);
-  *(val_list + 4) += __shfl_xor_sync(FINAL_MASK, *(val_list + 4), 2, 32);
-
-  *(val_list + 0) += __shfl_xor_sync(FINAL_MASK, *(val_list + 0), 1, 32);
-  *(val_list + 1) += __shfl_xor_sync(FINAL_MASK, *(val_list + 1), 1, 32);
-  *(val_list + 2) += __shfl_xor_sync(FINAL_MASK, *(val_list + 2), 1, 32);
-  *(val_list + 3) += __shfl_xor_sync(FINAL_MASK, *(val_list + 3), 1, 32);
-  *(val_list + 4) += __shfl_xor_sync(FINAL_MASK, *(val_list + 4), 1, 32);
-}
-
 __inline__ __device__ void blockReduceSum_Elem4(float* val_list) {
   static __shared__ float shared[4][32];
   int lane_id = threadIdx.x & 0x1f;

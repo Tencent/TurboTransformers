@@ -43,44 +43,6 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
                 __ldg(&beta[tid]);
 }
 
-template <bool isAdd>
-static __global__ void layer_norm_kernel_nvidia(float* out, const float* input,
-                                                const float* bias,
-                                                const float* gamma,
-                                                const float* beta, int m,
-                                                int n) {
-  int tid = threadIdx.x;
-
-  __shared__ float s_mean;
-  __shared__ float s_variance;
-  float mean = 0.0f;
-  float variance = 0.0f;
-
-  float local_out = 0.0f;
-  if (isAdd) {
-    for (int i = tid; i < n; i += blockDim.x)
-      local_out += (float)(out[blockIdx.x * n + i] + input[blockIdx.x * n + i] +
-                           __ldg(&bias[i]));
-  } else {
-    for (int i = tid; i < n; i += blockDim.x)
-      local_out = input[blockIdx.x * n + i];
-  }
-
-  mean = blockReduceSum(local_out);
-  if (threadIdx.x == 0) s_mean = mean / n;
-  __syncthreads();
-
-  variance = blockReduceSum((local_out - s_mean) * (local_out - s_mean));
-  if (threadIdx.x == 0) s_variance = variance / n + 1e-6f;
-  __syncthreads();
-
-  for (int i = tid; i < n; i += blockDim.x)
-    out[blockIdx.x * n + i] =
-        (float)(((local_out - s_mean) * rsqrtf(s_variance)) *
-                    (float)(__ldg(&gamma[i])) +
-                (float)(__ldg(&beta[i])));
-}
-
 template <>
 void GPUAddBiasLayerNorm(float* out, const float* input, const float* bias,
                          const float* gamma, const float* beta, int m, int n,
