@@ -128,36 +128,6 @@ __inline__ __device__ void blockReduceSum_Elem4(float* val_list) {
   warpReduceSum_Elem4(val_list, val_list + 1, val_list + 2, val_list + 3);
 }
 
-__inline__ __device__ void blockReduceSum_Elem5(float* val_list, int size) {
-  static __shared__ float shared[5][32];
-  int lane_id = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-
-  warpReduceSum_Elem5(val_list);
-
-  if (lane_id == 0) {
-    for (int i = 0; i < size; ++i) {
-      shared[i][wid] = *(val_list + i);
-    }
-  }
-  __syncthreads();
-
-  if (threadIdx.x < (blockDim.x >> 5)) {
-    *(val_list + 0) = shared[0][lane_id];
-    *(val_list + 1) = shared[1][lane_id];
-    *(val_list + 2) = shared[2][lane_id];
-    *(val_list + 3) = shared[3][lane_id];
-    *(val_list + 4) = shared[4][lane_id];
-  } else {
-    *(val_list + 0) = 0;
-    *(val_list + 1) = 0;
-    *(val_list + 2) = 0;
-    *(val_list + 3) = 0;
-    *(val_list + 4) = 0;
-  }
-  warpReduceSum_Elem5(val_list);
-}
-
 /* Calculate the sum of all elements in a block */
 __inline__ __device__ void blockReduceSum_Elem2(float* val1, float* val2) {
   static __shared__ float shared1[32];
