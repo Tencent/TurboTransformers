@@ -21,8 +21,10 @@ __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
 
   const int loop_unroll_size = 4;
   static __shared__ float s_sum[loop_unroll_size];
+  static __shared__ float s_max[loop_unroll_size];
   float qk_list[loop_unroll_size];
   float qk_sum_list[loop_unroll_size];
+  float qk_max_list[loop_unroll_size];
 
   float mask_val = tid < seq_len ? attr_mask[tid + batch_id * seq_len] : 0.0f;
   float qk;
@@ -33,22 +35,46 @@ __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
     if (threadIdx.x < seq_len) {
       int qk_buf_offset = qk_offset + i * seq_len;
       qk = qk_buf_[qk_buf_offset];
-      qk_sum_list[0] = qk_list[0] = __expf((qk * scaler + mask_val));
+      qk_max_list[0] = qk_list[0] = ((qk * scaler + mask_val));
 
       qk = qk_buf_[qk_buf_offset + seq_len];
-      qk_sum_list[1] = qk_list[1] = __expf((qk * scaler + mask_val));
+      qk_max_list[1] = qk_list[1] = ((qk * scaler + mask_val));
 
       qk = qk_buf_[qk_buf_offset + 2 * seq_len];
-      qk_sum_list[2] = qk_list[2] = __expf((qk * scaler + mask_val));
+      qk_max_list[2] = qk_list[2] = ((qk * scaler + mask_val));
 
       qk = qk_buf_[qk_buf_offset + 3 * seq_len];
-      qk_sum_list[3] = qk_list[3] = __expf((qk * scaler + mask_val));
+      qk_max_list[3] = qk_list[3] = ((qk * scaler + mask_val));
     } else {
-      qk_sum_list[0] = qk_list[0] = 0.0;
-      qk_sum_list[1] = qk_list[1] = 0.0;
-      qk_sum_list[2] = qk_list[2] = 0.0;
-      qk_sum_list[3] = qk_list[3] = 0.0;
+      qk_max_list[0] = -1e20f;
+      qk_max_list[1] = -1e20f;
+      qk_max_list[2] = -1e20f;
+      qk_max_list[3] = -1e20f;
     }
+
+    // max-trick
+    blockReduceMax_Elem4(qk_max_list);
+    if (tid == 0) {
+      s_max[0] = qk_max_list[0];
+      s_max[1] = qk_max_list[1];
+      s_max[2] = qk_max_list[2];
+      s_max[3] = qk_max_list[3];
+    }
+    __syncthreads();
+
+    if (tid < seq_len) {
+      qk_sum_list[0] = qk_list[0] = __expf((qk_list[0] - s_max[0]));
+      qk_sum_list[1] = qk_list[1] = __expf((qk_list[1] - s_max[1]));
+      qk_sum_list[2] = qk_list[2] = __expf((qk_list[2] - s_max[2]));
+      qk_sum_list[3] = qk_list[3] = __expf((qk_list[3] - s_max[3]));
+    } else {
+      qk_sum_list[0] = 0.0f;
+      qk_sum_list[1] = 0.0f;
+      qk_sum_list[2] = 0.0f;
+      qk_sum_list[3] = 0.0f;
+    }
+    __syncthreads();
+
     blockReduceSum_Elem4(qk_sum_list);
     if (tid == 0) {
       s_sum[0] = qk_sum_list[0] + 1e-6f;
@@ -65,26 +91,40 @@ __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
       qk_buf_[qk_offset + seq_len * (i + 3)] = (qk_list[3] / s_sum[3]);
     }  // endif
   }    // for i
-
   // dealing with the remaining lines
   int blk_size_inner = blk_size % loop_unroll_size;
   if (blk_size_inner == 0) return;
   if (threadIdx.x < seq_len) {
     for (int j = 0; j < blk_size_inner; ++j) {
       qk = qk_buf_[qk_offset + (i + j) * seq_len];
-      qk_sum_list[j] = qk_list[j] = __expf((qk * scaler + mask_val));
+      qk_max_list[j] = qk_list[j] = qk * scaler + mask_val;
     }
   } else {
     for (int j = 0; j < blk_size_inner; ++j) {
-      qk_sum_list[j] = qk_list[j] = 0.0;
+      qk_max_list[j] = qk_list[j] = -1e20f;
     }
+  }
+  // max-trick
+  for (int j = 0; j < blk_size_inner; ++j) {
+    qk_sum_list[j] = blockReduceMax(qk_max_list[j]);
+  }
+  if (tid == 0) {
+    for (int j = 0; j < blk_size_inner; ++j) {
+      s_max[j] = qk_max_list[j];
+    }
+  }
+  __syncthreads();
+
+  if (tid < seq_len) {
+    for (int j = 0; j < blk_size_inner; ++j)
+      qk_sum_list[0] = qk_list[0] = __expf((qk_list[0] - s_max[0]));
+  } else {
+    for (int j = 0; j < blk_size_inner; ++j) qk_sum_list[0] = 0.0f;
   }
   for (int j = 0; j < blk_size_inner; ++j) {
     qk_sum_list[j] = blockReduceSum(qk_list[j]);
-    // this __syncthreads is thearitically necessary
-    // in practice you can delete it
-    __syncthreads();
   }
+
   if (tid == 0) {
     for (int j = 0; j < blk_size_inner; ++j) {
       s_sum[j] = qk_sum_list[j] + 1e-6f;
@@ -99,7 +139,7 @@ __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
 }
 
 // nvidia version block size on the high dimension is always 1, may lead to
-// low occupancy. Use max-trick due to lagency code.
+// low occupancy.
 __global__ void softmax_kernel_noblk(float* qk_buf_, const float* attr_mask,
                                      const int batch_size, const int head_num,
                                      const int seq_len, const float scaler) {
