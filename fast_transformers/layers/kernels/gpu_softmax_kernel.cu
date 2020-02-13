@@ -23,14 +23,13 @@ __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
   static __shared__ float s_sum[loop_unroll_size];
   float qk_list[loop_unroll_size];
   float qk_sum_list[loop_unroll_size];
-  const int max_blk_inner_size = loop_unroll_size;
 
   float mask_val = tid < seq_len ? attr_mask[tid + batch_id * seq_len] : 0.0f;
   float qk;
   int i;
-  for (i = 0; i < blk_size / max_blk_inner_size * max_blk_inner_size;
-       i += max_blk_inner_size) {
-    int blk_size_inner = max_blk_inner_size;
+  int iter_size = blk_size / loop_unroll_size * loop_unroll_size;
+  for (i = 0; i < iter_size; i += loop_unroll_size) {
+    int blk_size_inner = loop_unroll_size;
     if (threadIdx.x < seq_len) {
       int qk_buf_offset = qk_offset + i * seq_len;
       qk = qk_buf_[qk_buf_offset];
@@ -67,8 +66,8 @@ __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
     }  // endif
   }    // for i
 
-  // dealing with the reminding lines
-  int blk_size_inner = blk_size % max_blk_inner_size;
+  // dealing with the remaining lines
+  int blk_size_inner = blk_size % loop_unroll_size;
   if (blk_size_inner == 0) return;
   if (threadIdx.x < seq_len) {
     for (int j = 0; j < blk_size_inner; ++j) {
@@ -82,6 +81,8 @@ __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
   }
   for (int j = 0; j < blk_size_inner; ++j) {
     qk_sum_list[j] = blockReduceSum(qk_list[j]);
+    // this __syncthreads is thearitically necessary
+    // in practice you can delete it
     __syncthreads();
   }
   if (tid == 0) {
@@ -98,7 +99,7 @@ __global__ void softmax_kernel_unroll4(float* qk_buf_, const float* attr_mask,
 }
 
 // nvidia version block size on the high dimension is always 1, may lead to
-// low occupancy
+// low occupancy. Use max-trick due to lagency code.
 __global__ void softmax_kernel_noblk(float* qk_buf_, const float* attr_mask,
                                      const int batch_size, const int head_num,
                                      const int seq_len, const float scaler) {

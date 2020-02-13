@@ -22,44 +22,81 @@ __inline__ __device__ float warpReduceSum(float val) {
  * ElemX means there are X numbers to be summed
  */
 
-__inline__ __device__ void warpReduceSum_Elem2(float* val1, float* val2) {
-  *val1 += __shfl_xor_sync(FINAL_MASK, *val1, 16, 32);
-  *val2 += __shfl_xor_sync(FINAL_MASK, *val2, 16, 32);
-  *val1 += __shfl_xor_sync(FINAL_MASK, *val1, 8, 32);
-  *val2 += __shfl_xor_sync(FINAL_MASK, *val2, 8, 32);
-  *val1 += __shfl_xor_sync(FINAL_MASK, *val1, 4, 32);
-  *val2 += __shfl_xor_sync(FINAL_MASK, *val2, 4, 32);
-  *val1 += __shfl_xor_sync(FINAL_MASK, *val1, 2, 32);
-  *val2 += __shfl_xor_sync(FINAL_MASK, *val2, 2, 32);
-  *val1 += __shfl_xor_sync(FINAL_MASK, *val1, 1, 32);
-  *val2 += __shfl_xor_sync(FINAL_MASK, *val2, 1, 32);
+__inline__ __device__ void warpReduceSum_Elem2(float* val0, float* val1) {
+  float val0_tmp, val1_tmp;
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 16, 32);
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 16, 32);
+  *(val0) += val0_tmp;
+  *(val1) += val1_tmp;
+
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 8, 32);
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 8, 32);
+  *(val0) += val0_tmp;
+  *(val1) += val1_tmp;
+
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 4, 32);
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 4, 32);
+  *(val0) += val0_tmp;
+  *(val1) += val1_tmp;
+
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 2, 32);
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 2, 32);
+  *(val0) += val0_tmp;
+  *(val1) += val1_tmp;
+
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 1, 32);
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 1, 32);
+  *(val0) += val0_tmp;
+  *(val1) += val1_tmp;
 }
+
 __inline__ __device__ void warpReduceSum_Elem4(float* val0, float* val1,
                                                float* val2, float* val3) {
-  *(val0) += __shfl_xor_sync(FINAL_MASK, *(val0), 16, 32);
-  *(val1) += __shfl_xor_sync(FINAL_MASK, *(val1), 16, 32);
-  *(val2) += __shfl_xor_sync(FINAL_MASK, *(val2), 16, 32);
-  *(val3) += __shfl_xor_sync(FINAL_MASK, *(val3), 16, 32);
+  float val0_tmp, val1_tmp, val2_tmp, val3_tmp;
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 16, 32);
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 16, 32);
+  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 16, 32);
+  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 16, 32);
+  *(val0) += val0_tmp;
+  *(val1) += val1_tmp;
+  *(val2) += val2_tmp;
+  *(val3) += val3_tmp;
 
-  *(val0) += __shfl_xor_sync(FINAL_MASK, *(val0), 8, 32);
-  *(val1) += __shfl_xor_sync(FINAL_MASK, *(val1), 8, 32);
-  *(val2) += __shfl_xor_sync(FINAL_MASK, *(val2), 8, 32);
-  *(val3) += __shfl_xor_sync(FINAL_MASK, *(val3), 8, 32);
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 8, 32);
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 8, 32);
+  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 8, 32);
+  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 8, 32);
+  *(val0) += val0_tmp;
+  *(val1) += val1_tmp;
+  *(val2) += val2_tmp;
+  *(val3) += val3_tmp;
 
-  *(val0) += __shfl_xor_sync(FINAL_MASK, *(val0), 4, 32);
-  *(val1) += __shfl_xor_sync(FINAL_MASK, *(val1), 4, 32);
-  *(val2) += __shfl_xor_sync(FINAL_MASK, *(val2), 4, 32);
-  *(val3) += __shfl_xor_sync(FINAL_MASK, *(val3), 4, 32);
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 4, 32);
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 4, 32);
+  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 4, 32);
+  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 4, 32);
+  *(val0) += val0_tmp;
+  *(val1) += val1_tmp;
+  *(val2) += val2_tmp;
+  *(val3) += val3_tmp;
 
-  *(val0) += __shfl_xor_sync(FINAL_MASK, *(val0), 2, 32);
-  *(val1) += __shfl_xor_sync(FINAL_MASK, *(val1), 2, 32);
-  *(val2) += __shfl_xor_sync(FINAL_MASK, *(val2), 2, 32);
-  *(val3) += __shfl_xor_sync(FINAL_MASK, *(val3), 2, 32);
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 2, 32);
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 2, 32);
+  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 2, 32);
+  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 2, 32);
+  *(val0) += val0_tmp;
+  *(val1) += val1_tmp;
+  *(val2) += val2_tmp;
+  *(val3) += val3_tmp;
 
-  *(val0) += __shfl_xor_sync(FINAL_MASK, *(val0), 1, 32);
-  *(val1) += __shfl_xor_sync(FINAL_MASK, *(val1), 1, 32);
-  *(val2) += __shfl_xor_sync(FINAL_MASK, *(val2), 1, 32);
-  *(val3) += __shfl_xor_sync(FINAL_MASK, *(val3), 1, 32);
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 1, 32);
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 1, 32);
+  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 1, 32);
+  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 1, 32);
+  *(val0) += val0_tmp;
+  *(val1) += val1_tmp;
+  *(val2) += val2_tmp;
+  *(val3) += val3_tmp;
 }
 
 __inline__ __device__ void blockReduceSum_Elem4(float* val_list) {
@@ -89,6 +126,36 @@ __inline__ __device__ void blockReduceSum_Elem4(float* val_list) {
     *(val_list + 3) = 0.f;
   }
   warpReduceSum_Elem4(val_list, val_list + 1, val_list + 2, val_list + 3);
+}
+
+__inline__ __device__ void blockReduceSum_Elem5(float* val_list, int size) {
+  static __shared__ float shared[5][32];
+  int lane_id = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  warpReduceSum_Elem5(val_list);
+
+  if (lane_id == 0) {
+    for (int i = 0; i < size; ++i) {
+      shared[i][wid] = *(val_list + i);
+    }
+  }
+  __syncthreads();
+
+  if (threadIdx.x < (blockDim.x >> 5)) {
+    *(val_list + 0) = shared[0][lane_id];
+    *(val_list + 1) = shared[1][lane_id];
+    *(val_list + 2) = shared[2][lane_id];
+    *(val_list + 3) = shared[3][lane_id];
+    *(val_list + 4) = shared[4][lane_id];
+  } else {
+    *(val_list + 0) = 0;
+    *(val_list + 1) = 0;
+    *(val_list + 2) = 0;
+    *(val_list + 3) = 0;
+    *(val_list + 4) = 0;
+  }
+  warpReduceSum_Elem5(val_list);
 }
 
 /* Calculate the sum of all elements in a block */
