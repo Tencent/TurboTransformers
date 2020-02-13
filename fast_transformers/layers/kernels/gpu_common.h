@@ -24,78 +24,39 @@ __inline__ __device__ float warpReduceSum(float val) {
 
 __inline__ __device__ void warpReduceSum_Elem2(float* val0, float* val1) {
   float val0_tmp, val1_tmp;
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 16, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 16, 32);
-  *(val0) += val0_tmp;
-  *(val1) += val1_tmp;
+#define WarpReduceSumOneStep(a, b)                       \
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), a, b); \
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), a, b); \
+  *(val0) += val0_tmp;                                   \
+  *(val1) += val1_tmp
 
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 8, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 8, 32);
-  *(val0) += val0_tmp;
-  *(val1) += val1_tmp;
+  WarpReduceSumOneStep(16, 32);
+  WarpReduceSumOneStep(8, 32);
+  WarpReduceSumOneStep(4, 32);
+  WarpReduceSumOneStep(2, 32);
+  WarpReduceSumOneStep(1, 32);
 
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 4, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 4, 32);
-  *(val0) += val0_tmp;
-  *(val1) += val1_tmp;
-
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 2, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 2, 32);
-  *(val0) += val0_tmp;
-  *(val1) += val1_tmp;
-
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 1, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 1, 32);
-  *(val0) += val0_tmp;
-  *(val1) += val1_tmp;
+#undef WarpReduceSumOneStep
 }
 __inline__ __device__ void warpReduceSum_Elem4(float* val0, float* val1,
                                                float* val2, float* val3) {
   float val0_tmp, val1_tmp, val2_tmp, val3_tmp;
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 16, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 16, 32);
-  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 16, 32);
-  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 16, 32);
-  *(val0) += val0_tmp;
-  *(val1) += val1_tmp;
-  *(val2) += val2_tmp;
+#define WarpReduceSumOneStep(a, b)                       \
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), a, b); \
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), a, b); \
+  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), a, b); \
+  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), a, b); \
+  *(val0) += val0_tmp;                                   \
+  *(val1) += val1_tmp;                                   \
+  *(val2) += val2_tmp;                                   \
   *(val3) += val3_tmp;
 
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 8, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 8, 32);
-  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 8, 32);
-  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 8, 32);
-  *(val0) += val0_tmp;
-  *(val1) += val1_tmp;
-  *(val2) += val2_tmp;
-  *(val3) += val3_tmp;
-
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 4, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 4, 32);
-  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 4, 32);
-  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 4, 32);
-  *(val0) += val0_tmp;
-  *(val1) += val1_tmp;
-  *(val2) += val2_tmp;
-  *(val3) += val3_tmp;
-
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 2, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 2, 32);
-  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 2, 32);
-  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 2, 32);
-  *(val0) += val0_tmp;
-  *(val1) += val1_tmp;
-  *(val2) += val2_tmp;
-  *(val3) += val3_tmp;
-
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 1, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 1, 32);
-  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 1, 32);
-  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 1, 32);
-  *(val0) += val0_tmp;
-  *(val1) += val1_tmp;
-  *(val2) += val2_tmp;
-  *(val3) += val3_tmp;
+  WarpReduceSumOneStep(16, 32);
+  WarpReduceSumOneStep(8, 32);
+  WarpReduceSumOneStep(4, 32);
+  WarpReduceSumOneStep(2, 32);
+  WarpReduceSumOneStep(1, 32);
+#undef WarpReduceSumOneStep
 }
 
 __inline__ __device__ void blockReduceSum_Elem4(float* val_list) {
@@ -178,50 +139,22 @@ __inline__ __device__ float warpReduceMax(float val) {
 __inline__ __device__ void warpReduceMax_Elem4(float* val0, float* val1,
                                                float* val2, float* val3) {
   float val0_tmp, val1_tmp, val2_tmp, val3_tmp;
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 16, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 16, 32);
-  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 16, 32);
-  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 16, 32);
-  *(val0) = max(val0_tmp, *(val0));
-  *(val1) = max(val1_tmp, *(val1));
-  *(val2) = max(val2_tmp, *(val2));
+#define WarpReduceMaxOneStep(a, b)                       \
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), a, b); \
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), a, b); \
+  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), a, b); \
+  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), a, b); \
+  *(val0) = max(val0_tmp, *(val0));                      \
+  *(val1) = max(val1_tmp, *(val1));                      \
+  *(val2) = max(val2_tmp, *(val2));                      \
   *(val3) = max(val3_tmp, *(val3));
 
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 8, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 8, 32);
-  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 8, 32);
-  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 8, 32);
-  *(val0) = max(val0_tmp, *(val0));
-  *(val1) = max(val1_tmp, *(val1));
-  *(val2) = max(val2_tmp, *(val2));
-  *(val3) = max(val3_tmp, *(val3));
-
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 4, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 4, 32);
-  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 4, 32);
-  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 4, 32);
-  *(val0) = max(val0_tmp, *(val0));
-  *(val1) = max(val1_tmp, *(val1));
-  *(val2) = max(val2_tmp, *(val2));
-  *(val3) = max(val3_tmp, *(val3));
-
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 2, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 2, 32);
-  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 2, 32);
-  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 2, 32);
-  *(val0) = max(val0_tmp, *(val0));
-  *(val1) = max(val1_tmp, *(val1));
-  *(val2) = max(val2_tmp, *(val2));
-  *(val3) = max(val3_tmp, *(val3));
-
-  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), 1, 32);
-  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), 1, 32);
-  val2_tmp = __shfl_xor_sync(FINAL_MASK, *(val2), 1, 32);
-  val3_tmp = __shfl_xor_sync(FINAL_MASK, *(val3), 1, 32);
-  *(val0) = max(val0_tmp, *(val0));
-  *(val1) = max(val1_tmp, *(val1));
-  *(val2) = max(val2_tmp, *(val2));
-  *(val3) = max(val3_tmp, *(val3));
+  WarpReduceMaxOneStep(16, 32);
+  WarpReduceMaxOneStep(8, 32);
+  WarpReduceMaxOneStep(4, 32);
+  WarpReduceMaxOneStep(2, 32);
+  WarpReduceMaxOneStep(1, 32);
+#undef WarpReduceMaxOneStep
 }
 
 /* Calculate the maximum of all elements in a block */
