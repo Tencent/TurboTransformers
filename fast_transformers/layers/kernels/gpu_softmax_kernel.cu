@@ -183,7 +183,7 @@ void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
   block.x = (seq_len + 31) / 32 * 32;
   blk_size = 4;
   // In the senario of BERT inference, high_dim_size is 4x because head_num is
-  // 12
+  // 12, 40 is set according to experimental results on Tesla M40.
   if (high_dim_size < 40 * 12 || high_dim_size % blk_size != 0) {
     grid.x = high_dim_size;
     softmax_kernel_noblk<<<grid, block, 0, stream>>>(

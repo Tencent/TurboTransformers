@@ -49,7 +49,7 @@ __inline__ __device__ void warpReduceSum_Elem4(float* val0, float* val1,
   *(val0) += val0_tmp;                                   \
   *(val1) += val1_tmp;                                   \
   *(val2) += val2_tmp;                                   \
-  *(val3) += val3_tmp;
+  *(val3) += val3_tmp
 
   WarpReduceSumOneStep(16, 32);
   WarpReduceSumOneStep(8, 32);
@@ -147,7 +147,7 @@ __inline__ __device__ void warpReduceMax_Elem4(float* val0, float* val1,
   *(val0) = max(val0_tmp, *(val0));                      \
   *(val1) = max(val1_tmp, *(val1));                      \
   *(val2) = max(val2_tmp, *(val2));                      \
-  *(val3) = max(val3_tmp, *(val3));
+  *(val3) = max(val3_tmp, *(val3))
 
   WarpReduceMaxOneStep(16, 32);
   WarpReduceMaxOneStep(8, 32);
