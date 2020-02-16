@@ -59,6 +59,7 @@ add_executable(layer_norm_test layer_norm_test.cpp)
 target_link_libraries(layer_norm_test layer_norm Catch2 loguru enforce aligned_scratchpad)
 if (WITH_GPU)
   target_link_libraries(layer_norm_test cuda_error cuda_device_context memory)
+  add_test(NAME layer_norm_test COMMAND layer_norm_test)
 endif()
 
 
