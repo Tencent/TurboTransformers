@@ -45,8 +45,8 @@ static __global__ void layer_norm_kernel(T *out, const T *input, const T *bias,
     if (isAdd) {
       tmp += out[blockIdx.x * n + tid] + __ldg(&bias[tid]);
     }
-    val1 += tmp;
-    val2 += tmp * tmp;
+    val1 = tmp;
+    val2 = tmp * tmp;
   }
 
   auto pair =
@@ -65,20 +65,21 @@ static __global__ void layer_norm_kernel(T *out, const T *input, const T *bias,
   }
 }
 
+template <bool AddBias, typename T>
+void GPULayerNorm(T *out, const T *input, const T *bias, const T *gamma,
+                  const T *beta, int m, int n, cudaStream_t stream) {
+  if (n > 1024) {
+    throw std::runtime_error("GPULayerNorm thread block size large than 1024.");
+  }
+  dim3 grid(m);
+  dim3 block(1 << static_cast<int>(std::ceil(std::log2f(n))));
+
 #define LayerNormKernelCase(AddMode, BlockDim, ...) \
   case (BlockDim):                                  \
     layer_norm_kernel<(AddMode), (BlockDim)>        \
         <<<grid, block, 0, stream>>>(__VA_ARGS__);  \
     break
 
-template <bool AddBias, typename T>
-void GPULayerNorm(T *out, const T *input, const T *bias, const T *gamma,
-                  const T *beta, int m, int n, cudaStream_t stream) {
-  if (n > 1024) {
-    throw std::runtime_error("GPULayerNorm thread block size large than 1024");
-  }
-  dim3 grid(m);
-  dim3 block(1 << static_cast<int>(std::ceil(std::log2f(n))));
   switch (block.x) {
     LayerNormKernelCase(AddBias, 1024, out, input, bias, gamma, beta, m, n);
     LayerNormKernelCase(AddBias, 512, out, input, bias, gamma, beta, m, n);
@@ -91,9 +92,8 @@ void GPULayerNorm(T *out, const T *input, const T *bias, const T *gamma,
     LayerNormKernelCase(AddBias, 2, out, input, bias, gamma, beta, m, n);
     LayerNormKernelCase(AddBias, 1, out, input, bias, gamma, beta, m, n);
   }
-}
-
 #undef LayerNormKernelCase
+}
 
 template void GPULayerNorm<true>(float *out, const float *input,
                                  const float *bias, const float *gamma,
