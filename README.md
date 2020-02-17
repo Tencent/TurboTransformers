@@ -45,7 +45,7 @@ bash run_benchmark.sh
 1. 本机构建docker镜像和容器
 ```
 # 我们目前仅提供了cuda 9.0的docker镜像制作方法
-sh tools/build_gpu_docker.sh $PWD
+sh tools/build_docker_gpu.sh $PWD
 docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=your_container_name REPOSITORY:TAG
 # for example: docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1-gpu-dev
 ```
@@ -56,7 +56,7 @@ cd /myspace
 # 下载预训练模型，需要git lfs，sudo yum install git-lfs
 git lfs install
 git lfs pull
-sh tools/build_in_gpu_env.sh $PWD
+sh tools/build_docker_gpu.sh $PWD
 ```
 
 3. 在docker内运行benchmark (optional), 和pytorch比较
