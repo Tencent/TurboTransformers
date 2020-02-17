@@ -3,7 +3,7 @@
 Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，这对高效部署Transformer线上服务带来了巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为fast_transformers的基于Intel多核CPU的Transformer实现。fast_transformers充发挥CPU的核间并行和指令级并行能力，并支持变长输入序列处理，避免了补零的额外计算。fast_transformer在多种CPU硬件上获得了超过pytorch和目前主流优化引擎（如onnxruntime-mkldnn 和torch JIT）的性能表现。使用4/8个线程时，fast_transformer在10~128长度的序列处理任务中，相比已开源最优实现取得平均20%以上的加速效果。并且，它对短序列的处理速度提升更为显著。fast_transformers已经应用于模式识别中心的多个线上服务服务场景。
 
 ### CPU版本安装
-1.1 本机构建docker镜像和容器
+1. 本机构建docker镜像和容器
 本机构建（编译ONNX-runtime时间会很长）
 ```
 sh tools/build_docker.sh
@@ -34,17 +34,43 @@ git lfs install
 git lfs pull
 sh tools/build_run_unittests.sh $PWD
 ```
-4. 在docker内运行benchmark (optional)
+4. 在docker内运行benchmark (optional), 和pytorch, torch-JIT, onnxruntime比较
 
 ```
 cd benchmark
 bash run_benchmark.sh
 ```
 
+### GPU版本安装
+1. 本机构建docker镜像和容器
+```
+# 我们目前仅提供了cuda 9.0的docker镜像制作方法
+sh tools/build_gpu_docker.sh $PWD
+docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=your_container_name REPOSITORY:TAG
+# for example: docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1-gpu-dev
+```
+
+2. 在docker内安装pip包并单测
+```
+cd /myspace
+# 下载预训练模型，需要git lfs，sudo yum install git-lfs
+git lfs install
+git lfs pull
+sh tools/build_in_gpu_env.sh $PWD
+```
+
+3. 在docker内运行benchmark (optional), 和pytorch比较
+```
+cd benchmark
+bash gpu_run_benchmark.sh
+```
+
+
 ### 使用示例
 Fast_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
 下面代码片段展示了如何将huggingface预训练BERT模型导入fast_transformer并进行一次BERT encoder的计算。
 
+1. CPU
 ```python
 import torch
 import transformers
@@ -66,6 +92,7 @@ input_ids = torch.randint(low=0,
                             high=cfg.vocab_size - 1,
                             size=(batch_size, seq_len),
                             dtype=torch.long)
+
 torch.set_grad_enabled(False)
 torch_res = model(input_ids) # sequence_output, pooled_output, (hidden_states), (attentions)
 print(torch_res[0][:,0,:])  # 获取encoder得到的第一个隐状态
@@ -80,6 +107,27 @@ print(res)
 #         [-0.8878,  0.6571, -0.6331,  ...,  0.2759, -0.4496, -0.2375]])
 ```
 更多使用接口可以参考 ./benchmark/benchmark.py文件
+
+2. GPU
+```pytorch
+import torch
+import transformers
+import fast_transformers
+test_device = torch.device('cuda:0')
+
+model = transformers.BertModel.from_pretrained(
+    model)  # type: transformers.BertModel
+model.to(test_device)
+cfg = model.config  # type: transformers.BertConfig
+input_ids = torch.randint(low=0,
+                          high=cfg.vocab_size - 1,
+                          size=(batch_size, seq_len),
+                          dtype=torch.long,
+                          device=test_device)
+model = fast_transformers.BertModel.from_torch(model)
+model(input_ids)
+
+```
 
 
 ## 性能
