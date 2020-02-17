@@ -32,7 +32,7 @@ class TestBertEncoder(unittest.TestCase):
                                        dtype=torch.float32)
 
         self.attention_mask = torch.ones((self.batch_size, self.seq_length),
-                                         dtype=torch.long)
+                                         dtype=torch.float32)
         self.attention_mask = self.attention_mask[:, None, None, :]
         self.attention_mask = (1.0 - self.attention_mask) * -10000.0
 
@@ -71,7 +71,6 @@ class TestBertEncoder(unittest.TestCase):
               f"Time Cost, {t.elapsed / self.num_iter}")
 
         diff = torch.abs(torch_bert_layer_result[0] - ft_bert_layer_result)
-        # print(diff)
         self.assertTrue(torch.max(diff) < 1e-3)
 
 

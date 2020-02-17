@@ -3,7 +3,6 @@
 #include <cub/cub.cuh>
 #include <numeric>
 
-#include "fast_transformers/layers/kernels/gpu_common.h"
 #include "fast_transformers/layers/kernels/gpu_layer_norm_kernel.h"
 
 namespace fast_transformers {

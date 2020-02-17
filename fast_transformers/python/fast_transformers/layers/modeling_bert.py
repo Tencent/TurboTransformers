@@ -236,12 +236,21 @@ class PoolingType(enum.Enum):
     MAX = "Max"
 
 
-class BertModel:
-    _pooling_layers = {
-        enum_val: SequencePool(enum_val.value)
-        for enum_val in PoolingType
-    }
+def pooling_layers(input_ft_tensor, pool_type):
+    input_torch = convert_returns_as_type(input_ft_tensor, ReturnType.TORCH)
+    if pool_type == PoolingType.FIRST:
+        return input_torch[:, 0, :]
+    elif pool_type == PoolingType.LAST:
+        return input_torch[:, -1, :]
+    elif pool_type == PoolingType.MEAN:
+        return np.mean(input_torch, axis=1)
+    elif pool_type == PoolingType.MAX:
+        return np.max(input_torch, axis=1)
+    else:
+        raise "{} is not support.".format(pool_type)
 
+
+class BertModel:
     def __init__(self, embeddings: BertEmbeddings, encoder: BertEncoder):
         self.embeddings = embeddings
         self.encoder = encoder
@@ -279,9 +288,12 @@ class BertModel:
                                     return_type=ReturnType.FAST_TRANSFORMERS,
                                     output=hidden_cache)
 
-        return self._pooling_layers[pooling_type](hidden_cache,
-                                                  return_type=return_type,
-                                                  output_tensor=output)
+        # hidden_states:ft_tensor, return torch_tensor
+        output_tensor = pooling_layers(hidden_cache, pooling_type)
+        if return_type == ReturnType.FAST_TRANSFORMERS:
+            return _try_convert(output_tensor, return_type)
+        else:
+            return output_tensor
 
     @staticmethod
     def from_torch(model: TorchBertModel):
@@ -290,8 +302,12 @@ class BertModel:
         return BertModel(embeddings, encoder)
 
     @staticmethod
-    def from_pretrained(model_id_or_path: str):
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
+        ):
+            torch_model.to(device)
         model = BertModel.from_torch(torch_model)
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
