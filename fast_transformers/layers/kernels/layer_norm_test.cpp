@@ -1,4 +1,5 @@
 #define CATCH_CONFIG_MAIN
+
 #include "fast_transformers/layers/kernels/layer_norm.h"
 
 #include <chrono>
@@ -8,6 +9,10 @@
 #include "fast_transformers/core/enforce.h"
 #include "fast_transformers/layers/kernels/test_helper.h"
 #include "loguru.hpp"
+
+#ifdef FT_WITH_CUDA
+#include "fast_transformers/core/cuda_device_context.h"
+#endif
 
 namespace fast_transformers {
 namespace layers {
@@ -127,22 +132,37 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
       REQUIRE(
           ::fast_transformers::test::CompareCPUGPU<float>(cpu_out, gpu_out));
 
+      // WARM UP
+      for (int i = 0; i < 5; ++i) {
+        AddBiasLayerNorm<float>(gpu_input, gpu_bias, gpu_gamma, gpu_beta,
+                                &gpu_out);
+      }
+
+      cudaEvent_t start_event, stop_event;
+      cudaEventCreate(&start_event);
+      cudaEventCreate(&stop_event);
+      auto& cuda_ctx =
+          fast_transformers::core::CUDADeviceContext::GetInstance();
+      auto stream = cuda_ctx.stream();
+      cudaEventRecord(start_event, stream);
+
       int step = 150;
-      auto start = std::chrono::system_clock::now();
       for (int i = 0; i < step; ++i) {
         AddBiasLayerNorm<float>(gpu_input, gpu_bias, gpu_gamma, gpu_beta,
                                 &gpu_out);
       }
-      auto end = std::chrono::system_clock::system_clock::now();
-      auto duration =
-          std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-      auto elapse = double(duration.count()) *
-                    std::chrono::microseconds::period::num /
-                    std::chrono::microseconds::period::den / step;
-      std::cout << "GPU AddBiasLayerNorm cost, "
+
+      cudaEventRecord(stop_event, stream);
+      cudaEventSynchronize(stop_event);
+      float elapse;
+      cudaEventElapsedTime(&elapse, start_event, stop_event);
+      elapse /= step;
+      elapse /= 1000;  // ms
+
+      std::cout << "AddBiasLayerNorm gpu cost, "
                 << batch_size * seq_length * hidden_size * sizeof(float) / 1e9 /
                        elapse
-                << ", GB/s";
+                << "GB/s, time consum, " << elapse << std::endl;
     }  // for
 }
 #endif
