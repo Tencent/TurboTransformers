@@ -162,7 +162,7 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
       std::cout << "AddBiasLayerNorm gpu cost, "
                 << batch_size * seq_length * hidden_size * sizeof(float) / 1e9 /
                        elapse
-                << "GB/s, time consum, " << elapse << std::endl;
+                << "GB/s, time consumed, " << elapse << std::endl;
     }  // for
 }
 #endif
