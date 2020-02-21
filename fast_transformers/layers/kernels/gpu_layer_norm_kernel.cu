@@ -8,20 +8,6 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-inline __device__ void get_mean_variance(float val, float* s_mean,
-                                         float* s_variance, int n, int tid) {
-  float sum1 = val, sum2 = val * val;
-  blockReduceSum_Elem2(&sum1, &sum2);
-  float mean = sum1 / n;
-  float mean_2 = sum2 / n;
-
-  if (tid == 0) {
-    *s_mean = mean;
-    *s_variance = rsqrtf(mean_2 - mean * mean + 1e-6f);
-  }
-  __syncthreads();
-}
-
 template <bool isAdd>
 static __global__ void layer_norm_kernel(float* out, const float* input,
                                          const float* bias, const float* gamma,
@@ -35,10 +21,20 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
   if (isAdd) {
     local_out = out[offset] + input[offset] + __ldg(&bias[tid]);
   } else {
-    local_out = (out[offset]);
+    local_out = out[offset];
   }
 
-  get_mean_variance(local_out, &s_mean, &s_variance, n, tid);
+  float sum1 = local_out, sum2 = local_out * local_out;
+  blockReduceSum_Elem2(&sum1, &sum2);
+
+  if (tid == 0) {
+    float mean = sum1 / n;
+    float mean_2 = sum2 / n;
+    s_mean = mean;
+    s_variance = rsqrtf(mean_2 - mean * mean + 1e-6f);
+  }
+  __syncthreads();
+
   out[offset] = (local_out - s_mean) * s_variance * __ldg(&gamma[tid]) +
                 __ldg(&beta[tid]);
 }

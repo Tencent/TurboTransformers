@@ -21,8 +21,8 @@ inline void _CreateBenchmark(DLDeviceType device_type) {
   int64_t num_attention_heads = 12;
   constexpr float scaler = 1.;
 
-  std::vector<int64_t> batch_size_list{1, 20, 24};
-  std::vector<int64_t> seq_length_list{16, 32, 48, 64, 128};
+  std::vector<int64_t> batch_size_list{1, 20};
+  std::vector<int64_t> seq_length_list{10, 20, 40, 60, 80, 100, 200, 300, 400, 500};
 
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
@@ -59,7 +59,7 @@ inline void _CreateBenchmark(DLDeviceType device_type) {
           batch_size * num_attention_heads * seq_length * seq_length;
 
       std::cout << ", " << device_name << ", SoftmaxMask throughput, "
-                << data_size * sizeof(float) / 1e6 / elapse << ", GB/s";
+                << data_size * sizeof(float) / 1e6 / elapse << ", GB/s" << std::endl;
     }
 }
 
@@ -110,7 +110,7 @@ TEST_CASE("softmax CPU and GPU correctness") {
 TEST_CASE("softmax GPU benchmark") { _CreateBenchmark(kDLGPU); }
 #endif
 
-TEST_CASE("softmax CPU benchmark") { _CreateBenchmark(kDLCPU); }
+//TEST_CASE("softmax CPU benchmark") { _CreateBenchmark(kDLCPU); }
 
 }  // namespace kernels
 }  // namespace layers
