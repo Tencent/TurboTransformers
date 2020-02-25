@@ -1,8 +1,13 @@
-import fast_transformers.fast_transformers_cxx as cxx
+try:
+    # `fast_transformers_cxxd` is the name on debug mode
+    import fast_transformers.fast_transformers_cxxd as cxx
+except ImportError:
+    import fast_transformers.fast_transformers_cxx as cxx
 import contextlib
-from fast_transformers.fast_transformers_cxx import set_num_threads
 
 __all__ = ['gperf_guard', 'set_num_threads']
+
+set_num_threads = cxx.set_num_threads
 
 
 @contextlib.contextmanager

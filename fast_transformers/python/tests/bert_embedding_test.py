@@ -1,7 +1,7 @@
+import fast_transformers
 import unittest
 
 import contexttimer
-import fast_transformers
 import torch
 import torch.jit
 from transformers import BertTokenizer
@@ -12,7 +12,7 @@ import os
 def create_test_bert_emb(batch_size: int, seq_length: int):
     class TestBertEmbedding(unittest.TestCase):
         def setUp(self) -> None:
-            if not torch.cuda.is_available():
+            if not torch.cuda.is_available() or not fast_transformers.config.is_with_cuda():
                 self.test_device = torch.device('cpu:0')
                 self.device = "CPU"
             else:

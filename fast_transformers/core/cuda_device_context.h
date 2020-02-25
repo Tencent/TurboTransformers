@@ -1,5 +1,6 @@
 #pragma once
 #include <memory.h>
+
 #include <map>
 
 #include "fast_transformers/core/cuda_error.h"
@@ -10,12 +11,12 @@ namespace core {
 
 class CublasHandleHolder {
  public:
-  CublasHandleHolder(cudaStream_t stream) {
+  explicit CublasHandleHolder(cudaStream_t stream) {
     cublasCreate(&handle_);
     cublasSetStream(handle_, stream);
   }
 
-  ~CublasHandleHolder() noexcept(false) { cublasDestroy(handle_); }
+  ~CublasHandleHolder() { cublasDestroy(handle_); }
 
   template <typename Callback>
   inline void Call(Callback&& callback) const {
@@ -30,8 +31,9 @@ class CublasHandleHolder {
 
 class CUDADeviceContext {
  public:
-  explicit CUDADeviceContext();
-  virtual ~CUDADeviceContext();
+  CUDADeviceContext();
+
+  ~CUDADeviceContext();
 
   static CUDADeviceContext& GetInstance() {
     static CUDADeviceContext instance;
@@ -46,10 +48,12 @@ class CUDADeviceContext {
   }
 
   cudaStream_t stream() const;
-  int device_count() const;
 
  private:
   cudaStream_t stream_;
+
+  // TODO(jiaruifang)其实应该对cublas handle和cuda stream分别写两个deletor，然后用unique_ptr
+  // 管理就好了。不用cublas的callback
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);

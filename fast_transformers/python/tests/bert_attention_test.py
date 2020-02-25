@@ -13,19 +13,16 @@ fname = "ft_attention.txt"
 
 
 def create_test(batch_size, seq_length):
-    if not torch.cuda.is_available(
-    ) or not fast_transformers.config.is_with_cuda():
-        return
-
     class TestBertAttention(unittest.TestCase):
         def setUp(self) -> None:
-            if torch.cuda.is_available():
-                self.test_device = torch.device('cuda:0')
-                self.device = "GPU"
-            else:
+            if not torch.cuda.is_available(
+            ) or not fast_transformers.config.is_with_cuda():
+                torch.set_num_threads(1)
                 self.test_device = torch.device('cpu')
                 self.device = "CPU"
-
+            else:
+                self.test_device = torch.device('cuda:0')
+                self.device = "GPU"
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
                 os.path.join(os.path.dirname(__file__), 'test-model'))

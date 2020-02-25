@@ -10,8 +10,7 @@ namespace core {
 
 class CUDAAllocator {
  public:
-  explicit CUDAAllocator() : allocation_size_(0) {}
-  virtual ~CUDAAllocator();
+  CUDAAllocator() : allocation_size_(0) {}
 
   static CUDAAllocator& GetInstance() {
     static CUDAAllocator instance;
@@ -20,10 +19,12 @@ class CUDAAllocator {
 
   void* allocate(size_t size);
   void free(void* memory, size_t size);
-  void FreeCache(size_t size);
-  size_t allocation_size() const;
+
+  // 其实这个函数是一个内部函数吧。不需要放到public里
+  
 
  private:
+  void FreeCache(size_t size);
   std::multimap<size_t, void*> allocations_;
   size_t allocation_size_;
 

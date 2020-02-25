@@ -1,6 +1,10 @@
 import enum
 import torch.utils.dlpack as dlpack
-import fast_transformers.fast_transformers_cxx as cxx
+try:
+    # `fast_transformers_cxxd` is the name on debug mode
+    import fast_transformers.fast_transformers_cxxd as cxx
+except ImportError:
+    import fast_transformers.fast_transformers_cxx as cxx
 from typing import Optional, Union
 import torch
 
