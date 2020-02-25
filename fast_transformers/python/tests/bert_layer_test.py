@@ -1,49 +1,41 @@
 import fast_transformers
 
 import unittest
+import os
+
 import contexttimer
 import torch
 import torch.jit
 import torch.onnx
-from transformers.modeling_bert import BertConfig, BertAttention
 from transformers import BertTokenizer
-import os
+from transformers.modeling_bert import BertConfig, BertLayer
 
-fname = "ft_attention.txt"
+fname = "ft_bertlayer.txt"
 
 
 def create_test(batch_size, seq_length):
-    if not torch.cuda.is_available(
-    ) or not fast_transformers.config.is_with_cuda():
-        return
-
-    class TestBertAttention(unittest.TestCase):
+    class TestBertLayer(unittest.TestCase):
         def setUp(self) -> None:
-            if torch.cuda.is_available():
+            if not torch.cuda.is_available() or not fast_transformers.config.is_with_cuda():
                 self.test_device = torch.device('cuda:0')
                 self.device = "GPU"
             else:
+                torch.set_num_threads(1)
                 self.test_device = torch.device('cpu')
                 self.device = "CPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
                 os.path.join(os.path.dirname(__file__), 'test-model'))
-
-            # Get Torch attention
             self.cfg = BertConfig(
                 vocab_size_or_config_json_file=self.tokenizer.vocab_size,
                 attention_probs_dropout_prob=0.0,
                 hidden_dropout_prob=0.0)
-            self.torch_attention = BertAttention(self.cfg)
-            self.torch_attention.eval()
-            if torch.cuda.is_available():
-                self.torch_attention.to(self.test_device)
 
-            # Get FT Attention
-            num_attention_heads = self.cfg.num_attention_heads
-            self.ft_attention = fast_transformers.BertAttention.from_torch(
-                self.torch_attention)
+            self.torch_bert_layer = BertLayer(self.cfg)
+            self.torch_bert_layer.eval()
+            if torch.cuda.is_available():
+                self.torch_bert_layer.to(self.test_device)
 
             self.hidden_size = self.cfg.hidden_size
             self.input_tensor = torch.rand(size=(batch_size, seq_length,
@@ -57,15 +49,44 @@ def create_test(batch_size, seq_length):
             self.attention_mask = self.attention_mask[:, None, None, :]
             self.attention_mask = (1.0 - self.attention_mask) * -10000.0
 
-        def test_bertattention(self):
-            num_iter = 50
-            # Torch
-            model = lambda: self.torch_attention(self.input_tensor, self.
-                                                 attention_mask)
-            torch_attention_result = self.run_model("Torch", model, num_iter)
+            self.ft_bert_layer = fast_transformers.BertLayer.from_torch(
+                self.torch_bert_layer)
 
-            ft_self_attention_result = self.ft_attention(
+        def test_bert_layer(self):
+            num_iter = 10
+
+            torch_bert_layer_result = self.torch_bert_layer(
                 self.input_tensor, self.attention_mask)
+
+            if torch.cuda.is_available():
+                start = torch.cuda.Event(enable_timing=True)
+                end = torch.cuda.Event(enable_timing=True)
+                start.record()
+
+            with contexttimer.Timer() as t:
+                for it in range(num_iter):
+                    torch_bert_layer_result = self.torch_bert_layer(
+                        self.input_tensor, self.attention_mask)
+
+            if torch.cuda.is_available():
+                end.record()
+                torch.cuda.synchronize()
+                torch_elapsed = start.elapsed_time(end) / 1e3
+
+            if torch.cuda.is_available():
+                self.torch_qps = num_iter / torch_elapsed
+                self.torch_time = torch_elapsed / num_iter
+            else:
+                self.torch_qps = num_iter / t.elapsed
+                self.torch_time = t.elapsed / num_iter
+
+            print(
+                f"BertLayer \"({batch_size},{seq_length:03})\" {self.device} Torch QPS,  {self.torch_qps}, time, {self.torch_time}"
+            )
+
+            with fast_transformers.gperf_guard("bert_layer.gperf"):
+                ft_bert_layer_result = self.ft_bert_layer(
+                    self.input_tensor, self.attention_mask)
 
             if torch.cuda.is_available():
                 start = torch.cuda.Event(enable_timing=True)
@@ -76,7 +97,7 @@ def create_test(batch_size, seq_length):
 
             with contexttimer.Timer() as t:
                 for it in range(num_iter):
-                    ft_self_attention_result = self.ft_attention(
+                    ft_bert_layer_result = self.ft_bert_layer(
                         self.input_tensor, self.attention_mask)
 
             if torch.cuda.is_available():
@@ -95,49 +116,19 @@ def create_test(batch_size, seq_length):
                 ft_time = t.elapsed / num_iter
 
             print(
-                f"BertAttention \"({batch_size},{seq_length:03})\" {self.device} FastTransform QPS,  {ft_qps}, time, {ft_time}"
+                f"BertLayer \"({batch_size},{seq_length:03})\" {self.device} FastTransform QPS,  {ft_qps}, time, {ft_time}"
             )
+
             self.assertTrue(
                 torch.max(
-                    torch.abs(torch_attention_result[0] -
-                              ft_self_attention_result)) < 1e-4)
-
+                    torch.abs(torch_bert_layer_result[0] -
+                              ft_bert_layer_result)) < 1e-3)
             with open(fname, "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {self.torch_qps}, {ft_qps}\n"
                 )
 
-        def run_model(self, model_name, model, num_iter=50):
-            # warmup
-            model()
-
-            if torch.cuda.is_available():
-                start = torch.cuda.Event(enable_timing=True)
-                end = torch.cuda.Event(enable_timing=True)
-                start.record()
-
-            with contexttimer.Timer() as t:
-                for it in range(num_iter):
-                    torch_attention_result = model()
-
-            if torch.cuda.is_available():
-                end.record()
-                torch.cuda.synchronize()
-                torch_elapsed = start.elapsed_time(end) / 1e3
-
-            if torch.cuda.is_available():
-                self.torch_qps = num_iter / torch_elapsed
-                self.torch_time = torch_elapsed / num_iter
-            else:
-                self.torch_qps = num_iter / t.elapsed
-                self.torch_time = t.elapsed / num_iter
-
-            print(
-                f"BertAttention \"({batch_size},{seq_length:03})\" {self.device} Torch QPS,  {self.torch_qps}, time, {self.torch_time}"
-            )
-            return torch_attention_result
-
-    globals()[f"TestBertAtt{batch_size}_{seq_length:3}"] = TestBertAttention
+    globals()[f"TestBertLayer{batch_size}_{seq_length:03}"] = TestBertLayer
 
 
 with open(fname, "w") as fh:
@@ -145,6 +136,8 @@ with open(fname, "w") as fh:
 for batch_size in [1, 2]:
     for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
         create_test(batch_size, seq_length)
+
+# create_test(20, 40)
 
 if __name__ == '__main__':
     unittest.main()

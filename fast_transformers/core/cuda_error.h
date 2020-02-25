@@ -16,10 +16,9 @@ namespace core {
     std::cout << "[FT][CALL] " << __FUNCTION__ << " " << std::endl; \
   } while (0)
 
-#ifdef FT_WITH_CUDA
 namespace details {
 
-static const std::string _CUDAGetErrorEnum(cudaError_t error) {
+static const std::string CUDAGetErrorString(cudaError_t error) {
   return cudaGetErrorString(error);
 }
 
@@ -30,7 +29,7 @@ static const std::string _CUDAGetErrorEnum(cudaError_t error) {
     }                                   \
   } while (0)
 
-static const std::string _CUDAGetErrorEnum(cublasStatus_t error) {
+static const std::string CUDAGetErrorString(cublasStatus_t error) {
   GetErrorNumCaseImpl(CUBLAS_STATUS_NOT_INITIALIZED);
   GetErrorNumCaseImpl(CUBLAS_STATUS_ALLOC_FAILED);
   GetErrorNumCaseImpl(CUBLAS_STATUS_INVALID_VALUE);
@@ -46,11 +45,11 @@ static const std::string _CUDAGetErrorEnum(cublasStatus_t error) {
 #undef GetErrorNumCaseImpl
 
 template <typename T>
-struct CudaStatusType {};
+struct CUDAStatusTrait {};
 
 #define DEFINE_CUDA_STATUS_TYPE(type, success_value) \
   template <>                                        \
-  struct CudaStatusType<type> {                      \
+  struct CUDAStatusTrait<type> {                      \
     using Type = type;                               \
     static constexpr Type kSuccess = success_value;  \
   }
@@ -64,10 +63,10 @@ DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
     auto __cond__ = (COND);                                                    \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);                           \
     constexpr auto __success_type__ =                                          \
-        details::CudaStatusType<__CUDA_STATUS_TYPE__>::kSuccess;               \
+        details::CUDAStatusTrait<__CUDA_STATUS_TYPE__>::kSuccess;               \
     if (FT_UNLIKELY(__cond__ != __success_type__)) {                           \
       std::string error_msg = std::string("[FT_ERROR] CUDA runtime error: ") + \
-                              details::_CUDAGetErrorEnum(__cond__) + " " +     \
+                              details::CUDAGetErrorString(__cond__) + " " +     \
                               __FILE__ + ":" + std::to_string(__LINE__) +      \
                               " \n";                                           \
       FT_THROW(error_msg.c_str());                                             \
@@ -75,7 +74,6 @@ DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
   } while (0)
 
 #undef DEFINE_CUDA_STATUS_TYPE
-#endif  // FT_WITH_CUDA
 
 }  // namespace core
 }  // namespace fast_transformers

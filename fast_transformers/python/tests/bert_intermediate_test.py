@@ -11,15 +11,15 @@ import os
 
 
 def create_test(batch_size, seq_length):
-    if not torch.cuda.is_available(
-    ) or not fast_transformers.config.is_with_cuda():
-        return
-
     class TestBertIntermediate(unittest.TestCase):
         def setUp(self) -> None:
-            torch.set_num_threads(1)
-            self.test_device = torch.device('cuda:0')
-            self.device = "GPU"
+            if not torch.cuda.is_available() or not fast_transformers.config.is_with_cuda():
+                self.test_device = torch.device('cuda:0')
+                self.device = "GPU"
+            else:
+                torch.set_num_threads(1)
+                self.test_device = torch.device('cpu')
+                self.device = "CPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(

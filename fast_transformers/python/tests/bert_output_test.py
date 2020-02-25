@@ -11,13 +11,15 @@ from transformers.modeling_bert import BertConfig, BertOutput
 
 
 def create_shape_test(batch_size: int, seq_length: int):
-    if not torch.cuda.is_available(
-    ) or not fast_transformers.config.is_with_cuda():
-        return
-
     class TestBertOut(unittest.TestCase):
         def setUp(self) -> None:
-            self.test_device = torch.device('cuda:0')
+            if not torch.cuda.is_available() or not fast_transformers.config.is_with_cuda():
+                self.test_device = torch.device('cuda:0')
+                self.device = "GPU"
+            else:
+                torch.set_num_threads(1)
+                self.test_device = torch.device('cpu')
+                self.device = "CPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
