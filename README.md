@@ -47,7 +47,7 @@ bash run_benchmark.sh
 # 我们目前仅提供了cuda 9.0的docker镜像制作方法
 sh tools/build_docker_gpu.sh $PWD
 docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=your_container_name REPOSITORY:TAG
-# for example: docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1-gpu-dev
+# for example: docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1-cuda10.0-ubuntu18.04-gpu-dev
 ```
 
 2. 在docker内安装pip包并单测
