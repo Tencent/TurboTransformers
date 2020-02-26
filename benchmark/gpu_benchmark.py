@@ -23,6 +23,10 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
     import transformers
     import contexttimer
     import fast_transformers
+
+    if not torch.cuda.is_available():
+        print("cuda is not available for torch")
+        return
     test_device = torch.device('cuda:0')
 
     fast_transformers.set_num_threads(num_threads)
@@ -69,6 +73,10 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
     import torch
     import transformers
     import contexttimer
+    if not torch.cuda.is_available():
+        print("cuda is not available for torch")
+        return
+
     test_device = torch.device('cuda:0')
 
     torch.set_grad_enabled(False)
@@ -111,9 +119,6 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
 
 
 def main():
-    import torch
-    if not torch.cuda.is_available():
-        return
 
     args = docopt.docopt(__doc__)
     kwargs = {

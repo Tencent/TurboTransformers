@@ -44,10 +44,10 @@ bash run_benchmark.sh
 ### GPU版本安装
 1. 本机构建docker镜像和容器
 ```
-# 我们目前仅提供了cuda 9.0的docker镜像制作方法
+# 可以在脚本中修改环境变量指定cuda版本和操作系统版本
 sh tools/build_docker_gpu.sh $PWD
 docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=your_container_name REPOSITORY:TAG
-# for example: docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1-cuda10.0-ubuntu18.04-gpu-dev
+# for example: docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/fast_transformer:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
 ```
 
 2. 在docker内安装pip包并单测
@@ -56,7 +56,7 @@ cd /myspace
 # 下载预训练模型，需要git lfs，sudo yum install git-lfs
 git lfs install
 git lfs pull
-sh tools/build_docker_gpu.sh $PWD
+sh tools/build_and_run_unittests_gpu.sh $PWD
 ```
 
 3. 在docker内运行benchmark (optional), 和pytorch比较
@@ -67,7 +67,7 @@ bash gpu_run_benchmark.sh
 
 
 ### 使用示例
-Fast_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
+fast_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
 下面代码片段展示了如何将huggingface预训练BERT模型导入fast_transformer并进行一次BERT encoder的计算。
 
 1. CPU
