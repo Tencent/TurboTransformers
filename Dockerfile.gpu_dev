@@ -1,4 +1,9 @@
-FROM nvidia/cuda:9.0-devel-ubuntu16.04
+ARG CUDA_VERSION=9.0
+ARG LINUX_VERSION=ubuntu16.04
+FROM nvidia/cuda:$CUDA_VERSION-devel-$LINUX_VERSION
+
+ENV PYTORCH_VERSION=1.1.0
+ENV PYTORCH_CUDA_VERSION=$CUDA_VERSION
 
 # System packages
 RUN apt-get update && \
@@ -10,8 +15,10 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     bash Miniconda3-latest-Linux-x86_64.sh -p /opt/miniconda3 -b && \
     rm Miniconda3-latest-Linux-x86_64.sh && \
     conda update -y conda && \
+    conda install pytorch=$PYTORCH_VERSION torchvision==0.3.0 cudatoolkit=$PYTORCH_CUDA_VERSION -c pytorch && \
     conda install mkl mkl-service -c anaconda && \
     conda install curl conda-verify conda-build mkl-include cmake -c anaconda && \
     conda install git git-lfs -c conda-forge  && \
     conda clean -afy
+RUN pip --no-cache-dir install contexttimer future transformers
 WORKDIR /workspace

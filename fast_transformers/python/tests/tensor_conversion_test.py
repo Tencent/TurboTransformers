@@ -15,7 +15,6 @@ class TestDLPack(unittest.TestCase):
         else:
             self.test_device = torch.device('cuda:0')
             self.device = "GPU"
-
         a = torch.rand(size=(4, 3),
                        dtype=torch.float32,
                        device=self.test_device)
