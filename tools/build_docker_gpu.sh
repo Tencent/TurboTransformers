@@ -1,11 +1,15 @@
 #!/bin/bash
 cd $(dirname $0)/../
 set -xe
-
-SOTWARE_VERSION=$(cat CMakeLists.txt | grep FAST_TRANSFORMERS_VERSION | \
+VERSION=$(cat CMakeLists.txt | grep FAST_TRANSFORMERS_VERSION | \
     sed 's#set(FAST_TRANSFORMERS_VERSION ##g' | sed 's#)##g')
+
 CUDA_VERSION=9.0
-LINUX_VERSION=ubuntu16.04
+DOCKER_BASE=${CUDA_VERSION}-cudnn7-devel-ubuntu16.04
+PYTORCH_VERSION=1.1.0
+sed 's#IMAGE_BASE#nvidia/cuda:'${DOCKER_BASE}'#g' ./docker/Dockerfile_dev.gpu |
+sed 's#CUDA_VERSION#'${CUDA_VERSION}'#g'         |
+sed 's#PYTORCH_VERSION#'${PYTORCH_VERSION}'#g'    > Dockerfile.gpu
 
 docker build ${EXTRA_ARGS} \
-	--build-arg CUDA_VERSION=${CUDA_VERSION} --build-arg LINUX_VERSION=${LINUX_VERSION} -t ccr.ccs.tencentyun.com/mmspr/fast_transformer:${SOTWARE_VERSION}-cuda${CUDA_VERSION}-gpu-dev -f Dockerfile.gpu_dev  .
+	-t ccr.ccs.tencentyun.com/mmspr/fast_transformer:${VERSION}-cuda${DOCKER_BASE}-gpu-dev -f Dockerfile.gpu  .

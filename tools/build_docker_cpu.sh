@@ -6,4 +6,4 @@ VERSION=$(cat CMakeLists.txt | grep FAST_TRANSFORMERS_VERSION | \
     sed 's#set(FAST_TRANSFORMERS_VERSION ##g' | sed 's#)##g')
 
 docker build ${EXTRA_ARGS} \
-	-t ccr.ccs.tencentyun.com/mmspr/fast_transformer:${VERSION}-dev -f Dockerfile.dev  .
+	-t ccr.ccs.tencentyun.com/mmspr/fast_transformer:${VERSION}-dev -f ./docker/Dockerfile_dev.cpu .
