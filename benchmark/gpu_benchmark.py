@@ -29,11 +29,12 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
         return
     test_device = torch.device('cuda:0')
 
-    fast_transformers.set_num_threads(num_threads)
-
+    model_dir = os.path.join(os.path.dirname(__file__),
+                             '../fast_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
-        model)  # type: transformers.BertModel
+        model_dir)  # type: transformers.BertModel
     model.to(test_device)
+    model.eval()
     cfg = model.config  # type: transformers.BertConfig
     input_ids = torch.randint(low=0,
                               high=cfg.vocab_size - 1,
@@ -80,8 +81,11 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
     test_device = torch.device('cuda:0')
 
     torch.set_grad_enabled(False)
+
+    model_dir = os.path.join(os.path.dirname(__file__),
+                             '../fast_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
-        model)  # type: transformers.BertModel
+        model_dir)  # type: transformers.BertModel
     model.eval()
 
     model.to(test_device)
