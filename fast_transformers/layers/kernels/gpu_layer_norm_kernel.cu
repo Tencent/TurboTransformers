@@ -30,8 +30,9 @@ struct DataPairAddFunc {
 };
 
 template <bool isAdd, int BlockDim, typename T>
-__global__ void layer_norm_kernel(T *out, const T *input, const T *bias,
-                                  const T *gamma, const T *beta, int m, int n) {
+__global__ void cub_layer_norm_kernel(T *out, const T *input, const T *bias,
+                                      const T *gamma, const T *beta, int m,
+                                      int n) {
   using CubBlockReduce = cub::BlockReduce<DataPair<float>, BlockDim>;
   __shared__ typename CubBlockReduce::TempStorage temp_storage;
   __shared__ T s_mean;
@@ -57,6 +58,7 @@ __global__ void layer_norm_kernel(T *out, const T *input, const T *bias,
     s_variance = rsqrtf(pair.second / n - s_mean * s_mean + 1e-6f);
   }
   __syncthreads();
+
   if (tid < n) {
     out[blockIdx.x * n + tid] =
         (val1 - s_mean) * s_variance * __ldg(&gamma[tid]) + __ldg(&beta[tid]);
@@ -106,7 +108,7 @@ void GPULayerNorm(T *out, const T *input, const T *bias, const T *gamma,
 
 #define LayerNormKernelCase(AddMode, BlockDim, ...) \
   case (BlockDim):                                  \
-    layer_norm_kernel<(AddMode), (BlockDim)>        \
+    cub_layer_norm_kernel<(AddMode), (BlockDim)>    \
         <<<grid, block, 0, stream>>>(__VA_ARGS__);  \
     break
 
@@ -133,6 +135,7 @@ template void GPULayerNorm<false>(float *out, const float *input,
                                   const float *bias, const float *gamma,
                                   const float *beta, int m, int n,
                                   cudaStream_t stream);
+
 }  // namespace kernels
 }  // namespace layers
 }  // namespace fast_transformers
