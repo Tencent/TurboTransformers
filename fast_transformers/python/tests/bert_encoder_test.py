@@ -20,8 +20,6 @@ class TestBertEncoder(unittest.TestCase):
         return elapsed
 
     def setUp(self) -> None:
-        self.start = torch.cuda.Event(enable_timing=True)
-        self.end = torch.cuda.Event(enable_timing=True)
         if not torch.cuda.is_available(
         ) or not fast_transformers.config.is_with_cuda():
             torch.set_num_threads(1)
