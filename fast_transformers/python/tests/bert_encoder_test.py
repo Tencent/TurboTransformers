@@ -11,15 +11,17 @@ from transformers.modeling_bert import BertConfig, BertEncoder
 
 class TestBertEncoder(unittest.TestCase):
     def gpu_timer_start(self):
-        start.record()
+        self.start.record()
 
-    def gpu_timer_end(self) -> float32:
+    def gpu_timer_end(self) -> float:
         self.end.record()
         torch.cuda.synchronize()
         elapsed = self.start.elapsed_time(self.end) / 1e3
         return elapsed
 
     def setUp(self) -> None:
+        self.start = torch.cuda.Event(enable_timing=True)
+        self.end = torch.cuda.Event(enable_timing=True)
         if not torch.cuda.is_available(
         ) or not fast_transformers.config.is_with_cuda():
             torch.set_num_threads(1)
@@ -66,7 +68,7 @@ class TestBertEncoder(unittest.TestCase):
                                                     self.attention_mask)
 
         if torch.cuda.is_available():
-            gpu_timer_start()
+            self.gpu_timer_start()
         with contexttimer.Timer() as t:
             ft_bert_layer_result = None
             for it in range(self.num_iter):
@@ -76,7 +78,7 @@ class TestBertEncoder(unittest.TestCase):
                     output=ft_bert_layer_result,
                     return_type=fast_transformers.ReturnType.FAST_TRANSFORMERS)
         if torch.cuda.is_available():
-            gpu_elapse = gpu_timer_end()
+            gpu_elapsed = self.gpu_timer_end()
             print(
                 f"BertEncoder FastTransform QPS, {self.num_iter / gpu_elapsed}, ",
                 f"Time Cost, {gpu_elapsed / self.num_iter}")
@@ -93,14 +95,14 @@ class TestBertEncoder(unittest.TestCase):
             [None] * self.cfg.num_hidden_layers)
 
         if torch.cuda.is_available():
-            gpu_timer_start()
+            self.gpu_timer_start()
         with contexttimer.Timer() as t:
             for it in range(self.num_iter):
                 torch_bert_layer_result = self.torch_encoder_layer(
                     self.input_tensor, self.attention_mask,
                     [None] * self.cfg.num_hidden_layers)
         if torch.cuda.is_available():
-            gpu_elapse = gpu_timer_end()
+            gpu_elapsed = self.gpu_timer_end()
             print(f"BertEncoder Torch QPS, {self.num_iter / gpu_elapsed}, ",
                   f"Time Cost, {gpu_elapsed / self.num_iter}")
         else:
