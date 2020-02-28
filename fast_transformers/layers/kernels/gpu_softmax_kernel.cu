@@ -1,12 +1,51 @@
 #include <cuda_runtime.h>
 #include <immintrin.h>
+
+#include <cub/cub.cuh>
 #include <numeric>
+
 #include "fast_transformers/layers/kernels/gpu_block_reduce.h"
 #include "fast_transformers/layers/kernels/gpu_softmax_kernel.h"
 
 namespace fast_transformers {
 namespace layers {
 namespace kernels {
+
+namespace {
+template <int BlockDim>
+__global__ void cub_softmax_kernel(float* qk_buf_, const float* attr_mask,
+                                   const int batch_size, const int head_num,
+                                   const int seq_len, const float scaler) {
+  using CubBlockReduce = cub::BlockReduce<float, BlockDim>;
+  __shared__ typename CubBlockReduce::TempStorage temp_storage;
+  __shared__ float s_sum, s_max;
+
+  int batch_id = blockIdx.x / head_num / seq_len;
+  int qk_offset = blockIdx.x * seq_len;
+  int mask_offset = batch_id * seq_len;
+
+  float qk = threadIdx.x < seq_len ? qk_buf_[threadIdx.x + qk_offset] : 0.0f;
+  float mask_val =
+      threadIdx.x < seq_len ? attr_mask[threadIdx.x + mask_offset] : 0.0f;
+  // mask_val = (1.0f - mask_val) * -10000.0f;
+  float tmp = threadIdx.x < seq_len ? (qk * scaler + mask_val) : -1e20f;
+
+  float max_val = CubBlockReduce(temp_storage).Reduce(tmp, cub::Max());
+  if (threadIdx.x == 0) s_max = max_val;
+  __syncthreads();
+
+  float qk_tmp = threadIdx.x < seq_len ? __expf((tmp - s_max)) : 0.0f;
+  float sum_val = CubBlockReduce(temp_storage).Reduce(qk_tmp, cub::Sum());
+
+  if (threadIdx.x == 0) {
+    s_sum = sum_val + 1e-6f;
+  }
+  __syncthreads();
+
+  if (threadIdx.x < seq_len)
+    qk_buf_[threadIdx.x + qk_offset] = (qk_tmp / s_sum);
+}
+}  // namespace
 
 // unroll for loop using unroll size as 4.
 // blk_size can be arbitary positive intergers.
@@ -171,6 +210,7 @@ __global__ void softmax_kernel_noblk(float* qk_buf_, const float* attr_mask,
     qk_buf_[threadIdx.x + qk_offset] = (qk_tmp / s_sum);
 }
 
+/*
 template <>
 void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
                     int64_t head_num, int64_t seq_len, float scale,
@@ -194,7 +234,45 @@ void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
         qk_buf, attr_mask, batch_size, head_num, seq_len, scale, blk_size);
   }
 }
+*/
 
+#define SOFTMAX_KERNEL_CASE(BlockDim, ...)                                 \
+  case (BlockDim):                                                         \
+    cub_softmax_kernel<BlockDim><<<grid, block, 0, stream>>>(__VA_ARGS__); \
+    break
+
+#define RUN_KERNEL(...)                       \
+  do {                                        \
+    switch (block.x) {                        \
+      SOFTMAX_KERNEL_CASE(1024, __VA_ARGS__); \
+      SOFTMAX_KERNEL_CASE(512, __VA_ARGS__);  \
+      SOFTMAX_KERNEL_CASE(128, __VA_ARGS__);  \
+      SOFTMAX_KERNEL_CASE(64, __VA_ARGS__);   \
+      SOFTMAX_KERNEL_CASE(32, __VA_ARGS__);   \
+      SOFTMAX_KERNEL_CASE(16, __VA_ARGS__);   \
+      SOFTMAX_KERNEL_CASE(8, __VA_ARGS__);    \
+      SOFTMAX_KERNEL_CASE(4, __VA_ARGS__);    \
+      SOFTMAX_KERNEL_CASE(2, __VA_ARGS__);    \
+      SOFTMAX_KERNEL_CASE(1, __VA_ARGS__);    \
+    }                                         \
+  } while (0)
+
+template <>
+void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
+                    int64_t head_num, int64_t seq_len, float scale,
+                    cudaStream_t stream) {
+  dim3 block, grid;
+  int blk_size = 1;
+  int high_dim_size = batch_size * head_num * seq_len;
+
+  // block size must be 32x, so warp reduce can work
+  block.x = (seq_len + 31) / 32 * 32;
+  grid.x = high_dim_size;
+  RUN_KERNEL(qk_buf, attr_mask, batch_size, head_num, seq_len, scale);
+}
+
+#undef RUN_KERNEL
+#undef SOFTMAX_KERNEL_CASE
 }  // namespace kernels
 }  // namespace layers
 }  // namespace fast_transformers

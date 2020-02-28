@@ -47,6 +47,7 @@ target_link_libraries(softmax_test softmax Catch2 loguru enforce aligned_scratch
 if (WITH_GPU)
   target_link_libraries(softmax_test cuda_error cuda_device_context memory)
 endif()
+add_test(NAME softmax_test COMMAND softmax_test)
 
 add_executable(transpose_test transpose_test.cpp)
 target_link_libraries(transpose_test transpose Catch2 loguru enforce aligned_scratchpad)
