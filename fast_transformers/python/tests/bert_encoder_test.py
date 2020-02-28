@@ -10,10 +10,6 @@ from transformers.modeling_bert import BertConfig, BertEncoder
 
 
 class TestBertEncoder(unittest.TestCase):
-    def __init__(self):
-        self.start = torch.cuda.Event(enable_timing=True)
-        self.end = torch.cuda.Event(enable_timing=True)
-
     def gpu_timer_start(self):
         start.record()
 
@@ -30,6 +26,8 @@ class TestBertEncoder(unittest.TestCase):
             self.test_device = torch.device('cpu')
             self.device = "CPU"
         else:
+            self.start = torch.cuda.Event(enable_timing=True)
+            self.end = torch.cuda.Event(enable_timing=True)
             self.test_device = torch.device('cuda:0')
             self.device = "GPU"
         torch.set_grad_enabled(False)
