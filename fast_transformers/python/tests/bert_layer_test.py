@@ -14,14 +14,16 @@ fname = "ft_bertlayer.txt"
 
 
 def create_test(batch_size, seq_length):
-    if not torch.cuda.is_available(
-    ) or not fast_transformers.config.is_with_cuda():
-        return
-
     class TestBertLayer(unittest.TestCase):
         def setUp(self) -> None:
-            self.test_device = torch.device('cuda:0')
-            self.device = "GPU"
+            if not torch.cuda.is_available(
+            ) or not fast_transformers.config.is_with_cuda():
+                torch.set_num_threads(1)
+                self.test_device = torch.device('cpu')
+                self.device = "CPU"
+            else:
+                self.test_device = torch.device('cuda:0')
+                self.device = "GPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -132,11 +134,9 @@ def create_test(batch_size, seq_length):
 
 with open(fname, "w") as fh:
     fh.write(", torch, fast_transformers\n")
-for batch_size in [1, 2]:
-    for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
+for batch_size in [1, 20]:
+    for seq_length in [10, 20, 40, 60, 80, 120, 200, 300, 400, 500]:
         create_test(batch_size, seq_length)
-
-# create_test(20, 40)
 
 if __name__ == '__main__':
     unittest.main()

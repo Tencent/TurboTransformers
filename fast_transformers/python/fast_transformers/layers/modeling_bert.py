@@ -1,4 +1,8 @@
-import fast_transformers.fast_transformers_cxx as cxx
+try:
+    # `fast_transformers_cxxd` is the name on debug mode
+    import fast_transformers.fast_transformers_cxxd as cxx
+except ImportError:
+    import fast_transformers.fast_transformers_cxx as cxx
 from typing import Union, Optional, Sequence
 import torch
 from .return_type import convert_returns_as_type, ReturnType

@@ -11,28 +11,35 @@ from transformers.modeling_bert import BertConfig, BertEncoder
 
 class TestBertEncoder(unittest.TestCase):
     def setUp(self) -> None:
+        if not torch.cuda.is_available(
+            ) or not fast_transformers.config.is_with_cuda():
+                torch.set_num_threads(1)
+                self.test_device = torch.device('cpu')
+                self.device = "CPU"
+        else:
+            self.test_device = torch.device('cuda:0')
+            self.device = "GPU"
         torch.set_grad_enabled(False)
-        torch.set_num_threads(1)
         self.tokenizer = BertTokenizer.from_pretrained(
             os.path.join(os.path.dirname(__file__), 'test-model'))
         self.cfg = BertConfig(
-            vocab_size_or_config_json_file=self.tokenizer.vocab_size,
-            attention_probs_dropout_prob=0.0,
-            hidden_dropout_prob=0.0,
-            num_hidden_layers=2)
+            vocab_size_or_config_json_file=self.tokenizer.vocab_size)
 
         self.torch_encoder_layer = BertEncoder(self.cfg)
         self.torch_encoder_layer.eval()
+
+        if torch.cuda.is_available():                                            
+            self.torch_encoder_layer.to(self.test_device)
 
         self.batch_size = 1
         self.seq_length = 40
         self.hidden_size = self.cfg.hidden_size
         self.input_tensor = torch.rand(size=(self.batch_size, self.seq_length,
                                              self.hidden_size),
-                                       dtype=torch.float32)
+                                       dtype=torch.float32, device=self.test_device)
 
         self.attention_mask = torch.ones((self.batch_size, self.seq_length),
-                                         dtype=torch.float32)
+                                         dtype=torch.float32, device=self.test_device)
         self.attention_mask = self.attention_mask[:, None, None, :]
         self.attention_mask = (1.0 - self.attention_mask) * -10000.0
 
@@ -40,7 +47,7 @@ class TestBertEncoder(unittest.TestCase):
             self.torch_encoder_layer)
 
     def test_bert_encoder(self):
-        self.num_iter = 100
+        self.num_iter = 150
 
         ft_bert_layer_result = self.ft_bert_encoder(self.input_tensor,
                                                     self.attention_mask)
@@ -55,7 +62,7 @@ class TestBertEncoder(unittest.TestCase):
         ft_bert_layer_result = self.ft_bert_encoder(self.input_tensor,
                                                     self.attention_mask)
         print(
-            f"fast_transformer BertEncoder Torch QPS, {self.num_iter / t.elapsed}, ",
+            f"fast_transformer BertEncoder QPS, {self.num_iter / t.elapsed}, ",
             f"Time Cost, {t.elapsed / self.num_iter}")
 
         torch_bert_layer_result = self.torch_encoder_layer(

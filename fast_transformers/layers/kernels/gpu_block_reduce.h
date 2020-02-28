@@ -1,13 +1,12 @@
 #pragma once
 #include <cuda_runtime.h>
-
 namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
 #define FINAL_MASK 0xffffffff
 
-__inline__ __device__ float warpReduceSum(float val) {
+static __inline__ __device__ float warpReduceSum(float val) {
   val += __shfl_xor_sync(FINAL_MASK, val, 16, 32);
   val += __shfl_xor_sync(FINAL_MASK, val, 8, 32);
   val += __shfl_xor_sync(FINAL_MASK, val, 4, 32);
@@ -22,7 +21,7 @@ __inline__ __device__ float warpReduceSum(float val) {
  * ElemX means there are X numbers to be summed
  */
 
-__inline__ __device__ void warpReduceSum_Elem2(float* val0, float* val1) {
+static __inline__ __device__ void warpReduceSum_Elem2(float* val0, float* val1) {
   float val0_tmp, val1_tmp;
 #define WarpReduceSumOneStep(a, b)                       \
   val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), a, b); \
@@ -38,7 +37,7 @@ __inline__ __device__ void warpReduceSum_Elem2(float* val0, float* val1) {
 
 #undef WarpReduceSumOneStep
 }
-__inline__ __device__ void warpReduceSum_Elem4(float* val0, float* val1,
+static __inline__ __device__ void warpReduceSum_Elem4(float* val0, float* val1,
                                                float* val2, float* val3) {
   float val0_tmp, val1_tmp, val2_tmp, val3_tmp;
 #define WarpReduceSumOneStep(a, b)                       \
@@ -89,7 +88,7 @@ __inline__ __device__ void blockReduceSum_Elem4(float* val_list) {
 }
 
 /* Calculate the sum of all elements in a block */
-__inline__ __device__ void blockReduceSum_Elem2(float* val1, float* val2) {
+static __inline__ __device__ void blockReduceSum_Elem2(float* val1, float* val2) {
   static __shared__ float shared1[32];
   static __shared__ float shared2[32];
   int lane = threadIdx.x & 0x1f;
@@ -110,7 +109,7 @@ __inline__ __device__ void blockReduceSum_Elem2(float* val1, float* val2) {
 }
 
 /* Calculate the sum of all elements in a block */
-__inline__ __device__ float blockReduceSum(float val) {
+static  __inline__ __device__ float blockReduceSum(float val) {
   __shared__ float shared[32];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
@@ -127,7 +126,8 @@ __inline__ __device__ float blockReduceSum(float val) {
   return val;
 }
 
-__inline__ __device__ float warpReduceMax(float val) {
+// static
+static  __inline__ __device__ float warpReduceMax(float val) {
   val = max(val, __shfl_xor_sync(FINAL_MASK, val, 16, 32));
   val = max(val, __shfl_xor_sync(FINAL_MASK, val, 8, 32));
   val = max(val, __shfl_xor_sync(FINAL_MASK, val, 4, 32));
@@ -136,7 +136,7 @@ __inline__ __device__ float warpReduceMax(float val) {
   return val;
 }
 
-__inline__ __device__ void warpReduceMax_Elem4(float* val0, float* val1,
+static  __inline__ __device__ void warpReduceMax_Elem4(float* val0, float* val1,
                                                float* val2, float* val3) {
   float val0_tmp, val1_tmp, val2_tmp, val3_tmp;
 #define WarpReduceMaxOneStep(a, b)                       \
@@ -158,6 +158,7 @@ __inline__ __device__ void warpReduceMax_Elem4(float* val0, float* val1,
 }
 
 /* Calculate the maximum of all elements in a block */
+// static
 __inline__ __device__ float blockReduceMax(float val) {
   static __shared__ float shared[32];
   int lane = threadIdx.x & 0x1f;  // in-warp idx

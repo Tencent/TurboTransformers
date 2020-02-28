@@ -5,7 +5,7 @@
 
 namespace fast_transformers {
 namespace core {
-
+// 这个异常没有用
 struct BadAlloc : public std::exception {
   explicit BadAlloc(std::string err_msg, const char* file, int line)
       : err_str_(err_msg) {}
@@ -15,15 +15,8 @@ struct BadAlloc : public std::exception {
   std::string err_str_;
 };
 
-CUDAAllocator::~CUDAAllocator() {
-  // FIXME(jiaruifang) How to free device memory safely. We should not release
-  // memory in the deconstructor of a Singleton.
-  // https://stackoverflow.com/questions/35815597/cuda-call-fails-in-destructor
-  /*FreeCache(-1UL);*/
-}
-
 void CUDAAllocator::FreeCache(size_t size) {
-  if (FT_UNLIKELY(size == 0)) return;
+  if (size == 0) return;
   size_t cur = 0;
   while (!allocations_.empty()) {  // free the largest
     auto it = --allocations_.end();
@@ -37,23 +30,22 @@ void CUDAAllocator::FreeCache(size_t size) {
 
 void* CUDAAllocator::allocate(size_t size) {
   auto it = allocations_.lower_bound(size);
-  if (it != allocations_.end() && it->first < size * 2) {
+
+  if (it != allocations_.end() && it->first < size) {
     void* result = it->second;
-    allocation_size_ -= it->first;
     allocations_.erase(it);
     return result;
   }
 
   try {
+    // TODO(jiaruifang) cuda_alloc和cuda_free既然只在这一个文件里用了，就直接在这个文件里调cuda
+    // API就好。 memory.h 里的alloc/free可以删了
     return cuda_alloc(size);
   } catch (BadAlloc&) {
-    std::cerr << "I want to have " << size << " Byte data" << std::endl;
     FreeCache(size);
     return cuda_alloc(size);
   }
 }
-
-size_t CUDAAllocator::allocation_size() const { return allocation_size_; }
 
 void CUDAAllocator::free(void* memory, size_t size) {
   allocations_.emplace(size, memory);

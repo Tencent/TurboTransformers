@@ -3,6 +3,7 @@
 #include <cub/cub.cuh>
 #include <numeric>
 
+#include "fast_transformers/layers/kernels/gpu_block_reduce.h"
 #include "fast_transformers/layers/kernels/gpu_layer_norm_kernel.h"
 
 namespace fast_transformers {
@@ -27,12 +28,10 @@ struct DataPairAddFunc {
     return DataPair<T>(p1.first + p2.first, p1.second + p2.second);
   }
 };
-}  // namespace
 
 template <bool isAdd, int BlockDim, typename T>
-static __global__ void layer_norm_kernel(T *out, const T *input, const T *bias,
-                                         const T *gamma, const T *beta, int m,
-                                         int n) {
+__global__ void layer_norm_kernel(T *out, const T *input, const T *bias,
+                                  const T *gamma, const T *beta, int m, int n) {
   using CubBlockReduce = cub::BlockReduce<DataPair<float>, BlockDim>;
   __shared__ typename CubBlockReduce::TempStorage temp_storage;
   __shared__ T s_mean;
@@ -58,11 +57,42 @@ static __global__ void layer_norm_kernel(T *out, const T *input, const T *bias,
     s_variance = rsqrtf(pair.second / n - s_mean * s_mean + 1e-6f);
   }
   __syncthreads();
-
   if (tid < n) {
     out[blockIdx.x * n + tid] =
         (val1 - s_mean) * s_variance * __ldg(&gamma[tid]) + __ldg(&beta[tid]);
   }
+}
+}  // namespace
+
+template <bool isAdd>
+static __global__ void layer_norm_kernel(float *out, const float *input,
+                                         const float *bias, const float *gamma,
+                                         const float *beta, int m, int n) {
+  int tid = threadIdx.x;
+  int offset = blockIdx.x * n + tid;
+  __shared__ float s_mean;
+  __shared__ float s_variance;
+
+  float local_out = 0.0f;
+  if (isAdd) {
+    local_out = out[offset] + input[offset] + __ldg(&bias[tid]);
+  } else {
+    local_out = out[offset];
+  }
+
+  float sum1 = local_out, sum2 = local_out * local_out;
+  blockReduceSum_Elem2(&sum1, &sum2);
+
+  if (tid == 0) {
+    float mean = sum1 / n;
+    float mean_2 = sum2 / n;
+    s_mean = mean;
+    s_variance = rsqrtf(mean_2 - mean * mean + 1e-6f);
+  }
+  __syncthreads();
+
+  out[offset] = (local_out - s_mean) * s_variance * __ldg(&gamma[tid]) +
+                __ldg(&beta[tid]);
 }
 
 template <bool AddBias, typename T>
