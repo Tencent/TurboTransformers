@@ -54,7 +54,7 @@ def create_test(batch_size, seq_length):
                 self.torch_bert_layer)
 
         def test_bert_layer(self):
-            num_iter = 150 
+            num_iter = 2 
 
             torch_bert_layer_result = self.torch_bert_layer(
                 self.input_tensor, self.attention_mask)

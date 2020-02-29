@@ -1,6 +1,11 @@
 ### fast_transformers: 基于CPU的快速Transformer推理工具
 
-Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，这对高效部署Transformer线上服务带来了巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为fast_transformers的基于Intel多核CPU的Transformer实现。fast_transformers充发挥CPU的核间并行和指令级并行能力，并支持变长输入序列处理，避免了补零的额外计算。fast_transformer在多种CPU硬件上获得了超过pytorch和目前主流优化引擎（如onnxruntime-mkldnn 和torch JIT）的性能表现。使用4/8个线程时，fast_transformer在10~128长度的序列处理任务中，相比已开源最优实现取得平均20%以上的加速效果。并且，它对短序列的处理速度提升更为显著。fast_transformers已经应用于模式识别中心的多个线上服务服务场景。
+Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，这对高效部署Transformer线上服务带来了巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为fast_transformers的基于Intel多核CPU和NVIDIA GPU的Transformer实现。fast_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。
+fast_transformer在多种CPU和GPU硬件上获得了超过pytorch和目前主流优化引擎（如onnxruntime-mkldnn 和torch JIT）的性能表现。
+在CPU上，使用4/8个线程时，fast_transformers在10~128长度的序列处理任务中，相比已开源最优实现取得平均20%以上的加速效果。
+在GPU V100上，fast_transformers在10~128长度的序列处理任务中，相比已开源最优实现取得平均40%的加速效果。
+并且，它对短序列的处理速度提升更为显著。
+fast_transformers已经应用于模式识别中心的多个线上服务服务场景。
 
 ### CPU版本安装
 1. 本机构建docker镜像和容器
@@ -32,7 +37,7 @@ cd /workspace
 # 下载预训练模型，需要git lfs，sudo yum install git-lfs
 git lfs install
 git lfs pull
-sh tools/build_run_unittests.sh $PWD
+sh tools/build_run_unittests.sh $PWD -DWITH_GPU=OFF
 ```
 4. 在docker内运行benchmark (optional), 和pytorch, torch-JIT, onnxruntime比较
 
@@ -56,7 +61,7 @@ cd /myspace
 # 下载预训练模型，需要git lfs，sudo yum install git-lfs
 git lfs install
 git lfs pull
-sh tools/build_and_run_unittests_gpu.sh $PWD
+sh tools/build_and_run_unittests_gpu.sh $PWD -DWITH_GPU=ON
 ```
 
 3. 在docker内运行benchmark (optional), 和pytorch比较
@@ -131,7 +136,8 @@ model(input_ids)
 
 
 ## 性能
-我们在三种硬件平台测试了fast_transformers的性能表现。
+### CPU测试效果
+我们在三种CPU硬件平台测试了fast_transformers的性能表现。
 我们选择[pytorch](https://github.com/huggingface "pytorch")，[pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit")和[onnxruntime-mkldnn]( https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn")实现作为对比。性能测试结果为迭代150次的均值。为了避免多次测试时，上次迭代的数据在cache中缓存的现象，每次测试采用随机数据，并在计算后刷新的cache数据。
 
 
@@ -156,3 +162,30 @@ model(input_ids)
 如下两张图展示了intel i9上的性能表现。再线程数大于1时，fast_transformer的性能优于其他实现。
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575425550_58_w2920_h1474.png" alt="6133性能1">
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575425573_3_w3042_h1534.png" alt="6133性能2">
+
+### GPU测试效果
+我们在三种GPU硬件平台测试了fast_transformers的性能表现。
+我们选择[pytorch](https://github.com/huggingface "pytorch")，[NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer")实现作为对比。性能测试结果为迭代150次的均值。
+
+
+* Tesla V100
+
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202002/1582869887_97_w2182_h1030.png" alt="V100性能">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202002/1582878605_32_w2180_h1022.png" alt="V100加速">
+
+* Tesla P40
+
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202002/1582890431_98_w2182_h1010.png" alt="P40性能">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202002/1582903489_74_w2176_h1018.png" alt="P40加速">
+
+
+* Tesla M40
+
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579437911_33_w2828_h1322.png" alt="M40性能短序列">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579438488_16_w2182_h1008.png" alt=M40加速短序列">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579509883_75_w2916_h1348.png" alt="M40性能长序列">
+
+* Tesla vs CPU
+
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579506844_27_w2786_h1302.png" alt="M40vsCPU">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579507047_29_w2844_h1338.png" alt="M40vsCPU">

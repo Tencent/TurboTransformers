@@ -60,7 +60,7 @@ class TestBertEncoder(unittest.TestCase):
             self.torch_encoder_layer)
 
     def test_bert_encoder(self):
-        self.num_iter = 150
+        self.num_iter = 2
 
         ft_bert_layer_result = self.ft_bert_encoder(self.input_tensor,
                                                     self.attention_mask)
