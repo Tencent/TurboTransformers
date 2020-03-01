@@ -111,8 +111,9 @@ TEST_CASE("softmax CPU and GPU correctness") {
   constexpr float scaler = 1.;
 
   static core::AlignedScratchpad<float> buf;
-  std::vector<int64_t> batch_size_list{1, 20, 24};
-  std::vector<int64_t> seq_length_list{64, 128};
+  std::vector<int64_t> batch_size_list{1, 20};
+  std::vector<int64_t> seq_length_list{10,  20,  40,  60,  80,
+                                       100, 200, 300, 400, 500};
 
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
