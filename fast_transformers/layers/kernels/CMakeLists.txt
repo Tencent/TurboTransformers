@@ -62,8 +62,7 @@ if (WITH_GPU)
   target_link_libraries(layer_norm_test cuda_error cuda_device_context memory)
   add_test(NAME layer_norm_test COMMAND layer_norm_test)
 endif()
-
-
+add_test(NAME layer_norm_test COMMAND layer_norm_test)
 
 add_library(seq_pool seq_pool.cpp)
 target_link_libraries(seq_pool tensor enforce)

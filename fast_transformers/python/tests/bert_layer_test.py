@@ -54,7 +54,7 @@ def create_test(batch_size, seq_length):
                 self.torch_bert_layer)
 
         def test_bert_layer(self):
-            num_iter = 10
+            num_iter = 2 
 
             torch_bert_layer_result = self.torch_bert_layer(
                 self.input_tensor, self.attention_mask)
@@ -85,9 +85,8 @@ def create_test(batch_size, seq_length):
                 f"BertLayer \"({batch_size},{seq_length:03})\" {self.device} Torch QPS,  {self.torch_qps}, time, {self.torch_time}"
             )
 
-            with fast_transformers.gperf_guard("bert_layer.gperf"):
-                ft_bert_layer_result = self.ft_bert_layer(
-                    self.input_tensor, self.attention_mask)
+            ft_bert_layer_result = self.ft_bert_layer(
+                self.input_tensor, self.attention_mask)
 
             if torch.cuda.is_available():
                 start = torch.cuda.Event(enable_timing=True)

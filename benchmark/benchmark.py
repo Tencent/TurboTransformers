@@ -14,6 +14,7 @@ Options:
 """
 
 import json
+import os
 
 import docopt
 
