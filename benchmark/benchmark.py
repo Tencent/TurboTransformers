@@ -32,7 +32,6 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
                              '../fast_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
         model_dir)  # type: transformers.BertModel
-    model.to(test_device)
     model.eval()
 
     cfg = model.config  # type: transformers.BertConfig

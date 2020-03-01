@@ -10,7 +10,7 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     conda update -y conda && \
     conda install pytorch=PYTORCH_VERSION torchvision==0.3.0 cudatoolkit=CUDA_VERSION -c pytorch && \
     conda install curl conda-verify conda-build mkl-include cmake -c anaconda && \
-    conda install git git-lfs -c conda-forge  && \
+    conda install git git-lfs docopt -c conda-forge  && \
     conda clean -afy
 
 RUN pip --no-cache-dir install contexttimer future transformers docopt
