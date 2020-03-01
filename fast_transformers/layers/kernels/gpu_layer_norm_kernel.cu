@@ -1,6 +1,8 @@
 #include <cuda_runtime.h>
 #include <immintrin.h>
+
 #include <numeric>
+
 #include "fast_transformers/layers/kernels/gpu_block_reduce.h"
 #include "fast_transformers/layers/kernels/gpu_layer_norm_kernel.h"
 
@@ -8,7 +10,7 @@ namespace fast_transformers {
 namespace layers {
 namespace kernels {
 
-template <bool isAdd>
+template <bool AddBias>
 static __global__ void layer_norm_kernel(float* out, const float* input,
                                          const float* bias, const float* gamma,
                                          const float* beta, int m, int n) {
@@ -18,7 +20,7 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
   __shared__ float s_variance;
 
   float local_out = 0.0f;
-  if (isAdd) {
+  if (AddBias) {
     local_out = out[offset] + input[offset] + __ldg(&bias[tid]);
   } else {
     local_out = out[offset];
@@ -39,35 +41,26 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
                 __ldg(&beta[tid]);
 }
 
-template <>
-void GPUAddBiasLayerNorm(float* out, const float* input, const float* bias,
-                         const float* gamma, const float* beta, int m, int n,
-                         cudaStream_t stream) {
+template <bool AddBias, typename T>
+void GPULayerNorm(T* out, const T* input, const T* bias, const T* gamma,
+                  const T* beta, int m, int n, cudaStream_t stream) {
   dim3 block(n);
   if (block.x > 1024) {
-    throw std::runtime_error(
-        "GPUAddBiasLayerNorm thread block size large than 1024");
+    throw std::runtime_error("GPULayerNorm thread block size large than 1024");
   }
   dim3 grid(m);
-  layer_norm_kernel<true>
+  layer_norm_kernel<AddBias>
       <<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);
 }
 
-template <>
-void GPULayerNorm(float* out, const float* gamma, const float* beta, int m,
-                  int n, cudaStream_t stream) {
-  dim3 block(n);
-  if (block.x > 1024) {
-    throw std::runtime_error(
-        "GPUAddBiasLayerNorm thread block size large than 1024");
-  }
-  float* dummy = nullptr;
-
-  dim3 grid(m);
-  layer_norm_kernel<false>
-      <<<grid, block, 0, stream>>>(out, out, dummy, gamma, beta, m, n);
-}
-
+template void GPULayerNorm<true>(float* out, const float* input,
+                                 const float* bias, const float* gamma,
+                                 const float* beta, int m, int n,
+                                 cudaStream_t stream);
+template void GPULayerNorm<false>(float* out, const float* input,
+                                  const float* bias, const float* gamma,
+                                  const float* beta, int m, int n,
+                                  cudaStream_t stream);
 }  // namespace kernels
 }  // namespace layers
 }  // namespace fast_transformers
