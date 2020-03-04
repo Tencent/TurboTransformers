@@ -57,8 +57,7 @@ TEST_CASE("layer_norm CPU and GPU correctness") {
       ::fast_transformers::test::FillDataForCPUGPUTensors<float>(cpu_out,
                                                                  gpu_out);
 
-      std::cout << batch_size
-                  << ", seq_length" << seq_length << std::endl;
+      std::cout << batch_size << ", seq_length" << seq_length << std::endl;
       {
         LayerNorm<float>(cpu_gamma, cpu_beta, &cpu_out);
         LayerNorm<float>(gpu_gamma, gpu_beta, &gpu_out);
@@ -72,7 +71,8 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
   int64_t hidden_size = 12 * 64;
 
   std::vector<int64_t> batch_size_list{1, 20};
-  std::vector<int64_t> seq_length_list{10, 20, 40, 60, 80, 100, 200, 300, 400, 500};
+  std::vector<int64_t> seq_length_list{10,  20,  40,  60,  80,
+                                       100, 200, 300, 400, 500};
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
       fast_transformers::core::Tensor gpu_input(
@@ -171,7 +171,8 @@ TEST_CASE("add_bias_layer_norm CPU benchmark") {
   int64_t hidden_size = 12 * 64;
 
   std::vector<int64_t> batch_size_list{1, 20};
-  std::vector<int64_t> seq_length_list{10, 20, 40, 60, 80, 100, 200, 300, 400, 500};
+  std::vector<int64_t> seq_length_list{10,  20,  40,  60,  80,
+                                       100, 200, 300, 400, 500};
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
       fast_transformers::core::Tensor cpu_input(

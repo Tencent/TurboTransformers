@@ -30,6 +30,7 @@ if(WITH_GPU)
   set(CUDA_PATH "/usr/local/cuda" CACHE PATH "The cuda library root")
   include(cuda)
   add_definitions(-DFT_WITH_CUDA)
+  include_directories(3rd/cub)
 endif()
 
 set(MKLROOT "/opt/intel/mkl" CACHE PATH "The mkl library root")
