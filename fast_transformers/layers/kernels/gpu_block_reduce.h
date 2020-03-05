@@ -136,6 +136,22 @@ static  __inline__ __device__ float warpReduceMax(float val) {
   return val;
 }
 
+static  __inline__ __device__ void warpReduceMax_Elem2(float* val0, float* val1) {
+  float val0_tmp, val1_tmp;
+#define WarpReduceMaxOneStep(a, b)                       \
+  val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val0), a, b); \
+  val1_tmp = __shfl_xor_sync(FINAL_MASK, *(val1), a, b); \
+  *(val0) = max(val0_tmp, *(val0));                      \
+  *(val1) = max(val1_tmp, *(val1));
+
+  WarpReduceMaxOneStep(16, 32);
+  WarpReduceMaxOneStep(8, 32);
+  WarpReduceMaxOneStep(4, 32);
+  WarpReduceMaxOneStep(2, 32);
+  WarpReduceMaxOneStep(1, 32);
+#undef WarpReduceMaxOneStep
+}
+
 static  __inline__ __device__ void warpReduceMax_Elem4(float* val0, float* val1,
                                                float* val2, float* val3) {
   float val0_tmp, val1_tmp, val2_tmp, val3_tmp;
@@ -175,6 +191,29 @@ __inline__ __device__ float blockReduceMax(float val) {
   val = warpReduceMax(val);
 
   return val;
+}
+
+__inline__ __device__ void blockReduceMax_Elem2(float* val0, float* val1) {
+  static __shared__ float shared[2][32];
+  int lane_id = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  warpReduceMax_Elem2(val0, val1);
+
+  if (lane_id == 0) {
+    shared[0][wid] = *(val0);
+    shared[1][wid] = *(val1);
+  }
+  __syncthreads();
+
+  if (threadIdx.x < (blockDim.x >> 5)) {
+    *(val0) = shared[0][lane_id];
+    *(val1) = shared[1][lane_id];
+  } else {
+    *(val0) = 0.f;
+    *(val1) = 0.f;
+  }
+  warpReduceMax_Elem2(val0, val1);
 }
 
 __inline__ __device__ void blockReduceMax_Elem4(float* val_list) {
