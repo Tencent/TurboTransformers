@@ -43,6 +43,7 @@ bash run_benchmark.sh
 ```
 
 ### GPU版本安装
+git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
 1. 本机构建docker镜像和容器
 ```
 # 可以在脚本中修改环境变量指定cuda版本和操作系统版本
@@ -149,8 +150,8 @@ model(input_ids)
 
 相比61xx型号，Intel Xeon 6133向量化长度更长为512 bit，并且它拥有一个30 MB核间共享L3 cache。如下两张图展示了6133的性能表现。多线程的大部分case，fast_transformers结果优于其他实现。比较特殊的case是序列长度为10和20的情况。造成这种现象是由于MKL AVX512 GEMM例程的缘故，在Intel 6133 CPU上，我们发现随着seq_length增加，GEMM运算的延迟会出现一个跳变的现象。
 
-<img width="600" height="180" src="http://km.oa.com/files/photos/captures/201912/1575384757_71_w1751_h886.png" alt="6133性能1">
-<img width="600" height="180" src="http://km.oa.com/files/photos/captures/201912/1575385675_63_w1602_h804.png" alt="6133性能2">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575384757_71_w1751_h886.png" alt="6133性能1">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575385675_63_w1602_h804.png" alt="6133性能2">
 
 
 * intel i9-9800 CPU
@@ -161,7 +162,7 @@ model(input_ids)
 
 ### GPU测试效果
 我们在三种GPU硬件平台测试了fast_transformers的性能表现。
-我们选择[pytorch](https://github.com/huggingface "pytorch")，[NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer")实现作为对比。性能测试结果为迭代150次的均值。
+我们选择[pytorch](https://github.com/huggingface "pytorch")，[NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer")，[onnxruntime-gpu](https://github.com/microsoft/onnxruntime "onnxrt-gpu")实现作为对比。性能测试结果为迭代150次的均值。
 
 
 * Tesla V100
@@ -171,8 +172,8 @@ model(input_ids)
 
 * Tesla P40
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202003/1583486895_54_w3084_h768.png" alt="P40性能">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202003/1583486872_73_w3094_h888.png" alt="P40加速">
+<img width="600" height="180" src="http://km.oa.com/files/photos/captures/202003/1583486895_54_w3084_h768.png" alt="P40性能">
+<img width="600" height="180" src="http://km.oa.com/files/photos/captures/202003/1583486872_73_w3094_h888.png" alt="P40加速">
 
 
 * Tesla M40
