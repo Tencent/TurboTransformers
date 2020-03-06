@@ -58,6 +58,11 @@ cd /myspace
 # 下载预训练模型，需要git lfs，sudo yum install git-lfs
 git lfs install
 git lfs pull
+
+# 用TEG机智平台容易的鹅厂小伙伴，安装时需要能连外网，我把代理地址给大家贴出来
+# export no_proxy="tlinux-mirrorlist.tencent-cloud.com,tlinux-mirror.tencent-cloud.com,tlinux-mirrorlist.tencent-cloud.com,localhost,mirrors-tlinux.tencentyun.com,.oa.com,.local"
+# export http_proxy=http://star-proxy.oa.com:3128
+# export https_proxy=http://star-proxy.oa.com:3128
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=ON
 ```
 
