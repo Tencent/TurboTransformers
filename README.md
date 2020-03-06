@@ -59,7 +59,10 @@ cd /myspace
 git lfs install
 git lfs pull
 
-# 用TEG机智平台容易的鹅厂小伙伴，安装时需要能连外网，我把代理地址给大家贴出来
+# 可以用TEG机智平台容器的鹅厂小伙伴，可以直接使用我们的镜像
+# [ 公司共享镜像 ]g-g-wxg-prc-fast-transformer-cu10:v0.0.1
+# 创建于 2020-02-26
+# 在TEG的容器里安装时需要能连外网，我把代理地址给大家贴出来
 # export no_proxy="tlinux-mirrorlist.tencent-cloud.com,tlinux-mirror.tencent-cloud.com,tlinux-mirrorlist.tencent-cloud.com,localhost,mirrors-tlinux.tencentyun.com,.oa.com,.local"
 # export http_proxy=http://star-proxy.oa.com:3128
 # export https_proxy=http://star-proxy.oa.com:3128
