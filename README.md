@@ -149,8 +149,8 @@ model(input_ids)
 
 相比61xx型号，Intel Xeon 6133向量化长度更长为512 bit，并且它拥有一个30 MB核间共享L3 cache。如下两张图展示了6133的性能表现。多线程的大部分case，fast_transformers结果优于其他实现。比较特殊的case是序列长度为10和20的情况。造成这种现象是由于MKL AVX512 GEMM例程的缘故，在Intel 6133 CPU上，我们发现随着seq_length增加，GEMM运算的延迟会出现一个跳变的现象。
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575384757_71_w1751_h886.png" alt="6133性能1">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575385675_63_w1602_h804.png" alt="6133性能2">
+<img width="600" height="180" src="http://km.oa.com/files/photos/captures/201912/1575384757_71_w1751_h886.png" alt="6133性能1">
+<img width="600" height="180" src="http://km.oa.com/files/photos/captures/201912/1575385675_63_w1602_h804.png" alt="6133性能2">
 
 
 * intel i9-9800 CPU
@@ -178,10 +178,14 @@ model(input_ids)
 * Tesla M40
 
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579437911_33_w2828_h1322.png" alt="M40性能短序列">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579438488_16_w2182_h1008.png" alt=M40加速短序列">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579438488_16_w2182_h1008.png" alt="M40加速短序列">
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579509883_75_w2916_h1348.png" alt="M40性能长序列">
 
 * Tesla vs CPU
 
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579506844_27_w2786_h1302.png" alt="M40vsCPU">
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579507047_29_w2844_h1338.png" alt="M40vsCPU">
+
+## 技术文档
+[fast-transformers (1): CPU Serving is All You Need](http://km.oa.com/group/24938/articles/show/405322?kmref=author_post "fast-transformers-cpu")
+[fast-transformers (2): GPU Serving Can Also Be You Need](http://km.oa.com/group/18832/articles/show/413605?kmref=author_post "fast-transformers-gpu")
