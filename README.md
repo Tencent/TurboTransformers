@@ -1,14 +1,15 @@
 ### fast_transformers: 面向CPU/GPU高效易用的Transformer推理引擎
 
-Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，高效部署Transformer线上服务面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为fast_transformers的面向Intel多核CPU和NVIDIA GPU硬件平台的Transformer实现。fast_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。fast_transformer在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn 和torch JIT）的性能表现。在CPU上，使用4/8个线程时，fast_transformers在10-128长度的序列处理任务中，相比已开源最优实现取得平均20%以上的加速效果。在GPU V100上，fast_transformers在10-128长度的序列处理任务中，相比已开源最优实现取得平均40%的加速效果。并且，它对短序列的处理速度提升更为显著。fast_transformers已经应用于模式识别中心的多个线上服务服务场景。
+Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，高效部署Transformer线上服务面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为fast_transformers的面向Intel多核CPU和NVIDIA GPU硬件平台的Transformer实现。fast_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。fast_transformer在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn/onnxruntime-gpu, torch JIT, NVIDIA faster transformers）的性能表现，详细benchmark结果见下文，它对常用的短序列的处理速度提升更为显著。fast_transformers CPU版本已经应用于多个线上服务服务场景，WXG的FAQ的BERT服务获得1.88x加速，CSIG的在公有云情感分析服务两层BERT encoder获得2.11x加速。
 
 ### CPU版本安装
+git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
 1. 本机构建docker镜像和容器
 本机构建（编译ONNX-runtime时间会很长）
 ```
 sh tools/build_docker_cpu.sh
 # optional: 构建编译环境时需要联网，腾讯内网需要设置代理
-export EXTRA_ARGS="--build-arg http_proxy=http://devnet-proxy.oa.com:8080 --build-arg https_proxy=http:/ /devnet-proxy.oa.com:8080"
+export EXTRA_ARGS="--build-arg http_proxy=http://devnet-proxy.oa.com:8080 --build-arg https_proxy=http://devnet-proxy.oa.com:8080"
 docker run -it --rm -v your/path/fast_transformers:/workspace --name=your_container_name REPOSITORY:TAG /bin/bash
 cd /workspace
 # optional:在编译环境内安装是也需要联网，腾讯内网请设置代理
@@ -170,8 +171,8 @@ model(input_ids)
 
 * Tesla P40
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202002/1582890431_98_w2182_h1010.png" alt="P40性能">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202002/1582903489_74_w2176_h1018.png" alt="P40加速">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202003/1583486895_54_w3084_h768.png" alt="P40性能">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202003/1583486872_73_w3094_h888.png" alt="P40加速">
 
 
 * Tesla M40
