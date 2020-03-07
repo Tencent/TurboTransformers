@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-FRAMEWORKS=("fast-transformers" "torch", "onnxruntime")
+FRAMEWORKS=("fast-transformers" "torch" "onnxruntime")
 SEQ_LEN=(10 20 40 60 80 120 200 300 400 500)
 BATCH_SIZE=(1 20)
 N=150

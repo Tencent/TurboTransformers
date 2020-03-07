@@ -1,14 +1,15 @@
 ### fast_transformers: 面向CPU/GPU高效易用的Transformer推理引擎
 
-Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，高效部署Transformer线上服务面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为fast_transformers的面向Intel多核CPU和NVIDIA GPU硬件平台的Transformer实现。fast_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。fast_transformer在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn 和torch JIT）的性能表现。在CPU上，使用4/8个线程时，fast_transformers在10-128长度的序列处理任务中，相比已开源最优实现取得平均20%以上的加速效果。在GPU V100上，fast_transformers在10-128长度的序列处理任务中，相比已开源最优实现取得平均40%的加速效果。并且，它对短序列的处理速度提升更为显著。fast_transformers已经应用于模式识别中心的多个线上服务服务场景。
+Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，高效部署Transformer线上服务面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为fast_transformers的面向Intel多核CPU和NVIDIA GPU硬件平台的Transformer实现。fast_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。fast_transformer在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn/onnxruntime-gpu, torch JIT, NVIDIA faster transformers）的性能表现，详细benchmark结果见下文，它对常用的短序列的处理速度提升更为显著。fast_transformers CPU版本已经应用于多个线上服务服务场景，WXG的FAQ的BERT服务获得1.88x加速，CSIG的在公有云情感分析服务两层BERT encoder获得2.11x加速。
 
 ### CPU版本安装
+git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
 1. 本机构建docker镜像和容器
 本机构建（编译ONNX-runtime时间会很长）
 ```
 sh tools/build_docker_cpu.sh
 # optional: 构建编译环境时需要联网，腾讯内网需要设置代理
-export EXTRA_ARGS="--build-arg http_proxy=http://devnet-proxy.oa.com:8080 --build-arg https_proxy=http:/ /devnet-proxy.oa.com:8080"
+export EXTRA_ARGS="--build-arg http_proxy=http://devnet-proxy.oa.com:8080 --build-arg https_proxy=http://devnet-proxy.oa.com:8080"
 docker run -it --rm -v your/path/fast_transformers:/workspace --name=your_container_name REPOSITORY:TAG /bin/bash
 cd /workspace
 # optional:在编译环境内安装是也需要联网，腾讯内网请设置代理
@@ -42,6 +43,7 @@ bash run_benchmark.sh
 ```
 
 ### GPU版本安装
+git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
 1. 本机构建docker镜像和容器
 ```
 # 可以在脚本中修改环境变量指定cuda版本和操作系统版本
@@ -56,6 +58,14 @@ cd /myspace
 # 下载预训练模型，需要git lfs，sudo yum install git-lfs
 git lfs install
 git lfs pull
+
+# 可以用TEG机智平台容器的鹅厂小伙伴，可以直接使用我们的镜像
+# [ 公司共享镜像 ]g-g-wxg-prc-fast-transformer-cu10:v0.0.1
+# 创建于 2020-02-26
+# 在TEG的容器里安装时需要能连外网，我把代理地址给大家贴出来
+# export no_proxy="tlinux-mirrorlist.tencent-cloud.com,tlinux-mirror.tencent-cloud.com,tlinux-mirrorlist.tencent-cloud.com,localhost,mirrors-tlinux.tencentyun.com,.oa.com,.local"
+# export http_proxy=http://star-proxy.oa.com:3128
+# export https_proxy=http://star-proxy.oa.com:3128
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=ON
 ```
 
@@ -160,7 +170,7 @@ model(input_ids)
 
 ### GPU测试效果
 我们在三种GPU硬件平台测试了fast_transformers的性能表现。
-我们选择[pytorch](https://github.com/huggingface "pytorch")，[NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer")实现作为对比。性能测试结果为迭代150次的均值。
+我们选择[pytorch](https://github.com/huggingface "pytorch")，[NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer")，[onnxruntime-gpu](https://github.com/microsoft/onnxruntime "onnxrt-gpu")实现作为对比。性能测试结果为迭代150次的均值。
 
 
 * Tesla V100
@@ -170,17 +180,21 @@ model(input_ids)
 
 * Tesla P40
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202002/1582890431_98_w2182_h1010.png" alt="P40性能">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202002/1582903489_74_w2176_h1018.png" alt="P40加速">
+<img width="600" height="180" src="http://km.oa.com/files/photos/captures/202003/1583486895_54_w3084_h768.png" alt="P40性能">
+<img width="600" height="180" src="http://km.oa.com/files/photos/captures/202003/1583486872_73_w3094_h888.png" alt="P40加速">
 
 
 * Tesla M40
 
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579437911_33_w2828_h1322.png" alt="M40性能短序列">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579438488_16_w2182_h1008.png" alt=M40加速短序列">
+<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579438488_16_w2182_h1008.png" alt="M40加速短序列">
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579509883_75_w2916_h1348.png" alt="M40性能长序列">
 
 * Tesla vs CPU
 
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579506844_27_w2786_h1302.png" alt="M40vsCPU">
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579507047_29_w2844_h1338.png" alt="M40vsCPU">
+
+## 技术文档
+[fast-transformers (1): CPU Serving is All You Need](http://km.oa.com/group/24938/articles/show/405322?kmref=author_post "fast-transformers-cpu")
+[fast-transformers (2): GPU Serving Can Also Be You Need](http://km.oa.com/group/18832/articles/show/413605?kmref=author_post "fast-transformers-gpu")
