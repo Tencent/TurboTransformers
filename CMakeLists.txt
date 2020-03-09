@@ -54,7 +54,7 @@ if (OPENMP_FOUND)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
     message(STATUS "OpenMP USED FLAGS ${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 else ()
-    message(WARNING "OpenMP is not supported by the compiler")
+    message(WARNING "OpenMP is not supported")
 endif ()
 
 message(STATUS "Blas provider is ${BLAS_PROVIDER}")
