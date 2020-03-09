@@ -300,7 +300,10 @@ class BertModel:
             return output_tensor
 
     @staticmethod
-    def from_torch(model: TorchBertModel):
+    def from_torch(model: TorchBertModel,
+                 device: Optional[torch.device] = None):
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available():
+            model.to(device)
         embeddings = BertEmbeddings.from_torch(model.embeddings)
         encoder = BertEncoder.from_torch(model.encoder)
         return BertModel(embeddings, encoder)
@@ -309,10 +312,7 @@ class BertModel:
     def from_pretrained(model_id_or_path: str,
                         device: Optional[torch.device] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
-        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
-        ):
-            torch_model.to(device)
-        model = BertModel.from_torch(torch_model)
+        model = BertModel.from_torch(torch_model, device)
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model
