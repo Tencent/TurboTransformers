@@ -110,7 +110,10 @@ print(torch_res[0][:,0,:])  # 获取encoder得到的第一个隐状态
 #        [-0.8828,  0.6565, -0.6298,  ...,  0.2776, -0.4459, -0.2346]])
 
 # 构建bert-encoder的模型，输出first方式pooling的结果
+# 两种方式载入模型，这里直接从pytorch模型载入
 ft_model = fast_transformers.BertModel.from_torch(model)
+# 从文件载入
+# model = fast_transformers.BertModel.from_pretrained("bert-base-chinese", test_device)
 res = ft_model(input_ids)
 print(res)
 # tensor([[-1.4292,  1.0934, -0.3270,  ...,  0.7212, -0.3893, -0.1172],
@@ -119,23 +122,69 @@ print(res)
 更多使用接口可以参考 ./benchmark/benchmark.py文件
 
 2. GPU
-```pytorch
+```python
+import os
+import numpy
 import torch
 import transformers
 import fast_transformers
-test_device = torch.device('cuda:0')
 
-model = transformers.BertModel.from_pretrained(
-    model)  # type: transformers.BertModel
-model.to(test_device)
-cfg = model.config  # type: transformers.BertConfig
+torch.set_grad_enabled(False)
+test_device = torch.device('cuda:0')
+# load model from file, adapted to offline enviroments
+model_id = os.path.join(os.path.dirname(__file__),
+                         '../fast_transformers/python/tests/test-model')
+# model_id = "bert-base-chinese"
+model_torch = transformers.BertModel.from_pretrained(model_id)
+model_torch.eval()
+model_torch.to(test_device)
+# the following two ways are the same
+# 1. load model from checkpoint in file
+# model_ft = fast_transformers.BertModel.from_pretrained(model_id, test_device)
+# 2. load model from pytorch model
+model_ft = fast_transformers.BertModel.from_torch(model_torch, test_device)
+cfg = model_torch.config  # type: transformers.BertConfig
+
+batch_size, seq_len = 10, 40
 input_ids = torch.randint(low=0,
                           high=cfg.vocab_size - 1,
                           size=(batch_size, seq_len),
                           dtype=torch.long,
                           device=test_device)
-model = fast_transformers.BertModel.from_torch(model)
-model(input_ids)
+
+torch_result = model_torch(input_ids)
+torch_result = (torch_result[0][:, 0]).cpu().numpy()
+print(torch_result)
+# [[-1.0547106   0.6978769   0.01930561 ...  0.14942119  0.12424274
+#    0.09840814]
+#  [-0.38007614  0.8337314  -0.26551855 ...  0.37165833 -1.1472359
+#   -0.02053148]
+#  [-1.0879238   0.33059713 -1.5077729  ...  1.1362088  -1.1507283
+#    0.72761345]
+#  ...
+#  [-0.13508567  0.5811261  -0.7433949  ...  0.787879    0.19001244
+#    0.2780586 ]
+#  [-0.2851665   1.0065655  -0.15112075 ... -0.39093181  0.07916196
+#   -0.2520734 ]
+#  [-0.56147367  0.6245851  -0.97631836 ...  1.300955    0.2231751
+#   -0.35811383]]
+  
+ft_result = model_ft(input_ids)
+ft_result = ft_result.cpu().numpy()
+print(ft_result)
+# [[-1.0559868   0.70307076  0.01852467 ...  0.15004729  0.12565975
+#    0.0958093 ]
+#  [-0.37808716  0.8361676  -0.26031977 ...  0.36978582 -1.150511
+#   -0.02066079]
+#  [-1.0828258   0.32773003 -1.5136379  ...  1.1391504  -1.1485292
+#    0.7275925 ]
+#  ...
+#  [-0.13846944  0.5822965  -0.7396279  ...  0.78931236  0.19155282
+#    0.27686128]
+#  [-0.28799683  1.007286   -0.15279569 ... -0.38764566  0.07981472
+#   -0.2519405 ]
+#  [-0.5681539   0.62843543 -0.982041   ...  1.2941586   0.22365712
+#   -0.3616636 ]]
 
 ```
 
