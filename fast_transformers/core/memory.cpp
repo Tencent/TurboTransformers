@@ -15,9 +15,6 @@
 #include "fast_transformers/core/memory.h"
 
 #include <cstring>
-#ifdef FT_WITH_CUDA
-#include "fast_transformers/core/cuda_error.h"
-#endif
 
 namespace fast_transformers {
 namespace core {
