@@ -1,7 +1,6 @@
-pybind11_add_module(fast_transformers_cxx
-        pybind.cpp)
+pybind11_add_module(fast_transformers_cxx pybind.cpp)
 
-target_link_libraries(fast_transformers_cxx PRIVATE config blas profiler bert_embedding bert_attention bert_intermediate bert_output sequence_pool prepare_bert_masks)
+target_link_libraries(fast_transformers_cxx PRIVATE blas profiler bert_embedding bert_attention bert_intermediate bert_output sequence_pool prepare_bert_masks)
 
 SET(PY_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/pypackage)
 file(GLOB_RECURSE PY_PROJ_FILES ${CMAKE_CURRENT_SOURCE_DIR}/fast_transformers/*.py)

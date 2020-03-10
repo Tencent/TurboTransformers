@@ -1,11 +1,11 @@
 // Copyright 2020 Tencent
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,16 +29,6 @@ void* align_alloc(size_t sz, size_t align) {
                 sz, align);
   return aligned_mem;
 }
-
-#ifdef FT_WITH_CUDA
-void* cuda_alloc(size_t sz) {
-  void* device_mem;
-  FT_ENFORCE_CUDA_SUCCESS(cudaMalloc((void**)&(device_mem), sz));
-  return device_mem;
-}
-
-void cuda_free(void* data) { FT_ENFORCE_CUDA_SUCCESS(cudaFree(data)); }
-#endif
 
 void FT_Memcpy(void* dst_data, const void* src_data, size_t data_size,
                MemcpyFlag flag) {

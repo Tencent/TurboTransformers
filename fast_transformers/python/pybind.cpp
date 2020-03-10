@@ -1,11 +1,11 @@
 // Copyright 2020 Tencent
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,7 +14,6 @@
 
 #include "absl/memory/memory.h"
 #include "fast_transformers/core/blas.h"
-#include "fast_transformers/core/config.h"
 #include "fast_transformers/core/profiler.h"
 #include "fast_transformers/core/tensor.h"
 #include "fast_transformers/layers/bert_attention.h"
@@ -46,13 +45,34 @@ static void DLPack_Capsule_Destructor(PyObject *data) {
     PyErr_Clear();
   }
 }
+static bool CompiledWithCUDA() {
+#ifdef FT_WITH_CUDA
+  return true;
+#else
+  return false;
+#endif
+}
+enum class BlasProvider {
+  MKL,
+  OpenBlas,
+};
+
+static BlasProvider GetBlasProvider() {
+#ifdef FT_BLAS_USE_MKL
+  return BlasProvider::MKL;
+#elif defined(FT_BLAS_USE_OPENBLAS)
+  return BlasProvider::OpenBlas;
+#else
+#error "unexpected code";
+#endif
+}
 
 static void BindConfig(py::module &m) {
-  py::enum_<core::BlasProvider>(m, "BlasProvider")
-      .value("MKL", core::BlasProvider::MKL)
-      .value("OpenBlas", core::BlasProvider::OpenBlas);
-  m.def("is_with_cuda", core::IsWithCUDA)
-      .def("get_blas_provider", core::GetBlasProvider);
+  py::enum_<BlasProvider>(m, "BlasProvider")
+      .value("MKL", BlasProvider::MKL)
+      .value("OpenBlas", BlasProvider::OpenBlas);
+  m.def("is_with_cuda", CompiledWithCUDA)
+      .def("get_blas_provider", GetBlasProvider);
 }
 
 PYBIND11_MODULE(fast_transformers_cxx, m) {

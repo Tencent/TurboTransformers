@@ -12,9 +12,6 @@ endif ()
 
 target_link_libraries(blas PRIVATE ${CMAKE_DL_LIBS})
 
-add_library(config config.cpp)
-target_link_libraries(config PUBLIC blas)
-
 add_library(common common.cpp)
 target_link_libraries(common tensor dlpack)
 if (WITH_GPU)
@@ -42,7 +39,7 @@ if (WITH_GPU)
     target_link_libraries(cuda_device_context cuda_error enforce tensor)
 
     add_library(cuda_allocator cuda_allocator.cpp)
-    target_link_libraries(cuda_allocator cuda_error enforce memory)
+    target_link_libraries(cuda_allocator cuda_error enforce)
 
     add_executable(device_context_test device_context_test.cpp)
     target_link_libraries(device_context_test cuda_device_context Catch2 tensor)
@@ -55,7 +52,6 @@ add_executable(tensor_test tensor_test.cpp)
 target_link_libraries(tensor_test Catch2 tensor)
 add_test(NAME tensor_test COMMAND tensor_test)
 
-
 add_library(profiler profiler.cpp)
 set(PROFILER_DEPS loguru enforce)
 if (WITH_PROFILER)
@@ -63,11 +59,11 @@ if (WITH_PROFILER)
 endif ()
 target_link_libraries(profiler ${PROFILER_DEPS})
 
-
 add_library(aligned_scratchpad aligned_scratchpad.cpp)
 target_link_libraries(aligned_scratchpad PRIVATE memory enforce)
 add_executable(aligned_scratchpad_test aligned_scratchpad_test.cpp)
 target_link_libraries(aligned_scratchpad_test aligned_scratchpad Catch2)
+add_test(NAME aligned_scratchpad_test COMMAND aligned_scratchpad_test)
 
 add_library(eigen-tensor eigen-tensor.cpp)
 target_link_libraries(eigen-tensor PUBLIC tensor Eigen3::Eigen)
