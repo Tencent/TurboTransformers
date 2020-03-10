@@ -1,11 +1,11 @@
 // Copyright 2020 Tencent
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -58,11 +58,9 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
     int ldc = N;
 
     auto& gpu_ctx = ::fast_transformers::core::CUDADeviceContext::GetInstance();
-    gpu_ctx.CublasCall([&](cublasHandle_t handle) {
-      cublasSgemm(handle, transB, transA, N, M, K_a, &alpha, B.data<float>(),
-                  ldb, A.data<float>(), lda, &beta, out->mutableData<float>(),
-                  ldc);
-    });
+    cublasSgemm(gpu_ctx.cublas_handle(), transB, transA, N, M, K_a, &alpha,
+                B.data<float>(), ldb, A.data<float>(), lda, &beta,
+                out->mutableData<float>(), ldc);
 #else
     FT_THROW("CUDA is not supported for MatMul");
 #endif
@@ -115,9 +113,9 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
 
   if (A.device_type() == kDLCPU && B.device_type() == kDLCPU &&
       C->device_type() == kDLCPU) {
-    std::unique_ptr<const float* []> A_array(new const float*[a_batch_size]);
-    std::unique_ptr<const float* []> B_array(new const float*[b_batch_size]);
-    std::unique_ptr<float* []> C_array(new float*[c_batch_size]);
+    std::unique_ptr<const float*[]> A_array(new const float*[a_batch_size]);
+    std::unique_ptr<const float*[]> B_array(new const float*[b_batch_size]);
+    std::unique_ptr<float*[]> C_array(new float*[c_batch_size]);
 
     auto* a_ptr = A.data<float>();
     auto* b_ptr = B.data<float>();
@@ -147,12 +145,10 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
     int ldb = (transB == CUBLAS_OP_N) ? N : K_a;
     int ldc = N;
     auto& gpu_ctx = ::fast_transformers::core::CUDADeviceContext::GetInstance();
-    gpu_ctx.CublasCall([&](cublasHandle_t handle) {
-      cublasSgemmStridedBatched(handle, transB, transA, N, M, K_a, &alpha,
-                                B.data<float>(), ldb, offsetB, A.data<float>(),
-                                lda, offsetA, &beta, C->mutableData<float>(),
-                                ldc, offsetC, a_batch_size);
-    });
+    cublasSgemmStridedBatched(
+        gpu_ctx.cublas_handle(), transB, transA, N, M, K_a, &alpha,
+        B.data<float>(), ldb, offsetB, A.data<float>(), lda, offsetA, &beta,
+        C->mutableData<float>(), ldc, offsetC, a_batch_size);
 #endif
   } else {
     FT_THROW("device_type %d is not supported!", A.device_type());
