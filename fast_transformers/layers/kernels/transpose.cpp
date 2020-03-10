@@ -1,11 +1,11 @@
 // Copyright 2020 Tencent
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "fast_transformers/layers/kernels/transpose.h"
-#include "fast_transformers/core/common.h"
 
 #include <cstring>
+
+#include "fast_transformers/core/common.h"
 #ifdef FT_WITH_CUDA
 #include "fast_transformers/core/cuda_device_context.h"
 #include "fast_transformers/layers/kernels/gpu_transpose_kernel.h"
@@ -39,7 +40,6 @@ static void TransposeForScoreImpl(float* output, const float* input,
       auto* dst = output +
                   batch_idx * (seq_length * num_attention_heads * width) +
                   seq_idx * num_attention_heads * width + head_idx * width;
-// std::copy(src, src + width, dst);
 #pragma omp simd
       for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
         dst[width_idx] = src[width_idx];
