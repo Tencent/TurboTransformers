@@ -131,7 +131,7 @@ import fast_transformers
 
 torch.set_grad_enabled(False)
 test_device = torch.device('cuda:0')
-# load model from file, adapted to offline enviroments
+# load model from file, adapted to offline enviroments, run in directory ./benchmark
 model_id = os.path.join(os.path.dirname(__file__),
                          '../fast_transformers/python/tests/test-model')
 # model_id = "bert-base-chinese"
