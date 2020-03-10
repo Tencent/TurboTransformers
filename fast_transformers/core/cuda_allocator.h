@@ -1,5 +1,6 @@
 #pragma once
 #include <memory.h>
+
 #include <map>
 
 #include "fast_transformers/core/cuda_error.h"
@@ -19,9 +20,6 @@ class CUDAAllocator {
 
   void* allocate(size_t size);
   void free(void* memory, size_t size);
-
-  // 其实这个函数是一个内部函数吧。不需要放到public里
-  
 
  private:
   void FreeCache(size_t size);

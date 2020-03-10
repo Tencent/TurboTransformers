@@ -42,7 +42,7 @@ if (WITH_GPU)
     target_link_libraries(cuda_device_context cuda_error enforce tensor)
 
     add_library(cuda_allocator cuda_allocator.cpp)
-    target_link_libraries(cuda_allocator cuda_error enforce memory)
+    target_link_libraries(cuda_allocator cuda_error enforce)
 
     add_executable(device_context_test device_context_test.cpp)
     target_link_libraries(device_context_test cuda_device_context Catch2 tensor)
@@ -55,14 +55,12 @@ add_executable(tensor_test tensor_test.cpp)
 target_link_libraries(tensor_test Catch2 tensor)
 add_test(NAME tensor_test COMMAND tensor_test)
 
-
 add_library(profiler profiler.cpp)
 set(PROFILER_DEPS loguru enforce)
 if (WITH_PROFILER)
     list(APPEND PROFILER_DEPS gperftools::profiler)
 endif ()
 target_link_libraries(profiler ${PROFILER_DEPS})
-
 
 add_library(aligned_scratchpad aligned_scratchpad.cpp)
 target_link_libraries(aligned_scratchpad PRIVATE memory enforce)

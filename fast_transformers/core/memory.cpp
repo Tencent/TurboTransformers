@@ -16,16 +16,6 @@ void* align_alloc(size_t sz, size_t align) {
   return aligned_mem;
 }
 
-#ifdef FT_WITH_CUDA
-void* cuda_alloc(size_t sz) {
-  void* device_mem;
-  FT_ENFORCE_CUDA_SUCCESS(cudaMalloc((void**)&(device_mem), sz));
-  return device_mem;
-}
-
-void cuda_free(void* data) { FT_ENFORCE_CUDA_SUCCESS(cudaFree(data)); }
-#endif
-
 void FT_Memcpy(void* dst_data, const void* src_data, size_t data_size,
                MemcpyFlag flag) {
   if (data_size <= 0) return;
