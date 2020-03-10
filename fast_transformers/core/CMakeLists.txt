@@ -12,9 +12,6 @@ endif ()
 
 target_link_libraries(blas PRIVATE ${CMAKE_DL_LIBS})
 
-add_library(config config.cpp)
-target_link_libraries(config PUBLIC blas)
-
 add_library(common common.cpp)
 target_link_libraries(common tensor dlpack)
 if (WITH_GPU)
@@ -66,6 +63,7 @@ add_library(aligned_scratchpad aligned_scratchpad.cpp)
 target_link_libraries(aligned_scratchpad PRIVATE memory enforce)
 add_executable(aligned_scratchpad_test aligned_scratchpad_test.cpp)
 target_link_libraries(aligned_scratchpad_test aligned_scratchpad Catch2)
+add_test(NAME aligned_scratchpad_test COMMAND aligned_scratchpad_test)
 
 add_library(eigen-tensor eigen-tensor.cpp)
 target_link_libraries(eigen-tensor PUBLIC tensor Eigen3::Eigen)
