@@ -1,11 +1,11 @@
 // Copyright 2020 Tencent
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "fast_transformers/layers/bert_embedding.h"
-#include "fast_transformers/core/common.h"
 
+#include "fast_transformers/core/common.h"
 #include "fast_transformers/layers/kernels/layer_norm.h"
 #include "loguru.hpp"
 #ifdef FT_WITH_CUDA
@@ -66,8 +66,8 @@ static void LookupEmbedding(core::Tensor &out_tensor,
   } else if (out_tensor.device_type() == kDLGPU) {
 #ifdef FT_WITH_CUDA
     auto &cuda_ctx = core::CUDADeviceContext::GetInstance();
-    kernels::GPULookupKernel(out, embedding, ids, vocab_size, hidden_size,
-                             num_ids, Add, cuda_ctx.stream());
+    kernels::GPULookupKernel<Add>(out, embedding, ids, vocab_size, hidden_size,
+                                  num_ids, cuda_ctx.stream());
 #else
     FT_THROW("The current code is not compiled with CUDA.");
 #endif

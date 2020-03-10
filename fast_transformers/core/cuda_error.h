@@ -1,11 +1,11 @@
 // Copyright 2020 Tencent
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,13 +25,7 @@
 #include "fast_transformers/core/enforce.h"
 namespace fast_transformers {
 namespace core {
-#define PRINT_FUNC_NAME_()                                          \
-  do {                                                              \
-    std::cout << "[FT][CALL] " << __FUNCTION__ << " " << std::endl; \
-  } while (0)
-
 namespace details {
-
 static const std::string CUDAGetErrorString(cudaError_t error) {
   return cudaGetErrorString(error);
 }
@@ -63,7 +57,7 @@ struct CUDAStatusTrait {};
 
 #define DEFINE_CUDA_STATUS_TYPE(type, success_value) \
   template <>                                        \
-  struct CUDAStatusTrait<type> {                      \
+  struct CUDAStatusTrait<type> {                     \
     using Type = type;                               \
     static constexpr Type kSuccess = success_value;  \
   }
@@ -77,10 +71,10 @@ DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
     auto __cond__ = (COND);                                                    \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);                           \
     constexpr auto __success_type__ =                                          \
-        details::CUDAStatusTrait<__CUDA_STATUS_TYPE__>::kSuccess;               \
+        details::CUDAStatusTrait<__CUDA_STATUS_TYPE__>::kSuccess;              \
     if (FT_UNLIKELY(__cond__ != __success_type__)) {                           \
       std::string error_msg = std::string("[FT_ERROR] CUDA runtime error: ") + \
-                              details::CUDAGetErrorString(__cond__) + " " +     \
+                              details::CUDAGetErrorString(__cond__) + " " +    \
                               __FILE__ + ":" + std::to_string(__LINE__) +      \
                               " \n";                                           \
       FT_THROW(error_msg.c_str());                                             \

@@ -17,10 +17,17 @@
 
 #include "catch2/catch.hpp"
 TEST_CASE("Enforce", "[enforce]") {
-  REQUIRE_THROWS(FT_THROW("Test"));
   bool ok = false;
   try {
     FT_ENFORCE(false, "test");
+  } catch (fast_transformers::core::EnforceNotMet &) {
+    ok = true;
+  }
+  REQUIRE(ok);
+
+  ok = false;
+  try {
+    FT_THROW("Test");
   } catch (fast_transformers::core::EnforceNotMet &) {
     ok = true;
   }
