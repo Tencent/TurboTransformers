@@ -14,12 +14,14 @@ target_link_libraries(blas PRIVATE ${CMAKE_DL_LIBS})
 
 add_library(common common.cpp)
 target_link_libraries(common tensor dlpack)
+set(CUDA_DEPS)
 if (WITH_GPU)
     target_link_libraries(common gpu_utils)
+    set(CUDA_DEPS cudart cuda cublas)
 endif ()
 
 add_library(enforce enforce.cpp)
-target_link_libraries(enforce PUBLIC absl::stacktrace absl::symbolize absl::strings absl::str_format PRIVATE ${RT_LIBRARY})
+target_link_libraries(enforce PUBLIC ${CUDA_DEPS} absl::stacktrace absl::symbolize absl::strings absl::str_format PRIVATE ${RT_LIBRARY})
 
 add_executable(enforce_test enforce_test.cpp)
 target_link_libraries(enforce_test Catch2 enforce)
@@ -29,23 +31,19 @@ add_library(memory memory.cpp)
 target_link_libraries(memory enforce)
 
 add_library(tensor tensor.cpp)
-target_link_libraries(tensor dlpack blas memory absl::variant)
+target_link_libraries(tensor enforce dlpack blas memory absl::variant)
 
 if (WITH_GPU)
-    add_library(cuda_error cuda_error.cpp)
-    target_link_libraries(cuda_error enforce cudart cuda cublas)
-
     add_library(cuda_device_context cuda_device_context.cpp)
-    target_link_libraries(cuda_device_context cuda_error enforce tensor)
+    target_link_libraries(cuda_device_context enforce tensor)
 
     add_library(cuda_allocator cuda_allocator.cpp)
-    target_link_libraries(cuda_allocator cuda_error enforce)
+    target_link_libraries(cuda_allocator enforce)
 
     add_executable(device_context_test device_context_test.cpp)
     target_link_libraries(device_context_test cuda_device_context Catch2 tensor)
 
-    target_link_libraries(tensor cuda_error cuda_allocator cuda_device_context)
-    target_link_libraries(memory cuda_error)
+    target_link_libraries(tensor cuda_allocator cuda_device_context)
 endif ()
 
 add_executable(tensor_test tensor_test.cpp)

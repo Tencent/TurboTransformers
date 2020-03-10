@@ -20,7 +20,7 @@ TEST_CASE("Enforce", "[enforce]") {
   bool ok = false;
   try {
     FT_ENFORCE(false, "test");
-  } catch (fast_transformers::core::EnforceNotMet &) {
+  } catch (fast_transformers::core::details::EnforceNotMet &) {
     ok = true;
   }
   REQUIRE(ok);
@@ -28,7 +28,7 @@ TEST_CASE("Enforce", "[enforce]") {
   ok = false;
   try {
     FT_THROW("Test");
-  } catch (fast_transformers::core::EnforceNotMet &) {
+  } catch (fast_transformers::core::details::EnforceNotMet &) {
     ok = true;
   }
   REQUIRE(ok);

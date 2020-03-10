@@ -14,7 +14,6 @@
 
 #include "fast_transformers/core/cuda_allocator.h"
 
-#include "fast_transformers/core/cuda_error.h"
 #include "fast_transformers/core/enforce.h"
 
 namespace fast_transformers {

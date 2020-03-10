@@ -17,7 +17,6 @@
 
 #include <map>
 
-#include "fast_transformers/core/cuda_error.h"
 #include "macros.h"
 
 namespace fast_transformers {

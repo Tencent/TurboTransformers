@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #pragma once
+#include <cublas_v2.h>
+#include <cuda_runtime.h>
 #include <memory.h>
 
 #include <map>
 
-#include "fast_transformers/core/cuda_error.h"
 #include "macros.h"
 
 namespace fast_transformers {
