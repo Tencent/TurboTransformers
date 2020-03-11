@@ -1,12 +1,12 @@
 """
-Fast-Transformers Benchmark Utils
+easy-transformers Benchmark Utils
 
 Usage:
     benchmark <model> --seq_len=<int> [--framework=<f>] [--batch_size=<int>] [-n <int>]
 
 Options:
-    --framework=<f>      The framework to test in (torch, torch_jit, fast-transformers,
-                            onnxruntime-cpu, onnxruntime-mkldnn) [default: fast-transformers].
+    --framework=<f>      The framework to test in (torch, torch_jit, easy-transformers,
+                            onnxruntime-cpu, onnxruntime-mkldnn) [default: easy-transformers].
     --seq_len=<int>      The sequence length.
     --batch_size=<int>   The batch size [default: 1].
     -n <int>             The iteration count [default: 10000].
@@ -18,12 +18,12 @@ import os
 import docopt
 
 
-def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
+def benchmark_easy_transformers(model: str, seq_len: int, batch_size: int,
                                 n: int):
     import torch
     import transformers
     import contexttimer
-    import fast_transformers
+    import easy_transformers
 
     if not torch.cuda.is_available():
         print("cuda is not available for torch")
@@ -31,7 +31,7 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
     test_device = torch.device('cuda:0')
 
     model_dir = os.path.join(os.path.dirname(__file__),
-                             '../fast_transformers/python/tests/test-model')
+                             '../easy_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
         model_dir)  # type: transformers.BertModel
     model.to(test_device)
@@ -42,7 +42,7 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
                               size=(batch_size, seq_len),
                               dtype=torch.long,
                               device=test_device)
-    model = fast_transformers.BertModel.from_torch(model)
+    model = easy_transformers.BertModel.from_torch(model)
 
     model(input_ids)
 
@@ -67,7 +67,7 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
             "n": n,
             "batch_size": batch_size,
             "seq_len": seq_len,
-            "framework": "fast_transformers"
+            "framework": "easy_transformers"
         }))
 
 
@@ -84,7 +84,7 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
     torch.set_grad_enabled(False)
 
     model_dir = os.path.join(os.path.dirname(__file__),
-                             '../fast_transformers/python/tests/test-model')
+                             '../easy_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
         model_dir)  # type: transformers.BertModel
     model.eval()
@@ -132,7 +132,7 @@ def generate_onnx_model(model: str, filename: str, seq_len: int,
 
     torch.set_grad_enabled(False)
     model_dir = os.path.join(os.path.dirname(__file__),
-                             '../fast_transformers/python/tests/test-model')
+                             '../easy_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
         model_dir)  # type: transformers.BertModel
 
@@ -206,8 +206,8 @@ def main():
         'n': int(args['-n']),
     }
 
-    if args['--framework'] == 'fast-transformers':
-        benchmark_fast_transformers(**kwargs)
+    if args['--framework'] == 'easy-transformers':
+        benchmark_easy_transformers(**kwargs)
     elif args['--framework'] == 'torch':
         benchmark_torch(**kwargs)
     elif args['--framework'] == 'onnxruntime':
