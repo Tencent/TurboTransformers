@@ -1,12 +1,12 @@
 """
-Fast-Transformers Benchmark Utils
+easy-transformers Benchmark Utils
 
 Usage:
     benchmark <model> --seq_len=<int> [--framework=<f>] [--batch_size=<int>] [-n <int>] [--num_threads=<int>]
 
 Options:
-    --framework=<f>      The framework to test in (torch, torch_jit, fast-transformers,
-                            onnxruntime-cpu, onnxruntime-mkldnn) [default: fast-transformers].
+    --framework=<f>      The framework to test in (torch, torch_jit, easy-transformers,
+                            onnxruntime-cpu, onnxruntime-mkldnn) [default: easy-transformers].
     --seq_len=<int>      The sequence length.
     --batch_size=<int>   The batch size [default: 1].
     -n <int>             The iteration count [default: 10000].
@@ -19,17 +19,17 @@ import os
 import docopt
 
 
-def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
+def benchmark_easy_transformers(model: str, seq_len: int, batch_size: int,
                                 n: int, num_threads: int):
     import torch
     import transformers
     import contexttimer
-    import fast_transformers
+    import easy_transformers
     import cProfile
-    fast_transformers.set_num_threads(num_threads)
+    easy_transformers.set_num_threads(num_threads)
 
     model_dir = os.path.join(os.path.dirname(__file__),
-                             '../fast_transformers/python/tests/test-model')
+                             '../easy_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
         model_dir)  # type: transformers.BertModel
     model.eval()
@@ -39,9 +39,9 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
                               high=cfg.vocab_size - 1,
                               size=(batch_size, seq_len),
                               dtype=torch.long)
-    model = fast_transformers.BertModel.from_torch(model)
+    model = easy_transformers.BertModel.from_torch(model)
 
-    with fast_transformers.gperf_guard(
+    with easy_transformers.gperf_guard(
             f"ft_{batch_size}_{seq_len}_{num_threads}.gperf"):
         model(input_ids)
 
@@ -66,7 +66,7 @@ def benchmark_fast_transformers(model: str, seq_len: int, batch_size: int,
             "n": n,
             "batch_size": batch_size,
             "seq_len": seq_len,
-            "framework": "fast_transformers",
+            "framework": "easy_transformers",
             "n_threads": num_threads
         }))
 
@@ -80,7 +80,7 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int,
     torch.set_grad_enabled(False)
 
     model_dir = os.path.join(os.path.dirname(__file__),
-                             '../fast_transformers/python/tests/test-model')
+                             '../easy_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
         model_dir)  # type: transformers.BertModel
     model.eval()
@@ -222,8 +222,8 @@ def main():
         'num_threads': int(args['--num_threads'])
     }
 
-    if args['--framework'] == 'fast-transformers':
-        benchmark_fast_transformers(**kwargs)
+    if args['--framework'] == 'easy-transformers':
+        benchmark_easy_transformers(**kwargs)
     elif args['--framework'] == 'torch':
         benchmark_torch(**kwargs)
     elif args['--framework'] == 'torch_jit':

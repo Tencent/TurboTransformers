@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 #NUM_THREADS=(4)
-#FRAMEWORKS=("fast-transformers")
+#FRAMEWORKS=("easy-transformers")
 #BATCH_SIZE=(2)
 #SEQ_LEN=(4)
 NUM_THREADS=(1 2 4 8)
-FRAMEWORKS=("torch" "torch_jit" "fast-transformers" "onnxruntime-mkldnn")
+FRAMEWORKS=("torch" "torch_jit" "easy-transformers" "onnxruntime-mkldnn")
 SEQ_LEN=(10 20 40 60 80 120)
 BATCH_SIZE=(1 2)
 N=150
