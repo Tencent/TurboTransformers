@@ -115,7 +115,7 @@ print(torch_res[0][:,0,:])  # 获取encoder得到的第一个隐状态
 # 两种方式载入模型，这里直接从pytorch模型载入
 ft_model = easy_transformers.BertModel.from_torch(model)
 # 从文件载入
-# model = easy_transformers.BertModel.from_pretrained("bert-base-chinese", test_device)
+# model = easy_transformers.BertModel.from_pretrained("bert-base-chinese")
 res = ft_model(input_ids)
 print(res)
 # tensor([[-1.4292,  1.0934, -0.3270,  ...,  0.7212, -0.3893, -0.1172],
