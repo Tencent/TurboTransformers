@@ -22,6 +22,7 @@
 #include "absl/types/variant.h"
 #include "easy_transformers/core/blas.h"
 #include "easy_transformers/core/enforce.h"
+#include "easy_transformers/core/half.h"
 #include "easy_transformers/core/memory.h"
 
 namespace easy_transformers {
@@ -54,6 +55,11 @@ struct DataTypeTrait<int> {
 template <>
 struct DataTypeTrait<int64_t> {
   enum { DLPackTypeCode = kDLInt };
+};
+
+template <>
+struct DataTypeTrait<Half> {
+  enum { DLPackTypeCode = kDLFloat };
 };
 
 template <typename T>
