@@ -57,12 +57,13 @@ bool CompareCPUGPU(const Tensor& cpu_tensor, const Tensor& gpu_tensor) {
 }
 #endif
 
-inline void RandomFillHost(float* m, const int mSize, float LO = 0.,
+template <typename T>
+inline void RandomFillHost(T* m, const int mSize, float LO = 0.,
                            float HI = 1.) {
   srand(static_cast<unsigned>(time(0)));
   for (int i = 0; i < mSize; i++)
-    m[i] = LO + static_cast<float>(rand()) /
-                    (static_cast<float>(RAND_MAX / (HI - LO)));
+    m[i] = LO +
+           static_cast<T>(rand()) / (static_cast<float>(RAND_MAX / (HI - LO)));
 }
 
 template <typename T>

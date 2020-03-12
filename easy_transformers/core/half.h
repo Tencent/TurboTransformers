@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-#if defined(__CUDACC__) && CUDA_VERSION >= 7050
+#if defined(__CUDACC__)  // && CUDA_VERSION >= 7050
 #define CUDA_HALF
 #include <cuda_fp16.h>
 #endif
@@ -34,14 +34,16 @@ struct alignas(2) Half {
 
   ~Half() = default;
 
-  explicit Half(float other) {
+  Half(float other) {
 #if defined(FT_WITH_CUDA) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
-    half tmp = __float2half(val);
-    x = *reinterpret_cast<uint16_t*>(&tmp);
+    half tmp = __float2half(other);
+    x = *reinterpret_cast<uint16_t *>(&tmp);
 #else
     x = fp16_ieee_from_fp32_value(other);
 #endif
   }
+  template <class T>
+  Half(const T &other) : Half(static_cast<float>(other)) {}
 
   operator float() const {
 #if defined(FT_WITH_CUDA) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
@@ -50,16 +52,6 @@ struct alignas(2) Half {
     return fp16_ieee_to_fp32_value(x);
 #endif
   }
-
-#ifdef CUDA_HALF
-  inline explicit Half(const half& h) {
-#if CUDA_VERSION >= 9000
-    x = reinterpret_cast<__half_raw*>(const_cast<half*>(&h))->x;
-#else
-    x = h.x;
-#endif
-  }
-#endif
 };
 }  // namespace core
 }  // namespace easy_transformers

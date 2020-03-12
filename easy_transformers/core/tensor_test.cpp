@@ -45,7 +45,7 @@ inline void Fill(Tensor &tensor) {
   std::unique_ptr<T[]> cpu_data(new T[size]);
   srand((unsigned)time(NULL));
   for (int64_t i = 0; i < size; ++i) {
-    cpu_data[i] = rand() / static_cast<T>(RAND_MAX);
+    cpu_data[i] = static_cast<T>(rand() / RAND_MAX);
   }
   FT_Memcpy(gpu_data, cpu_data.get(), size * sizeof(T), MemcpyFlag::kCPU2GPU);
 }

@@ -1,11 +1,11 @@
 // Copyright 2020 Tencent
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "easy_transformers/layers/kernels/activation.h"
+
 #include <numeric>
+
 #include "easy_transformers/core/aligned_scratchpad.h"
+#include "easy_transformers/core/half.h"
 #ifdef FT_WITH_CUDA
 #include "easy_transformers/core/cuda_device_context.h"
 #include "easy_transformers/layers/kernels/gpu_activation_kernel.h"
@@ -68,6 +71,21 @@ void AddBiasGeLUAct(const core::Tensor& bias_tensor, core::Tensor* out_tensor) {
 
 template void AddBiasGeLUAct<float>(const core::Tensor& bias_tensor,
                                     core::Tensor* out_tensor);
+#ifdef FT_WITH_CUDA
+template <>
+void AddBiasGeLUAct<core::Half>(const core::Tensor& bias_tensor,
+                                core::Tensor* out_tensor) {
+  FT_ENFORCE_EQ(bias_tensor.device_type(), kDLGPU, "The device should be GPU.");
+  core::Half* out = out_tensor->mutableData<core::Half>();
+  const core::Half* bias = bias_tensor.data<core::Half>();
+  int64_t m = out_tensor->rows();
+  int64_t n = out_tensor->cols();
+  core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+  GPUAddBiasGeLUActKernel<half>(reinterpret_cast<const half*>(bias),
+                                reinterpret_cast<half*>(out), m, n,
+                                cuda_ctx.stream());
+}
+#endif
 
 }  // namespace kernels
 }  // namespace layers
