@@ -15,8 +15,6 @@
 #define CATCH_CONFIG_MAIN
 #include "easy_transformers/layers/kernels/activation.h"
 
-#include <chrono>
-
 #include "easy_transformers/core/half.h"
 #ifdef FT_WITH_CUDA
 #include "easy_transformers/core/cuda_device_context.h"
@@ -44,29 +42,11 @@ void AddBiasGeLUActNaive(const float* bias, float* out, int64_t m, int64_t n) {
   }
 }
 
-class Timer {
- public:
-  Timer() : start_(std::chrono::system_clock::now()) {}
-
-  void Reset() { start_ = std::chrono::system_clock::now(); }
-
-  double Elapse() {
-    auto end = std::chrono::system_clock::now();
-    ;
-    auto duration = end - start_;
-    return double(duration.count()) * std::chrono::microseconds::period::num /
-           std::chrono::microseconds::period::den;
-  }
-
- private:
-  std::chrono::time_point<std::chrono::system_clock> start_;
-};
-
 template <typename Func>
 void TestFunction(Func&& func, int step, const std::string& infor,
                   double g_bytes) {
   func();
-  Timer timer;
+  test::Timer timer;
   for (int i = 0; i < step; ++i) {
     func();
   }
@@ -122,28 +102,6 @@ TEST_CASE("activation CPU benchmark") {
 
 #ifdef FT_WITH_CUDA
 
-class GPUTimer {
- public:
-  GPUTimer(cudaStream_t stream) : stream_(stream) {
-    cudaEventCreate(&start_event_);
-    cudaEventCreate(&stop_event_);
-    cudaEventRecord(start_event_, stream_);
-  }
-
-  double Elapse() {
-    cudaEventRecord(stop_event_, stream_);
-    cudaEventSynchronize(stop_event_);
-    float elapse;
-    cudaEventElapsedTime(&elapse, start_event_, stop_event_);
-    elapse /= 1000;  // ms
-    return elapse;
-  }
-
- private:
-  cudaEvent_t start_event_, stop_event_;
-  cudaStream_t stream_;
-};
-
 template <typename T>
 easy_transformers::core::Tensor CreateTensor(
     std::initializer_list<int64_t> shape, DLDeviceType device_type,
@@ -197,7 +155,7 @@ void ActivationGPUBenchmark(int batch_size, int seq_length, int hidden_size,
   AddBiasGeLUAct<T>(bias, &out);
   auto& cuda_ctx = easy_transformers::core::CUDADeviceContext::GetInstance();
   auto stream = cuda_ctx.stream();
-  GPUTimer timer(stream);
+  test::GPUTimer timer(stream);
   for (int i = 0; i < step; ++i) {
     AddBiasGeLUAct<T>(bias, &out);
   }

@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <chrono>
 
 #include "easy_transformers/core/memory.h"
 
@@ -55,7 +56,47 @@ bool CompareCPUGPU(const Tensor& cpu_tensor, const Tensor& gpu_tensor) {
   }
   return ret;
 }
+
+class GPUTimer {
+ public:
+  GPUTimer(cudaStream_t stream) : stream_(stream) {
+    cudaEventCreate(&start_event_);
+    cudaEventCreate(&stop_event_);
+    cudaEventRecord(start_event_, stream_);
+  }
+
+  double Elapse() {
+    cudaEventRecord(stop_event_, stream_);
+    cudaEventSynchronize(stop_event_);
+    float elapse;
+    cudaEventElapsedTime(&elapse, start_event_, stop_event_);
+    elapse /= 1000;  // ms
+    return elapse;
+  }
+
+ private:
+  cudaEvent_t start_event_, stop_event_;
+  cudaStream_t stream_;
+};
 #endif
+
+class Timer {
+ public:
+  Timer() : start_(std::chrono::system_clock::now()) {}
+
+  void Reset() { start_ = std::chrono::system_clock::now(); }
+
+  double Elapse() {
+    auto end = std::chrono::system_clock::now();
+    ;
+    auto duration = end - start_;
+    return double(duration.count()) * std::chrono::microseconds::period::num /
+           std::chrono::microseconds::period::den;
+  }
+
+ private:
+  std::chrono::time_point<std::chrono::system_clock> start_;
+};
 
 template <typename T>
 inline void RandomFillHost(T* m, const int mSize, float LO = 0.,
