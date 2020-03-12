@@ -28,16 +28,18 @@
 namespace easy_transformers {
 namespace layers {
 namespace kernels {
-
-void AddBiasGeLUActNaive(const float* bias, float* out, int64_t m, int64_t n) {
+template <typename T>
+void AddBiasGeLUActNaive(const T* bias, T* out, int64_t m, int64_t n) {
   for (int64_t i = 0; i < m; ++i) {
     int64_t k = 0;
     for (int64_t j = n * i; j < n * (i + 1); ++j) {
-      auto before_act = out[j] + bias[k++];
-      out[j] = before_act * 0.5f *
-               (1.0f + std::tanh(0.7978845608028654f *
-                                 (before_act + 0.044715f * before_act *
-                                                   before_act * before_act)));
+      auto before_act =
+          static_cast<float>(out[j]) + static_cast<float>(bias[k++]);
+      out[j] = static_cast<T>(
+          before_act * 0.5f *
+          (1.0f + std::tanh(0.7978845608028654f *
+                            (before_act + 0.044715f * before_act * before_act *
+                                              before_act))));
     }
   }
 }
@@ -84,8 +86,8 @@ TEST_CASE("activation CPU benchmark") {
 
       TestFunction(
           [&]() {
-            AddBiasGeLUActNaive(bias.data<float>(),
-                                out_parallel.mutableData<float>(), m, n);
+            AddBiasGeLUActNaive<float>(bias.data<float>(),
+                                       out_parallel.mutableData<float>(), m, n);
           },
           step, "AddBiasGeLUActNaive", m * n * sizeof(float) / 1e9);
 
@@ -111,33 +113,51 @@ easy_transformers::core::Tensor CreateTensor(
   return tensor;
 };
 
+template <typename T, typename Func>
+void CreateTensorAndFillRandom(int batch_size, int seq_length, int hidden_size,
+                               Func&& func) {
+  auto gpu_bias = CreateTensor<T>({hidden_size}, kDLGPU, 0);
+  auto cpu_bias = CreateTensor<T>({hidden_size}, kDLCPU, 0);
+
+  auto gpu_out =
+      CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLGPU, 0);
+  auto cpu_out =
+      CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLCPU, 0);
+
+  ::easy_transformers::test::FillDataForCPUGPUTensors<T>(cpu_bias, gpu_bias);
+  ::easy_transformers::test::FillDataForCPUGPUTensors<T>(cpu_out, gpu_out);
+
+  func(cpu_bias, cpu_out, gpu_bias, gpu_out);
+}
+
 TEST_CASE("activation CPU and GPU correctness") {
   int64_t hidden_size = 12 * 64;
 
-  std::vector<int64_t> batch_size_list{1, 20, 24};
-  std::vector<int64_t> seq_length_list{8, 16, 32, 48, 64, 128};
-
-  for (auto batch_size : batch_size_list)
-    for (auto seq_length : seq_length_list) {
-      auto gpu_bias = CreateTensor<float>({hidden_size}, kDLGPU, 0);
-      auto cpu_bias = CreateTensor<float>({hidden_size}, kDLCPU, 0);
-
-      auto gpu_out =
-          CreateTensor<float>({batch_size, seq_length, hidden_size}, kDLGPU, 0);
-      auto cpu_out =
-          CreateTensor<float>({batch_size, seq_length, hidden_size}, kDLCPU, 0);
-
-      ::easy_transformers::test::FillDataForCPUGPUTensors<float>(cpu_bias,
-                                                                 gpu_bias);
-      ::easy_transformers::test::FillDataForCPUGPUTensors<float>(cpu_out,
-                                                                 gpu_out);
-
+  for (auto batch_size : {1, 20, 24})
+    for (auto seq_length : {8, 16, 32, 48, 64, 128}) {
       LOG_S(INFO) << "batch_size: " << batch_size
                   << " seq_length: " << seq_length;
-      AddBiasGeLUAct<float>(cpu_bias, &cpu_out);
-      AddBiasGeLUAct<float>(gpu_bias, &gpu_out);
-      REQUIRE(
-          ::easy_transformers::test::CompareCPUGPU<float>(cpu_out, gpu_out));
+      CreateTensorAndFillRandom<float>(
+          batch_size, seq_length, hidden_size,
+          [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
+             core::Tensor& gpu_bias, core::Tensor& gpu_out) {
+            AddBiasGeLUAct<float>(cpu_bias, &cpu_out);
+            AddBiasGeLUAct<float>(gpu_bias, &gpu_out);
+            REQUIRE(::easy_transformers::test::CompareCPUGPU<float>(cpu_out,
+                                                                    gpu_out));
+          });
+
+      CreateTensorAndFillRandom<core::Half>(
+          batch_size, seq_length, hidden_size,
+          [&](core::Tensor& cpu_bias, core::Tensor& cpu_out,
+              core::Tensor& gpu_bias, core::Tensor& gpu_out) {
+            AddBiasGeLUActNaive<core::Half>(
+                cpu_bias.data<core::Half>(), cpu_out.mutableData<core::Half>(),
+                batch_size * seq_length, hidden_size);
+            AddBiasGeLUAct<core::Half>(gpu_bias, &gpu_out);
+            REQUIRE(::easy_transformers::test::CompareCPUGPU<core::Half>(
+                cpu_out, gpu_out));
+          });
     }  // for
 }
 
