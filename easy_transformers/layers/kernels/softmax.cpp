@@ -24,7 +24,6 @@
 namespace easy_transformers {
 namespace layers {
 namespace kernels {
-static constexpr float g_epsilon = 1e-6f;
 void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
                  int64_t head_num, int64_t seq_len, float scale) {
   int64_t M = batch_size * head_num * seq_len;
@@ -35,6 +34,7 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
     auto attr_mask_offset = i / (head_num * seq_len) * seq_len;
     auto attr_mask_ptr = attr_mask + attr_mask_offset;
     // max-trick
+#pragma imp simd
     for (int64_t j = 0; j < N; ++j) {
       auto mask_val = attr_mask_ptr[j];
       auto qk_val = qk_buf_ptr[j];
@@ -55,7 +55,7 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
     for (int64_t j = 0; j < N; ++j) {
       sum += qk_buf_ptr[j];
     }
-    auto coef = 1.0f / (sum + g_epsilon);
+    auto coef = 1.0f / sum;
 #pragma omp simd
     for (int64_t j = 0; j < N; ++j) {
       qk_buf_ptr[j] *= coef;
