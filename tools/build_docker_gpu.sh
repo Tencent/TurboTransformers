@@ -1,8 +1,8 @@
 #!/bin/bash
 cd $(dirname $0)/
 set -xe
-VERSION=$(cat ../CMakeLists.txt | grep easy_transformers_VERSION | \
-    sed 's#set(easy_transformers_VERSION ##g' | sed 's#)##g')
+VERSION=$(cat ../CMakeLists.txt | grep turbo_transformers_VERSION | \
+    sed 's#set(turbo_transformers_VERSION ##g' | sed 's#)##g')
 
 CUDA_VERSION=9.0
 DOCKER_BASE=${CUDA_VERSION}-cudnn7-devel-ubuntu16.04
@@ -12,4 +12,4 @@ sed 's#CUDA_VERSION#'${CUDA_VERSION}'#g'         |
 sed 's#PYTORCH_VERSION#'${PYTORCH_VERSION}'#g'    > Dockerfile.gpu
 
 docker build ${EXTRA_ARGS} \
-	-t ccr.ccs.tencentyun.com/mmspr/easy_transformers:${VERSION}-cuda${DOCKER_BASE}-gpu-dev -f Dockerfile.gpu  .
+	-t ccr.ccs.tencentyun.com/mmspr/turbo_transformers:${VERSION}-cuda${DOCKER_BASE}-gpu-dev -f Dockerfile.gpu  .
