@@ -1,11 +1,11 @@
 # Copyright 2020 Tencent
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -63,7 +63,7 @@ def create_shape_test(batch_size: int, seq_length: int):
         def test_bertout(self):
             with open(f"gpu_bert_output_qps_{batch_size}_{seq_length:03}.txt",
                       "w") as of:
-                num_steps = 100
+                num_steps = 2
                 torch_result = self.torch_bertout(self.intermediate_output,
                                                   self.attention_output)
                 with contexttimer.Timer() as t:

@@ -23,7 +23,7 @@ COPY --from=PProfBuilder /go/bin/pprof /bin/pprof
 #           easy-transformers will use the same MKL from PyTorch
 RUN /opt/conda/bin/conda install pytorch cpuonly -c pytorch && \
     /opt/conda/bin/conda install curl conda-verify conda-build mkl-include cmake -c anaconda &&  \
-    /opt/conda/bin/conda install git graphviz gperftools git-lfs docopt -c conda-forge  && \
+    /opt/conda/bin/conda install make cmake git graphviz gperftools git-lfs docopt -c conda-forge  && \
     /opt/conda/bin/conda clean -afy
 
 COPY --from=OnnxRTBuilder /src/onnxruntime/build/Linux/Release/dist/onnxruntime-*.whl \

@@ -1,11 +1,11 @@
 # Copyright 2020 Tencent
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -69,7 +69,7 @@ def create_test(batch_size, seq_length):
             self.attention_mask = (1.0 - self.attention_mask) * -10000.0
 
         def test_bertattention(self):
-            num_iter = 50
+            num_iter = 2
             # Torch
             model = lambda: self.torch_attention(self.input_tensor, self.
                                                  attention_mask)

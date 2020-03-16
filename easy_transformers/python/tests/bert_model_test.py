@@ -1,11 +1,11 @@
 # Copyright 2020 Tencent
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,7 +27,8 @@ class TestBertModel(unittest.TestCase):
         model_id = os.path.join(os.path.dirname(__file__), 'test-model')
         torch.set_grad_enabled(False)
         torch.set_num_threads(1)
-        if not torch.cuda.is_available() or not easy_transformers.config.is_with_cuda():
+        if not torch.cuda.is_available(
+        ) or not easy_transformers.config.is_with_cuda():
             self.test_device = torch.device('cpu:0')
             self.device = "CPU"
         else:
@@ -45,7 +46,7 @@ class TestBertModel(unittest.TestCase):
             model_id, self.test_device)
 
     def test_bert_model(self):
-        num_iter = 100
+        num_iter = 2
         input_ids = self.tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求?')
         input_ids = torch.tensor([input_ids],
                                  dtype=torch.long,
