@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import easy_transformers
+import turbo_transformers
 import unittest
 
 import contexttimer
@@ -27,7 +27,7 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
     class TestBertEmbedding(unittest.TestCase):
         def setUp(self) -> None:
             if not torch.cuda.is_available(
-            ) or not easy_transformers.config.is_with_cuda():
+            ) or not turbo_transformers.config.is_with_cuda():
                 self.test_device = torch.device('cpu:0')
                 self.device = "CPU"
             else:
@@ -46,7 +46,7 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
             if torch.cuda.is_available():
                 self.torch_embedding.to(self.test_device)
 
-            self.ft_embedding = easy_transformers.BertEmbeddings.from_torch(
+            self.ft_embedding = turbo_transformers.BertEmbeddings.from_torch(
                 self.torch_embedding)
 
         def test_embedding(self):
