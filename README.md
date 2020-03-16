@@ -213,22 +213,22 @@ print(ft_result)
 
 在61xx上，四种Transformer实现性能对比结果如下面两张图所示。可以观察到在线程数为1时，四种实现的差别并不大。随着线程数增多，turbo_transformers的性能优势逐步增大，当线程为8时加速效果最为明显。另外，随着seq_length长度增长，turbo_transformers的加速效果减弱，原因是此时GEMM运算时间占比增大，核心融合带来增益减少。
 
-<img width="800" height="200" src="http://km.oa.com/files/photos/captures/202003/1584350217_86_w3088_h1026.png">
-<img width="800" height="200" src="http://km.oa.com/files/photos/captures/202003/1584350234_3_w3104_h1026.png" alt="61xx性能2">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350217_86_w3088_h1026.png">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350234_3_w3104_h1026.png" alt="61xx性能2">
 
 * Intel Xeon 6133
 
 相比61xx型号，Intel Xeon 6133向量化长度更长为512 bit，并且它拥有一个30 MB核间共享L3 cache。如下两张图展示了6133的性能表现。多线程的大部分case，turbo_transformers结果优于其他实现。比较特殊的case是序列长度为10和20的情况。造成这种现象是由于MKL AVX512 GEMM例程的缘故，在Intel 6133 CPU上，我们发现随着seq_length增加，GEMM运算的延迟会出现一个跳变的现象。
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350279_35_w3092_h1028.png" alt="6133性能1">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350292_90_w3104_h1012.png" alt="6133性能2">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350279_35_w3092_h1028.png" alt="6133性能1">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350292_90_w3104_h1012.png" alt="6133性能2">
 
 
 * intel i9-9800 CPU
 
 如下两张图展示了intel i9上的性能表现。再线程数大于1时，turbo_transformers的性能优于其他实现。
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350313_80_w3090_h1020.png" alt="6133性能1">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350326_14_w3088_h1030.png" alt="6133性能2">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350313_80_w3090_h1020.png" alt="6133性能1">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350326_14_w3088_h1030.png" alt="6133性能2">
 
 ### GPU测试效果
 我们在三种GPU硬件平台测试了turbo_transformers的性能表现。
@@ -237,24 +237,19 @@ print(ft_result)
 
 * Tesla V100
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351870_55_w3094_h1016.png" alt="V100性能">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351683_62_w3086_h1030.png" alt="V100加速">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351870_55_w3094_h1016.png" alt="V100性能">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351683_62_w3086_h1030.png" alt="V100加速">
 
 * Tesla P40
 
-<img width="600" height="180" src="http://km.oa.com/files/photos/captures/202003/1584351888_63_w3082_h1016.png" alt="P40性能">
-<img width="600" height="180" src="http://km.oa.com/files/photos/captures/202003/1584351721_73_w3082_h1012.png" alt="P40加速">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351888_63_w3082_h1016.png" alt="P40性能">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351721_73_w3082_h1012.png" alt="P40加速">
 
 
 * Tesla M40
 
-<img width="600" height="180" src="http://km.oa.com/files/photos/captures/202003/1584351914_10_w3096_h1030.png" alt="M40性能短序列">
-<img width="600" height="180" src="http://km.oa.com/files/photos/captures/202003/1584351928_90_w3098_h1018.png" alt="M40加速短序列">
-
-* Tesla vs CPU
-
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579506844_27_w2786_h1302.png" alt="M40vsCPU">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579507047_29_w2844_h1338.png" alt="M40vsCPU">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351914_10_w3096_h1030.png" alt="M40性能短序列">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351928_90_w3098_h1018.png" alt="M40加速短序列">
 
 ## 技术文档
 2020.03.16之前我们的项目曾以fast-transformers发布。
