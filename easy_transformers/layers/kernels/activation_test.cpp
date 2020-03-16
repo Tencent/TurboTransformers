@@ -1,11 +1,11 @@
 // Copyright 2020 Tencent
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -70,8 +70,8 @@ TEST_CASE("activation CPU benchmark") {
         out_ptr[i] = out_parallel_ptr[i] = 0.02;
       }
 
-      LOG_S(INFO) << "batch_size: " << batch_size
-                  << " seq_length: " << seq_length;
+      std::cout << "batch_size: " << batch_size
+                << " seq_length: " << seq_length;
 
       {
         AddBiasGeLUActNaive(bias.data<float>(),
@@ -88,9 +88,9 @@ TEST_CASE("activation CPU benchmark") {
         auto elapse = double(duration.count()) *
                       std::chrono::microseconds::period::num /
                       std::chrono::microseconds::period::den / step * 1000;
-        LOG_S(INFO) << "AddBiasGeLUActNaive cost:" << elapse
-                    << " ms, Bandwidth " << m * n * 0.1 / 1e6 / elapse
-                    << " GB/s";
+        std::cout << ", AddBiasGeLUActNaive cost, " << elapse
+                  << " ms, Bandwidth " << m * n * 0.1 / 1e6 / elapse << " GB/s"
+                  << std::endl;
       }
       {
         AddBiasGeLUAct<float>(bias, &out);
@@ -105,8 +105,8 @@ TEST_CASE("activation CPU benchmark") {
         auto elapse = double(duration_parallel.count()) *
                       std::chrono::microseconds::period::num /
                       std::chrono::microseconds::period::den / step * 1000;
-        LOG_S(INFO) << "AddBiasGeLUAct OMP cost:" << elapse << " ms, Bandwidth "
-                    << m * n * 0.1 / 1e6 / elapse << " GB/s";
+        std::cout << "AddBiasGeLUAct OMP cost:" << elapse << " ms, Bandwidth "
+                  << m * n * 0.1 / 1e6 / elapse << " GB/s" << std::endl;
       }
       for (int64_t i = 0; i < m * n; ++i) {
         FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_parallel_ptr[i]), 1e-6,
@@ -145,8 +145,8 @@ TEST_CASE("activation CPU and GPU correctness") {
       ::easy_transformers::test::FillDataForCPUGPUTensors<float>(cpu_out,
                                                                  gpu_out);
 
-      LOG_S(INFO) << "batch_size: " << batch_size
-                  << " seq_length: " << seq_length;
+      std::cout << "batch_size: " << batch_size
+                << " seq_length: " << seq_length;
       {
         AddBiasGeLUAct<float>(cpu_bias, &cpu_out);
         AddBiasGeLUAct<float>(gpu_bias, &gpu_out);
@@ -179,8 +179,8 @@ TEST_CASE("activation GPU benchmark") {
               {batch_size, seq_length, hidden_size}, kDLGPU, 0));
       ::easy_transformers::test::Fill<float>(out);
 
-      LOG_S(INFO) << "batch_size: " << batch_size
-                  << " seq_length: " << seq_length;
+      std::cout << "batch_size: " << batch_size
+                << " seq_length: " << seq_length;
       {
         AddBiasGeLUAct<float>(bias, &out);
 
@@ -194,8 +194,8 @@ TEST_CASE("activation GPU benchmark") {
         auto elapse = double(duration_parallel.count()) *
                       std::chrono::microseconds::period::num /
                       std::chrono::microseconds::period::den / step * 1000;
-        LOG_S(INFO) << "AddBiasGeLUAct GPU cost:" << elapse << " ms, Bandwidth "
-                    << m * n * 0.1 / 1e6 / elapse << " GB/s";
+        std::cout << ", AddBiasGeLUAct GPU cost:" << elapse << " ms, Bandwidth "
+                  << m * n * 0.1 / 1e6 / elapse << " GB/s";
       }
     }
 }
