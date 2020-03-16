@@ -8,8 +8,8 @@ Transformer是近两年来NLP领域最重要的模型创新，在带来更高的
 |------------------|---|---|---|---|
 | pytorch JIT (CPU) |  Fast |  Yes  | No  | Hard   |
 | tf-Faster Transformers (GPU) | Fast  | Yes  | No  | Hard  |
-| ONNX-runtime(CPU/GPU) | Fast/Fast | Yes  | NO  | Easy  |
-| tensorflow-1.x (CPU/GPU) | Slow/Medium | No | No | Easy |
+| ONNX-runtime(CPU/GPU) | Fast/Fast | Yes  | No  | Easy  |
+| tensorflow-1.x (CPU/GPU) | Slow/Medium | Yes | No | Easy |
 | pytorch (CPU/GPU) | Medium/Medium | No | Yes | Easy |
 | **turbo-transformers (CPU/GPU)** | **Fastest/Fastest** | **No** | **Yes** | **Easy** |
 
