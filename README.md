@@ -1,9 +1,10 @@
 ### turbo_transformers: 面向CPU/GPU高效易用的Transformer推理引擎（曾用名fast-transformers）
 
-***make transformer serving easy and fast by adding turbo to your inference engine!***
+***easily make transformers servingand fast just by adding turbo to your inference engine!***
 
 Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，高效部署Transformer线上服务面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为turbo_transformers的面向Intel多核CPU和NVIDIA GPU硬件平台的Transformer实现。turbo_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。turbo_transformers在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn/onnxruntime-gpu, torch JIT, NVIDIA faster transformers）的性能表现，详细benchmark结果见下文，它对常用的短序列的处理速度提升更为显著。turbo_transformers CPU版本已经应用于多个线上服务服务场景，WXG的FAQ的BERT服务获得1.88x加速，CSIG的在公有云情感分析服务两层BERT encoder获得2.11x加速。
 
+下表是本工作和相关工作的对比
 | Related Works  |  Performance | Need Preprocess  |  Variable Length  | Usage |
 |------------------|---|---|---|---|
 | pytorch JIT (CPU) |  Fast |  Yes  | No  | Hard   |
@@ -257,5 +258,6 @@ print(ft_result)
 <img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579507047_29_w2844_h1338.png" alt="M40vsCPU">
 
 ## 技术文档
-[turbo-transformers (1): CPU Serving is All You Need](http://km.oa.com/group/24938/articles/show/405322?kmref=author_post "turbo-transformers-cpu")
-[turbo-transformers (2): GPU Serving Can Also Be You Need](http://km.oa.com/group/18832/articles/show/413605?kmref=author_post "turbo-transformers-gpu")
+我们的项目曾以fast-transformers发布。
+[fast-transformers (1): CPU Serving is All You Need](http://km.oa.com/group/24938/articles/show/405322?kmref=author_post "turbo-transformers-cpu")
+[fast-transformers (2): GPU Serving Can Also Be You Need](http://km.oa.com/group/18832/articles/show/413605?kmref=author_post "turbo-transformers-gpu")
