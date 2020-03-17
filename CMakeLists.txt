@@ -14,15 +14,15 @@ HunterGate(
     SHA1 "ca19f3769e6c80cfdd19d8b12ba5102c27b074e0"
 )
 
-set(easy_transformers_VERSION 0.1.1)
+set(turbo_transformers_VERSION 0.1.1)
 
 option(WITH_PROFILER  "Compile with gperftools" OFF)
 option(WITH_GPU       "Build with GPU"          OFF)
 
 if (WITH_GPU)
-  project(easy_transformers LANGUAGES CXX C CUDA)
+  project(turbo_transformers LANGUAGES CXX C CUDA)
 else ()
-  project(easy_transformers LANGUAGES CXX C)
+  project(turbo_transformers LANGUAGES CXX C)
 endif ()
 
 hunter_add_package(Eigen)
@@ -100,4 +100,4 @@ IF (UNIX AND NOT APPLE)
 ENDIF ()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-add_subdirectory(easy_transformers)
+add_subdirectory(turbo_transformers)

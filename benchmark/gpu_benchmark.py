@@ -1,12 +1,12 @@
 """
-easy-transformers Benchmark Utils
+turbo-transformers Benchmark Utils
 
 Usage:
     benchmark <model> --seq_len=<int> [--framework=<f>] [--batch_size=<int>] [-n <int>]
 
 Options:
-    --framework=<f>      The framework to test in (torch, torch_jit, easy-transformers,
-                            onnxruntime-cpu, onnxruntime-mkldnn) [default: easy-transformers].
+    --framework=<f>      The framework to test in (torch, torch_jit, turbo-transformers,
+                            onnxruntime-cpu, onnxruntime-mkldnn) [default: turbo-transformers].
     --seq_len=<int>      The sequence length.
     --batch_size=<int>   The batch size [default: 1].
     -n <int>             The iteration count [default: 10000].
@@ -18,12 +18,12 @@ import os
 import docopt
 
 
-def benchmark_easy_transformers(model: str, seq_len: int, batch_size: int,
-                                n: int):
+def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
+                                 n: int):
     import torch
     import transformers
     import contexttimer
-    import easy_transformers
+    import turbo_transformers
 
     if not torch.cuda.is_available():
         print("cuda is not available for torch")
@@ -31,7 +31,7 @@ def benchmark_easy_transformers(model: str, seq_len: int, batch_size: int,
     test_device = torch.device('cuda:0')
 
     model_dir = os.path.join(os.path.dirname(__file__),
-                             '../easy_transformers/python/tests/test-model')
+                             '../turbo_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
         model_dir)  # type: transformers.BertModel
     model.to(test_device)
@@ -42,7 +42,7 @@ def benchmark_easy_transformers(model: str, seq_len: int, batch_size: int,
                               size=(batch_size, seq_len),
                               dtype=torch.long,
                               device=test_device)
-    model = easy_transformers.BertModel.from_torch(model)
+    model = turbo_transformers.BertModel.from_torch(model)
 
     model(input_ids)
 
@@ -67,7 +67,7 @@ def benchmark_easy_transformers(model: str, seq_len: int, batch_size: int,
             "n": n,
             "batch_size": batch_size,
             "seq_len": seq_len,
-            "framework": "easy_transformers"
+            "framework": "turbo_transformers"
         }))
 
 
@@ -84,7 +84,7 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
     torch.set_grad_enabled(False)
 
     model_dir = os.path.join(os.path.dirname(__file__),
-                             '../easy_transformers/python/tests/test-model')
+                             '../turbo_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
         model_dir)  # type: transformers.BertModel
     model.eval()
@@ -132,7 +132,7 @@ def generate_onnx_model(model: str, filename: str, seq_len: int,
 
     torch.set_grad_enabled(False)
     model_dir = os.path.join(os.path.dirname(__file__),
-                             '../easy_transformers/python/tests/test-model')
+                             '../turbo_transformers/python/tests/test-model')
     model = transformers.BertModel.from_pretrained(
         model_dir)  # type: transformers.BertModel
 
@@ -144,7 +144,7 @@ def generate_onnx_model(model: str, filename: str, seq_len: int,
                               high=cfg.vocab_size - 1,
                               size=(batch_size, seq_len),
                               dtype=torch.long,
-                              device = test_device)
+                              device=test_device)
     with open(filename, 'wb') as outf:
         torch.onnx.export(model=model, args=(input_ids, ), f=outf)
         outf.flush()
@@ -162,7 +162,7 @@ def onnxruntime_benchmark_creator(backend: str):
         import contexttimer
         import os
         import onnx
-        import onnxruntime  
+        import onnxruntime
         import onnxruntime.backend
         import time
         import numpy
@@ -177,8 +177,7 @@ def onnxruntime_benchmark_creator(backend: str):
         input_ids = numpy.random.randint(low=0,
                                          high=vocab_size - 1,
                                          size=(batch_size, seq_len),
-                                         dtype=numpy.int64
-                                         )
+                                         dtype=numpy.int64)
         model.run(inputs=[input_ids])
         with contexttimer.Timer() as t:
             for _ in range(n):
@@ -196,6 +195,7 @@ def onnxruntime_benchmark_creator(backend: str):
 
     return _impl_
 
+
 def main():
 
     args = docopt.docopt(__doc__)
@@ -206,8 +206,8 @@ def main():
         'n': int(args['-n']),
     }
 
-    if args['--framework'] == 'easy-transformers':
-        benchmark_easy_transformers(**kwargs)
+    if args['--framework'] == 'turbo-transformers':
+        benchmark_turbo_transformers(**kwargs)
     elif args['--framework'] == 'torch':
         benchmark_torch(**kwargs)
     elif args['--framework'] == 'onnxruntime':

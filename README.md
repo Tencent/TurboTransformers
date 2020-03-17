@@ -1,8 +1,19 @@
-### easy_transformers: 面向CPU/GPU高效易用的Transformer推理引擎（曾用名fast-transformers）
+### turbo_transformers: 面向CPU/GPU高效易用的Transformer推理引擎（曾用名fast-transformers）
 
-make transformer inference easy and fast!
+***make transformers serving fast easily by adding turbo to your inference engine!***
 
-Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，高效部署Transformer线上服务面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为easy_transformers的面向Intel多核CPU和NVIDIA GPU硬件平台的Transformer实现。easy_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。easy_transformers在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn/onnxruntime-gpu, torch JIT, NVIDIA faster transformers）的性能表现，详细benchmark结果见下文，它对常用的短序列的处理速度提升更为显著。easy_transformers CPU版本已经应用于多个线上服务服务场景，WXG的FAQ的BERT服务获得1.88x加速，CSIG的在公有云情感分析服务两层BERT encoder获得2.11x加速。
+Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，高效部署Transformer线上服务面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为turbo_transformers的面向Intel多核CPU和NVIDIA GPU硬件平台的Transformer实现。turbo_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。turbo_transformers在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn/onnxruntime-gpu, torch JIT, NVIDIA faster transformers）的性能表现，详细benchmark结果见下文，它对常用的短序列的处理速度提升更为显著。turbo_transformers CPU版本已经应用于多个线上服务服务场景，WXG的FAQ的BERT服务获得1.88x加速，CSIG的在公有云情感分析服务两层BERT encoder获得2.11x加速。
+
+下表是本工作和相关工作的对比
+| Related Works  |  Performance | Need Preprocess  |  Variable Length  | Usage |
+|------------------|---|---|---|---|
+| pytorch JIT (CPU) |  Fast |  Yes  | No  | Hard   |
+| tf-Faster Transformers (GPU) | Fast  | Yes  | No  | Hard  |
+| ONNX-runtime(CPU/GPU) | Fast/Fast | Yes  | No  | Easy  |
+| tensorflow-1.x (CPU/GPU) | Slow/Medium | Yes | No | Easy |
+| pytorch (CPU/GPU) | Medium/Medium | No | Yes | Easy |
+| **turbo-transformers (CPU/GPU)** | **Fastest/Fastest** | **No** | **Yes** | **Easy** |
+
 
 ### CPU版本安装
 git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
@@ -12,7 +23,7 @@ git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
 sh tools/build_docker_cpu.sh
 # optional: 构建编译环境时需要联网，腾讯内网需要设置代理
 export EXTRA_ARGS="--build-arg http_proxy=http://devnet-proxy.oa.com:8080 --build-arg https_proxy=http://devnet-proxy.oa.com:8080"
-docker run -it --rm -v your/path/easy_transformers:/workspace --name=your_container_name REPOSITORY:TAG /bin/bash
+docker run -it --rm -v your/path/turbo_transformers:/workspace --name=your_container_name REPOSITORY:TAG /bin/bash
 cd /workspace
 # optional:在编译环境内安装是也需要联网，腾讯内网请设置代理
 export http_proxy=http://devnet-proxy.oa.com:8080
@@ -25,7 +36,7 @@ export no_proxy=git.code.oa.com
 ```
 sh tool/build_conda_package.sh
 # conda包会在 /workspace/dist/*.tar.bz2中
-# 在本容器外其他环境使用easy_transformers时只需要python -m pip install your_root_path/dist/*.tar.bz2
+# 在本容器外其他环境使用turbo_transformers时只需要python -m pip install your_root_path/dist/*.tar.bz2
 ```
 
 3. 在docker内进行单测 (optional)
@@ -51,7 +62,7 @@ git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
 # 可以在脚本中修改环境变量指定cuda版本和操作系统版本
 sh tools/build_docker_gpu.sh $PWD
 docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=your_container_name REPOSITORY:TAG
-# for example: docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/easy_transformers:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
+# for example: docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/turbo_transformers:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
 ```
 
 2. 在docker内安装pip包并单测
@@ -79,17 +90,17 @@ bash gpu_run_benchmark.sh
 
 
 ### 使用示例
-easy_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
-下面代码片段展示了如何将huggingface预训练BERT模型导入easy_transformers并进行一次BERT encoder的计算。
+turbo_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
+下面代码片段展示了如何将huggingface预训练BERT模型导入turbo_transformers并进行一次BERT encoder的计算。
 
 1. CPU
 ```python
 import torch
 import transformers
-import easy_transformers
+import turbo_transformers
 
-# 使用4个线程运行easy_transformers
-easy_transformers.set_num_threads(4)
+# 使用4个线程运行turbo_transformers
+turbo_transformers.set_num_threads(4)
 # 调用transformers提供的预训练模型
 model = transformers.BertModel.from_pretrained(
     "bert-base-chinese")
@@ -113,9 +124,9 @@ print(torch_res[0][:,0,:])  # 获取encoder得到的第一个隐状态
 
 # 构建bert-encoder的模型，输出first方式pooling的结果
 # 两种方式载入模型，这里直接从pytorch模型载入
-ft_model = easy_transformers.BertModel.from_torch(model)
+ft_model = turbo_transformers.BertModel.from_torch(model)
 # 从文件载入
-# model = easy_transformers.BertModel.from_pretrained("bert-base-chinese")
+# model = turbo_transformers.BertModel.from_pretrained("bert-base-chinese")
 res = ft_model(input_ids)
 print(res)
 # tensor([[-1.4292,  1.0934, -0.3270,  ...,  0.7212, -0.3893, -0.1172],
@@ -129,22 +140,22 @@ import os
 import numpy
 import torch
 import transformers
-import easy_transformers
+import turbo_transformers
 
 torch.set_grad_enabled(False)
 test_device = torch.device('cuda:0')
 # load model from file, adapted to offline enviroments, run in directory ./benchmark
 model_id = os.path.join(os.path.dirname(__file__),
-                         '../easy_transformers/python/tests/test-model')
+                         '../turbo_transformers/python/tests/test-model')
 # model_id = "bert-base-chinese"
 model_torch = transformers.BertModel.from_pretrained(model_id)
 model_torch.eval()
 model_torch.to(test_device)
 # the following two ways are the same
 # 1. load model from checkpoint in file
-# model_ft = easy_transformers.BertModel.from_pretrained(model_id, test_device)
+# model_ft = turbo_transformers.BertModel.from_pretrained(model_id, test_device)
 # 2. load model from pytorch model
-model_ft = easy_transformers.BertModel.from_torch(model_torch, test_device)
+model_ft = turbo_transformers.BertModel.from_torch(model_torch, test_device)
 cfg = model_torch.config  # type: transformers.BertConfig
 
 batch_size, seq_len = 10, 40
@@ -170,7 +181,7 @@ print(torch_result)
 #   -0.2520734 ]
 #  [-0.56147367  0.6245851  -0.97631836 ...  1.300955    0.2231751
 #   -0.35811383]]
-  
+
 ft_result = model_ft(input_ids)
 ft_result = ft_result.cpu().numpy()
 print(ft_result)
@@ -193,59 +204,54 @@ print(ft_result)
 
 ## 性能
 ### CPU测试效果
-我们在三种CPU硬件平台测试了easy_transformers的性能表现。
+我们在三种CPU硬件平台测试了turbo_transformers的性能表现。
 我们选择[pytorch](https://github.com/huggingface "pytorch")，[pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit")和[onnxruntime-mkldnn]( https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn")实现作为对比。性能测试结果为迭代150次的均值。为了避免多次测试时，上次迭代的数据在cache中缓存的现象，每次测试采用随机数据，并在计算后刷新的cache数据。
 
 
 * Intel Xeon 61xx
 
 
-在61xx上，四种Transformer实现性能对比结果如下面两张图所示。可以观察到在线程数为1时，四种实现的差别并不大。随着线程数增多，easy_transformers的性能优势逐步增大，当线程为8时加速效果最为明显。另外，随着seq_length长度增长，easy_transformers的加速效果减弱，原因是此时GEMM运算时间占比增大，核心融合带来增益减少。
+在61xx上，四种Transformer实现性能对比结果如下面两张图所示。可以观察到在线程数为1时，四种实现的差别并不大。随着线程数增多，turbo_transformers的性能优势逐步增大，当线程为8时加速效果最为明显。另外，随着seq_length长度增长，turbo_transformers的加速效果减弱，原因是此时GEMM运算时间占比增大，核心融合带来增益减少。
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575381653_78_w1546_h784.png" alt="61xx性能1">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575382049_44_w1676_h845.png" alt="61xx性能2">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350217_86_w3088_h1026.png">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350234_3_w3104_h1026.png" alt="61xx性能2">
 
 * Intel Xeon 6133
 
-相比61xx型号，Intel Xeon 6133向量化长度更长为512 bit，并且它拥有一个30 MB核间共享L3 cache。如下两张图展示了6133的性能表现。多线程的大部分case，easy_transformers结果优于其他实现。比较特殊的case是序列长度为10和20的情况。造成这种现象是由于MKL AVX512 GEMM例程的缘故，在Intel 6133 CPU上，我们发现随着seq_length增加，GEMM运算的延迟会出现一个跳变的现象。
+相比61xx型号，Intel Xeon 6133向量化长度更长为512 bit，并且它拥有一个30 MB核间共享L3 cache。如下两张图展示了6133的性能表现。多线程的大部分case，turbo_transformers结果优于其他实现。比较特殊的case是序列长度为10和20的情况。造成这种现象是由于MKL AVX512 GEMM例程的缘故，在Intel 6133 CPU上，我们发现随着seq_length增加，GEMM运算的延迟会出现一个跳变的现象。
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575384757_71_w1751_h886.png" alt="6133性能1">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575385675_63_w1602_h804.png" alt="6133性能2">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350279_35_w3092_h1028.png" alt="6133性能1">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350292_90_w3104_h1012.png" alt="6133性能2">
 
 
 * intel i9-9800 CPU
 
-如下两张图展示了intel i9上的性能表现。再线程数大于1时，easy_transformers的性能优于其他实现。
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575425550_58_w2920_h1474.png" alt="6133性能1">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/201912/1575425573_3_w3042_h1534.png" alt="6133性能2">
+如下两张图展示了intel i9上的性能表现。再线程数大于1时，turbo_transformers的性能优于其他实现。
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350313_80_w3090_h1020.png" alt="6133性能1">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350326_14_w3088_h1030.png" alt="6133性能2">
 
 ### GPU测试效果
-我们在三种GPU硬件平台测试了easy_transformers的性能表现。
+我们在三种GPU硬件平台测试了turbo_transformers的性能表现。
 我们选择[pytorch](https://github.com/huggingface "pytorch")，[NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer")，[onnxruntime-gpu](https://github.com/microsoft/onnxruntime "onnxrt-gpu")实现作为对比。性能测试结果为迭代150次的均值。
 
 
 * Tesla V100
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202002/1582869887_97_w2182_h1030.png" alt="V100性能">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202002/1582878605_32_w2180_h1022.png" alt="V100加速">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351870_55_w3094_h1016.png" alt="V100性能">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351683_62_w3086_h1030.png" alt="V100加速">
 
 * Tesla P40
 
-<img width="600" height="180" src="http://km.oa.com/files/photos/captures/202003/1583486895_54_w3084_h768.png" alt="P40性能">
-<img width="600" height="180" src="http://km.oa.com/files/photos/captures/202003/1583486872_73_w3094_h888.png" alt="P40加速">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351888_63_w3082_h1016.png" alt="P40性能">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351721_73_w3082_h1012.png" alt="P40加速">
 
 
 * Tesla M40
 
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579437911_33_w2828_h1322.png" alt="M40性能短序列">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579438488_16_w2182_h1008.png" alt="M40加速短序列">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579509883_75_w2916_h1348.png" alt="M40性能长序列">
-
-* Tesla vs CPU
-
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579506844_27_w2786_h1302.png" alt="M40vsCPU">
-<img width="600" height="300" src="http://km.oa.com/files/photos/captures/202001/1579507047_29_w2844_h1338.png" alt="M40vsCPU">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351914_10_w3096_h1030.png" alt="M40性能短序列">
+<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351928_90_w3098_h1018.png" alt="M40加速短序列">
 
 ## 技术文档
-[easy-transformers (1): CPU Serving is All You Need](http://km.oa.com/group/24938/articles/show/405322?kmref=author_post "easy-transformers-cpu")
-[easy-transformers (2): GPU Serving Can Also Be You Need](http://km.oa.com/group/18832/articles/show/413605?kmref=author_post "easy-transformers-gpu")
+2020.03.16之前我们的项目曾以fast-transformers发布。
+[turbo-transformers (1): CPU Serving is All You Need](http://km.oa.com/group/24938/articles/show/405322?kmref=author_post "turbo-transformers-cpu")
+[turbo-transformers (2): GPU Serving Can Also Be You Need](http://km.oa.com/group/18832/articles/show/413605?kmref=author_post "turbo-transformers-gpu")
