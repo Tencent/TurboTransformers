@@ -17,7 +17,7 @@
 
 #include "turbo_transformers/core/half.h"
 #ifdef FT_WITH_CUDA
-#include "easy_transformers/core/cuda_device_context.h"
+#include "turbo_transformers/core/cuda_device_context.h"
 #endif
 #include "catch2/catch.hpp"
 #include "loguru.hpp"
@@ -61,7 +61,7 @@ void TestFunction(Func&& func, int step, const std::string& infor,
 TEST_CASE("activation CPU benchmark") {
   auto tensor_create_and_fill_constant =
       [](std::initializer_list<int64_t> shape, float value) {
-        easy_transformers::core::Tensor tensor(nullptr);
+        turbo_transformers::core::Tensor tensor(nullptr);
         tensor.Reshape<float>(shape, kDLCPU, 0);
         auto* ptr = tensor.mutableData<float>();
         for (int64_t i = 0; i < tensor.numel(); ++i) {
@@ -105,10 +105,10 @@ TEST_CASE("activation CPU benchmark") {
 #ifdef FT_WITH_CUDA
 
 template <typename T>
-easy_transformers::core::Tensor CreateTensor(
+turbo_transformers::core::Tensor CreateTensor(
     std::initializer_list<int64_t> shape, DLDeviceType device_type,
     int dev_id) {
-  easy_transformers::core::Tensor tensor(nullptr);
+  turbo_transformers::core::Tensor tensor(nullptr);
   tensor.Reshape<T>(shape, device_type, dev_id);
   return tensor;
 };
@@ -124,8 +124,8 @@ void CreateTensorAndFillRandom(int batch_size, int seq_length, int hidden_size,
   auto cpu_out =
       CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLCPU, 0);
 
-  ::easy_transformers::test::FillDataForCPUGPUTensors<T>(cpu_bias, gpu_bias);
-  ::easy_transformers::test::FillDataForCPUGPUTensors<T>(cpu_out, gpu_out);
+  ::turbo_transformers::test::FillDataForCPUGPUTensors<T>(cpu_bias, gpu_bias);
+  ::turbo_transformers::test::FillDataForCPUGPUTensors<T>(cpu_out, gpu_out);
 
   func(cpu_bias, cpu_out, gpu_bias, gpu_out);
 }
@@ -143,8 +143,8 @@ TEST_CASE("activation CPU and GPU correctness") {
              core::Tensor& gpu_bias, core::Tensor& gpu_out) {
             AddBiasGeLUAct<float>(cpu_bias, &cpu_out);
             AddBiasGeLUAct<float>(gpu_bias, &gpu_out);
-            REQUIRE(::easy_transformers::test::CompareCPUGPU<float>(cpu_out,
-                                                                    gpu_out));
+            REQUIRE(::turbo_transformers::test::CompareCPUGPU<float>(cpu_out,
+                                                                     gpu_out));
           });
 
       CreateTensorAndFillRandom<core::Half>(
@@ -155,7 +155,7 @@ TEST_CASE("activation CPU and GPU correctness") {
                 cpu_bias.data<core::Half>(), cpu_out.mutableData<core::Half>(),
                 batch_size * seq_length, hidden_size);
             AddBiasGeLUAct<core::Half>(gpu_bias, &gpu_out);
-            REQUIRE(::easy_transformers::test::CompareCPUGPU<core::Half>(
+            REQUIRE(::turbo_transformers::test::CompareCPUGPU<core::Half>(
                 cpu_out, gpu_out));
           });
     }  // for
@@ -168,12 +168,12 @@ void ActivationGPUBenchmark(int batch_size, int seq_length, int hidden_size,
   auto n = hidden_size;
   auto bias = CreateTensor<T>({hidden_size}, kDLGPU, 0);
   auto out = CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLGPU, 0);
-  ::easy_transformers::test::Fill<T>(out);
-  ::easy_transformers::test::Fill<T>(bias);
+  ::turbo_transformers::test::Fill<T>(out);
+  ::turbo_transformers::test::Fill<T>(bias);
 
   LOG_S(INFO) << "batch_size: " << batch_size << " seq_length: " << seq_length;
   AddBiasGeLUAct<T>(bias, &out);
-  auto& cuda_ctx = easy_transformers::core::CUDADeviceContext::GetInstance();
+  auto& cuda_ctx = turbo_transformers::core::CUDADeviceContext::GetInstance();
   auto stream = cuda_ctx.stream();
   test::GPUTimer timer(stream);
   for (int i = 0; i < step; ++i) {

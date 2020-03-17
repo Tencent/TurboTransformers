@@ -19,12 +19,8 @@
 
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/half.h"
-namespace easy_transformers {
-namespace core {
 TEST_CASE("Half", "[Half]") {
   float input = 12.0f;
-  Half half(input);
+  turbo_transformers::core::Half half(input);
   CATCH_ENFORCE(input == float(half), "failed");
 }
-}  // namespace core
-}  // namespace easy_transformers

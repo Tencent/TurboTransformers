@@ -18,7 +18,7 @@
 #endif
 #include <fp16.h>
 
-namespace easy_transformers {
+namespace turbo_transformers {
 namespace core {
 
 struct alignas(2) Half {
@@ -54,4 +54,4 @@ struct alignas(2) Half {
   }
 };
 }  // namespace core
-}  // namespace easy_transformers
+}  // namespace turbo_transformers
