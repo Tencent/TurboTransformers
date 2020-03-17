@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "profiler.h"
+
 #include "enforce.h"
 #include "loguru.hpp"
 

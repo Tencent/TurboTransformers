@@ -22,6 +22,7 @@
 #include "absl/types/variant.h"
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/enforce.h"
+#include "turbo_transformers/core/half.h"
 #include "turbo_transformers/core/memory.h"
 
 namespace turbo_transformers {
@@ -54,6 +55,11 @@ struct DataTypeTrait<int> {
 template <>
 struct DataTypeTrait<int64_t> {
   enum { DLPackTypeCode = kDLInt };
+};
+
+template <>
+struct DataTypeTrait<core::Half> {
+  enum { DLPackTypeCode = kDLFloat };
 };
 
 template <typename T>

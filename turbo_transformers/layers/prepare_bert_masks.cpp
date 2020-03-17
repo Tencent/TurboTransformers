@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "prepare_bert_masks.h"
+
 #include <stdint.h>
+
 #include "turbo_transformers/core/common.h"
 #ifdef FT_WITH_CUDA
 #include "turbo_transformers/layers/kernels/gpu_utils.h"

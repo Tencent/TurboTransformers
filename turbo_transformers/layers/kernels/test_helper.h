@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <chrono>
 
 #include "turbo_transformers/core/memory.h"
 
@@ -55,14 +56,54 @@ bool CompareCPUGPU(const Tensor& cpu_tensor, const Tensor& gpu_tensor) {
   }
   return ret;
 }
+
+class GPUTimer {
+ public:
+  GPUTimer(cudaStream_t stream) : stream_(stream) {
+    cudaEventCreate(&start_event_);
+    cudaEventCreate(&stop_event_);
+    cudaEventRecord(start_event_, stream_);
+  }
+
+  double ElapseSecond() {
+    cudaEventRecord(stop_event_, stream_);
+    cudaEventSynchronize(stop_event_);
+    float elapse;
+    cudaEventElapsedTime(&elapse, start_event_, stop_event_);
+    return elapse;
+  }
+
+ private:
+  cudaEvent_t start_event_, stop_event_;
+  cudaStream_t stream_;
+};
 #endif
 
-inline void RandomFillHost(float* m, const int mSize, float LO = 0.,
+class Timer {
+ public:
+  Timer() : start_(std::chrono::system_clock::now()) {}
+
+  void Reset() { start_ = std::chrono::system_clock::now(); }
+
+  double ElapseSecond() {
+    auto end = std::chrono::system_clock::now();
+    ;
+    auto duration = end - start_;
+    return double(duration.count()) * std::chrono::microseconds::period::num /
+           std::chrono::microseconds::period::den;
+  }
+
+ private:
+  std::chrono::time_point<std::chrono::system_clock> start_;
+};
+
+template <typename T>
+inline void RandomFillHost(T* m, const int mSize, float LO = 0.,
                            float HI = 1.) {
   srand(static_cast<unsigned>(time(0)));
   for (int i = 0; i < mSize; i++)
-    m[i] = LO + static_cast<float>(rand()) /
-                    (static_cast<float>(RAND_MAX / (HI - LO)));
+    m[i] = LO +
+           static_cast<T>(rand()) / (static_cast<float>(RAND_MAX / (HI - LO)));
 }
 
 template <typename T>

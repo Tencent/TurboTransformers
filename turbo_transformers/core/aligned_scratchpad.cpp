@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "turbo_transformers/core/aligned_scratchpad.h"
+
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/core/memory.h"
 namespace turbo_transformers {

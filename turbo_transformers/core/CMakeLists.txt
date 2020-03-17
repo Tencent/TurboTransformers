@@ -65,3 +65,6 @@ add_test(NAME aligned_scratchpad_test COMMAND aligned_scratchpad_test)
 
 add_library(eigen-tensor eigen-tensor.cpp)
 target_link_libraries(eigen-tensor PUBLIC tensor Eigen3::Eigen)
+
+add_executable(fp16_test fp16_test.cpp)
+target_link_libraries(fp16_test Catch2)

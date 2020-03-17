@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "turbo_transformers/layers/bert_output.h"
-#include "turbo_transformers/core/common.h"
 
 #include <loguru.hpp>
 
+#include "turbo_transformers/core/common.h"
 #include "turbo_transformers/core/memory.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
 #include "turbo_transformers/layers/kernels/mat_mul.h"

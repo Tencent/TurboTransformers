@@ -44,6 +44,7 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL Intel)
 endif ()
 
 add_subdirectory(3rd)
+include_directories(3rd/FP16/include)
 enable_testing()
 
 find_package(OpenMP)

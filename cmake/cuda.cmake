@@ -2,7 +2,7 @@ if (NOT WITH_GPU)
   return()
 endif ()
 
-set(gpu_archs9 "35 50 52 60 61 70")
+set(gpu_archs9  "35 50 52 60 61 70")
 set(gpu_archs10 "35 50 52 60 61 70 75")
 
 if (NOT DEFINED ENV{CUDA_PATH})

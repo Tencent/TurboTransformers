@@ -15,22 +15,44 @@
 #include <numeric>
 
 #include "ide_macro.h"
+#include "turbo_transformers/core/half.h"
 #include "turbo_transformers/layers/kernels/gpu_activation_kernel.h"
 
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-static __inline__ __device__ float gelu(float x) {
+template <typename T>
+static __inline__ __device__ T add(const T& a, const T& b) {
+  return a + b;
+}
+
+static __inline__ __device__ __half add(const __half& a, const __half& b) {
+  return __hadd(a, b);
+}
+
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
+static __inline__ __device__ __half2 add(const __half2& a, const __half2& b) {
+  return __hadd2(a, b);
+}
+#endif
+
+static __inline__ __device__ float gelu(const float& x) {
   float cdf =
       0.5f *
       (1.0f + tanhf((0.7978845608028654f * (x + 0.044715f * x * x * x))));
   return x * cdf;
 }
 
-static __global__ void add_bias_act(float* out, const float* bias,
-                                    int batch_size, int feature_dim) {
-  float val, reg_bias;
+static __inline__ __device__ half gelu(const __half& x) {
+  float x_f = __half2float(x);
+  return __float2half(gelu(x_f));
+}
+
+template <typename T>
+static __global__ void add_bias_act(T* out, const T* bias, int batch_size,
+                                    int feature_dim) {
+  T val, reg_bias;
 
   int row_id = blockIdx.x;
   int ite = feature_dim / blockDim.x;
@@ -41,14 +63,15 @@ static __global__ void add_bias_act(float* out, const float* bias,
     row_id = blockIdx.x;
 
     while (row_id < batch_size) {
-      val = out[tid + i * blockDim.x + row_id * feature_dim] + reg_bias;
+      val = add(out[tid + i * blockDim.x + row_id * feature_dim], reg_bias);
       out[tid + i * blockDim.x + row_id * feature_dim] = gelu(val);
       row_id += gridDim.x;
     }
   }
 }
-template <>
-void GPUAddBiasGeLUActKernel(const float* bias_data, float* out_data,
+
+template <typename T>
+void GPUAddBiasGeLUActKernel(const T* bias_data, T* out_data,
                              int64_t batch_size, int64_t feature_dim,
                              cudaStream_t stream) {
   dim3 grid(batch_size / 4);
@@ -60,6 +83,17 @@ void GPUAddBiasGeLUActKernel(const float* bias_data, float* out_data,
   add_bias_act<<<grid, block, 0, stream>>>(out_data, bias_data, batch_size,
                                            feature_dim);
 }
+
+template void GPUAddBiasGeLUActKernel<float>(const float* bias_data,
+                                             float* out_data,
+                                             int64_t batch_size,
+                                             int64_t feature_dim,
+                                             cudaStream_t stream);
+
+template void GPUAddBiasGeLUActKernel<half>(const half* bias_data,
+                                            half* out_data, int64_t batch_size,
+                                            int64_t feature_dim,
+                                            cudaStream_t stream);
 
 }  // namespace kernels
 }  // namespace layers

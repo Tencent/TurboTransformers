@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include <cuda_runtime.h>
+
 #include <cstdio>
 #include <numeric>
+
 #include "turbo_transformers/layers/kernels/gpu_transpose_kernel.h"
 
 namespace turbo_transformers {

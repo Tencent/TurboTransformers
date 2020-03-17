@@ -11,10 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "turbo_transformers/layers/kernels/activation.h"
+
 #include <numeric>
+
 #include "turbo_transformers/core/aligned_scratchpad.h"
+#include "turbo_transformers/layers/kernels/activation.h"
 #ifdef FT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_activation_kernel.h"
@@ -68,6 +70,21 @@ void AddBiasGeLUAct(const core::Tensor& bias_tensor, core::Tensor* out_tensor) {
 
 template void AddBiasGeLUAct<float>(const core::Tensor& bias_tensor,
                                     core::Tensor* out_tensor);
+#ifdef FT_WITH_CUDA
+template <>
+void AddBiasGeLUAct<core::Half>(const core::Tensor& bias_tensor,
+                                core::Tensor* out_tensor) {
+  FT_ENFORCE_EQ(bias_tensor.device_type(), kDLGPU, "The device should be GPU.");
+  core::Half* out = out_tensor->mutableData<core::Half>();
+  const core::Half* bias = bias_tensor.data<core::Half>();
+  int64_t m = out_tensor->rows();
+  int64_t n = out_tensor->cols();
+  core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+  GPUAddBiasGeLUActKernel<half>(reinterpret_cast<const half*>(bias),
+                                reinterpret_cast<half*>(out), m, n,
+                                cuda_ctx.stream());
+}
+#endif
 
 }  // namespace kernels
 }  // namespace layers

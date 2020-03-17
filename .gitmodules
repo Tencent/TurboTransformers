@@ -19,3 +19,6 @@
 [submodule "3rd/cub"]
 	path = 3rd/cub
 	url = https://github.com/NVlabs/cub
+[submodule "3rd/FP16"]
+	path = 3rd/FP16
+	url = https://github.com/Maratyszcza/FP16
