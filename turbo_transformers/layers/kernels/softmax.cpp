@@ -34,7 +34,7 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
     auto attr_mask_offset = i / (head_num * seq_len) * seq_len;
     auto attr_mask_ptr = attr_mask + attr_mask_offset;
     // max-trick
-#pragma imp simd
+#pragma omp simd
     for (int64_t j = 0; j < N; ++j) {
       auto mask_val = attr_mask_ptr[j];
       auto qk_val = qk_buf_ptr[j];
