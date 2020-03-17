@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <memory.h>
@@ -31,7 +30,7 @@ class CUDADeviceContext {
 
   ~CUDADeviceContext();
 
-  static CUDADeviceContext &GetInstance() {
+  static CUDADeviceContext& GetInstance() {
     static CUDADeviceContext instance;
     return instance;
   }
@@ -47,5 +46,6 @@ class CUDADeviceContext {
   cublasHandle_t handle_;
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
+
 }  // namespace core
 }  // namespace turbo_transformers
