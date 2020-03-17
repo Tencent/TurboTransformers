@@ -31,9 +31,11 @@ static __inline__ __device__ __half add(const __half& a, const __half& b) {
   return __hadd(a, b);
 }
 
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
 static __inline__ __device__ __half2 add(const __half2& a, const __half2& b) {
   return __hadd2(a, b);
 }
+#endif
 
 static __inline__ __device__ float gelu(const float& x) {
   float cdf =

@@ -65,12 +65,11 @@ class GPUTimer {
     cudaEventRecord(start_event_, stream_);
   }
 
-  double Elapse() {
+  double ElapseSecond() {
     cudaEventRecord(stop_event_, stream_);
     cudaEventSynchronize(stop_event_);
     float elapse;
     cudaEventElapsedTime(&elapse, start_event_, stop_event_);
-    elapse /= 1000;  // ms
     return elapse;
   }
 
@@ -86,7 +85,7 @@ class Timer {
 
   void Reset() { start_ = std::chrono::system_clock::now(); }
 
-  double Elapse() {
+  double ElapseSecond() {
     auto end = std::chrono::system_clock::now();
     ;
     auto duration = end - start_;

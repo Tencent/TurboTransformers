@@ -15,8 +15,10 @@
 #define CATCH_CONFIG_MAIN
 #include "turbo_transformers/layers/kernels/activation.h"
 
-#include <chrono>
-
+#include "turbo_transformers/core/half.h"
+#ifdef FT_WITH_CUDA
+#include "turbo_transformers/core/cuda_device_context.h"
+#endif
 #include "catch2/catch.hpp"
 #include "loguru.hpp"
 #include "turbo_transformers/core/aligned_scratchpad.h"
@@ -26,88 +28,73 @@
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
-
-void AddBiasGeLUActNaive(const float* bias, float* out, int64_t m, int64_t n) {
+template <typename T>
+void AddBiasGeLUActNaive(const T* bias, T* out, int64_t m, int64_t n) {
   for (int64_t i = 0; i < m; ++i) {
     int64_t k = 0;
     for (int64_t j = n * i; j < n * (i + 1); ++j) {
-      auto before_act = out[j] + bias[k++];
-      out[j] = before_act * 0.5f *
-               (1.0f + std::tanh(0.7978845608028654f *
-                                 (before_act + 0.044715f * before_act *
-                                                   before_act * before_act)));
+      auto before_act =
+          static_cast<float>(out[j]) + static_cast<float>(bias[k++]);
+      out[j] = static_cast<T>(
+          before_act * 0.5f *
+          (1.0f + std::tanh(0.7978845608028654f *
+                            (before_act + 0.044715f * before_act * before_act *
+                                              before_act))));
     }
   }
 }
+
+template <typename Func>
+void TestFunction(Func&& func, int step, const std::string& infor,
+                  double g_bytes) {
+  func();
+  test::Timer timer;
+  for (int i = 0; i < step; ++i) {
+    func();
+  }
+  auto elapse = timer.ElapseSecond() / step;
+
+  LOG_S(INFO) << infor << " cost:" << elapse << " ms, Bandwidth "
+              << g_bytes / elapse << " GB/s";
+}
+
 TEST_CASE("activation CPU benchmark") {
+  auto tensor_create_and_fill_constant =
+      [](std::initializer_list<int64_t> shape, float value) {
+        turbo_transformers::core::Tensor tensor(nullptr);
+        tensor.Reshape<float>(shape, kDLCPU, 0);
+        auto* ptr = tensor.mutableData<float>();
+        for (int64_t i = 0; i < tensor.numel(); ++i) {
+          ptr[i] = value;
+        }
+        return tensor;
+      };
+
   int64_t hidden_size = 12 * 64;
-
   const int step = 10;
-
-  std::vector<int64_t> batch_size_list{1, 20, 24};
-  std::vector<int64_t> seq_length_list{8, 16, 32, 48, 64, 128};
-
-  for (auto batch_size : batch_size_list)
-    for (auto seq_length : seq_length_list) {
+  for (auto batch_size : {1, 20, 24})
+    for (auto seq_length : {8, 16, 32, 48, 64, 128}) {
       auto m = batch_size * seq_length;
       auto n = hidden_size;
 
-      turbo_transformers::core::Tensor bias(nullptr);
-      bias.Reshape<float>({n}, kDLCPU, 0);
-      turbo_transformers::core::Tensor out(nullptr);
-      out.Reshape<float>({m, n}, kDLCPU, 0);
-      turbo_transformers::core::Tensor out_parallel(nullptr);
-      out_parallel.Reshape<float>({m, n}, kDLCPU, 0);
-
-      float* bias_ptr = bias.mutableData<float>();
-      float* out_ptr = out.mutableData<float>();
-      float* out_parallel_ptr = out_parallel.mutableData<float>();
-
-      for (int64_t i = 0; i < n; ++i) {
-        bias_ptr[i] = 0.01;
-      }
-      for (int64_t i = 0; i < m * n; ++i) {
-        out_ptr[i] = out_parallel_ptr[i] = 0.02;
-      }
+      auto bias = tensor_create_and_fill_constant({n}, 0.01f);
+      auto out = tensor_create_and_fill_constant({m, n}, 0.02f);
+      auto out_parallel = tensor_create_and_fill_constant({m, n}, 0.02f);
 
       std::cout << "batch_size: " << batch_size
                 << " seq_length: " << seq_length;
 
-      {
-        AddBiasGeLUActNaive(bias.data<float>(),
-                            out_parallel.mutableData<float>(), m, n);
+      TestFunction(
+          [&]() {
+            AddBiasGeLUActNaive<float>(bias.data<float>(),
+                                       out_parallel.mutableData<float>(), m, n);
+          },
+          step, "AddBiasGeLUActNaive", m * n * sizeof(float) / 1e9);
 
-        auto start = std::chrono::system_clock::now();
-        for (int i = 0; i < step; ++i) {
-          AddBiasGeLUActNaive(bias.data<float>(),
-                              out_parallel.mutableData<float>(), m, n);
-        }
-        auto end = std::chrono::system_clock::system_clock::now();
-        auto duration =
-            std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        auto elapse = double(duration.count()) *
-                      std::chrono::microseconds::period::num /
-                      std::chrono::microseconds::period::den / step * 1000;
-        std::cout << ", AddBiasGeLUActNaive cost, " << elapse
-                  << " ms, Bandwidth " << m * n * 0.1 / 1e6 / elapse << " GB/s"
-                  << std::endl;
-      }
-      {
-        AddBiasGeLUAct<float>(bias, &out);
+      TestFunction([&]() { AddBiasGeLUAct<float>(bias, &out); }, step,
+                   "AddBiasGeLUAct OMP", m * n * sizeof(float) / 1e9);
 
-        auto start = std::chrono::system_clock::now();
-        for (int i = 0; i < step; ++i) {
-          AddBiasGeLUAct<float>(bias, &out);
-        }
-        auto end = std::chrono::system_clock::system_clock::now();
-        auto duration_parallel =
-            std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        auto elapse = double(duration_parallel.count()) *
-                      std::chrono::microseconds::period::num /
-                      std::chrono::microseconds::period::den / step * 1000;
-        std::cout << "AddBiasGeLUAct OMP cost:" << elapse << " ms, Bandwidth "
-                  << m * n * 0.1 / 1e6 / elapse << " GB/s" << std::endl;
-      }
+      auto* out_parallel_ptr = out_parallel.mutableData<float>();
       for (int64_t i = 0; i < m * n; ++i) {
         FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_parallel_ptr[i]), 1e-6,
                       "Wrong @ %d", i);
@@ -116,88 +103,97 @@ TEST_CASE("activation CPU benchmark") {
 }
 
 #ifdef FT_WITH_CUDA
+
+template <typename T>
+turbo_transformers::core::Tensor CreateTensor(
+    std::initializer_list<int64_t> shape, DLDeviceType device_type,
+    int dev_id) {
+  turbo_transformers::core::Tensor tensor(nullptr);
+  tensor.Reshape<T>(shape, device_type, dev_id);
+  return tensor;
+};
+
+template <typename T, typename Func>
+void CreateTensorAndFillRandom(int batch_size, int seq_length, int hidden_size,
+                               Func&& func) {
+  auto gpu_bias = CreateTensor<T>({hidden_size}, kDLGPU, 0);
+  auto cpu_bias = CreateTensor<T>({hidden_size}, kDLCPU, 0);
+
+  auto gpu_out =
+      CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLGPU, 0);
+  auto cpu_out =
+      CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLCPU, 0);
+
+  ::turbo_transformers::test::FillDataForCPUGPUTensors<T>(cpu_bias, gpu_bias);
+  ::turbo_transformers::test::FillDataForCPUGPUTensors<T>(cpu_out, gpu_out);
+
+  func(cpu_bias, cpu_out, gpu_bias, gpu_out);
+}
+
 TEST_CASE("activation CPU and GPU correctness") {
   int64_t hidden_size = 12 * 64;
 
-  std::vector<int64_t> batch_size_list{1, 20, 24};
-  std::vector<int64_t> seq_length_list{8, 16, 32, 48, 64, 128};
+  for (auto batch_size : {1, 20, 24})
+    for (auto seq_length : {8, 16, 32, 48, 64, 128}) {
+      LOG_S(INFO) << "batch_size: " << batch_size
+                  << " seq_length: " << seq_length;
+      CreateTensorAndFillRandom<float>(
+          batch_size, seq_length, hidden_size,
+          [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
+             core::Tensor& gpu_bias, core::Tensor& gpu_out) {
+            AddBiasGeLUAct<float>(cpu_bias, &cpu_out);
+            AddBiasGeLUAct<float>(gpu_bias, &gpu_out);
+            REQUIRE(::turbo_transformers::test::CompareCPUGPU<float>(cpu_out,
+                                                                     gpu_out));
+          });
 
-  for (auto batch_size : batch_size_list)
-    for (auto seq_length : seq_length_list) {
-      turbo_transformers::core::Tensor gpu_bias(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLGPU, 0));
-
-      turbo_transformers::core::Tensor cpu_bias(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLCPU, 0));
-
-      turbo_transformers::core::Tensor gpu_out(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLGPU, 0));
-
-      turbo_transformers::core::Tensor cpu_out(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLCPU, 0));
-
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(cpu_bias,
-                                                                  gpu_bias);
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(cpu_out,
-                                                                  gpu_out);
-
-      std::cout << "batch_size: " << batch_size
-                << " seq_length: " << seq_length;
-      {
-        AddBiasGeLUAct<float>(cpu_bias, &cpu_out);
-        AddBiasGeLUAct<float>(gpu_bias, &gpu_out);
-      }
-      REQUIRE(
-          ::turbo_transformers::test::CompareCPUGPU<float>(cpu_out, gpu_out));
+      CreateTensorAndFillRandom<core::Half>(
+          batch_size, seq_length, hidden_size,
+          [&](core::Tensor& cpu_bias, core::Tensor& cpu_out,
+              core::Tensor& gpu_bias, core::Tensor& gpu_out) {
+            AddBiasGeLUActNaive<core::Half>(
+                cpu_bias.data<core::Half>(), cpu_out.mutableData<core::Half>(),
+                batch_size * seq_length, hidden_size);
+            AddBiasGeLUAct<core::Half>(gpu_bias, &gpu_out);
+            REQUIRE(::turbo_transformers::test::CompareCPUGPU<core::Half>(
+                cpu_out, gpu_out));
+          });
     }  // for
+}
+
+template <typename T>
+void ActivationGPUBenchmark(int batch_size, int seq_length, int hidden_size,
+                            int step) {
+  auto m = batch_size * seq_length;
+  auto n = hidden_size;
+  auto bias = CreateTensor<T>({hidden_size}, kDLGPU, 0);
+  auto out = CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLGPU, 0);
+  ::turbo_transformers::test::Fill<T>(out);
+  ::turbo_transformers::test::Fill<T>(bias);
+
+  LOG_S(INFO) << "batch_size: " << batch_size << " seq_length: " << seq_length;
+  AddBiasGeLUAct<T>(bias, &out);
+  auto& cuda_ctx = turbo_transformers::core::CUDADeviceContext::GetInstance();
+  auto stream = cuda_ctx.stream();
+  test::GPUTimer timer(stream);
+  for (int i = 0; i < step; ++i) {
+    AddBiasGeLUAct<T>(bias, &out);
+  }
+  auto elapse = timer.ElapseSecond() / step;
+  LOG_S(INFO) << "AddBiasGeLUAct GPU cost:" << elapse << " ms, Bandwidth "
+              << m * n * 0.1 / 1e6 / elapse << " GB/s";
 }
 
 TEST_CASE("activation GPU benchmark") {
   int64_t hidden_size = 12 * 64;
-
   const int step = 10;
-
-  std::vector<int64_t> batch_size_list{1, 20, 24};
-  std::vector<int64_t> seq_length_list{8, 16, 32, 48, 64, 128};
-
-  for (auto batch_size : batch_size_list)
-    for (auto seq_length : seq_length_list) {
-      auto m = batch_size * seq_length;
-      auto n = hidden_size;
-
-      turbo_transformers::core::Tensor bias(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLGPU, 0));
-      ::turbo_transformers::test::Fill<float>(bias);
-
-      turbo_transformers::core::Tensor out(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLGPU, 0));
-      ::turbo_transformers::test::Fill<float>(out);
-
-      std::cout << "batch_size: " << batch_size
-                << " seq_length: " << seq_length;
-      {
-        AddBiasGeLUAct<float>(bias, &out);
-
-        auto start = std::chrono::system_clock::now();
-        for (int i = 0; i < step; ++i) {
-          AddBiasGeLUAct<float>(bias, &out);
-        }
-        auto end = std::chrono::system_clock::system_clock::now();
-        auto duration_parallel =
-            std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        auto elapse = double(duration_parallel.count()) *
-                      std::chrono::microseconds::period::num /
-                      std::chrono::microseconds::period::den / step * 1000;
-        std::cout << ", AddBiasGeLUAct GPU cost:" << elapse << " ms, Bandwidth "
-                  << m * n * 0.1 / 1e6 / elapse << " GB/s";
-      }
+  for (auto batch_size : {1, 20, 24}) {
+    for (auto seq_length : {8, 16, 32, 48, 64, 128}) {
+      ActivationGPUBenchmark<float>(batch_size, seq_length, hidden_size, step);
+      ActivationGPUBenchmark<core::Half>(batch_size, seq_length, hidden_size,
+                                         step);
     }
+  }
 }
 #endif
 
