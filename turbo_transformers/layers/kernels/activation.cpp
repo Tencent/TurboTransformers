@@ -16,7 +16,7 @@
 #include <numeric>
 
 #include "turbo_transformers/core/aligned_scratchpad.h"
-#include "turbo_transformers/core/half.h"
+#include "turbo_transformers/layers/kernels/activation.h"
 #ifdef FT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_activation_kernel.h"

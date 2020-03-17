@@ -22,7 +22,6 @@
 #include "absl/types/variant.h"
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/enforce.h"
-#include "turbo_transformers/core/half.h"
 #include "turbo_transformers/core/memory.h"
 
 namespace turbo_transformers {

@@ -114,9 +114,9 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
 
   if (A.device_type() == kDLCPU && B.device_type() == kDLCPU &&
       C->device_type() == kDLCPU) {
-    std::unique_ptr<const float*[]> A_array(new const float*[a_batch_size]);
-    std::unique_ptr<const float*[]> B_array(new const float*[b_batch_size]);
-    std::unique_ptr<float*[]> C_array(new float*[c_batch_size]);
+    std::unique_ptr<const float* []> A_array(new const float*[a_batch_size]);
+    std::unique_ptr<const float* []> B_array(new const float*[b_batch_size]);
+    std::unique_ptr<float* []> C_array(new float*[c_batch_size]);
 
     auto* a_ptr = A.data<float>();
     auto* b_ptr = B.data<float>();
