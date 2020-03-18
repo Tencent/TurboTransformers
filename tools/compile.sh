@@ -11,7 +11,7 @@ fi
 rm -rf ${BUILD_PATH} || true
 mkdir -p ${BUILD_PATH}
 cd ${BUILD_PATH}
-cmake -G Ninja \
+cmake \
     -DCMAKE_BUILD_TYPE=Release ${SRC_ROOT} ${WITH_GPU}
-ninja
+make -j $(nproc)
 pip install `find . -name "*whl"`
