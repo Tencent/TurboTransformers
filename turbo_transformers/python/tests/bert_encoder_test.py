@@ -35,6 +35,7 @@ class TestBertEncoder(unittest.TestCase):
             self.end = torch.cuda.Event(enable_timing=True)
             self.test_device = torch.device('cuda:0')
             self.device = "GPU"
+
         torch.set_grad_enabled(False)
         self.tokenizer = BertTokenizer.from_pretrained(
             os.path.join(os.path.dirname(__file__), 'test-model'))

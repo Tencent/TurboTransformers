@@ -24,8 +24,6 @@ namespace core {
 
 class CUDAAllocator {
  public:
-  CUDAAllocator() : allocation_size_(0) {}
-
   ~CUDAAllocator();
 
   static CUDAAllocator& GetInstance() {
@@ -37,6 +35,7 @@ class CUDAAllocator {
   void free(void* memory, size_t size);
 
  private:
+  CUDAAllocator() : allocation_size_(0) {}
   void FreeCache(size_t size);
   std::multimap<size_t, void*> allocations_;
   size_t allocation_size_;

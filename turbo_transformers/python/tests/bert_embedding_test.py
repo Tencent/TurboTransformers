@@ -71,17 +71,15 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
                 input_ids, token_type_ids, position_ids)
             torch_result, torch_qps, torch_time = test_helper.run_model(
                 torch_model, use_cuda, num_iter)
-            print(
-                f"BertEmbeddings \"({batch_size},{seq_length:03})\" {device} Torch QPS,  {torch_qps}, time, {torch_time}"
-            )
+            print(f"BertEmbeddings \"({batch_size},{seq_length:03})\" ",
+                  f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
             turbo_model = lambda: self.ft_embedding(input_ids, position_ids,
                                                     token_type_ids)
             turbo_result, turbo_qps, turbo_time = test_helper.run_model(
                 turbo_model, use_cuda, num_iter)
-            print(
-                f"BertEmbeddings \"({batch_size},{seq_length:03})\" {device} Turbo QPS,  {turbo_qps}, time, {turbo_time}"
-            )
+            print(f"BertEmbeddings \"({batch_size},{seq_length:03})\" ",
+                  f"{device} Turbo QPS,  {turbo_qps}, time, {turbo_time}")
 
             self.assertTrue(
                 torch.max(torch.abs(torch_result - turbo_result)) < 1e-5)
