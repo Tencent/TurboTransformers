@@ -51,6 +51,14 @@ void CUDAAllocator::FreeCache(size_t size) {
   }
 }
 
+CUDAAllocator::~CUDAAllocator() {
+  while (!allocations_.empty()) {
+    auto it = --allocations_.end();
+    cuda_free(it->second);
+    allocations_.erase(it);
+  }
+}
+
 void *CUDAAllocator::allocate(size_t size) {
   auto it = allocations_.lower_bound(size);
 

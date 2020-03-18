@@ -26,6 +26,8 @@ class CUDAAllocator {
  public:
   CUDAAllocator() : allocation_size_(0) {}
 
+  ~CUDAAllocator();
+
   static CUDAAllocator& GetInstance() {
     static CUDAAllocator instance;
     return instance;
