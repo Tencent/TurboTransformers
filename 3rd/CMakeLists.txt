@@ -15,7 +15,9 @@ ExternalProject_Add(extern_zlib
         GIT_TAG v1.2.11
         INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/zlib/
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib/
-        CMAKE_ARGS -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
+        CMAKE_ARGS -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libz.a
+        )
 
 add_library(zlib STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET zlib PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libz.a)
@@ -31,6 +33,7 @@ ExternalProject_Add(extern_cnpy
         CMAKE_ARGS -DZLIB_LIBRARY=${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libz.a
         CMAKE_ARGS -DZLIB_INCLUDE_DIR=${CMAKE_CURRENT_BINARY_DIR}/zlib/include
         CMAKE_ARGS -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/cnpy/lib/libcnpy.a
         )
 
 add_dependencies(extern_cnpy extern_zlib)
