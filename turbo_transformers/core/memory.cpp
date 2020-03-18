@@ -69,19 +69,13 @@ void FT_Memcpy(void *dst_data, const void *src_data, size_t data_size,
   func(dst_data, src_data, data_size);
 }
 MemcpyFlag ToMemcpyFlag(DLDeviceType dst, DLDeviceType src) {
-  for (auto &tuple :
-       std::vector<std::tuple<DLDeviceType /*dst*/, DLDeviceType /*src*/,
-                              MemcpyFlag /*result*/>>{
-           {DLDeviceType::kDLCPU, DLDeviceType::kDLCPU, MemcpyFlag::kCPU2CPU},
-           {DLDeviceType::kDLGPU, DLDeviceType::kDLCPU, MemcpyFlag::kCPU2GPU},
-           {DLDeviceType::kDLCPU, DLDeviceType::kDLGPU, MemcpyFlag::kGPU2CPU},
-           {DLDeviceType::kDLGPU, DLDeviceType::kDLGPU, MemcpyFlag::kGPU2GPU},
-       }) {
-    if (dst == std::get<0>(tuple) && src == std::get<1>(tuple)) {
-      return std::get<2>(tuple);
-    }
+  if (dst == DLDeviceType::kDLCPU) {
+    return src == DLDeviceType::kDLCPU ? MemcpyFlag::kCPU2CPU
+                                       : MemcpyFlag::kGPU2CPU;
+  } else {
+    return src == DLDeviceType::kDLCPU ? MemcpyFlag::kCPU2GPU
+                                       : MemcpyFlag::kGPU2GPU;
   }
-  FT_THROW("unexpected branch");
 }
 
 }  // namespace core
