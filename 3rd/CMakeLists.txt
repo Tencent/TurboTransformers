@@ -19,6 +19,7 @@ ExternalProject_Add(extern_zlib
 
 add_library(zlib STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET zlib PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libz.a)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/zlib/include/)
 target_include_directories(zlib INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/zlib/include/)
 add_dependencies(zlib extern_zlib)
 
@@ -33,7 +34,7 @@ ExternalProject_Add(extern_cnpy
         )
 
 add_dependencies(extern_cnpy extern_zlib)
-
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/cnpy/include/)
 add_library(cnpy STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET cnpy PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/cnpy/lib/libcnpy.a)
 target_include_directories(cnpy INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/cnpy/include/)

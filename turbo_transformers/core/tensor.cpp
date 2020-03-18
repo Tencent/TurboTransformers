@@ -45,7 +45,7 @@ static void DLManagedTensorDeletor(DLManagedTensor *self) {
   delete self;
 }
 
-DLManagedTensor *NewDLPackTensor(std::initializer_list<int64_t> shape_list,
+DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
                                  DLDeviceType device, int device_id,
                                  uint8_t data_type_code, size_t bits,
                                  size_t lanes) {

@@ -28,3 +28,15 @@
 #if defined(__FLT_MAX__)
 #define FLT_MAX __FLT_MAX__
 #endif  // __FLT_MAX__
+
+namespace turbo_transformers {
+namespace base {
+static constexpr bool IsCompiledWithCUDA() {
+#ifdef FT_WITH_CUDA
+  return true;
+#else
+  return false;
+#endif
+}
+}  // namespace base
+}  // namespace turbo_transformers

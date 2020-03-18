@@ -29,7 +29,7 @@ struct BadAlloc : public std::exception {
 static void *cuda_alloc(size_t sz) {
   void *device_mem;
   try {
-    FT_ENFORCE_CUDA_SUCCESS(cudaMalloc((void **)&(device_mem), sz));
+    FT_ENFORCE_CUDA_SUCCESS(cudaMallocManaged((void **)&(device_mem), sz));
   } catch (...) {
     throw BadAlloc("cudaMalloc failed.");
   }
