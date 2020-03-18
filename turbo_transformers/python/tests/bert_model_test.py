@@ -13,27 +13,27 @@
 # limitations under the License.
 
 import unittest
-import os
-import contexttimer
 import torch
 from transformers import BertTokenizer
-from transformers.modeling_bert import BertModel, BertConfig
+from transformers.modeling_bert import BertModel
 import numpy
 import turbo_transformers
+import sys
+import os
+
+sys.path.append(os.path.dirname(__file__))
+import test_helper
 
 
 class TestBertModel(unittest.TestCase):
-    def setUp(self) -> None:
+    def init_data(self, use_cuda) -> None:
         model_id = os.path.join(os.path.dirname(__file__), 'test-model')
         torch.set_grad_enabled(False)
         torch.set_num_threads(1)
-        if not torch.cuda.is_available(
-        ) or not turbo_transformers.config.is_with_cuda():
-            self.test_device = torch.device('cpu:0')
-            self.device = "CPU"
-        else:
+        if use_cuda:
             self.test_device = torch.device('cuda:0')
-            self.device = "GPU"
+        else:
+            self.test_device = torch.device('cpu:0')
 
         self.tokenizer = BertTokenizer.from_pretrained(model_id)
         self.torch_model = BertModel.from_pretrained(model_id)
@@ -45,29 +45,36 @@ class TestBertModel(unittest.TestCase):
         self.ft_model = turbo_transformers.BertModel.from_pretrained(
             model_id, self.test_device)
 
-    def test_bert_model(self):
+    def check_torch_and_turbo(self, use_cuda):
+        self.init_data(use_cuda)
         num_iter = 2
+        device = "GPU" if use_cuda else "CPU"
         input_ids = self.tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求?')
         input_ids = torch.tensor([input_ids],
                                  dtype=torch.long,
                                  device=self.test_device)
 
-        self.torch_model(input_ids)
-        with contexttimer.Timer() as t:
-            for it in range(num_iter):
-                torch_result = self.torch_model(input_ids)
-        print(f'BertModel Plain PyTorch QPS {num_iter / t.elapsed}')
-        ft_result = self.ft_model(input_ids)
-        with contexttimer.Timer() as t:
-            for it in range(num_iter):
-                ft_result = self.ft_model(input_ids)
+        torch_model = lambda: self.torch_model(input_ids)
+        torch_result, torch_qps, torch_time = \
+            test_helper.run_model(torch_model, use_cuda, num_iter)
+        print(f'BertModel Plain PyTorch({device}) QPS {torch_qps}')
 
-        print(f'BertModel FastTransform QPS {num_iter / t.elapsed}')
+        turbo_model = lambda: self.ft_model(input_ids)
+        ft_result, turbo_qps, turbo_time = \
+            test_helper.run_model(turbo_model, use_cuda, num_iter)
+        print(f'BertModel FastTransform({device}) QPS {turbo_qps}')
+
         torch_result = (torch_result[0][:, 0]).cpu().numpy()
         ft_result = ft_result.cpu().numpy()
 
         self.assertTrue(
             numpy.allclose(torch_result, ft_result, atol=5e-3, rtol=1e-4))
+
+    def test_bert_model(self):
+        self.check_torch_and_turbo(use_cuda=False)
+        if torch.cuda.is_available() and \
+            turbo_transformers.config.is_with_cuda():
+            self.check_torch_and_turbo(use_cuda=True)
 
 
 if __name__ == '__main__':
