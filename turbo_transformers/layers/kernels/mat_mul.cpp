@@ -36,7 +36,10 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   BlasInt K_b = b_trans ? b_cols : b_rows;
   FT_ENFORCE_EQ(K_a, K_b, "matrix shape mismatch");
   FT_ENFORCE(core::common::is_same_device_ctx(A.device_ctx(), B.device_ctx()),
-             "LayerNorm gamma and beta must be on the same device context.");
+             "MatMul error: the device of A and B is different.");
+  FT_ENFORCE(
+      core::common::is_same_device_ctx(A.device_ctx(), out->device_ctx()),
+      "MatMul error: the device of A and out is different.");
 
   if (A.device_type() == kDLCPU && B.device_type() == kDLCPU &&
       out->device_type() == kDLCPU) {
