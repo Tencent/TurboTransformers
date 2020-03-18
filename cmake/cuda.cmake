@@ -42,5 +42,5 @@ set(nvcc_flags "${nvcc_flags} -gencode arch=compute_${cuda_arch_ptx},code=\\\"sm
 set(nvcc_flags_txt "${nvcc_flags_txt}${cuda_arch_ptx}")
 message(STATUS "Generating CUDA code for " ${CUDA_VERSION} " SMs:" ${nvcc_flags_txt})
 
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${nvcc_flags} -rdc=true")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${nvcc_flags}")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -Wall -std=c++11 --expt-relaxed-constexpr --expt-extended-lambda")

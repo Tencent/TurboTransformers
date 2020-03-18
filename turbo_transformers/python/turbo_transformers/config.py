@@ -12,4 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .turbo_transformers_cxx.config import *
+try:
+    from .turbo_transformers_cxx.config import *
+except (ImportError, ModuleNotFoundError):  # debug build
+    from .turbo_transformers_cxxd.config import *
