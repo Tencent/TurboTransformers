@@ -15,29 +15,29 @@
 import turbo_transformers
 
 import unittest
-import os
 
-import contexttimer
 import torch
 import torch.jit
 import torch.onnx
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertLayer
+import sys
+import os
+
+sys.path.append(os.path.dirname(__file__))
+import test_helper
 
 fname = "ft_bertlayer.txt"
 
 
 def create_test(batch_size, seq_length):
     class TestBertLayer(unittest.TestCase):
-        def setUp(self) -> None:
-            if not torch.cuda.is_available(
-            ) or not turbo_transformers.config.is_with_cuda():
+        def init_data(self, use_cuda: bool) -> None:
+            if use_cuda:
+                self.test_device = torch.device('cuda:0')
+            else:
                 torch.set_num_threads(1)
                 self.test_device = torch.device('cpu')
-                self.device = "CPU"
-            else:
-                self.test_device = torch.device('cuda:0')
-                self.device = "GPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -49,7 +49,7 @@ def create_test(batch_size, seq_length):
 
             self.torch_bert_layer = BertLayer(self.cfg)
             self.torch_bert_layer.eval()
-            if torch.cuda.is_available():
+            if use_cuda:
                 self.torch_bert_layer.to(self.test_device)
 
             self.hidden_size = self.cfg.hidden_size
@@ -67,71 +67,23 @@ def create_test(batch_size, seq_length):
             self.ft_bert_layer = turbo_transformers.BertLayer.from_torch(
                 self.torch_bert_layer)
 
-        def test_bert_layer(self):
+        def check_torch_and_turbo(self, use_cuda):
+            self.init_data(use_cuda)
             num_iter = 2
-
-            torch_bert_layer_result = self.torch_bert_layer(
+            device = "GPU" if use_cuda else "CPU"
+            torch_model = lambda: self.torch_bert_layer(
                 self.input_tensor, self.attention_mask)
+            torch_bert_layer_result, torch_qps, torch_time = \
+                test_helper.run_model(torch_model, use_cuda, num_iter)
+            print(f"BertLayer \"({batch_size},{seq_length:03})\" ",
+                  f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
-            if torch.cuda.is_available():
-                start = torch.cuda.Event(enable_timing=True)
-                end = torch.cuda.Event(enable_timing=True)
-                start.record()
-
-            with contexttimer.Timer() as t:
-                for it in range(num_iter):
-                    torch_bert_layer_result = self.torch_bert_layer(
-                        self.input_tensor, self.attention_mask)
-
-            if torch.cuda.is_available():
-                end.record()
-                torch.cuda.synchronize()
-                torch_elapsed = start.elapsed_time(end) / 1e3
-
-            if torch.cuda.is_available():
-                self.torch_qps = num_iter / torch_elapsed
-                self.torch_time = torch_elapsed / num_iter
-            else:
-                self.torch_qps = num_iter / t.elapsed
-                self.torch_time = t.elapsed / num_iter
-
-            print(
-                f"BertLayer \"({batch_size},{seq_length:03})\" {self.device} Torch QPS,  {self.torch_qps}, time, {self.torch_time}"
-            )
-
-            ft_bert_layer_result = self.ft_bert_layer(self.input_tensor,
-                                                      self.attention_mask)
-
-            if torch.cuda.is_available():
-                start = torch.cuda.Event(enable_timing=True)
-                end = torch.cuda.Event(enable_timing=True)
-                ft_elapsed = 1e-3
-                ft_result = None
-                start.record()
-
-            with contexttimer.Timer() as t:
-                for it in range(num_iter):
-                    ft_bert_layer_result = self.ft_bert_layer(
-                        self.input_tensor, self.attention_mask)
-
-            if torch.cuda.is_available():
-                end.record()
-                torch.cuda.synchronize()
-                # in ms, rescale to sec
-                ft_elapsed = start.elapsed_time(end) / 1e3
-
-            ft_qps = 0
-            ft_time = 0
-            if torch.cuda.is_available():
-                ft_qps = num_iter / ft_elapsed
-                ft_time = ft_elapsed / num_iter
-            else:
-                ft_qps = num_iter / t.elapsed
-                ft_time = t.elapsed / num_iter
-
-            print(
-                f"BertLayer \"({batch_size},{seq_length:03})\" {self.device} FastTransform QPS,  {ft_qps}, time, {ft_time}"
-            )
+            ft_model = lambda: self.ft_bert_layer(self.input_tensor, self.
+                                                  attention_mask)
+            ft_bert_layer_result, ft_qps, ft_time = \
+                test_helper.run_model(ft_model, use_cuda, num_iter)
+            print(f"BertLayer \"({batch_size},{seq_length:03})\"  ",
+                  f"{device} FastTransform QPS, {ft_qps}, time, {ft_time}")
 
             self.assertTrue(
                 torch.max(
@@ -139,8 +91,14 @@ def create_test(batch_size, seq_length):
                               ft_bert_layer_result)) < 1e-3)
             with open(fname, "a") as fh:
                 fh.write(
-                    f"\"({batch_size},{seq_length:03})\", {self.torch_qps}, {ft_qps}\n"
+                    f"\"({batch_size},{seq_length:03})\", {torch_qps}, {ft_qps}\n"
                 )
+
+        def test_bert_layer(self):
+            self.check_torch_and_turbo(use_cuda=False)
+            if torch.cuda.is_available() and \
+                turbo_transformers.config.is_with_cuda():
+                self.check_torch_and_turbo(use_cuda=True)
 
     globals()[f"TestBertLayer{batch_size}_{seq_length:03}"] = TestBertLayer
 
