@@ -21,15 +21,12 @@ import turbo_transformers
 
 class TestDLPack(unittest.TestCase):
     def check_dlpack(self, use_cuda):
-        if use_cuda:
-            self.test_device = torch.device('cuda:0')
-        else:
+        test_device = torch.device('cuda:0') if use_cuda else \
+            torch.device('cpu:0')
+        if not use_cuda:
             torch.set_num_threads(1)
-            self.test_device = torch.device('cpu')
 
-        a = torch.rand(size=(4, 3),
-                       dtype=torch.float32,
-                       device=self.test_device)
+        a = torch.rand(size=(4, 3), dtype=torch.float32, device=test_device)
         tensor = convert2ft_tensor(a)
         self.assertIsNotNone(tensor)
         b = dlpack.from_dlpack(tensor.to_dlpack())

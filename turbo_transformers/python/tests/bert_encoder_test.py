@@ -28,11 +28,10 @@ import test_helper
 
 class TestBertEncoder(unittest.TestCase):
     def init_data(self, use_cuda) -> None:
-        if use_cuda:
-            self.test_device = torch.device('cuda:0')
-        else:
+        test_device = torch.device('cuda:0') if use_cuda else \
+            torch.device('cpu:0')
+        if not use_cuda:
             torch.set_num_threads(1)
-            self.test_device = torch.device('cpu')
 
         torch.set_grad_enabled(False)
         self.tokenizer = BertTokenizer.from_pretrained(
@@ -44,7 +43,7 @@ class TestBertEncoder(unittest.TestCase):
         self.torch_encoder_layer.eval()
 
         if use_cuda:
-            self.torch_encoder_layer.to(self.test_device)
+            self.torch_encoder_layer.to(test_device)
 
         self.batch_size = 1
         self.seq_length = 40
@@ -52,36 +51,36 @@ class TestBertEncoder(unittest.TestCase):
         self.input_tensor = torch.rand(size=(self.batch_size, self.seq_length,
                                              self.hidden_size),
                                        dtype=torch.float32,
-                                       device=self.test_device)
+                                       device=test_device)
 
         self.attention_mask = torch.ones((self.batch_size, self.seq_length),
                                          dtype=torch.float32,
-                                         device=self.test_device)
+                                         device=test_device)
         self.attention_mask = self.attention_mask[:, None, None, :]
         self.attention_mask = (1.0 - self.attention_mask) * -10000.0
 
-        self.ft_bert_encoder = turbo_transformers.BertEncoder.from_torch(
+        self.turbo_bert_encoder = turbo_transformers.BertEncoder.from_torch(
             self.torch_encoder_layer)
 
     def check_torch_and_turbo(self, use_cuda=True):
         self.init_data(use_cuda=use_cuda)
         self.num_iter = 2
 
-        ft_bert_layer_result = None
-        ft_model = lambda: self.ft_bert_encoder(self.input_tensor,
-                                                self.attention_mask,
-                                                output=ft_bert_layer_result,
-                                                return_type=turbo_transformers.
-                                                ReturnType.turbo_transformers)
+        turbo_bert_layer_result = None
+        turbo_model = lambda: self.turbo_bert_encoder(
+            self.input_tensor,
+            self.attention_mask,
+            output=turbo_bert_layer_result,
+            return_type=turbo_transformers.ReturnType.turbo_transformers)
 
-        ft_bert_layer_result, turbo_qps, turbo_time_consume = \
-            test_helper.run_model(ft_model, use_cuda, self.num_iter)
+        turbo_bert_layer_result, turbo_qps, turbo_time_consume = \
+            test_helper.run_model(turbo_model, use_cuda, self.num_iter)
 
-        print(f"BertEncoder FastTransform QPS, {turbo_qps}, ",
+        print(f"BertEncoder TurboTransform QPS, {turbo_qps}, ",
               f"Time Cost, {turbo_time_consume}")
 
-        ft_bert_layer_result = self.ft_bert_encoder(self.input_tensor,
-                                                    self.attention_mask)
+        turbo_bert_layer_result = self.turbo_bert_encoder(
+            self.input_tensor, self.attention_mask)
 
         torch_model = lambda: self.torch_encoder_layer(
             self.input_tensor, self.attention_mask, [None] * self.cfg.
@@ -93,7 +92,7 @@ class TestBertEncoder(unittest.TestCase):
         print(f"BertEncoder Torch QPS, {torch_qps}, ",
               f"Time Cost, {torch_time_consume}")
 
-        diff = torch.abs(torch_bert_layer_result[0] - ft_bert_layer_result)
+        diff = torch.abs(torch_bert_layer_result[0] - turbo_bert_layer_result)
         self.assertTrue(torch.max(diff) < 1e-3)
 
     def test_embedding(self):

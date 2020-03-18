@@ -30,11 +30,10 @@ import test_helper
 def create_shape_test(batch_size: int, seq_length: int):
     class TestBertOut(unittest.TestCase):
         def init_data(self, use_cuda) -> None:
-            if use_cuda:
-                self.test_device = torch.device('cuda:0')
-            else:
+            test_device = torch.device('cuda:0') if use_cuda else \
+                    torch.device('cpu:0')
+            if not use_cuda:
                 torch.set_num_threads(1)
-                self.test_device = torch.device('cpu')
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -46,19 +45,19 @@ def create_shape_test(batch_size: int, seq_length: int):
             self.torch_bertout = BertOutput(self.cfg)
             self.torch_bertout.eval()
             if use_cuda:
-                self.torch_bertout.to(self.test_device)
+                self.torch_bertout.to(test_device)
 
-            self.ft_bertout = turbo_transformers.BertOutput.from_torch(
+            self.turbo_bertout = turbo_transformers.BertOutput.from_torch(
                 self.torch_bertout)
 
             self.intermediate_output = torch.rand(
                 size=(batch_size, seq_length, self.intermediate_size),
                 dtype=torch.float32,
-                device=self.test_device)
+                device=test_device)
             self.attention_output = torch.rand(size=(batch_size, seq_length,
                                                      self.hidden_size),
                                                dtype=torch.float32,
-                                               device=self.test_device)
+                                               device=test_device)
 
         def check_torch_and_turbo(self, use_cuda):
             self.init_data(use_cuda)
@@ -73,8 +72,8 @@ def create_shape_test(batch_size: int, seq_length: int):
             print(f'BertModel Plain PyTorch({device}) QPS {torch_qps}',
                   file=sio)
 
-            turbo_model = lambda: self.ft_bertout(self.intermediate_output,
-                                                  self.attention_output)
+            turbo_model = lambda: self.turbo_bertout(self.intermediate_output,
+                                                     self.attention_output)
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
             print(f'BertModel Plain FastTransform({device}) QPS {turbo_qps}',

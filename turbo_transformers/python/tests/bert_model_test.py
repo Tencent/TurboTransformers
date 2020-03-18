@@ -30,10 +30,8 @@ class TestBertModel(unittest.TestCase):
         model_id = os.path.join(os.path.dirname(__file__), 'test-model')
         torch.set_grad_enabled(False)
         torch.set_num_threads(1)
-        if use_cuda:
-            self.test_device = torch.device('cuda:0')
-        else:
-            self.test_device = torch.device('cpu:0')
+        self.test_device = torch.device('cuda:0') if use_cuda else \
+            torch.device('cpu:0')
 
         self.tokenizer = BertTokenizer.from_pretrained(model_id)
         self.torch_model = BertModel.from_pretrained(model_id)
@@ -42,7 +40,7 @@ class TestBertModel(unittest.TestCase):
         if torch.cuda.is_available():
             self.torch_model.to(self.test_device)
 
-        self.ft_model = turbo_transformers.BertModel.from_pretrained(
+        self.turbo_model = turbo_transformers.BertModel.from_pretrained(
             model_id, self.test_device)
 
     def check_torch_and_turbo(self, use_cuda):
@@ -59,16 +57,16 @@ class TestBertModel(unittest.TestCase):
             test_helper.run_model(torch_model, use_cuda, num_iter)
         print(f'BertModel Plain PyTorch({device}) QPS {torch_qps}')
 
-        turbo_model = lambda: self.ft_model(input_ids)
-        ft_result, turbo_qps, turbo_time = \
+        turbo_model = lambda: self.turbo_model(input_ids)
+        turbo_result, turbo_qps, turbo_time = \
             test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'BertModel FastTransform({device}) QPS {turbo_qps}')
 
         torch_result = (torch_result[0][:, 0]).cpu().numpy()
-        ft_result = ft_result.cpu().numpy()
+        turbo_result = turbo_result.cpu().numpy()
 
         self.assertTrue(
-            numpy.allclose(torch_result, ft_result, atol=5e-3, rtol=1e-4))
+            numpy.allclose(torch_result, turbo_result, atol=5e-3, rtol=1e-4))
 
     def test_bert_model(self):
         self.check_torch_and_turbo(use_cuda=False)

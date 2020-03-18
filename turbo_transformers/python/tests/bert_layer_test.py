@@ -33,11 +33,10 @@ fname = "ft_bertlayer.txt"
 def create_test(batch_size, seq_length):
     class TestBertLayer(unittest.TestCase):
         def init_data(self, use_cuda: bool) -> None:
-            if use_cuda:
-                self.test_device = torch.device('cuda:0')
-            else:
+            test_device = torch.device('cuda:0') if use_cuda else \
+                torch.device('cpu:0')
+            if not use_cuda:
                 torch.set_num_threads(1)
-                self.test_device = torch.device('cpu')
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -50,21 +49,21 @@ def create_test(batch_size, seq_length):
             self.torch_bert_layer = BertLayer(self.cfg)
             self.torch_bert_layer.eval()
             if use_cuda:
-                self.torch_bert_layer.to(self.test_device)
+                self.torch_bert_layer.to(test_device)
 
             self.hidden_size = self.cfg.hidden_size
             self.input_tensor = torch.rand(size=(batch_size, seq_length,
                                                  self.hidden_size),
                                            dtype=torch.float32,
-                                           device=self.test_device)
+                                           device=test_device)
 
             self.attention_mask = torch.ones((batch_size, seq_length),
                                              dtype=torch.float32,
-                                             device=self.test_device)
+                                             device=test_device)
             self.attention_mask = self.attention_mask[:, None, None, :]
             self.attention_mask = (1.0 - self.attention_mask) * -10000.0
 
-            self.ft_bert_layer = turbo_transformers.BertLayer.from_torch(
+            self.turbo_bert_layer = turbo_transformers.BertLayer.from_torch(
                 self.torch_bert_layer)
 
         def check_torch_and_turbo(self, use_cuda):
@@ -78,20 +77,22 @@ def create_test(batch_size, seq_length):
             print(f"BertLayer \"({batch_size},{seq_length:03})\" ",
                   f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
-            ft_model = lambda: self.ft_bert_layer(self.input_tensor, self.
-                                                  attention_mask)
-            ft_bert_layer_result, ft_qps, ft_time = \
-                test_helper.run_model(ft_model, use_cuda, num_iter)
-            print(f"BertLayer \"({batch_size},{seq_length:03})\"  ",
-                  f"{device} FastTransform QPS, {ft_qps}, time, {ft_time}")
+            turbo_model = lambda: self.turbo_bert_layer(
+                self.input_tensor, self.attention_mask)
+            turbo_bert_layer_result, turbo_qps, turbo_time = \
+                test_helper.run_model(turbo_model, use_cuda, num_iter)
+            print(
+                f"BertLayer \"({batch_size},{seq_length:03})\"  ",
+                f"{device} TurboTransform QPS, {turbo_qps}, time, {turbo_time}"
+            )
 
             self.assertTrue(
                 torch.max(
                     torch.abs(torch_bert_layer_result[0] -
-                              ft_bert_layer_result)) < 1e-3)
+                              turbo_bert_layer_result)) < 1e-3)
             with open(fname, "a") as fh:
                 fh.write(
-                    f"\"({batch_size},{seq_length:03})\", {torch_qps}, {ft_qps}\n"
+                    f"\"({batch_size},{seq_length:03})\", {torch_qps}, {turbo_qps}\n"
                 )
 
         def test_bert_layer(self):

@@ -32,11 +32,11 @@ fname = "ft_attention.txt"
 def create_test(batch_size, seq_length):
     class TestBertAttention(unittest.TestCase):
         def init_data(self, use_cuda):
-            if use_cuda:
-                test_device = torch.device('cuda:0')
-            else:
+            test_device = torch.device('cuda:0') if use_cuda else \
+                   torch.device('cpu:0')
+            if not use_cuda:
                 torch.set_num_threads(1)
-                test_device = torch.device('cpu')
+
             torch.set_grad_enabled(False)
             tokenizer = BertTokenizer.from_pretrained(
                 os.path.join(os.path.dirname(__file__), 'test-model'))
@@ -51,7 +51,7 @@ def create_test(batch_size, seq_length):
                 torch_attention.to(test_device)
 
             # Get FT Attention
-            ft_attention = turbo_transformers.BertAttention.from_torch(
+            turbo_attention = turbo_transformers.BertAttention.from_torch(
                 torch_attention)
             hidden_size = cfg.hidden_size
             input_tensor = torch.rand(size=(batch_size, seq_length,
@@ -63,10 +63,10 @@ def create_test(batch_size, seq_length):
                                         device=test_device)
             attention_mask = attention_mask[:, None, None, :]
             attention_mask = (1.0 - attention_mask) * -10000.0
-            return torch_attention, ft_attention, input_tensor, attention_mask
+            return torch_attention, turbo_attention, input_tensor, attention_mask
 
         def check_torch_and_turbo(self, use_cuda, num_iter=2):
-            torch_attention, ft_attention, input_tensor, attention_mask = \
+            torch_attention, turbo_attention, input_tensor, attention_mask = \
                 self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
             torch_model = lambda: torch_attention(input_tensor, attention_mask)
@@ -76,8 +76,8 @@ def create_test(batch_size, seq_length):
                 f"BertAttention \"({batch_size},{seq_length:03})\" ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
-            turob_model = lambda: ft_attention(input_tensor, attention_mask)
-            ft_self_attention_result, turbo_qps, turbo_time_consume = \
+            turob_model = lambda: turbo_attention(input_tensor, attention_mask)
+            turbo_self_attention_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turob_model, use_cuda,
                                       num_iter)
             print(
@@ -88,7 +88,7 @@ def create_test(batch_size, seq_length):
             self.assertTrue(
                 torch.max(
                     torch.abs(torch_attention_result[0] -
-                              ft_self_attention_result)) < 1e-4)
+                              turbo_self_attention_result)) < 1e-4)
             with open(fname, "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {torch_qps}, {turbo_qps}\n"

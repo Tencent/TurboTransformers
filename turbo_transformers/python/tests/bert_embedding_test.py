@@ -27,11 +27,9 @@ import test_helper
 
 def create_test_bert_emb(batch_size: int, seq_length: int):
     class TestBertEmbedding(unittest.TestCase):
-        def init_data(self, use_cuda):
-            if use_cuda:
-                self.test_device = torch.device('cuda:0')
-            else:
-                self.test_device = torch.device('cpu:0')
+        def init_data(self, use_cuda: bool):
+            test_device = torch.device('cuda:0') if use_cuda else \
+                torch.device('cpu:0')
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -43,16 +41,16 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
             self.torch_embedding.eval()
 
             if use_cuda:
-                self.torch_embedding.to(self.test_device)
+                self.torch_embedding.to(test_device)
 
-            self.ft_embedding = turbo_transformers.BertEmbeddings.from_torch(
+            self.turbo_embedding = turbo_transformers.BertEmbeddings.from_torch(
                 self.torch_embedding)
 
             input_ids = torch.randint(low=0,
                                       high=self.tokenizer.vocab_size - 1,
                                       size=(batch_size, seq_length),
                                       dtype=torch.long,
-                                      device=self.test_device)
+                                      device=test_device)
             position_ids = torch.arange(seq_length,
                                         dtype=torch.long,
                                         device=input_ids.device)
@@ -74,8 +72,8 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
             print(f"BertEmbeddings \"({batch_size},{seq_length:03})\" ",
                   f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
-            turbo_model = lambda: self.ft_embedding(input_ids, position_ids,
-                                                    token_type_ids)
+            turbo_model = lambda: self.turbo_embedding(input_ids, position_ids,
+                                                       token_type_ids)
             turbo_result, turbo_qps, turbo_time = test_helper.run_model(
                 turbo_model, use_cuda, num_iter)
             print(f"BertEmbeddings \"({batch_size},{seq_length:03})\" ",
