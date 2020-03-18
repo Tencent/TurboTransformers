@@ -69,8 +69,9 @@ void FT_Memcpy(void *dst_data, const void *src_data, size_t data_size,
   func(dst_data, src_data, data_size);
 }
 MemcpyFlag ToMemcpyFlag(DLDeviceType dst, DLDeviceType src) {
-  for (auto &tuple : std::initializer_list<std::tuple<
-           DLDeviceType /*dst*/, DLDeviceType /*src*/, MemcpyFlag /*result*/>>{
+  for (auto &tuple :
+       std::vector<std::tuple<DLDeviceType /*dst*/, DLDeviceType /*src*/,
+                              MemcpyFlag /*result*/>>{
            {DLDeviceType::kDLCPU, DLDeviceType::kDLCPU, MemcpyFlag::kCPU2CPU},
            {DLDeviceType::kDLGPU, DLDeviceType::kDLCPU, MemcpyFlag::kCPU2GPU},
            {DLDeviceType::kDLCPU, DLDeviceType::kDLGPU, MemcpyFlag::kGPU2CPU},

@@ -55,7 +55,7 @@ class EnforceNotMet : public std::exception {
 };
 
 #ifdef FT_WITH_CUDA
-static const std::string CUDAGetErrorString(cudaError_t error) {
+static inline const std::string CUDAGetErrorString(cudaError_t error) {
   return cudaGetErrorString(error);
 }
 
@@ -66,7 +66,7 @@ static const std::string CUDAGetErrorString(cudaError_t error) {
     }                                   \
   } while (0)
 
-static const std::string CUDAGetErrorString(cublasStatus_t error) {
+static inline const std::string CUDAGetErrorString(cublasStatus_t error) {
   GetErrorNumCaseImpl(CUBLAS_STATUS_NOT_INITIALIZED);
   GetErrorNumCaseImpl(CUBLAS_STATUS_ALLOC_FAILED);
   GetErrorNumCaseImpl(CUBLAS_STATUS_INVALID_VALUE);
