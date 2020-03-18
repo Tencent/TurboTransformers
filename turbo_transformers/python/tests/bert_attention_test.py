@@ -15,13 +15,16 @@
 import turbo_transformers
 
 import unittest
-import contexttimer
+import sys
 import torch
 import torch.jit
 import torch.onnx
 from transformers.modeling_bert import BertConfig, BertAttention
 from transformers import BertTokenizer
 import os
+
+sys.path.append(os.path.dirname(__file__))
+import test_helper
 
 fname = "ft_attention.txt"
 
@@ -62,47 +65,24 @@ def create_test(batch_size, seq_length):
             attention_mask = (1.0 - attention_mask) * -10000.0
             return torch_attention, ft_attention, input_tensor, attention_mask
 
-        @staticmethod
-        def run_model(model_name, model, use_cuda, num_iter=50):
-            # warm up
-            model()
-            device = "GPU" if use_cuda else "CPU"
-            if use_cuda:
-                start = torch.cuda.Event(enable_timing=True)
-                end = torch.cuda.Event(enable_timing=True)
-                start.record()
-
-            with contexttimer.Timer() as t:
-                for it in range(num_iter):
-                    torch_attention_result = model()
-
-            if use_cuda:
-                end.record()
-                torch.cuda.synchronize()
-                torch_elapsed = start.elapsed_time(end) / 1e3
-                qps = num_iter / torch_elapsed
-                time_consume = torch_elapsed / num_iter
-            else:
-                qps = num_iter / t.elapsed
-                time_consume = t.elapsed / num_iter
-
-            print(
-                f"BertAttention \"({batch_size},{seq_length:03})\" {device} {model_name} QPS,  {qps}, time, {time_consume}"
-            )
-            return torch_attention_result, qps, time_consume
-
         def check_torch_and_turbo(self, use_cuda, num_iter=2):
             torch_attention, ft_attention, input_tensor, attention_mask = \
                 self.init_data(use_cuda)
-
+            device = "GPU" if use_cuda else "CPU"
             torch_model = lambda: torch_attention(input_tensor, attention_mask)
             torch_attention_result, torch_qps, torch_time_consume = \
-                self.run_model("Torch", torch_model, use_cuda, num_iter)
+                test_helper.run_model(torch_model, use_cuda, num_iter)
+            print(
+                f"BertAttention \"({batch_size},{seq_length:03})\" {device} Torch QPS, {torch_qps}, time, {torch_time_consume}"
+            )
 
             turob_model = lambda: ft_attention(input_tensor, attention_mask)
             ft_self_attention_result, turbo_qps, turbo_time_consume = \
-                self.run_model("TurboTransformer", turob_model, use_cuda,
-                               num_iter)
+                test_helper.run_model(turob_model, use_cuda,
+                                      num_iter)
+            print(
+                f"BertAttention \"({batch_size},{seq_length:03})\" {device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}"
+            )
 
             self.assertTrue(
                 torch.max(
