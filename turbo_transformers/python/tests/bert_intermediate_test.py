@@ -14,8 +14,7 @@
 
 import unittest
 
-import contexttimer
-import time
+import sys
 import torch
 import turbo_transformers
 from transformers import BertTokenizer
@@ -23,18 +22,17 @@ from transformers.modeling_bert import BertConfig, BertIntermediate
 import numpy
 import os
 
+sys.path.append(os.path.dirname(__file__))
+import test_helper
+
 
 def create_test(batch_size, seq_length):
     class TestBertIntermediate(unittest.TestCase):
-        def setUp(self) -> None:
-            if not torch.cuda.is_available(
-            ) or not turbo_transformers.config.is_with_cuda():
+        def init_data(self, use_cuda: bool) -> None:
+            self.test_device = torch.device('cuda:0') if use_cuda else \
+                torch.device('cpu:0')
+            if not use_cuda:
                 torch.set_num_threads(1)
-                self.test_device = torch.device('cpu')
-                self.device = "CPU"
-            else:
-                self.test_device = torch.device('cuda:0')
-                self.device = "GPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -47,10 +45,12 @@ def create_test(batch_size, seq_length):
                 self.torch_intermediate.to(self.test_device)
             self.torch_intermediate.eval()
 
-            self.ft_intermediate = turbo_transformers.BertIntermediate.from_torch(
+            self.turbo_intermediate = turbo_transformers.BertIntermediate.from_torch(
                 self.torch_intermediate)
 
-        def test_intermediate(self):
+        def check_torch_and_turbo(self, use_cuda):
+            self.init_data(use_cuda=use_cuda)
+            device = "GPU" if use_cuda else "CPU"
             num_iter = 2
             hidden_size = self.cfg.hidden_size
             input_tensor = torch.rand(size=(batch_size, seq_length,
@@ -58,85 +58,44 @@ def create_test(batch_size, seq_length):
                                       dtype=torch.float32,
                                       device=self.test_device)
 
-            # warmup
-            ft_result = self.ft_intermediate(input_tensor)
-
-            if torch.cuda.is_available():
-                start = torch.cuda.Event(enable_timing=True)
-                end = torch.cuda.Event(enable_timing=True)
-                ft_elapsed = 0.
-                start.record()
-
-            with contexttimer.Timer() as t:
-                ft_result = None
-                for it in range(num_iter):
-                    ft_result = self.ft_intermediate(
-                        input_tensor,
-                        output=ft_result,
-                        return_type=turbo_transformers.ReturnType.
-                        turbo_transformers)
-
-            if torch.cuda.is_available():
-                end.record()
-                torch.cuda.synchronize()
-                # in ms, rescale to sec
-                ft_elapsed = start.elapsed_time(end) / 1e3
-
-            # get torch result
-            ft_result = self.ft_intermediate(input_tensor)
-
-            ft_qps = 0
-            ft_time = 0
-            if torch.cuda.is_available():
-                ft_qps = num_iter / ft_elapsed
-                ft_time = ft_elapsed / num_iter
-            else:
-                ft_qps = num_iter / t.elapsed
-                ft_time = t.elapsed / num_iter
+            turbo_model = lambda: self.turbo_intermediate(input_tensor)
+            turbo_result, turbo_qps, turbo_time = \
+                test_helper.run_model(turbo_model, use_cuda, num_iter)
 
             print(
-                f"BertIntermediate \"({batch_size},{seq_length:03})\" {self.device} FastTransform QPS,  {ft_qps}, time, {ft_time}"
+                f"BertIntermediate \"({batch_size},{seq_length:03})\" ",
+                f"{device} TurboTransform QPS,  {turbo_qps}, time, {turbo_time}"
             )
 
-            # warmup
-            torch_result = self.torch_intermediate(input_tensor)
-            torch_elapsed = 0.
+            torch_model = lambda: self.torch_intermediate(input_tensor)
+            torch_result, torch_qps, torch_time = \
+                test_helper.run_model(torch_model, use_cuda, num_iter)
 
-            if torch.cuda.is_available():
-                start = torch.cuda.Event(enable_timing=True)
-                end = torch.cuda.Event(enable_timing=True)
-                start.record()
+            print(f"BertIntermediate \"({batch_size},{seq_length:03})\" ",
+                  f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
-            with contexttimer.Timer() as t:
-                for it in range(num_iter):
-                    torch_result = self.torch_intermediate(input_tensor)
-
-            if torch.cuda.is_available():
-                end.record()
-                torch.cuda.synchronize()
-                torch_elapsed = start.elapsed_time(end) / 1e3
-                torch_qps = num_iter / torch_elapsed
-                torch_time = torch_elapsed / num_iter
-            else:
-                torch_qps = num_iter / t.elapsed
-                torch_time = t.elapsed / num_iter
-
-            print(
-                f"BertIntermediate \"({batch_size},{seq_length:03})\" {self.device} Torch QPS,  {torch_qps}, time, {torch_time}"
-            )
             torch_result = torch_result.cpu().numpy()
-            ft_result = ft_result.cpu().numpy()
+            turbo_result = turbo_result.cpu().numpy()
 
             self.assertTrue(
-                numpy.allclose(torch_result, ft_result, rtol=1e-4, atol=1e-3))
+                numpy.allclose(torch_result,
+                               turbo_result,
+                               rtol=1e-4,
+                               atol=1e-3))
 
             with open("bert_intermediate_res.txt", "a") as fh:
                 fh.write(
-                    f"\"({batch_size},{seq_length:03})\", {torch_qps}, {ft_qps}\n"
+                    f"\"({batch_size},{seq_length:03})\", {torch_qps}, {torch_qps}\n"
                 )
 
-    globals(
-    )[f"TestBertIntermediate_{batch_size}_{seq_length:03}"] = TestBertIntermediate
+        def test_intermediate(self):
+            self.check_torch_and_turbo(use_cuda=False)
+            if torch.cuda.is_available() and \
+                turbo_transformers.config.is_with_cuda():
+                self.check_torch_and_turbo(use_cuda=True)
+
+    globals()[f"TestBertIntermediate_{batch_size}_{seq_length:03}"] = \
+        TestBertIntermediate
 
 
 with open("bert_intermediate_res.txt", "w") as fh:

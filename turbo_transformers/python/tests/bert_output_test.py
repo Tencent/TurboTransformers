@@ -15,26 +15,25 @@
 import turbo_transformers
 
 import unittest
-import os
-
-import contexttimer
+import io
 import torch
 import torch.jit
 from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertOutput
+import sys
+import os
+
+sys.path.append(os.path.dirname(__file__))
+import test_helper
 
 
 def create_shape_test(batch_size: int, seq_length: int):
     class TestBertOut(unittest.TestCase):
-        def setUp(self) -> None:
-            if not torch.cuda.is_available(
-            ) or not turbo_transformers.config.is_with_cuda():
+        def init_data(self, use_cuda) -> None:
+            test_device = torch.device('cuda:0') if use_cuda else \
+                    torch.device('cpu:0')
+            if not use_cuda:
                 torch.set_num_threads(1)
-                self.test_device = torch.device('cpu')
-                self.device = "CPU"
-            else:
-                self.test_device = torch.device('cuda:0')
-                self.device = "GPU"
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -45,64 +44,63 @@ def create_shape_test(batch_size: int, seq_length: int):
             self.hidden_size = self.cfg.hidden_size  # 768
             self.torch_bertout = BertOutput(self.cfg)
             self.torch_bertout.eval()
-            if torch.cuda.is_available():
-                self.torch_bertout.to(self.test_device)
+            if use_cuda:
+                self.torch_bertout.to(test_device)
 
-            self.ft_bertout = turbo_transformers.BertOutput.from_torch(
+            self.turbo_bertout = turbo_transformers.BertOutput.from_torch(
                 self.torch_bertout)
 
             self.intermediate_output = torch.rand(
                 size=(batch_size, seq_length, self.intermediate_size),
                 dtype=torch.float32,
-                device=self.test_device)
+                device=test_device)
             self.attention_output = torch.rand(size=(batch_size, seq_length,
                                                      self.hidden_size),
                                                dtype=torch.float32,
-                                               device=self.test_device)
+                                               device=test_device)
 
-        def test_bertout(self):
+        def check_torch_and_turbo(self, use_cuda):
+            self.init_data(use_cuda)
+            sio = io.StringIO()
+            num_iter = 2
+            device = "GPU" if use_cuda else "CPU"
+
+            torch_model = lambda: self.torch_bertout(self.intermediate_output,
+                                                     self.attention_output)
+            torch_result, torch_qps, torch_time = \
+                test_helper.run_model(torch_model, use_cuda, num_iter)
+            print(f'BertModel Plain PyTorch({device}) QPS {torch_qps}',
+                  file=sio)
+
+            turbo_model = lambda: self.turbo_bertout(self.intermediate_output,
+                                                     self.attention_output)
+            turbo_result, turbo_qps, turbo_time = \
+                test_helper.run_model(turbo_model, use_cuda, num_iter)
+            print(f'BertModel Plain FastTransform({device}) QPS {turbo_qps}',
+                  file=sio)
+
+            self.assertTrue(
+                torch.max(torch.abs(torch_result - turbo_result)) < 1e-4)
+
+            sio.seek(0)
             with open(f"gpu_bert_output_qps_{batch_size}_{seq_length:03}.txt",
                       "w") as of:
-                num_steps = 2
-                torch_result = self.torch_bertout(self.intermediate_output,
-                                                  self.attention_output)
-                with contexttimer.Timer() as t:
-                    for it in range(num_steps):
-                        torch_result = self.torch_bertout(
-                            self.intermediate_output, self.attention_output)
+                for line in sio:
+                    print(line.strip(), file=of)
 
-                print(
-                    f"BertOut({batch_size}, {seq_length:03}) Torch QPS {num_steps / t.elapsed}",
-                    file=of)
-
-                ft_result = self.ft_bertout(self.intermediate_output,
-                                            self.attention_output)
-
-                with contexttimer.Timer() as t:
-                    for it in range(num_steps):
-                        ft_result = self.ft_bertout(self.intermediate_output,
-                                                    self.attention_output)
-
-                print(
-                    f"BertOut({batch_size}, {seq_length:03}) FastTransform QPS {num_steps / t.elapsed}",
-                    file=of)
-                self.assertTrue(
-                    torch.max(torch.abs(torch_result - ft_result)) < 1e-4)
+        def test_bertout(self):
+            self.check_torch_and_turbo(use_cuda=False)
+            if torch.cuda.is_available() and \
+                turbo_transformers.config.is_with_cuda():
+                self.check_torch_and_turbo(use_cuda=True)
 
     TestBertOut.__name__ = f"TestBertOut_BatchSize_{batch_size}_SeqLen_{seq_length}"
-
     globals()[TestBertOut.__name__] = TestBertOut
 
-    return TestBertOut
 
-
-TestCases = [
-    create_shape_test(batch_size=batch_size, seq_length=seq_length)
-    for seq_length in (20, 40, 60, 80, 100, 120) for batch_size in (1, 2)
-]
-
-# TestBertOut = create_shape_test(batch_size=1, seq_length=20)
+for seq_length in (20, 40, 60, 80, 100, 120):
+    for batch_size in (1, 2):
+        create_shape_test(batch_size=batch_size, seq_length=seq_length)
 
 if __name__ == '__main__':
-    # print(TestBertOut)
     unittest.main()

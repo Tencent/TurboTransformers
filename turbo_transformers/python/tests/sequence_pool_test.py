@@ -43,12 +43,12 @@ def create_test_seq_pool(batch_size: int, seq_length: int, pool_type: str):
 
         def test_seq_pool(self):
             np_result = pooling(self.input, pool_type)
-            ft_result = self.seq_pool(torch.tensor(self.input))
+            turbo_result = self.seq_pool(torch.tensor(self.input))
             self.assertTrue(
-                np.max(np.abs(np_result - ft_result.numpy())) < 1e-3)
+                np.max(np.abs(np_result - turbo_result.numpy())) < 1e-3)
 
-    globals(
-    )[f"TestSequencePool{batch_size}_{seq_length:03}_{pool_type}"] = TestSequencePool
+    globals()[f"TestSequencePool{batch_size}_{seq_length:03}_{pool_type}"] = \
+        TestSequencePool
 
 
 for batch_size in [1, 5]:

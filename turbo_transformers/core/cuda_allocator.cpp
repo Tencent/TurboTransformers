@@ -51,6 +51,18 @@ void CUDAAllocator::FreeCache(size_t size) {
   }
 }
 
+CUDAAllocator::~CUDAAllocator() {
+  while (!allocations_.empty()) {
+    auto it = --allocations_.end();
+    // use cudaFree directly here, because when destroying the Allocator,
+    // the cuda runtime lib may have been unloaded, and in this case,
+    // there will have cudaErrorCudartUnloading.
+    // https://stackoverflow.com/questions/35815597/cuda-call-fails-in-destructor
+    cudaFree(it->second);
+    allocations_.erase(it);
+  }
+}
+
 void *CUDAAllocator::allocate(size_t size) {
   auto it = allocations_.lower_bound(size);
 
