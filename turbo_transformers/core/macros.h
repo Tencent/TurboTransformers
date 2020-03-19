@@ -30,7 +30,7 @@
 #endif  // __FLT_MAX__
 
 namespace turbo_transformers {
-namespace base {
+namespace core {
 static constexpr bool IsCompiledWithCUDA() {
 #ifdef FT_WITH_CUDA
   return true;
@@ -38,5 +38,5 @@ static constexpr bool IsCompiledWithCUDA() {
   return false;
 #endif
 }
-}  // namespace base
+}  // namespace core
 }  // namespace turbo_transformers

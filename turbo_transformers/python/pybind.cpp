@@ -16,6 +16,7 @@
 #include "loguru.hpp"
 #include "pybind11/pybind11.h"
 #include "turbo_transformers/core/blas.h"
+#include "turbo_transformers/core/macros.h"
 #include "turbo_transformers/core/profiler.h"
 #include "turbo_transformers/core/tensor.h"
 #include "turbo_transformers/layers/bert_attention.h"
@@ -45,13 +46,7 @@ static void DLPack_Capsule_Destructor(PyObject *data) {
     PyErr_Clear();
   }
 }
-static bool CompiledWithCUDA() {
-#ifdef FT_WITH_CUDA
-  return true;
-#else
-  return false;
-#endif
-}
+
 enum class BlasProvider {
   MKL,
   OpenBlas,
@@ -71,8 +66,9 @@ static void BindConfig(py::module &m) {
   py::enum_<BlasProvider>(m, "BlasProvider")
       .value("MKL", BlasProvider::MKL)
       .value("OpenBlas", BlasProvider::OpenBlas);
-  m.def("is_with_cuda", CompiledWithCUDA)
-      .def("get_blas_provider", GetBlasProvider);
+  m.def("is_with_cuda", [] {
+     return core::IsCompiledWithCUDA();
+   }).def("get_blas_provider", GetBlasProvider);
 }
 
 PYBIND11_MODULE(turbo_transformers_cxx, m) {

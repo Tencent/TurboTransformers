@@ -23,7 +23,7 @@ namespace loaders {
 TEST_CASE("Bert", "all") {
   BertModel model(
       "models/bert.npz",
-      base::IsCompiledWithCUDA() ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU,
+      core::IsCompiledWithCUDA() ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU,
       12, 12);
   auto vec = model({{1, 2, 3, 4, 5}, {3, 4, 5}, {6, 7, 8, 9, 10, 11}},
                    PoolingType::kFirst);
