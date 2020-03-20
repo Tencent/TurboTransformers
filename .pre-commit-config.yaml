@@ -31,7 +31,7 @@ repos:
         - LICENSE          # defaults to: LICENSE.txt
         - --comment-style
         - //                              # defaults to: #
-        files: \.(py|txt|sh)$
+        files: \.(py|CMakeList.txt|sh)$
         args:
         - --license-filepath
         - LICENSE          # defaults to: LICENSE.txt
