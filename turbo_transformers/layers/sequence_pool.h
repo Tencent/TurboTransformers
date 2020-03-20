@@ -24,6 +24,7 @@ class SequencePool {
   explicit SequencePool(const std::string &pool_type) {
     pool_type_ = kernels::GetPoolType(pool_type);
   }
+  explicit SequencePool(kernels::PoolType pt) : pool_type_(pt) {}
 
   void operator()(const core::Tensor &input_tensor, core::Tensor *output) const;
 

@@ -5,11 +5,12 @@ with open("stub.c", "w") as f:
 
 
 setup(name='turbo-transformers',
-      version='@turbo_transformers_VERSION@',
+      version='@TURBO_TRANSFORMERS_VERSION@',
       description='turbo_transformers',
       packages=[
           'turbo_transformers',
-          'turbo_transformers.layers'
+          'turbo_transformers.layers',
+          'turbo_transformers.tools'
       ],
       package_data={
           '': [

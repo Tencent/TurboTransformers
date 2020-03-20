@@ -96,14 +96,15 @@ struct VisitDLTensor {
 };
 
 }  // namespace details
-extern DLManagedTensor *NewDLPackTensor(
-    std::initializer_list<int64_t> shape_list, DLDeviceType device,
-    int device_id, uint8_t data_type_code, size_t bits, size_t lanes);
+extern DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
+                                        DLDeviceType device, int device_id,
+                                        uint8_t data_type_code, size_t bits,
+                                        size_t lanes);
 
 template <typename T>
-inline DLManagedTensor *NewDLPackTensorT(
-    std::initializer_list<int64_t> shape_list, DLDeviceType device = kDLCPU,
-    int device_id = 0) {
+inline DLManagedTensor *NewDLPackTensorT(const std::vector<int64_t> &shape_list,
+                                         DLDeviceType device = kDLCPU,
+                                         int device_id = 0) {
   return NewDLPackTensor(shape_list, device, device_id,
                          details::DataTypeTrait<T>::DLPackTypeCode,
                          sizeof(T) * 8, 1);

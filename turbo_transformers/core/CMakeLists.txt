@@ -28,7 +28,7 @@ target_link_libraries(enforce_test Catch2 enforce)
 add_test(NAME enforce_test COMMAND enforce_test)
 
 add_library(memory memory.cpp)
-target_link_libraries(memory enforce)
+target_link_libraries(memory enforce dlpack)
 
 add_library(tensor tensor.cpp)
 target_link_libraries(tensor enforce dlpack blas memory absl::variant)
@@ -57,7 +57,7 @@ if (WITH_PROFILER)
 endif ()
 target_link_libraries(profiler ${PROFILER_DEPS})
 
-add_library(aligned_scratchpad aligned_scratchpad.cpp)
+add_library(aligned_scratchpad aligned_scratchpad.cpp ../loaders/modeling_bert.h)
 target_link_libraries(aligned_scratchpad PRIVATE memory enforce)
 add_executable(aligned_scratchpad_test aligned_scratchpad_test.cpp)
 target_link_libraries(aligned_scratchpad_test aligned_scratchpad Catch2)
@@ -68,3 +68,6 @@ target_link_libraries(eigen-tensor PUBLIC tensor Eigen3::Eigen)
 
 add_executable(fp16_test fp16_test.cpp)
 target_link_libraries(fp16_test Catch2)
+
+add_library(tensor_copy INTERFACE)
+target_link_libraries(tensor_copy INTERFACE tensor memory)

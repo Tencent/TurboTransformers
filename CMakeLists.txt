@@ -15,6 +15,7 @@ HunterGate(
 )
 
 set(turbo_transformers_VERSION 0.1.1)
+SET(TURBO_TRANSFORMERS_VERSION ${turbo_transformers_VERSION})
 
 option(WITH_PROFILER  "Compile with gperftools" OFF)
 option(WITH_GPU       "Build with GPU"          OFF)

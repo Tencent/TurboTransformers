@@ -12,26 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#define CATCH_CONFIG_MAIN
+#include "turbo_transformers/loaders/modeling_bert.h"
 
-#include <string>
-
-#include "turbo_transformers/core/tensor.h"
+#include "catch2/catch.hpp"
+#include "turbo_transformers/core/macros.h"
 namespace turbo_transformers {
-namespace layers {
-namespace kernels {
+namespace loaders {
 
-enum class PoolType { kMax = 0, kMean, kFirst, kLast };
+TEST_CASE("Bert", "all") {
+  BertModel model(
+      "models/bert.npz",
+      core::IsCompiledWithCUDA() ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU,
+      12, 12);
+  auto vec = model({{1, 2, 3, 4, 5}, {3, 4, 5}, {6, 7, 8, 9, 10, 11}},
+                   PoolingType::kFirst);
+  REQUIRE(vec.size() == 768 * 3);
+}
 
-PoolType GetPoolType(const std::string &pool_type);
-
-// The input's shape is (batch_size, seq_len, hidden_size)
-// and the output's shape is (batch_size, hidden_size)
-// The pool_type could be max, mean, first, last.
-template <typename T>
-void SeqPool(const core::Tensor &input, PoolType pool_type,
-             core::Tensor *output);
-
-}  // namespace kernels
-}  // namespace layers
+}  // namespace loaders
 }  // namespace turbo_transformers

@@ -13,25 +13,35 @@
 // limitations under the License.
 
 #pragma once
+#include <functional>
+#include <memory>
+#include <vector>
 
-#include <string>
-
-#include "turbo_transformers/core/tensor.h"
+#include "dlpack/dlpack.h"
 namespace turbo_transformers {
-namespace layers {
-namespace kernels {
+namespace loaders {
 
-enum class PoolType { kMax = 0, kMean, kFirst, kLast };
+enum class PoolingType {
+  kMax = 0,
+  kMean,
+  kFirst,
+  kLast,
 
-PoolType GetPoolType(const std::string &pool_type);
+};
 
-// The input's shape is (batch_size, seq_len, hidden_size)
-// and the output's shape is (batch_size, hidden_size)
-// The pool_type could be max, mean, first, last.
-template <typename T>
-void SeqPool(const core::Tensor &input, PoolType pool_type,
-             core::Tensor *output);
+class BertModel {
+ public:
+  BertModel(const std::string &filename, DLDeviceType device_type,
+            size_t n_layers, int64_t n_heads);
+  ~BertModel();
 
-}  // namespace kernels
-}  // namespace layers
+  std::vector<float> operator()(const std::vector<std::vector<int64_t>> &inputs,
+                                PoolingType pooling) const;
+
+ private:
+  struct Impl;
+  std::unique_ptr<Impl> m_;
+};
+
+}  // namespace loaders
 }  // namespace turbo_transformers
