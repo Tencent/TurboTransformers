@@ -16,3 +16,22 @@ repos:
     rev: 'v0.28.0'
     hooks:
         -   id: yapf
+-   repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: "v1.1.7"
+    hooks:
+    -   id: forbid-crlf
+    -   id: remove-crlf
+    -   id: forbid-tabs
+    -   id: remove-tabs
+        args: [ --whitespaces-count, "2" ]  # defaults to: 4
+    -   id: insert-license
+        files: \.(c|cc|cxx|cpp|frag|glsl|h|hpp|hxx|ih|ispc|ipp|java|js|m|mm|proto|vert|cu)$
+        args:
+        - --license-filepath
+        - LICENSE          # defaults to: LICENSE.txt
+        - --comment-style
+        - //                              # defaults to: #
+        files: \.(py|CMakeList.txt|sh)$
+        args:
+        - --license-filepath
+        - LICENSE          # defaults to: LICENSE.txt
