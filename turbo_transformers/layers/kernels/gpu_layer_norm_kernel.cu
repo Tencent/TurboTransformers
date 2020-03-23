@@ -40,12 +40,12 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
     local_out = out[offset];
   }
 
-  float sum1 = local_out, sum2 = local_out * local_out;
-  blockReduceSum_Elem2(&sum1, &sum2);
+  float sum_list[2] = {local_out, local_out * local_out};
+  blockReduce<ReduceType, ReduceType::kMax, 2>(sum_list);
 
   if (tid == 0) {
-    float mean = sum1 / n;
-    float mean_2 = sum2 / n;
+    float mean = sum_list[0] / n;
+    float mean_2 = sum_list[1] / n;
     s_mean = mean;
     s_variance = rsqrtf(mean_2 - mean * mean + 1e-6f);
   }
