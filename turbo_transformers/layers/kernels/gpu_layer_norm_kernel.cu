@@ -41,7 +41,7 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
   }
 
   float sum_list[2] = {local_out, local_out * local_out};
-  blockReduce<ReduceType, ReduceType::kMax, 2>(sum_list);
+  blockReduce<ReduceType, ReduceType::kSum, 2>(sum_list);
 
   if (tid == 0) {
     float mean = sum_list[0] / n;
