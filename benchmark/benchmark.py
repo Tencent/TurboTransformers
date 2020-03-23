@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 turbo-transformers Benchmark Utils
 
@@ -40,6 +39,7 @@ def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
     import contexttimer
     import turbo_transformers
     import cProfile
+    import benchmark_helper
     turbo_transformers.set_num_threads(num_threads)
 
     model_dir = os.path.join(os.path.dirname(__file__),
@@ -54,35 +54,8 @@ def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
                               size=(batch_size, seq_len),
                               dtype=torch.long)
     model = turbo_transformers.BertModel.from_torch(model)
-
-    with turbo_transformers.gperf_guard(
-            f"ft_{batch_size}_{seq_len}_{num_threads}.gperf"):
-        model(input_ids)
-
-    py_profile = cProfile.Profile()
-    py_profile.enable()
-    try:
-        model(input_ids)
-    finally:
-        py_profile.disable()
-        py_profile.dump_stats(
-            f"ft_{batch_size}_{seq_len}_{num_threads}.py_profile")
-
-    model(input_ids)
-    with contexttimer.Timer() as t:
-        for _ in range(n):
-            model(input_ids)
-
-    print(
-        json.dumps({
-            "QPS": n / t.elapsed,
-            "elapsed": t.elapsed,
-            "n": n,
-            "batch_size": batch_size,
-            "seq_len": seq_len,
-            "framework": "turbo_transformers",
-            "n_threads": num_threads
-        }))
+    benchmark_helper.run_model(lambda: model(input_ids), False, n, batch_size,
+                               seq_len, "turbo", num_threads)
 
 
 def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int,
@@ -90,6 +63,7 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int,
     import torch
     import transformers
     import contexttimer
+    import benchmark_helper
     torch.set_num_threads(num_threads)
     torch.set_grad_enabled(False)
 
@@ -103,21 +77,8 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int,
                               high=cfg.vocab_size - 1,
                               size=(batch_size, seq_len),
                               dtype=torch.long)
-    model(input_ids)
-    with contexttimer.Timer() as t:
-        for _ in range(n):
-            model(input_ids)
-
-    print(
-        json.dumps({
-            "QPS": n / t.elapsed,
-            "elapsed": t.elapsed,
-            "n": n,
-            "batch_size": batch_size,
-            "seq_len": seq_len,
-            "framework": "torch",
-            "n_threads": num_threads
-        }))
+    benchmark_helper.run_model(lambda: model(input_ids), False, n, batch_size,
+                               seq_len, "turbo", num_threads)
 
 
 def benchmark_torch_jit(model: str, seq_len: int, batch_size: int, n: int,

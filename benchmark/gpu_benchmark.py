@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 turbo-transformers Benchmark Utils
 
@@ -58,31 +57,7 @@ def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
                               device=test_device)
     model = turbo_transformers.BertModel.from_torch(model)
 
-    model(input_ids)
-
-    if torch.cuda.is_available():
-        start = torch.cuda.Event(enable_timing=True)
-        end = torch.cuda.Event(enable_timing=True)
-        start.record()
-
-    with contexttimer.Timer() as t:
-        for _ in range(n):
-            model(input_ids)
-
-    if torch.cuda.is_available():
-        end.record()
-        torch.cuda.synchronize()
-        event_elapsed = start.elapsed_time(end) / 1e3
-
-    print(
-        json.dumps({
-            "QPS": n / event_elapsed,
-            "elapsed": event_elapsed,
-            "n": n,
-            "batch_size": batch_size,
-            "seq_len": seq_len,
-            "framework": "turbo_transformers"
-        }))
+    run_model(lambda: model(input_ids), True, n, batch_size, seq_len, "turbo")
 
 
 def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
@@ -111,30 +86,7 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
                               size=(batch_size, seq_len),
                               dtype=torch.long,
                               device=test_device)
-    model(input_ids)
-
-    if torch.cuda.is_available():
-        start = torch.cuda.Event(enable_timing=True)
-        end = torch.cuda.Event(enable_timing=True)
-        start.record()
-    with contexttimer.Timer() as t:
-        for _ in range(n):
-            model(input_ids)
-
-    if torch.cuda.is_available():
-        end.record()
-        torch.cuda.synchronize()
-        event_elapsed = start.elapsed_time(end) / 1e3
-
-    print(
-        json.dumps({
-            "QPS": n / event_elapsed,
-            "elapsed": event_elapsed,
-            "n": n,
-            "batch_size": batch_size,
-            "seq_len": seq_len,
-            "framework": "torch"
-        }))
+    run_model(lambda: model(input_ids), True, n, batch_size, seq_len, "torch")
 
 
 def generate_onnx_model(model: str, filename: str, seq_len: int,
