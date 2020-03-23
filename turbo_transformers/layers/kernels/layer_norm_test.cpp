@@ -34,54 +34,6 @@ namespace layers {
 namespace kernels {
 
 #ifdef FT_WITH_CUDA
-TEST_CASE("layer_norm CPU and GPU correctness") {
-  int64_t hidden_size = 12 * 64;
-
-  std::vector<int64_t> batch_size_list{1, 20};
-  std::vector<int64_t> seq_length_list{10, 20, 32, 48, 64, 128};
-  for (auto batch_size : batch_size_list)
-    for (auto seq_length : seq_length_list) {
-      turbo_transformers::core::Tensor gpu_gamma(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLGPU, 0));
-
-      turbo_transformers::core::Tensor cpu_gamma(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLCPU, 0));
-
-      turbo_transformers::core::Tensor gpu_beta(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLGPU, 0));
-
-      turbo_transformers::core::Tensor cpu_beta(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLCPU, 0));
-
-      turbo_transformers::core::Tensor gpu_out(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLGPU, 0));
-
-      turbo_transformers::core::Tensor cpu_out(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLCPU, 0));
-
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(cpu_gamma,
-                                                                  gpu_gamma);
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(cpu_beta,
-                                                                  gpu_beta);
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(cpu_out,
-                                                                  gpu_out);
-
-      std::cout << batch_size << ", seq_length" << seq_length << std::endl;
-      {
-        LayerNorm<float>(cpu_gamma, cpu_beta, &cpu_out);
-        LayerNorm<float>(gpu_gamma, gpu_beta, &gpu_out);
-      }
-      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
-          cpu_out, gpu_out));
-    }  // for
-}
-
 TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
   int64_t hidden_size = 12 * 64;
 
@@ -138,6 +90,12 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
 
       std::cout << "batch_size: " << batch_size
                 << " seq_length: " << seq_length;
+      {
+        LayerNorm<float>(cpu_gamma, cpu_beta, &cpu_out);
+        LayerNorm<float>(gpu_gamma, gpu_beta, &gpu_out);
+      }
+      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
+          cpu_out, gpu_out));
       {
         AddBiasLayerNorm<float>(cpu_input, cpu_bias, cpu_gamma, cpu_beta,
                                 &cpu_out);

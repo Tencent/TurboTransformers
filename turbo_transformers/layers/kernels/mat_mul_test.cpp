@@ -81,13 +81,17 @@ TEST_CASE("blas-sscal") {
 using ::turbo_transformers::test::CheckResultOfCPUAndGPU;
 using ::turbo_transformers::test::FillDataForCPUGPUTensors;
 
-TEST_CASE("check matmul cpu and gpu correctness NoTrans Notrans") {
+void check_cpu_gpu_res(bool isTransB) {
   int64_t k, n;
   std::vector<int64_t> test_list{5, 10, 15, 20};
   for (auto m : test_list) {
     k = 12 * 64, n = 12 * 64 * 3;
     std::initializer_list<int64_t> input_shape{m, k};
-    std::initializer_list<int64_t> weight_shape{k, n};
+    std::vector<int64_t> weight_shape{k, n};
+    if (isTransB) {
+      weight_shape[0] = n;
+      weight_shape[1] = k;
+    }
     std::initializer_list<int64_t> output_shape{m, n};
     using turbo_transformers::core::NewDLPackTensorT;
 
@@ -110,139 +114,15 @@ TEST_CASE("check matmul cpu and gpu correctness NoTrans Notrans") {
         NewDLPackTensorT<float>(output_shape, kDLGPU, 0));
     FillDataForCPUGPUTensors<float>(cpu_output_tensor, gpu_output_tensor);
 
-    layers::kernels::MatMul(cpu_input_tensor, false, cpu_weight_tensor, false,
-                            1.0, &cpu_output_tensor, 0.0);
+    layers::kernels::MatMul(cpu_input_tensor, false, cpu_weight_tensor,
+                            isTransB, 1.0, &cpu_output_tensor, 0.0);
 
-    layers::kernels::MatMul(gpu_input_tensor, false, gpu_weight_tensor, false,
-                            1.0, &gpu_output_tensor, 0.0);
-
-    CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
-  }
-}
-
-TEST_CASE("check matmul cpu and gpu correctness Notrans Trans") {
-  int64_t k, n;
-  std::vector<int64_t> test_list{5, 10, 15, 20};
-  for (auto m : test_list) {
-    k = 12 * 64, n = 12 * 64 * 3;
-    std::initializer_list<int64_t> input_shape{m, k};
-    std::initializer_list<int64_t> weight_shape{n, k};
-    std::initializer_list<int64_t> output_shape{m, n};
-    using turbo_transformers::core::NewDLPackTensorT;
-
-    core::Tensor cpu_input_tensor(
-        NewDLPackTensorT<float>(input_shape, kDLCPU, 0));
-    core::Tensor gpu_input_tensor(
-        NewDLPackTensorT<float>(input_shape, kDLGPU, 0));
-
-    FillDataForCPUGPUTensors<float>(cpu_input_tensor, gpu_input_tensor);
-
-    core::Tensor cpu_weight_tensor(
-        NewDLPackTensorT<float>(weight_shape, kDLCPU, 0));
-    core::Tensor gpu_weight_tensor(
-        NewDLPackTensorT<float>(weight_shape, kDLGPU, 0));
-    FillDataForCPUGPUTensors<float>(cpu_weight_tensor, gpu_weight_tensor);
-
-    core::Tensor cpu_output_tensor(
-        NewDLPackTensorT<float>(output_shape, kDLCPU, 0));
-    core::Tensor gpu_output_tensor(
-        NewDLPackTensorT<float>(output_shape, kDLGPU, 0));
-    FillDataForCPUGPUTensors<float>(cpu_output_tensor, gpu_output_tensor);
-
-    layers::kernels::MatMul(cpu_input_tensor, false, cpu_weight_tensor, true,
-                            1.0, &cpu_output_tensor, 0.0);
-
-    layers::kernels::MatMul(gpu_input_tensor, false, gpu_weight_tensor, true,
-                            1.0, &gpu_output_tensor, 0.0);
+    layers::kernels::MatMul(gpu_input_tensor, false, gpu_weight_tensor,
+                            isTransB, 1.0, &gpu_output_tensor, 0.0);
 
     CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
   }
 }
-
-TEST_CASE("check batch_matmul cpu and gpu correctness Notrans NoTrans") {
-  std::vector<int64_t> seq_list{5, 10, 15, 20};
-  std::vector<int64_t> batch_list{1, 10, 20};
-
-  for (auto batch_size : batch_list) {
-    for (auto seq_len : seq_list) {
-      std::initializer_list<int64_t> input_shape{batch_size, 12, seq_len,
-                                                 seq_len};
-      std::initializer_list<int64_t> weight_shape{batch_size, 12, seq_len, 64};
-      std::initializer_list<int64_t> output_shape{batch_size, 12, seq_len, 64};
-      using turbo_transformers::core::NewDLPackTensorT;
-
-      core::Tensor cpu_input_tensor(
-          NewDLPackTensorT<float>(input_shape, kDLCPU, 0));
-      core::Tensor gpu_input_tensor(
-          NewDLPackTensorT<float>(input_shape, kDLGPU, 0));
-      FillDataForCPUGPUTensors<float>(cpu_input_tensor, gpu_input_tensor);
-
-      core::Tensor cpu_weight_tensor(
-          NewDLPackTensorT<float>(weight_shape, kDLCPU, 0));
-      core::Tensor gpu_weight_tensor(
-          NewDLPackTensorT<float>(weight_shape, kDLGPU, 0));
-      FillDataForCPUGPUTensors<float>(cpu_weight_tensor, gpu_weight_tensor);
-
-      core::Tensor cpu_output_tensor(
-          NewDLPackTensorT<float>(output_shape, kDLCPU, 0));
-      core::Tensor gpu_output_tensor(
-          NewDLPackTensorT<float>(output_shape, kDLGPU, 0));
-      FillDataForCPUGPUTensors<float>(cpu_output_tensor, gpu_output_tensor);
-
-      layers::kernels::BatchMatMul(cpu_input_tensor, false, cpu_weight_tensor,
-                                   false, 1.0, &cpu_output_tensor, 0.0);
-
-      layers::kernels::BatchMatMul(gpu_input_tensor, false, gpu_weight_tensor,
-                                   false, 1.0, &gpu_output_tensor, 0.0);
-
-      CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
-    }
-  }
-}
-
-TEST_CASE("check batch_matmul cpu and gpu correctness Notrans Trans") {
-  std::vector<int64_t> seq_list{5, 10, 15, 20};
-  std::vector<int64_t> batch_list{1, 10, 20};
-
-  for (auto batch_size : batch_list) {
-    for (auto seq_len : seq_list) {
-      std::initializer_list<int64_t> input_shape{batch_size, 12, seq_len,
-                                                 seq_len * 2};
-      std::initializer_list<int64_t> weight_shape{batch_size, 12, seq_len,
-                                                  seq_len * 2};
-      std::initializer_list<int64_t> output_shape{batch_size, 12, seq_len,
-                                                  seq_len};
-      using turbo_transformers::core::NewDLPackTensorT;
-
-      core::Tensor cpu_input_tensor(
-          NewDLPackTensorT<float>(input_shape, kDLCPU, 0));
-      core::Tensor gpu_input_tensor(
-          NewDLPackTensorT<float>(input_shape, kDLGPU, 0));
-      FillDataForCPUGPUTensors<float>(cpu_input_tensor, gpu_input_tensor);
-
-      core::Tensor cpu_weight_tensor(
-          NewDLPackTensorT<float>(weight_shape, kDLCPU, 0));
-      core::Tensor gpu_weight_tensor(
-          NewDLPackTensorT<float>(weight_shape, kDLGPU, 0));
-      FillDataForCPUGPUTensors<float>(cpu_weight_tensor, gpu_weight_tensor);
-
-      core::Tensor cpu_output_tensor(
-          NewDLPackTensorT<float>(output_shape, kDLCPU, 0));
-      core::Tensor gpu_output_tensor(
-          NewDLPackTensorT<float>(output_shape, kDLGPU, 0));
-      FillDataForCPUGPUTensors<float>(cpu_output_tensor, gpu_output_tensor);
-
-      layers::kernels::BatchMatMul(cpu_input_tensor, false, cpu_weight_tensor,
-                                   true, 1.0, &cpu_output_tensor, 0.0);
-
-      layers::kernels::BatchMatMul(gpu_input_tensor, false, gpu_weight_tensor,
-                                   true, 1.0, &gpu_output_tensor, 0.0);
-
-      CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
-    }
-  }
-}
-
 #endif
 
 }  // namespace core
