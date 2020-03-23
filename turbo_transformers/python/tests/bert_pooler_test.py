@@ -27,7 +27,7 @@ import test_helper
 
 
 def create_test(batch_size, seq_length):
-    class TestBertIntermediate(unittest.TestCase):
+    class TestBertPooler(unittest.TestCase):
         def init_data(self, use_cuda: bool) -> None:
             self.test_device = torch.device('cuda:0') if use_cuda else \
                 torch.device('cpu:0')
@@ -45,8 +45,8 @@ def create_test(batch_size, seq_length):
                 self.torch_pooler.to(self.test_device)
             self.torch_pooler.eval()
 
-            # self.turbo_intermediate = turbo_transformers.BertIntermediate.from_torch(
-            #     self.torch_intermediate)
+            self.turbo_pooler = turbo_transformers.BertPooler.from_torch(
+                self.torch_pooler)
 
         def check_torch_and_turbo(self, use_cuda):
             self.init_data(use_cuda=use_cuda)
@@ -58,24 +58,25 @@ def create_test(batch_size, seq_length):
                                       dtype=torch.float32,
                                       device=self.test_device)
 
-            # turbo_model = lambda: self.turbo_intermediate(input_tensor)
-            # turbo_result, turbo_qps, turbo_time = \
-            #     test_helper.run_model(turbo_model, use_cuda, num_iter)
-            #
-            # print(
-            #     f"BertIntermediate \"({batch_size},{seq_length:03})\" ",
-            #     f"{device} TurboTransform QPS,  {turbo_qps}, time, {turbo_time}"
-            # )
+            turbo_model = lambda: self.turbo_pooler(input_tensor)
+            turbo_result, turbo_qps, turbo_time = \
+                test_helper.run_model(turbo_model, use_cuda, num_iter)
+
+            print(
+                f"BertPooler \"({batch_size},{seq_length:03})\" ",
+                f"{device} TurboTransform QPS,  {turbo_qps}, time, {turbo_time}"
+            )
 
             torch_model = lambda: self.torch_pooler(input_tensor)
             torch_result, torch_qps, torch_time = \
                 test_helper.run_model(torch_model, use_cuda, num_iter)
-            print(torch_result)
             print(f"BertPooler \"({batch_size},{seq_length:03})\" ",
                   f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
             torch_result = torch_result.cpu().numpy()
-            # turbo_result = turbo_result.cpu().numpy()
+            turbo_result = turbo_result.cpu().numpy()
+            print(torch_result)
+            print(turbo_result)
 
             # self.assertTrue(
             #     numpy.allclose(torch_result,
@@ -94,11 +95,11 @@ def create_test(batch_size, seq_length):
                     turbo_transformers.config.is_with_cuda():
                 self.check_torch_and_turbo(use_cuda=True)
 
-    globals()[f"TestBertIntermediate_{batch_size}_{seq_length:03}"] = \
-        TestBertIntermediate
+    globals()[f"TestBertPooler_{batch_size}_{seq_length:03}"] = \
+        TestBertPooler
 
 
-with open("bert_intermediate_res.txt", "w") as fh:
+with open("bert_pooler_res.txt", "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 for batch_size in [1, 2]:
     for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:

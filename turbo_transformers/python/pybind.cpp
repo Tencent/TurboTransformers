@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <turbo_transformers/layers/bert_pooler.h>
 #include "absl/memory/memory.h"
 #include "loguru.hpp"
 #include "pybind11/pybind11.h"
@@ -155,7 +154,7 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
         return new layers::BertPooler(std::move(dense_weight),
                                             std::move(dense_bias));
       }))
-      .def("__call__", &layers::BertIntermediate::operator());
+      .def("__call__", &layers::BertPooler::operator());
 
 
   py::class_<layers::BertOutput>(m, "BertOutput")
