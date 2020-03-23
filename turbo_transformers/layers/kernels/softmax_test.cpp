@@ -158,8 +158,8 @@ TEST_CASE("softmax CPU and GPU correctness") {
 
       ApplyMaskAndSoftmax(&qk_buf_cpu, attr_mask_cpu, scaler);
 
-      REQUIRE(::turbo_transformers::test::CompareCPUGPU<float>(qk_buf_cpu,
-                                                               qk_buf_gpu));
+      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
+          qk_buf_cpu, qk_buf_gpu));
     }
 }
 

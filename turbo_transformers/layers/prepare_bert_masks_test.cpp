@@ -64,13 +64,13 @@ TEST_CASE("prepare_bert_masks CPU and GPU correctness") {
         func(gpu_inputs, &gpu_att_mask, &gpu_seq_type, &gpu_position_ids,
              &gpu_extended_attention_mask);
       }
-      REQUIRE(::turbo_transformers::test::CompareCPUGPU<int64_t>(cpu_att_mask,
-                                                                 gpu_att_mask));
-      REQUIRE(::turbo_transformers::test::CompareCPUGPU<float>(
+      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<int64_t>(
+          cpu_att_mask, gpu_att_mask));
+      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
           cpu_extended_attention_mask, gpu_extended_attention_mask));
-      REQUIRE(::turbo_transformers::test::CompareCPUGPU<int64_t>(cpu_seq_type,
-                                                                 gpu_seq_type));
-      REQUIRE(::turbo_transformers::test::CompareCPUGPU<int64_t>(
+      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<int64_t>(
+          cpu_seq_type, gpu_seq_type));
+      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<int64_t>(
           cpu_position_ids, gpu_position_ids));
     }  // for
 }

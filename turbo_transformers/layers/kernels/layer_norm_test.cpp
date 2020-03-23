@@ -77,8 +77,8 @@ TEST_CASE("layer_norm CPU and GPU correctness") {
         LayerNorm<float>(cpu_gamma, cpu_beta, &cpu_out);
         LayerNorm<float>(gpu_gamma, gpu_beta, &gpu_out);
       }
-      REQUIRE(
-          ::turbo_transformers::test::CompareCPUGPU<float>(cpu_out, gpu_out));
+      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
+          cpu_out, gpu_out));
     }  // for
 }
 
@@ -144,8 +144,8 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
         AddBiasLayerNorm<float>(gpu_input, gpu_bias, gpu_gamma, gpu_beta,
                                 &gpu_out);
       }
-      REQUIRE(
-          ::turbo_transformers::test::CompareCPUGPU<float>(cpu_out, gpu_out));
+      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
+          cpu_out, gpu_out));
 
       // WARM UP
       for (int i = 0; i < 5; ++i) {

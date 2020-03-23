@@ -54,18 +54,17 @@ static __global__ void add_bias_act(T* out, const T* bias, int batch_size,
                                     int feature_dim) {
   T val, reg_bias;
 
-  int row_id = blockIdx.x;
-  int ite = feature_dim / blockDim.x;
+  int row_id;
+  int elem_per_thread = (feature_dim + blockDim.x - 1) / blockDim.x;
   int tid = threadIdx.x;
 
-  for (int i = 0; i < ite; ++i) {
-    reg_bias = __ldg(&bias[i * blockDim.x + tid]);
-    row_id = blockIdx.x;
-
-    while (row_id < batch_size) {
-      val = add(out[tid + i * blockDim.x + row_id * feature_dim], reg_bias);
-      out[tid + i * blockDim.x + row_id * feature_dim] = gelu(val);
-      row_id += gridDim.x;
+  for (int i = 0; i < elem_per_thread; ++i) {
+    int offset = i * blockDim.x + tid;
+    if (offset < feature_dim) {
+      reg_bias = __ldg(&bias[offset]);
+      row_id = blockIdx.x;
+      val = add(out[offset + row_id * feature_dim], reg_bias);
+      out[offset + row_id * feature_dim] = gelu(val);
     }
   }
 }
@@ -74,14 +73,11 @@ template <typename T>
 void GPUAddBiasGeLUActKernel(const T* bias_data, T* out_data,
                              int64_t batch_size, int64_t feature_dim,
                              cudaStream_t stream) {
-  dim3 grid(batch_size / 4);
-  dim3 block(feature_dim / 4);
-  if (feature_dim / 4 > 1024) {
-    throw std::runtime_error(
-        "GPUAddBiasGeLUActKernel thread block size large than 1024");
-  }
+  dim3 grid(batch_size);
+  int block_size = min(1024, (int)(feature_dim/4));
+  dim3 block(block_size);
   add_bias_act<<<grid, block, 0, stream>>>(out_data, bias_data, batch_size,
-                                           feature_dim);
+    feature_dim);
 }
 
 template void GPUAddBiasGeLUActKernel<float>(const float* bias_data,
