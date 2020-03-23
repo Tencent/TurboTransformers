@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <vector>
 #include "turbo_transformers/core/memory.h"
 #include "turbo_transformers/core/tensor.h"
 

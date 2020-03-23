@@ -73,7 +73,7 @@ inline void _CreateBenchmark(DLDeviceType device_type, bool trans_weight,
     auto end = std::chrono::system_clock::system_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    auto elapse = double(duration.count()) *
+    auto elapse = static_cast<double>(duration.count()) *
                   std::chrono::microseconds::period::num /
                   std::chrono::microseconds::period::den / step;
     std::cout << m << "," << n << "," << k << ", mat_mul " << device_name

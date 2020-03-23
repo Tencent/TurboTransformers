@@ -14,11 +14,11 @@
 
 #define CATCH_CONFIG_MAIN
 #include "turbo_transformers/layers/kernels/transpose.h"
+#include "loguru.hpp"
 
 #include <chrono>
 
 #include "catch2/catch.hpp"
-#include "loguru.hpp"
 #include "turbo_transformers/core/aligned_scratchpad.h"
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/enforce.h"
