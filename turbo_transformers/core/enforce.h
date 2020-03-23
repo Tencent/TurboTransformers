@@ -107,14 +107,15 @@ DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
         absl::StrFormat(__VA_ARGS__));                        \
   } while (false)
 
-#define FT_ENFORCE(cond, ...)                                              \
-  do {                                                                     \
-    if (FT_UNLIKELY(!(cond))) {                                            \
-      throw ::turbo_transformers::core::details::EnforceNotMet(            \
-          absl::StrCat("enforce error", #cond,                             \
-                       absl::StrFormat(" at %s:%d\n", __FILE__, __LINE__), \
-                       absl::StrFormat(__VA_ARGS__)));                     \
-    }                                                                      \
+#define FT_ENFORCE(cond, ...)                                            \
+  do {                                                                   \
+    if (FT_UNLIKELY(!(cond))) {                                          \
+      std::string err_msg("enforce error");                              \
+      err_msg += #cond;                                                  \
+      err_msg += absl::StrFormat(" at %s:%d\n", __FILE__, __LINE__);     \
+      err_msg += absl::StrFormat(__VA_ARGS__);                           \
+      throw ::turbo_transformers::core::details::EnforceNotMet(err_msg); \
+    }                                                                    \
   } while (false)
 
 #define FT_ENFORCE_EQ(a, b, ...) FT_ENFORCE((a) == (b), __VA_ARGS__)
