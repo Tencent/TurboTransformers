@@ -183,8 +183,8 @@ void ActivationGPUBenchmark(int batch_size, int seq_length, int hidden_size,
     AddBiasGeLUAct<T>(bias, &out);
   }
   auto elapse = timer.ElapseSecond() / step;
-  std::cout << " AddBiasGeLUAct GPU cost:" << elapse << " ms, Bandwidth "
-            << m * n * sizeof(T) / 1e6 / elapse << " GB/s" << std::endl;
+  std::cout << " AddBiasGeLUAct GPU cost:" << elapse << " sec, Bandwidth "
+            << m * n * sizeof(T) / 1e9 / elapse << " GB/s" << std::endl;
 }
 
 TEST_CASE("activation GPU benchmark") {
