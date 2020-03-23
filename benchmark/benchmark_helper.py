@@ -32,17 +32,19 @@ def run_model(model,
 
     with contexttimer.Timer() as t:
         for it in range(num_iter):
-            result = model()
+            model()
 
-    if use_cuda:
+    if not use_cuda:
+        qps = num_iter / t.elapsed
+        time_consume = t.elapsed / num_iter
+
+    else:
         end.record()
         torch.cuda.synchronize()
         torch_elapsed = start.elapsed_time(end) / 1e3
         qps = num_iter / torch_elapsed
         time_consume = torch_elapsed / num_iter
-    else:
-        qps = num_iter / t.elapsed
-        time_consume = t.elapsed / num_iter
+
     print(
         json.dumps({
             "QPS": num_iter / qps,
