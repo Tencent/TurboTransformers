@@ -18,6 +18,7 @@
 #include <iostream>
 #include <memory>
 #include <numeric>
+#include <vector>
 
 #include "absl/types/variant.h"
 #include "turbo_transformers/core/blas.h"

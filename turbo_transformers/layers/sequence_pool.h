@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
 #include "turbo_transformers/core/tensor.h"
 #include "turbo_transformers/layers/kernels/seq_pool.h"
 

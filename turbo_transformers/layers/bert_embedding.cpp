@@ -41,8 +41,8 @@ static void LookupEmbedding(core::Tensor &out_tensor,
                 "The out_tensor and ids_tensor should have the same device "
                 "type and device id.");
 
-  const auto *embedding = embedding_table.data<float>();
-  const auto *ids = ids_tensor.data<int64_t>();
+  const float *embedding = embedding_table.data<float>();
+  const int64_t *ids = ids_tensor.data<int64_t>();
   auto *out = out_tensor.mutableData<float>();
   auto num_ids = ids_tensor.numel();
   auto hidden_size = embedding_table.shape(1);
