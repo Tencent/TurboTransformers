@@ -120,8 +120,8 @@ static __inline__ __device__ void blockReduceSum_Elem2(float* val1,
 
   __syncthreads();
 
-  *val1 = (threadIdx.x < (blockDim.x >> 5)) ? shared1[lane] : (float)(0.0f);
-  *val2 = (threadIdx.x < (blockDim.x >> 5)) ? shared2[lane] : (float)(0.0f);
+  *val1 = (threadIdx.x < (blockDim.x >> 5)) ? shared1[lane] : 0.0f;
+  *val2 = (threadIdx.x < (blockDim.x >> 5)) ? shared2[lane] : 0.0f;
   warpReduceSum_Elem2(val1, val2);
 }
 

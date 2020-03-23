@@ -22,5 +22,5 @@
 TEST_CASE("Half", "[Half]") {
   float input = 12.0f;
   turbo_transformers::core::Half half(input);
-  CATCH_ENFORCE(input == float(half), "failed");
+  CATCH_ENFORCE(input == static_cast<float>(half), "failed");
 }

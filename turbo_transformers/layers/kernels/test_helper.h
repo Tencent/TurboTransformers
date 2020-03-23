@@ -59,7 +59,7 @@ bool CompareCPUGPU(const Tensor& cpu_tensor, const Tensor& gpu_tensor) {
 
 class GPUTimer {
  public:
-  GPUTimer(cudaStream_t stream) : stream_(stream) {
+  explicit GPUTimer(cudaStream_t stream) : stream_(stream) {
     cudaEventCreate(&start_event_);
     cudaEventCreate(&stop_event_);
     cudaEventRecord(start_event_, stream_);
