@@ -36,7 +36,8 @@ void FillDataForCPUGPUTensors(Tensor& cpu_tensor, Tensor& gpu_tensor) {
 }
 
 template <typename T>
-bool CompareCPUGPU(const Tensor& cpu_tensor, const Tensor& gpu_tensor) {
+bool CheckResultOfCPUAndGPU(const Tensor& cpu_tensor,
+                            const Tensor& gpu_tensor) {
   const T* gpu_data = gpu_tensor.data<T>();
   const T* cpu_data = cpu_tensor.data<T>();
   auto size = cpu_tensor.numel();

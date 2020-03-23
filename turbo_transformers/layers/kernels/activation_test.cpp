@@ -130,36 +130,38 @@ void CreateTensorAndFillRandom(int batch_size, int seq_length, int hidden_size,
 }
 
 TEST_CASE("activation CPU and GPU correctness") {
-  for (auto hidden_size : {500, 12*64, 1000, 2000, 4096*2+1}) {
+  for (auto hidden_size : {500, 12 * 64, 1000, 2000, 4096 * 2 + 1}) {
     for (auto batch_size : {1, 20, 24}) {
       for (auto seq_length : {8, 16, 32, 48, 64, 128}) {
-          std::cout << "batch_size: " << batch_size
-                      << " seq_length: " << seq_length << " hidden_size: " << hidden_size;
-          CreateTensorAndFillRandom<float>(
-              batch_size, seq_length, hidden_size,
-              [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
-                core::Tensor& gpu_bias, core::Tensor& gpu_out) {
-                AddBiasGeLUAct<float>(cpu_bias, &cpu_out);
-                AddBiasGeLUAct<float>(gpu_bias, &gpu_out);
-                REQUIRE(::turbo_transformers::test::CompareCPUGPU<float>(cpu_out,
-                                                                        gpu_out));
-              });
+        std::cout << "batch_size: " << batch_size
+                  << " seq_length: " << seq_length
+                  << " hidden_size: " << hidden_size;
+        CreateTensorAndFillRandom<float>(
+            batch_size, seq_length, hidden_size,
+            [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
+               core::Tensor& gpu_bias, core::Tensor& gpu_out) {
+              AddBiasGeLUAct<float>(cpu_bias, &cpu_out);
+              AddBiasGeLUAct<float>(gpu_bias, &gpu_out);
+              REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
+                  cpu_out, gpu_out));
+            });
 
-          CreateTensorAndFillRandom<core::Half>(
-              batch_size, seq_length, hidden_size,
-              [&](core::Tensor& cpu_bias, core::Tensor& cpu_out,
-                  core::Tensor& gpu_bias, core::Tensor& gpu_out) {
-                AddBiasGeLUActNaive<core::Half>(
-                    cpu_bias.data<core::Half>(), cpu_out.mutableData<core::Half>(),
-                    batch_size * seq_length, hidden_size);
-                AddBiasGeLUAct<core::Half>(gpu_bias, &gpu_out);
-                REQUIRE(::turbo_transformers::test::CompareCPUGPU<core::Half>(
-                    cpu_out, gpu_out));
-              });
-          std::cout << " PASSED" << std::endl;
-        }  // for
-      }
+        CreateTensorAndFillRandom<core::Half>(
+            batch_size, seq_length, hidden_size,
+            [&](core::Tensor& cpu_bias, core::Tensor& cpu_out,
+                core::Tensor& gpu_bias, core::Tensor& gpu_out) {
+              AddBiasGeLUActNaive<core::Half>(cpu_bias.data<core::Half>(),
+                                              cpu_out.mutableData<core::Half>(),
+                                              batch_size * seq_length,
+                                              hidden_size);
+              AddBiasGeLUAct<core::Half>(gpu_bias, &gpu_out);
+              REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<
+                      core::Half>(cpu_out, gpu_out));
+            });
+        std::cout << " PASSED" << std::endl;
+      }  // for
     }
+  }
 }
 
 template <typename T>
@@ -182,7 +184,7 @@ void ActivationGPUBenchmark(int batch_size, int seq_length, int hidden_size,
   }
   auto elapse = timer.ElapseSecond() / step;
   std::cout << " AddBiasGeLUAct GPU cost:" << elapse << " ms, Bandwidth "
-              << m * n * 0.1 / 1e6 / elapse << " GB/s" << std::endl;
+            << m * n * sizeof(T) / 1e6 / elapse << " GB/s" << std::endl;
 }
 
 TEST_CASE("activation GPU benchmark") {

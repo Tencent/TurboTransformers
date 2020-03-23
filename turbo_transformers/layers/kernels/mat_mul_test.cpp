@@ -78,7 +78,7 @@ TEST_CASE("blas-sscal") {
 }
 
 #ifdef FT_WITH_CUDA
-using ::turbo_transformers::test::CompareCPUGPU;
+using ::turbo_transformers::test::CheckResultOfCPUAndGPU;
 using ::turbo_transformers::test::FillDataForCPUGPUTensors;
 
 TEST_CASE("check matmul cpu and gpu correctness NoTrans Notrans") {
@@ -116,7 +116,7 @@ TEST_CASE("check matmul cpu and gpu correctness NoTrans Notrans") {
     layers::kernels::MatMul(gpu_input_tensor, false, gpu_weight_tensor, false,
                             1.0, &gpu_output_tensor, 0.0);
 
-    CompareCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+    CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
   }
 }
 
@@ -155,7 +155,7 @@ TEST_CASE("check matmul cpu and gpu correctness Notrans Trans") {
     layers::kernels::MatMul(gpu_input_tensor, false, gpu_weight_tensor, true,
                             1.0, &gpu_output_tensor, 0.0);
 
-    CompareCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+    CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
   }
 }
 
@@ -195,7 +195,7 @@ TEST_CASE("check batch_matmul cpu and gpu correctness Notrans NoTrans") {
       layers::kernels::BatchMatMul(gpu_input_tensor, false, gpu_weight_tensor,
                                    false, 1.0, &gpu_output_tensor, 0.0);
 
-      CompareCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+      CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
     }
   }
 }
@@ -238,7 +238,7 @@ TEST_CASE("check batch_matmul cpu and gpu correctness Notrans Trans") {
       layers::kernels::BatchMatMul(gpu_input_tensor, false, gpu_weight_tensor,
                                    true, 1.0, &gpu_output_tensor, 0.0);
 
-      CompareCPUGPU<float>(cpu_output_tensor, gpu_output_tensor);
+      CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
     }
   }
 }

@@ -72,7 +72,7 @@ TEST_CASE("split_add_transpose CPU and GPU correctness") {
                                     bias_tensor_gpu);
       SplitAddBiasTransposeForScore(&output_tensor_cpu, input_tensor_cpu,
                                     bias_tensor_cpu);
-      REQUIRE(::turbo_transformers::test::CompareCPUGPU<float>(
+      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
           output_tensor_cpu, output_tensor_gpu));
     }
 }
