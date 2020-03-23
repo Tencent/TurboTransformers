@@ -37,6 +37,7 @@ def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
     import transformers
     import contexttimer
     import turbo_transformers
+    import benchmark_helper
 
     if not torch.cuda.is_available():
         print("cuda is not available for torch")
@@ -57,7 +58,8 @@ def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
                               device=test_device)
     model = turbo_transformers.BertModel.from_torch(model)
 
-    run_model(lambda: model(input_ids), True, n, batch_size, seq_len, "turbo")
+    benchmark_helper.run_model(lambda: model(input_ids), True, n, batch_size,
+                               seq_len, "turbo")
 
 
 def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
@@ -86,80 +88,8 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
                               size=(batch_size, seq_len),
                               dtype=torch.long,
                               device=test_device)
-    run_model(lambda: model(input_ids), True, n, batch_size, seq_len, "torch")
-
-
-def generate_onnx_model(model: str, filename: str, seq_len: int,
-                        batch_size: int):
-    import transformers
-    import torch
-
-    test_device = torch.device('cuda:0')
-
-    torch.set_grad_enabled(False)
-    model_dir = os.path.join(os.path.dirname(__file__),
-                             '../turbo_transformers/python/tests/test-model')
-    model = transformers.BertModel.from_pretrained(
-        model_dir)  # type: transformers.BertModel
-
-    model.eval()
-    model.to(test_device)
-
-    cfg = model.config  # type: transformers.BertConfig
-    input_ids = torch.randint(low=0,
-                              high=cfg.vocab_size - 1,
-                              size=(batch_size, seq_len),
-                              dtype=torch.long,
-                              device=test_device)
-    with open(filename, 'wb') as outf:
-        torch.onnx.export(model=model, args=(input_ids, ), f=outf)
-        outf.flush()
-    return cfg.vocab_size
-
-
-def onnxruntime_benchmark_creator(backend: str):
-    def _impl_(model: str, seq_len: int, batch_size: int, n):
-        import multiprocessing
-        temp_fn = "/tmp/temp_onnx.model"
-        p = multiprocessing.Pool(1)
-        vocab_size = p.apply(generate_onnx_model,
-                             args=(model, temp_fn, seq_len, batch_size))
-        p.close()
-        import contexttimer
-        import os
-        import onnx
-        import onnxruntime
-        import onnxruntime.backend
-        import time
-        import numpy
-        import torch
-        model = onnx.load_model(f=temp_fn)
-        test_device = torch.device('cuda:0')
-        model = onnxruntime.backend.prepare(
-            model=model,
-            device=backend,
-            graph_optimization_level=onnxruntime.GraphOptimizationLevel.
-            ORT_ENABLE_ALL)
-        input_ids = numpy.random.randint(low=0,
-                                         high=vocab_size - 1,
-                                         size=(batch_size, seq_len),
-                                         dtype=numpy.int64)
-        model.run(inputs=[input_ids])
-        with contexttimer.Timer() as t:
-            for _ in range(n):
-                model.run(inputs=[input_ids])
-
-        print(
-            json.dumps({
-                "QPS": n / t.elapsed,
-                "elapsed": t.elapsed,
-                "n": n,
-                "batch_size": batch_size,
-                "seq_len": seq_len,
-                "framework": f"onnx_rt_{backend}",
-            }))
-
-    return _impl_
+    benchmark_helper.run_model(lambda: model(input_ids), True, n, batch_size,
+                               seq_len, "torch")
 
 
 def main():
@@ -177,7 +107,7 @@ def main():
     elif args['--framework'] == 'torch':
         benchmark_torch(**kwargs)
     elif args['--framework'] == 'onnxruntime':
-        onnxruntime_benchmark_creator('GPU')(**kwargs)
+        benchmark_helper.onnxruntime_benchmark_creator('GPU')(**kwargs)
     else:
         raise RuntimeError(f"Not supportted framework {args['--framework']}")
 
