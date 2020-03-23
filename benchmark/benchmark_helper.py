@@ -44,7 +44,6 @@ def run_model(model,
         torch_elapsed = start.elapsed_time(end) / 1e3
         qps = num_iter / torch_elapsed
         time_consume = torch_elapsed / num_iter
-
     print(
         json.dumps({
             "QPS": num_iter / qps,
