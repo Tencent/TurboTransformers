@@ -71,7 +71,7 @@ class GPUTimer {
     cudaEventSynchronize(stop_event_);
     float elapse;
     cudaEventElapsedTime(&elapse, start_event_, stop_event_);
-    return elapse;
+    return elapse / 1000;
   }
 
  private:
@@ -88,10 +88,8 @@ class Timer {
 
   double ElapseSecond() {
     auto end = std::chrono::system_clock::now();
-    ;
     auto duration = end - start_;
-    return double(duration.count()) * std::chrono::microseconds::period::num /
-           std::chrono::microseconds::period::den;
+    return static_cast<double>(duration.count());
   }
 
  private:
