@@ -35,7 +35,7 @@ import enum
 
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
-    'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType'
+    'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType', 'BertPooler'
 ]
 
 
@@ -106,6 +106,23 @@ class BertIntermediate(cxx.BertIntermediate):
         intermediate_params = _to_param_dict(intermediate)
         return BertIntermediate(intermediate_params['dense.weight'],
                                 intermediate_params['dense.bias'])
+
+
+class BertPooler(cxx.BertPooler):
+    def __call__(self,
+                 input_tensor: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None):
+        input_tensor = _try_convert(input_tensor)
+        output = _create_empty_if_none(output)
+        super(BertPooler, self).__call__(input_tensor, output)
+        return convert_returns_as_type(output, return_type)
+
+    @staticmethod
+    def from_torch(pooler: TorchBertPooler):
+        pooler_params = _to_param_dict(pooler)
+        return BertPooler(pooler_params['dense.weight'],
+                          pooler_params['dense.bias'])
 
 
 class BertOutput(cxx.BertOutput):
@@ -268,22 +285,6 @@ def pooling_layers(input_ft_tensor, pool_type):
         return np.max(input_torch, axis=1)
     else:
         raise "{} is not support.".format(pool_type)
-
-class BertPooler(cxx.BertPooler):
-    def __call__(self,
-                 input_tensor: AnyTensor,
-                 return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
-        input_tensor = _try_convert(input_tensor)
-        output = _create_empty_if_none(output)
-        super(BertPooler, self).__call__(input_tensor, output)
-        return convert_returns_as_type(output, return_type)
-
-    @staticmethod
-    def from_torch(pooler: TorchBertPooler):
-        pooler_params = _to_param_dict(pooler)
-        return BertIntermediate(pooler_params['dense.weight'],
-                                pooler_params['dense.bias'])
 
 
 class BertModel:

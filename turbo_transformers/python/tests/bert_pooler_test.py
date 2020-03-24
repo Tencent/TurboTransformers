@@ -75,7 +75,9 @@ def create_test(batch_size, seq_length):
 
             torch_result = torch_result.cpu().numpy()
             turbo_result = turbo_result.cpu().numpy()
+            print("torch_result")
             print(torch_result)
+            print("turbo_result")
             print(turbo_result)
 
             # self.assertTrue(
@@ -84,7 +86,7 @@ def create_test(batch_size, seq_length):
             #                    rtol=1e-4,
             #                    atol=1e-3))
 
-            with open("bert_intermediate_res.txt", "a") as fh:
+            with open("bert_pooler_res.txt", "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {torch_qps}, {torch_qps}\n"
                 )

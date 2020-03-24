@@ -31,7 +31,7 @@ namespace layers {
 void BertPooler::operator()(const core::Tensor& input_tensor,
                                   core::Tensor* output_tensor) const {
   turbo_transformers::core::Tensor temp(
-      turbo_transformers::core::NewDLPackTensorT<float>({1, input_tensor.shape(1)}));
+      turbo_transformers::core::NewDLPackTensorT<float>({1, input_tensor.shape(1), input_tensor.shape (2)}));
   auto* data = temp.mutableData<float>();
   auto* input = input_tensor.data<float>();
   for (int i = 0; i < temp.cols (); ++i)

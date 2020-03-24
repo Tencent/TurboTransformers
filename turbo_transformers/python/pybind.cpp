@@ -152,7 +152,7 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       .def(py::init([](core::Tensor &dense_weight,
                        core::Tensor &dense_bias) -> layers::BertPooler * {
         return new layers::BertPooler(std::move(dense_weight),
-                                            std::move(dense_bias));
+                                      std::move(dense_bias));
       }))
       .def("__call__", &layers::BertPooler::operator());
 
