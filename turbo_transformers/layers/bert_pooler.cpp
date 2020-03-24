@@ -30,19 +30,19 @@ namespace layers {
 
 void BertPooler::operator()(const core::Tensor& input_tensor,
                                   core::Tensor* output_tensor) const {
-  turbo_transformers::core::Tensor temp(
-      turbo_transformers::core::NewDLPackTensorT<float>({1, input_tensor.shape(1), input_tensor.shape (2)}));
-  auto* data = temp.mutableData<float>();
-  auto* input = input_tensor.data<float>();
-  for (int i = 0; i < temp.cols (); ++i)
-    data[i] = input[i];
+//  turbo_transformers::core::Tensor temp(
+//      turbo_transformers::core::NewDLPackTensorT<float>({input_tensor.shape(0), 1, input_tensor.shape(3)}));
+//  auto* data = temp.mutableData<float>();
+//  auto* input = input_tensor.data<float>();
+//  for (int i = 0; i < temp.cols (); ++i)
+//    data[i] = input[i];
   output_tensor->Reshape<float>(
-      {1, input_tensor.shape(1), dense_weight_.shape(0)},
+      {input_tensor.shape(0), input_tensor.shape(1) , dense_weight_.shape(0)},
       input_tensor.device_type(), input_tensor.device_id());
 
-  kernels::MatMul(temp, false, dense_weight_, true, 1.0, output_tensor,
+  kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
-  kernels::AddBiasGeLUAct<float>(dense_bias_, output_tensor);
+  kernels::AddBiasTanhAct<float>(dense_bias_, output_tensor);
 }
 
 void BertPooler::EnforceShapeAndType() const {
