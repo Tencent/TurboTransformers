@@ -36,17 +36,16 @@ def run_model(model,
 
     if not use_cuda:
         qps = num_iter / t.elapsed
-        time_consume = t.elapsed / num_iter
-
+        time_consume = t.elapsed
     else:
         end.record()
         torch.cuda.synchronize()
         torch_elapsed = start.elapsed_time(end) / 1e3
         qps = num_iter / torch_elapsed
-        time_consume = torch_elapsed / num_iter
+        time_consume = torch_elapsed
     print(
         json.dumps({
-            "QPS": num_iter / qps,
+            "QPS": qps,
             "elapsed": time_consume,
             "n": num_iter,
             "batch_size": batch_size,
@@ -104,6 +103,7 @@ def onnxruntime_benchmark_creator(backend: str):
         import onnxruntime.backend
         import onnx
         import numpy
+        import json
         if not onnxruntime.backend.supports_device(backend):
             raise RuntimeError(
                 f"onnxruntime does not support {backend}, recompile it!")
