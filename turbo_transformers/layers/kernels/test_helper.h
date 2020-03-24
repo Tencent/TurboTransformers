@@ -88,8 +88,10 @@ class Timer {
 
   double ElapseSecond() {
     auto end = std::chrono::system_clock::now();
-    auto duration = end - start_;
-    return static_cast<double>(duration.count());
+    auto duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start_);
+    return double(duration.count()) * std::chrono::microseconds::period::num /
+           std::chrono::microseconds::period::den;
   }
 
  private:
