@@ -29,12 +29,6 @@ void AddBiasAct<ActivationType, ActivationType::GeLu, float>(const core::Tensor&
 template <>
 void AddBiasAct<ActivationType, ActivationType::Tanh, float>(const core::Tensor& bias, core::Tensor* out);
 
-template <typename T>
-void AddBiasGeLUAct(const core::Tensor& bias, core::Tensor* out);
-
-template <typename T>
-void AddBiasTanhAct(const core::Tensor& bias, core::Tensor* out);
-
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers
