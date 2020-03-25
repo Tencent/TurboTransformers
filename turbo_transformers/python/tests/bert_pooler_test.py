@@ -29,10 +29,11 @@ import test_helper
 def create_test(batch_size, seq_length):
     class TestBertPooler(unittest.TestCase):
         def init_data(self, use_cuda: bool) -> None:
-            self.test_device = torch.device('cuda:0') if use_cuda else \
-                torch.device('cpu:0')
-            if not use_cuda:
-                torch.set_num_threads(1)
+            # we do not support GPU pooler for now
+            if use_cuda:
+                return
+            self.test_device = torch.device('cpu:0')
+            torch.set_num_threads(1)
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained(
@@ -49,8 +50,10 @@ def create_test(batch_size, seq_length):
                 self.torch_pooler)
 
         def check_torch_and_turbo(self, use_cuda):
+            if use_cuda:
+                return
             self.init_data(use_cuda=use_cuda)
-            device = "GPU" if use_cuda else "CPU"
+            device = "CPU"
             num_iter = 2
             hidden_size = self.cfg.hidden_size
             input_tensor = torch.rand(size=(batch_size, seq_length,
@@ -88,9 +91,6 @@ def create_test(batch_size, seq_length):
 
         def test_pooler(self):
             self.check_torch_and_turbo(use_cuda=False)
-            if torch.cuda.is_available() and \
-                    turbo_transformers.config.is_with_cuda():
-                self.check_torch_and_turbo(use_cuda=True)
 
     globals()[f"TestBertPooler_{batch_size}_{seq_length:03}"] = \
         TestBertPooler

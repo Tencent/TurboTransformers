@@ -18,16 +18,18 @@
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
-enum ActivationType { GeLu = 0, Tanh };
+enum ActivationType { Gelu = 0, Tanh };
 
 template <typename ActivationType, ActivationType TypeVal, typename T>
 void AddBiasAct(const core::Tensor& bias, core::Tensor* out);
 
 template <>
-void AddBiasAct<ActivationType, ActivationType::GeLu, float>(const core::Tensor& bias, core::Tensor* out);
+void AddBiasAct<ActivationType, ActivationType::Gelu, float>(
+    const core::Tensor& bias, core::Tensor* out);
 
 template <>
-void AddBiasAct<ActivationType, ActivationType::Tanh, float>(const core::Tensor& bias, core::Tensor* out);
+void AddBiasAct<ActivationType, ActivationType::Tanh, float>(
+    const core::Tensor& bias, core::Tensor* out);
 
 }  // namespace kernels
 }  // namespace layers
