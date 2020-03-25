@@ -30,12 +30,13 @@ namespace kernels {
 
 namespace {
 
-template <typename T, typename RT, RT t>
+template <typename T, PoolType t>
 inline void ProcessEle(const T* in_ptr, T* out_ptr, int64_t seq_len,
                        int64_t hidden_size);
 template <>
-inline void ProcessEle<float, ReduceType, ReduceType::kAvg>(
-    const float* in_ptr, float* out_ptr, int64_t seq_len, int64_t hidden_size) {
+inline void ProcessEle<float, PoolType::kMean>(const float* in_ptr,
+                                               float* out_ptr, int64_t seq_len,
+                                               int64_t hidden_size) {
   if (hidden_size < 1)
     FT_THROW(
         "Avg Pooling on tensor whose leading dimension should be larger than "
@@ -50,8 +51,9 @@ inline void ProcessEle<float, ReduceType, ReduceType::kAvg>(
 };
 
 template <>
-inline void ProcessEle<float, ReduceType, ReduceType::kMax>(
-    const float* in_ptr, float* out_ptr, int64_t seq_len, int64_t hidden_size) {
+inline void ProcessEle<float, PoolType::kMax>(const float* in_ptr,
+                                              float* out_ptr, int64_t seq_len,
+                                              int64_t hidden_size) {
   if (hidden_size < 1)
     FT_THROW(
         "Max Pooling on tensor whose leading dimension should be larger than "
@@ -64,7 +66,7 @@ inline void ProcessEle<float, ReduceType, ReduceType::kMax>(
   }
 };
 
-template <typename T, typename RT, RT t>
+template <typename T, PoolType t>
 void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   auto batch_size = input.shape(0);
   auto seq_len = input.shape(1);
@@ -76,13 +78,13 @@ void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   if (input.device_type() == kDLCPU) {
 #pragma omp parallel for
     for (int64_t i = 0; i < batch_size; ++i) {
-      ProcessEle<T, RT, t>(in_ptr + i * hidden_size * seq_len,
-                           out_ptr + i * hidden_size, seq_len, hidden_size);
+      ProcessEle<T, t>(in_ptr + i * hidden_size * seq_len,
+                       out_ptr + i * hidden_size, seq_len, hidden_size);
     }
   } else {
 #ifdef FT_WITH_CUDA
-    gpu_reduce_axis_one<T, RT, t>(in_ptr, out_ptr, batch_size, seq_len,
-                                  hidden_size);
+    gpu_reduce_axis_one<T, t>(in_ptr, out_ptr, batch_size, seq_len,
+                              hidden_size);
 #endif
   }
 }
@@ -138,10 +140,10 @@ void SeqPool(const core::Tensor& input, PoolType pool_type,
 
   switch (pool_type) {
     case PoolType::kMax:
-      SeqPoolWithProcess<T, ReduceType, ReduceType::kMax>(input, output);
+      SeqPoolWithProcess<T, PoolType::kMax>(input, output);
       break;
     case PoolType::kMean:
-      SeqPoolWithProcess<T, ReduceType, ReduceType::kAvg>(input, output);
+      SeqPoolWithProcess<T, PoolType::kMean>(input, output);
       break;
     case PoolType::kFirst:
       SeqPoolWithIdx<T>(input, 0, output);

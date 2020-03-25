@@ -16,14 +16,12 @@
 
 #include <string>
 
+#include "turbo_transformers/core/pool_type.h"
 #include "turbo_transformers/core/tensor.h"
+
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
-
-enum class PoolType { kMax = 0, kMean, kFirst, kLast };
-
-PoolType GetPoolType(const std::string &pool_type);
 
 // The input's shape is (batch_size, seq_len, hidden_size)
 // and the output's shape is (batch_size, hidden_size)
@@ -31,6 +29,8 @@ PoolType GetPoolType(const std::string &pool_type);
 template <typename T>
 void SeqPool(const core::Tensor &input, PoolType pool_type,
              core::Tensor *output);
+
+PoolType GetPoolType(const std::string &pool_type);
 
 }  // namespace kernels
 }  // namespace layers
