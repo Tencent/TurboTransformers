@@ -42,7 +42,7 @@ void BertPooler::operator()(const core::Tensor& input_tensor,
 
   kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
-  kernels::AddBiasTanhAct<float>(dense_bias_, output_tensor);
+  kernels::AddBiasAct<kernels::ActivationType, kernels::ActivationType::Tanh, float>(dense_bias_, output_tensor);
 }
 
 void BertPooler::EnforceShapeAndType() const {

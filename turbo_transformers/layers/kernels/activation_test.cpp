@@ -44,6 +44,18 @@ void AddBiasGeLUActNaive(const T* bias, T* out, int64_t m, int64_t n) {
   }
 }
 
+template <typename T>
+void AddBiasTanhActNaive(const T* bias, T* out, int64_t m, int64_t n) {
+  for (int64_t i = 0; i < m; ++i) {
+      int64_t k = 0;
+      for (int64_t j = n * i; j < n * (i + 1); ++j) {
+          auto before_act =
+              static_cast<float>(out[j]) + static_cast<float>(bias[k++]);
+          out[j] = static_cast<T>(std::tanh(out[j]));
+        }
+    }
+}
+
 template <typename Func>
 void TestFunction(Func&& func, int step, const std::string& infor,
                   double g_bytes) {
@@ -91,14 +103,38 @@ TEST_CASE("activation CPU benchmark") {
           },
           step, "AddBiasGeLUActNaive", m * n * sizeof(float) / 1e9);
 
-      TestFunction([&]() { AddBiasGeLUAct<float>(bias, &out); }, step,
+      TestFunction([&]() { AddBiasAct<ActivationType, ActivationType::GeLu, float>(bias, &out); }, step,
                    "AddBiasGeLUAct OMP", m * n * sizeof(float) / 1e9);
 
       auto* out_parallel_ptr = out_parallel.mutableData<float>();
-      for (int64_t i = 0; i < m * n; ++i) {
-        FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_parallel_ptr[i]), 1e-6,
+      auto* out_ptr = out.mutableData<float>();
+        for (int64_t i = 0; i < m * n; ++i) {
+        FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_ptr[i]), 1e-2,
                       "Wrong @ %d", i);
       }
+
+      bias = tensor_create_and_fill_constant({n}, 0.01f);
+      out = tensor_create_and_fill_constant({m, n}, 0.02f);
+      out_parallel = tensor_create_and_fill_constant({m, n}, 0.02f);
+
+      TestFunction(
+          [&]() {
+            AddBiasTanhActNaive<float>(bias.data<float>(),
+                                       out_parallel.mutableData<float>(), m, n);
+          },
+          step, "AddBiasTanhActNaive", m * n * sizeof(float) / 1e9);
+
+      TestFunction([&]() { AddBiasAct<ActivationType, ActivationType::GeLu, float>(bias, &out); }, step,
+                   "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
+
+      out_parallel_ptr = out_parallel.mutableData<float>();
+      out_ptr = out.mutableData<float>();
+      for (int64_t i = 0; i < m * n; ++i) {
+          FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_ptr[i]), 1e-2,
+                        "Wrong @ %d", i);
+        }
+
+
     }
 }
 
