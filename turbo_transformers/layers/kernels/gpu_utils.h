@@ -19,6 +19,12 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
+enum ReduceType { kMax = 0, kAvg };
+
+template <typename T, typename Type, Type t>
+void gpu_reduce_axis_one(const T* input, T* output, int batch_size, int seq_len,
+                         int hidden_size);
+
 template <typename T>
 void gpu_copy(const T* src, T* dst, int64_t size);
 

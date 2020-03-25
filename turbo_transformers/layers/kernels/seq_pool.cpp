@@ -29,42 +29,42 @@ namespace layers {
 namespace kernels {
 
 namespace {
-template <typename T>
-struct AvgProcess {
-  static void ProcessEle(const T* in_ptr, T* out_ptr, int64_t seq_len,
-                         int64_t hidden_size) {
-    if (hidden_size < 1)
-      FT_THROW(
-          "Avg Pooling on tensor whose leading dimension should be larger than "
-          "0");
-    for (int64_t i = 0; i < hidden_size; ++i) {
-      out_ptr[i] = 0.;
-      for (int64_t j = i; j < seq_len * hidden_size; j += hidden_size) {
-        out_ptr[i] += in_ptr[j];
-      }
-      out_ptr[i] /= seq_len;
+
+template <typename T, typename RT, RT t>
+inline void ProcessEle(const T* in_ptr, T* out_ptr, int64_t seq_len,
+                       int64_t hidden_size);
+template <>
+inline void ProcessEle<float, ReduceType, ReduceType::kAvg>(
+    const float* in_ptr, float* out_ptr, int64_t seq_len, int64_t hidden_size) {
+  if (hidden_size < 1)
+    FT_THROW(
+        "Avg Pooling on tensor whose leading dimension should be larger than "
+        "0");
+  for (int64_t i = 0; i < hidden_size; ++i) {
+    out_ptr[i] = 0.;
+    for (int64_t j = i; j < seq_len * hidden_size; j += hidden_size) {
+      out_ptr[i] += in_ptr[j];
+    }
+    out_ptr[i] /= seq_len;
+  }
+};
+
+template <>
+inline void ProcessEle<float, ReduceType, ReduceType::kMax>(
+    const float* in_ptr, float* out_ptr, int64_t seq_len, int64_t hidden_size) {
+  if (hidden_size < 1)
+    FT_THROW(
+        "Max Pooling on tensor whose leading dimension should be larger than "
+        "0");
+  for (int64_t i = 0; i < hidden_size; ++i) {
+    out_ptr[i] = std::numeric_limits<float>::lowest();
+    for (int64_t j = i; j < seq_len * hidden_size; j += hidden_size) {
+      out_ptr[i] = std::max(out_ptr[i], in_ptr[j]);
     }
   }
 };
 
-template <typename T>
-struct MaxProcess {
-  static void ProcessEle(const T* in_ptr, T* out_ptr, int64_t seq_len,
-                         int64_t hidden_size) {
-    if (hidden_size < 1)
-      FT_THROW(
-          "Max Pooling on tensor whose leading dimension should be larger than "
-          "0");
-    for (int64_t i = 0; i < hidden_size; ++i) {
-      out_ptr[i] = std::numeric_limits<T>::lowest();
-      for (int64_t j = i; j < seq_len * hidden_size; j += hidden_size) {
-        out_ptr[i] = std::max(out_ptr[i], in_ptr[j]);
-      }
-    }
-  }
-};
-
-template <typename T, typename Process>
+template <typename T, typename RT, RT t>
 void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   auto batch_size = input.shape(0);
   auto seq_len = input.shape(1);
@@ -73,10 +73,17 @@ void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   const T* in_ptr = input.data<T>();
   T* out_ptr = output->mutableData<T>();
 
+  if (input.device_type() == kDLCPU) {
 #pragma omp parallel for
-  for (int64_t i = 0; i < batch_size; ++i) {
-    Process::ProcessEle(in_ptr + i * hidden_size * seq_len,
-                        out_ptr + i * hidden_size, seq_len, hidden_size);
+    for (int64_t i = 0; i < batch_size; ++i) {
+      ProcessEle<T, RT, t>(in_ptr + i * hidden_size * seq_len,
+                           out_ptr + i * hidden_size, seq_len, hidden_size);
+    }
+  } else {
+#ifdef FT_WITH_CUDA
+    gpu_reduce_axis_one<T, RT, t>(in_ptr, out_ptr, batch_size, seq_len,
+                                  hidden_size);
+#endif
   }
 }
 
@@ -131,10 +138,10 @@ void SeqPool(const core::Tensor& input, PoolType pool_type,
 
   switch (pool_type) {
     case PoolType::kMax:
-      SeqPoolWithProcess<T, MaxProcess<T>>(input, output);
+      SeqPoolWithProcess<T, ReduceType, ReduceType::kMax>(input, output);
       break;
     case PoolType::kMean:
-      SeqPoolWithProcess<T, AvgProcess<T>>(input, output);
+      SeqPoolWithProcess<T, ReduceType, ReduceType::kAvg>(input, output);
       break;
     case PoolType::kFirst:
       SeqPoolWithIdx<T>(input, 0, output);

@@ -54,9 +54,9 @@ def create_test_seq_pool(batch_size: int, seq_length: int, pool_type: str):
 
         def test_seq_pool(self):
             self.check_torch_and_turbo(use_cuda=False)
-            # if torch.cuda.is_available() and \
-            #     turbo_transformers.config.is_with_cuda():
-            #     self.check_torch_and_turbo(use_cuda=True)
+            if torch.cuda.is_available() and \
+                turbo_transformers.config.is_with_cuda():
+                self.check_torch_and_turbo(use_cuda=True)
 
 
 
@@ -65,7 +65,7 @@ def create_test_seq_pool(batch_size: int, seq_length: int, pool_type: str):
 
 
 for batch_size in [1, 5]:
-    for seq_length in [5, 8]:
+    for seq_length in [5, 8, 2000]:
         for pool_type in ["Mean", "Max", "First", "Last"]:
             create_test_seq_pool(batch_size, seq_length, pool_type)
 

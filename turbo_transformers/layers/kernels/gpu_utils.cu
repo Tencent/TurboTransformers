@@ -27,40 +27,40 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-enum ReduceType { kMax = 0, kSum };
+#define max(a, b) ((a) > (b)) ? (a) : (b)
 
 template <typename T, typename Type, Type t>
-__inline__ T __device__ ReduceOp(T* target, int start_idx, int stride, int len);
+__inline__ T __device__ ReduceOp(const T* target, int start_idx, int stride,
+                                 int len);
 
 template <>
 __inline__ float __device__ ReduceOp<float, ReduceType, ReduceType::kMax>(
-    float* target, int start_idx, int stride, int len) {
-  T output_tmp = input[start_idx];
+    const float* input, int start_idx, int stride, int len) {
+  float res = input[start_idx];
   for (int k = 1; k < len; ++k) {
-    output_tmp = std::max(output_tmp, input[start_idx + stride * k]);
+    res = max(res, input[start_idx + stride * k]);
   }
-  return output_tmp;
+  return res;
 }
 
 template <>
-__inline__ float __device__ ReduceOp<float, ReduceType, ReduceType::kSum>(
-    float* target, int start_idx, int stride, int len) {
-  T output_tmp = input[start_idx];
+__inline__ float __device__ ReduceOp<float, ReduceType, ReduceType::kAvg>(
+    const float* input, int start_idx, int stride, int len) {
+  float res = input[start_idx];
   for (int k = 1; k < len; ++k) {
-    output_tmp += output_tmp, input[start_idx + stride * k]);
+    res += input[start_idx + stride * k];
   }
-  return output_tmp;
+  return res / len;
 }
 
-//[batch, seq_len, hidden_size] -> [batch, seq_len, hidden_size]
+//[batch, seq_len, hidden_size] -> [batch, hidden_size]
 template <typename T, typename Type, Type t>
 __global__ void ReduceAixsOne(const T* input, T* output, int batch_size,
                               int seq_len, int hidden_size) {
-  int tid = blockIdx.x;  // hidden_size idx
-  int gid = gridIdx.x;   // batch_size idx
+  int tid = threadIdx.x;  // hidden_size idx
+  int gid = blockIdx.x;   // batch_size idx
   if (tid >= hidden_size || gid >= batch_size) return;
-  int input_start_idx = output_idx;
-  for (int i = gid i < batch_size; i += gridDim.x) {
+  for (int i = gid; i < batch_size; i += gridDim.x) {
     for (int j = tid; j < hidden_size; j += blockDim.x) {
       int output_idx = j + i * hidden_size;
       int input_idx = j + i * hidden_size * seq_len;
@@ -70,12 +70,29 @@ __global__ void ReduceAixsOne(const T* input, T* output, int batch_size,
   }
 }
 
+template __global__ void ReduceAixsOne<float, ReduceType, ReduceType::kMax>(
+    const float* input, float* output, int batch_size, int seq_len,
+    int hidden_size);
+template __global__ void ReduceAixsOne<float, ReduceType, ReduceType::kAvg>(
+    const float* input, float* output, int batch_size, int seq_len,
+    int hidden_size);
+
 template <typename T, typename Type, Type t>
 void gpu_reduce_axis_one(const T* input, T* output, int batch_size, int seq_len,
                          int hidden_size) {
-  ReduceAixsOne<<<batch_size, std::max(0124, hidden_size)>>>(
+  dim3 grid_size(batch_size);
+  dim3 block_size(max(1024, hidden_size));
+  ReduceAixsOne<T, Type, t><<<grid_size, block_size>>>(
       input, output, batch_size, seq_len, hidden_size);
 }
+
+template void gpu_reduce_axis_one<float, ReduceType, ReduceType::kMax>(
+    const float* input, float* output, int batch_size, int seq_len,
+    int hidden_size);
+
+template void gpu_reduce_axis_one<float, ReduceType, ReduceType::kAvg>(
+    const float* input, float* output, int batch_size, int seq_len,
+    int hidden_size);
 
 template <typename T>
 void gpu_copy(const T* src, T* dst, int64_t size) {
