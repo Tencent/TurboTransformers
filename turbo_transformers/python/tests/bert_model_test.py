@@ -61,22 +61,9 @@ class TestBertModel(unittest.TestCase):
         turbo_result, turbo_qps, turbo_time = \
             test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'BertModel FastTransform({device}) QPS {turbo_qps}')
-        print("torch_result")
-        print(type(torch_result))
-        print(torch_result)
-        print("turbo_result")
-        print(type(turbo_result))
-        print(turbo_result)
-        print("torch_result[0][0][0]")
-        print(torch_result[0][0][0])
+
         torch_result = (torch_result[0][:, 0]).cpu().numpy()
-        print("torch_result")
-        print(type(torch_result))
-        print(torch_result)
         turbo_result = turbo_result.cpu().numpy()
-        print("turbo_result")
-        print(type(turbo_result))
-        print(turbo_result)
 
         self.assertTrue(
             numpy.allclose(torch_result, turbo_result, atol=5e-3, rtol=1e-4))

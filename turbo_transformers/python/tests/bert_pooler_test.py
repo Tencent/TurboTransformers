@@ -57,7 +57,6 @@ def create_test(batch_size, seq_length):
                                             hidden_size),
                                       dtype=torch.float32,
                                       device=self.test_device)
-
             turbo_model = lambda: self.turbo_pooler(input_tensor)
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
@@ -75,23 +74,19 @@ def create_test(batch_size, seq_length):
 
             torch_result = torch_result.cpu().numpy()
             turbo_result = turbo_result.cpu().numpy()
-            print("torch_result")
-            print(torch_result)
-            print("turbo_result")
-            print(turbo_result)
 
-            # self.assertTrue(
-            #     numpy.allclose(torch_result,
-            #                    turbo_result,
-            #                    rtol=1e-4,
-            #                    atol=1e-3))
+            self.assertTrue(
+                numpy.allclose(torch_result,
+                               turbo_result,
+                               rtol=1e-4,
+                               atol=1e-3))
 
             with open("bert_pooler_res.txt", "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {torch_qps}, {torch_qps}\n"
                 )
 
-        def test_intermediate(self):
+        def test_pooler(self):
             self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
                     turbo_transformers.config.is_with_cuda():
@@ -103,9 +98,9 @@ def create_test(batch_size, seq_length):
 
 with open("bert_pooler_res.txt", "w") as fh:
     fh.write(", torch, turbo_transformers\n")
-for batch_size in [1, 2]:
-    for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
-        create_test(batch_size, seq_length)
+    for batch_size in [1, 2]:
+        for seq_length in [1]:
+            create_test(batch_size, seq_length)
 
 if __name__ == '__main__':
     unittest.main()

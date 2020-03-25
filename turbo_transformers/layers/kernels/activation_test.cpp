@@ -51,7 +51,7 @@ void AddBiasTanhActNaive(const T* bias, T* out, int64_t m, int64_t n) {
       for (int64_t j = n * i; j < n * (i + 1); ++j) {
           auto before_act =
               static_cast<float>(out[j]) + static_cast<float>(bias[k++]);
-          out[j] = static_cast<T>(std::tanh(out[j]));
+          out[j] = static_cast<T>(std::tanh(before_act));
         }
     }
 }
@@ -109,8 +109,8 @@ TEST_CASE("activation CPU benchmark") {
       auto* out_parallel_ptr = out_parallel.mutableData<float>();
       auto* out_ptr = out.mutableData<float>();
         for (int64_t i = 0; i < m * n; ++i) {
-        FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_ptr[i]), 1e-2,
-                      "Wrong @ %d", i);
+        FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_ptr[i]), 1e-6,
+                      "GeLU Wrong @ %d", i);
       }
 
       bias = tensor_create_and_fill_constant({n}, 0.01f);
@@ -124,14 +124,14 @@ TEST_CASE("activation CPU benchmark") {
           },
           step, "AddBiasTanhActNaive", m * n * sizeof(float) / 1e9);
 
-      TestFunction([&]() { AddBiasAct<ActivationType, ActivationType::GeLu, float>(bias, &out); }, step,
+      TestFunction([&]() { AddBiasAct<ActivationType, ActivationType::Tanh, float>(bias, &out); }, step,
                    "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
 
       out_parallel_ptr = out_parallel.mutableData<float>();
       out_ptr = out.mutableData<float>();
       for (int64_t i = 0; i < m * n; ++i) {
-          FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_ptr[i]), 1e-2,
-                        "Wrong @ %d", i);
+          FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_ptr[i]), 1e-6,
+                        "Tanh Wrong @ %d", i);
         }
 
 

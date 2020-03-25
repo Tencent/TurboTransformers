@@ -30,14 +30,8 @@ namespace layers {
 
 void BertPooler::operator()(const core::Tensor& input_tensor,
                                   core::Tensor* output_tensor) const {
-//  turbo_transformers::core::Tensor temp(
-//      turbo_transformers::core::NewDLPackTensorT<float>({input_tensor.shape(0), 1, input_tensor.shape(3)}));
-//  auto* data = temp.mutableData<float>();
-//  auto* input = input_tensor.data<float>();
-//  for (int i = 0; i < temp.cols (); ++i)
-//    data[i] = input[i];
   output_tensor->Reshape<float>(
-      {input_tensor.shape(0), input_tensor.shape(1) , dense_weight_.shape(0)},
+      {input_tensor.shape(0) , dense_weight_.shape(0)},
       input_tensor.device_type(), input_tensor.device_id());
 
   kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
