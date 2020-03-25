@@ -16,8 +16,8 @@
 
 #include <string>
 
-#include "turbo_transformers/core/pool_type.h"
 #include "turbo_transformers/core/tensor.h"
+#include "turbo_transformers/core/types.h"
 
 namespace turbo_transformers {
 namespace layers {
@@ -27,10 +27,12 @@ namespace kernels {
 // and the output's shape is (batch_size, hidden_size)
 // The pool_type could be max, mean, first, last.
 template <typename T>
-void SeqPool(const core::Tensor &input, PoolType pool_type,
+void SeqPool(const core::Tensor &input,
+             turbo_transformers::core::types::PoolType pool_type,
              core::Tensor *output);
 
-PoolType GetPoolType(const std::string &pool_type);
+turbo_transformers::core::types::PoolType GetPoolType(
+    const std::string &pool_type);
 
 }  // namespace kernels
 }  // namespace layers

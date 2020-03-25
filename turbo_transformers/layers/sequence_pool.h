@@ -14,8 +14,8 @@
 
 #pragma once
 #include <string>
-#include "turbo_transformers/core/pool_type.h"
 #include "turbo_transformers/core/tensor.h"
+#include "turbo_transformers/core/types.h"
 #include "turbo_transformers/layers/kernels/seq_pool.h"
 
 namespace turbo_transformers {
@@ -26,12 +26,13 @@ class SequencePool {
   explicit SequencePool(const std::string &pool_type) {
     pool_type_ = kernels::GetPoolType(pool_type);
   }
-  explicit SequencePool(kernels::PoolType pt) : pool_type_(pt) {}
+  explicit SequencePool(turbo_transformers::core::types::PoolType pt)
+      : pool_type_(pt) {}
 
   void operator()(const core::Tensor &input_tensor, core::Tensor *output) const;
 
  private:
-  kernels::PoolType pool_type_;
+  turbo_transformers::core::types::PoolType pool_type_;
 };
 
 }  // namespace layers

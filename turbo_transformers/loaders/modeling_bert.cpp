@@ -192,7 +192,8 @@ struct BertModel::Impl {
 
     core::Tensor output(nullptr);
 
-    layers::SequencePool(static_cast<layers::kernels::PoolType>(pooling))(
+    layers::SequencePool(
+        static_cast<turbo_transformers::core::types::PoolType>(pooling))(
         hidden.device_type() == DLDeviceType::kDLGPU ? cpuHidden : hidden,
         &output);
     std::vector<float> vec;

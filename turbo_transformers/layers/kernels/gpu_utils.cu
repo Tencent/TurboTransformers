@@ -29,15 +29,14 @@ namespace kernels {
 
 #define max(a, b) ((a) > (b)) ? (a) : (b)
 
-template <typename T, PoolType t>
+template <typename T, turbo_transformers::core::types::PoolType t>
 __inline__ T __device__ ReduceOp(const T* target, int start_idx, int stride,
                                  int len);
 
 template <>
-__inline__ float __device__ ReduceOp<float, PoolType::kMax>(const float* input,
-                                                            int start_idx,
-                                                            int stride,
-                                                            int len) {
+__inline__ float __device__
+ReduceOp<float, turbo_transformers::core::types::PoolType::kMax>(
+    const float* input, int start_idx, int stride, int len) {
   float res = input[start_idx];
   for (int k = 1; k < len; ++k) {
     res = max(res, input[start_idx + stride * k]);
@@ -46,10 +45,9 @@ __inline__ float __device__ ReduceOp<float, PoolType::kMax>(const float* input,
 }
 
 template <>
-__inline__ float __device__ ReduceOp<float, PoolType::kMean>(const float* input,
-                                                             int start_idx,
-                                                             int stride,
-                                                             int len) {
+__inline__ float __device__
+ReduceOp<float, turbo_transformers::core::types::PoolType::kMean>(
+    const float* input, int start_idx, int stride, int len) {
   float res = input[start_idx];
   for (int k = 1; k < len; ++k) {
     res += input[start_idx + stride * k];
@@ -58,7 +56,7 @@ __inline__ float __device__ ReduceOp<float, PoolType::kMean>(const float* input,
 }
 
 //[batch, seq_len, hidden_size] -> [batch, hidden_size]
-template <typename T, PoolType t>
+template <typename T, turbo_transformers::core::types::PoolType t>
 __global__ void ReduceAixsOne(const T* input, T* output, int batch_size,
                               int seq_len, int hidden_size) {
   int tid = threadIdx.x;  // hidden_size idx
@@ -74,14 +72,16 @@ __global__ void ReduceAixsOne(const T* input, T* output, int batch_size,
   }
 }
 
-template __global__ void ReduceAixsOne<float, PoolType::kMax>(
+template __global__ void
+ReduceAixsOne<float, turbo_transformers::core::types::PoolType::kMax>(
     const float* input, float* output, int batch_size, int seq_len,
     int hidden_size);
-template __global__ void ReduceAixsOne<float, PoolType::kMean>(
+template __global__ void
+ReduceAixsOne<float, turbo_transformers::core::types::PoolType::kMean>(
     const float* input, float* output, int batch_size, int seq_len,
     int hidden_size);
 
-template <typename T, PoolType t>
+template <typename T, turbo_transformers::core::types::PoolType t>
 void gpu_reduce_axis_one(const T* input, T* output, int batch_size, int seq_len,
                          int hidden_size) {
   dim3 grid_size(batch_size);
@@ -90,17 +90,15 @@ void gpu_reduce_axis_one(const T* input, T* output, int batch_size, int seq_len,
                                                  seq_len, hidden_size);
 }
 
-template void gpu_reduce_axis_one<float, PoolType::kMax>(const float* input,
-                                                         float* output,
-                                                         int batch_size,
-                                                         int seq_len,
-                                                         int hidden_size);
+template void
+gpu_reduce_axis_one<float, turbo_transformers::core::types::PoolType::kMax>(
+    const float* input, float* output, int batch_size, int seq_len,
+    int hidden_size);
 
-template void gpu_reduce_axis_one<float, PoolType::kMean>(const float* input,
-                                                          float* output,
-                                                          int batch_size,
-                                                          int seq_len,
-                                                          int hidden_size);
+template void
+gpu_reduce_axis_one<float, turbo_transformers::core::types::PoolType::kMean>(
+    const float* input, float* output, int batch_size, int seq_len,
+    int hidden_size);
 
 template <typename T>
 void gpu_copy(const T* src, T* dst, int64_t size) {

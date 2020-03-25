@@ -30,13 +30,12 @@ namespace kernels {
 
 namespace {
 
-template <typename T, PoolType t>
+template <typename T, turbo_transformers::core::types::PoolType t>
 inline void ProcessEle(const T* in_ptr, T* out_ptr, int64_t seq_len,
                        int64_t hidden_size);
 template <>
-inline void ProcessEle<float, PoolType::kMean>(const float* in_ptr,
-                                               float* out_ptr, int64_t seq_len,
-                                               int64_t hidden_size) {
+inline void ProcessEle<float, turbo_transformers::core::types::PoolType::kMean>(
+    const float* in_ptr, float* out_ptr, int64_t seq_len, int64_t hidden_size) {
   if (hidden_size < 1)
     FT_THROW(
         "Avg Pooling on tensor whose leading dimension should be larger than "
@@ -51,9 +50,8 @@ inline void ProcessEle<float, PoolType::kMean>(const float* in_ptr,
 };
 
 template <>
-inline void ProcessEle<float, PoolType::kMax>(const float* in_ptr,
-                                              float* out_ptr, int64_t seq_len,
-                                              int64_t hidden_size) {
+inline void ProcessEle<float, turbo_transformers::core::types::PoolType::kMax>(
+    const float* in_ptr, float* out_ptr, int64_t seq_len, int64_t hidden_size) {
   if (hidden_size < 1)
     FT_THROW(
         "Max Pooling on tensor whose leading dimension should be larger than "
@@ -66,7 +64,7 @@ inline void ProcessEle<float, PoolType::kMax>(const float* in_ptr,
   }
 };
 
-template <typename T, PoolType t>
+template <typename T, turbo_transformers::core::types::PoolType t>
 void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   auto batch_size = input.shape(0);
   auto seq_len = input.shape(1);
@@ -125,7 +123,8 @@ void SeqPoolWithIdx(const core::Tensor& input, int64_t idx,
 }  // namespace
 
 template <typename T>
-void SeqPool(const core::Tensor& input, PoolType pool_type,
+void SeqPool(const core::Tensor& input,
+             turbo_transformers::core::types::PoolType pool_type,
              core::Tensor* output) {
   FT_ENFORCE_EQ(input.n_dim(), 3,
                 "The input's dim should be 3, but the input's dim is %d",
@@ -139,30 +138,34 @@ void SeqPool(const core::Tensor& input, PoolType pool_type,
                      input.device_id());
 
   switch (pool_type) {
-    case PoolType::kMax:
-      SeqPoolWithProcess<T, PoolType::kMax>(input, output);
+    case turbo_transformers::core::types::PoolType::kMax:
+      SeqPoolWithProcess<T, turbo_transformers::core::types::PoolType::kMax>(
+          input, output);
       break;
-    case PoolType::kMean:
-      SeqPoolWithProcess<T, PoolType::kMean>(input, output);
+    case turbo_transformers::core::types::PoolType::kMean:
+      SeqPoolWithProcess<T, turbo_transformers::core::types::PoolType::kMean>(
+          input, output);
       break;
-    case PoolType::kFirst:
+    case turbo_transformers::core::types::PoolType::kFirst:
       SeqPoolWithIdx<T>(input, 0, output);
       break;
-    case PoolType::kLast:
+    case turbo_transformers::core::types::PoolType::kLast:
       SeqPoolWithIdx<T>(input, seq_len - 1, output);
       break;
   }
 }
 
-template void SeqPool<float>(const core::Tensor& input, PoolType pool_type,
-                             core::Tensor* output);
+template void SeqPool<float>(
+    const core::Tensor& input,
+    turbo_transformers::core::types::PoolType pool_type, core::Tensor* output);
 
-PoolType GetPoolType(const std::string& pool_type) {
-#define _EnumCase(EnumValue)         \
-  do {                               \
-    if (pool_type == #EnumValue) {   \
-      return PoolType::k##EnumValue; \
-    }                                \
+turbo_transformers::core::types::PoolType GetPoolType(
+    const std::string& pool_type) {
+#define _EnumCase(EnumValue)                                          \
+  do {                                                                \
+    if (pool_type == #EnumValue) {                                    \
+      return turbo_transformers::core::types::PoolType::k##EnumValue; \
+    }                                                                 \
   } while (0)
 
   _EnumCase(First);

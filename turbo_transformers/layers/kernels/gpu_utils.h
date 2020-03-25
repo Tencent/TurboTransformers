@@ -14,13 +14,13 @@
 
 #pragma once
 #include <stdint.h>
-#include "turbo_transformers/core/pool_type.h"
+#include "turbo_transformers/core/types.h"
 
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-template <typename T, PoolType t>
+template <typename T, turbo_transformers::core::types::PoolType t>
 void gpu_reduce_axis_one(const T* input, T* output, int batch_size, int seq_len,
                          int hidden_size);
 
