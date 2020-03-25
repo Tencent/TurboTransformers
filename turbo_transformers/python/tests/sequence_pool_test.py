@@ -41,11 +41,24 @@ def create_test_seq_pool(batch_size: int, seq_length: int, pool_type: str):
                 (batch_size, seq_length, hidden_size)).astype("float32")
             self.seq_pool = turbo_transformers.SequencePool(pool_type)
 
-        def test_seq_pool(self):
+        def check_torch_and_turbo(self, use_cuda):
+            test_device = torch.device('cuda:0') if use_cuda else \
+                torch.device('cpu:0')
+            if not use_cuda:
+                torch.set_num_threads(1)
             np_result = pooling(self.input, pool_type)
-            turbo_result = self.seq_pool(torch.tensor(self.input))
+            turbo_result = self.seq_pool(
+                torch.tensor(self.input, device=test_device))
             self.assertTrue(
-                np.max(np.abs(np_result - turbo_result.numpy())) < 1e-3)
+                np.max(np.abs(np_result - turbo_result.cpu().numpy())) < 1e-3)
+
+        def test_seq_pool(self):
+            self.check_torch_and_turbo(use_cuda=False)
+            # if torch.cuda.is_available() and \
+            #     turbo_transformers.config.is_with_cuda():
+            #     self.check_torch_and_turbo(use_cuda=True)
+
+
 
     globals()[f"TestSequencePool{batch_size}_{seq_length:03}_{pool_type}"] = \
         TestSequencePool

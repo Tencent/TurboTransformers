@@ -20,6 +20,9 @@ namespace layers {
 namespace kernels {
 
 template <typename T>
+void gpu_copy(const T* src, T* dst, int64_t size);
+
+template <typename T>
 void gpu_sequence(T* data_ptr, int64_t size);
 
 template <typename T>

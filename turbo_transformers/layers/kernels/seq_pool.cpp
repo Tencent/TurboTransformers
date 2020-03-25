@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "turbo_transformers/layers/kernels/seq_pool.h"
+#ifdef FT_WITH_CUDA
+#include "turbo_transformers/layers/kernels/gpu_utils.h"
+#endif
 
 #include <cmath>
 #include <cstdint>
@@ -28,36 +31,37 @@ namespace kernels {
 namespace {
 template <typename T>
 struct AvgProcess {
-  static void InitValue(T* ptr, int64_t len) {
-    memset(ptr, 0, len * sizeof(T));
-  }
-
-  static void ProcessEle(T* ptr, int64_t idx, T ele) { ptr[idx] += ele; }
-
-  static void Finalize(T* ptr, int64_t len, int64_t seq_len) {
-#pragma omp simd
-    for (int64_t i = 0; i < len; ++i) {
-      ptr[i] /= seq_len;
+  static void ProcessEle(const T* in_ptr, T* out_ptr, int64_t seq_len,
+                         int64_t hidden_size) {
+    if (hidden_size < 1)
+      FT_THROW(
+          "Avg Pooling on tensor whose leading dimension should be larger than "
+          "0");
+    for (int64_t i = 0; i < hidden_size; ++i) {
+      out_ptr[i] = 0.;
+      for (int64_t j = i; j < seq_len * hidden_size; j += hidden_size) {
+        out_ptr[i] += in_ptr[j];
+      }
+      out_ptr[i] /= seq_len;
     }
   }
 };
 
 template <typename T>
 struct MaxProcess {
-  static void InitValue(T* ptr, int64_t len) {
-#pragma omp simd
-    for (int64_t i = 0; i < len; ++i) {
-      ptr[i] = std::numeric_limits<T>::lowest();
+  static void ProcessEle(const T* in_ptr, T* out_ptr, int64_t seq_len,
+                         int64_t hidden_size) {
+    if (hidden_size < 1)
+      FT_THROW(
+          "Max Pooling on tensor whose leading dimension should be larger than "
+          "0");
+    for (int64_t i = 0; i < hidden_size; ++i) {
+      out_ptr[i] = std::numeric_limits<T>::lowest();
+      for (int64_t j = i; j < seq_len * hidden_size; j += hidden_size) {
+        out_ptr[i] = std::max(out_ptr[i], in_ptr[j]);
+      }
     }
   }
-
-  static void ProcessEle(T* ptr, int64_t idx, T ele) {
-    if (ptr[idx] < ele) {
-      ptr[idx] = ele;
-    }
-  }
-
-  static void Finalize(T* ptr, int64_t len, int64_t seq_len) {}
 };
 
 template <typename T, typename Process>
@@ -71,18 +75,8 @@ void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
 
 #pragma omp parallel for
   for (int64_t i = 0; i < batch_size; ++i) {
-    T* sub_out_ptr = out_ptr + i * hidden_size;
-    Process::InitValue(sub_out_ptr, hidden_size);
-    int64_t stride = i * seq_len * hidden_size;
-#pragma omp simd
-    for (int64_t j = 0; j < seq_len; ++j) {
-      const T* sub_in_ptr = in_ptr + stride + j * hidden_size;
-      for (int64_t k = 0; k < hidden_size; k++) {
-        Process::ProcessEle(sub_out_ptr, k, sub_in_ptr[k]);
-      }
-    }
-
-    Process::Finalize(sub_out_ptr, hidden_size, seq_len);
+    Process::ProcessEle(in_ptr + i * hidden_size * seq_len,
+                        out_ptr + i * hidden_size, seq_len, hidden_size);
   }
 }
 
@@ -98,11 +92,25 @@ void SeqPoolWithIdx(const core::Tensor& input, int64_t idx,
   const T* in_ptr = input.data<T>();
   T* out_ptr = output->mutableData<T>();
   int64_t stride = seq_len * hidden_size;
+  if (input.device_type() == kDLCPU) {
 #pragma omp parallel for
-  for (int64_t i = 0; i < batch_size; ++i) {
-    const T* sub_in_ptr = in_ptr + i * stride + idx * hidden_size;
-    T* sub_out_ptr = out_ptr + i * hidden_size;
-    std::copy(sub_in_ptr, sub_in_ptr + hidden_size, sub_out_ptr);
+    for (int64_t i = 0; i < batch_size; ++i) {
+      const T* sub_in_ptr = in_ptr + i * stride + idx * hidden_size;
+      T* sub_out_ptr = out_ptr + i * hidden_size;
+      std::copy(sub_in_ptr, sub_in_ptr + hidden_size, sub_out_ptr);
+    }
+  } else if (input.device_type() == kDLGPU) {
+#ifdef FT_WITH_CUDA
+    for (int64_t i = 0; i < batch_size; ++i) {
+      const T* sub_in_ptr = in_ptr + i * stride + idx * hidden_size;
+      T* sub_out_ptr = out_ptr + i * hidden_size;
+      turbo_transformers::layers::kernels::gpu_copy(sub_in_ptr, sub_out_ptr,
+                                                    hidden_size);
+    }
+#endif
+  } else {
+    FT_THROW("device_type %d is not supported for SeqPoolWithIdx",
+             input.device_type());
   }
 }
 }  // namespace

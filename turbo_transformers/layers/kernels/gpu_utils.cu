@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "turbo_transformers/layers/kernels/gpu_utils.h"
+
+#include <thrust/copy.h>
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
@@ -20,11 +23,69 @@
 #include <thrust/sequence.h>
 #include <thrust/transform.h>
 
-#include "turbo_transformers/layers/kernels/gpu_utils.h"
-
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
+
+enum ReduceType { kMax = 0, kSum };
+
+template <typename T, typename Type, Type t>
+__inline__ T __device__ ReduceOp(T* target, int start_idx, int stride, int len);
+
+template <>
+__inline__ float __device__ ReduceOp<float, ReduceType, ReduceType::kMax>(
+    float* target, int start_idx, int stride, int len) {
+  T output_tmp = input[start_idx];
+  for (int k = 1; k < len; ++k) {
+    output_tmp = std::max(output_tmp, input[start_idx + stride * k]);
+  }
+  return output_tmp;
+}
+
+template <>
+__inline__ float __device__ ReduceOp<float, ReduceType, ReduceType::kSum>(
+    float* target, int start_idx, int stride, int len) {
+  T output_tmp = input[start_idx];
+  for (int k = 1; k < len; ++k) {
+    output_tmp += output_tmp, input[start_idx + stride * k]);
+  }
+  return output_tmp;
+}
+
+//[batch, seq_len, hidden_size] -> [batch, seq_len, hidden_size]
+template <typename T, typename Type, Type t>
+__global__ void ReduceAixsOne(const T* input, T* output, int batch_size,
+                              int seq_len, int hidden_size) {
+  int tid = blockIdx.x;  // hidden_size idx
+  int gid = gridIdx.x;   // batch_size idx
+  if (tid >= hidden_size || gid >= batch_size) return;
+  int input_start_idx = output_idx;
+  for (int i = gid i < batch_size; i += gridDim.x) {
+    for (int j = tid; j < hidden_size; j += blockDim.x) {
+      int output_idx = j + i * hidden_size;
+      int input_idx = j + i * hidden_size * seq_len;
+      output[output_idx] =
+          ReduceOp<T, Type, t>(input, input_idx, hidden_size, seq_len);
+    }
+  }
+}
+
+template <typename T, typename Type, Type t>
+void gpu_reduce_axis_one(const T* input, T* output, int batch_size, int seq_len,
+                         int hidden_size) {
+  ReduceAixsOne<<<batch_size, std::max(0124, hidden_size)>>>(
+      input, output, batch_size, seq_len, hidden_size);
+}
+
+template <typename T>
+void gpu_copy(const T* src, T* dst, int64_t size) {
+  thrust::device_ptr<const T> dev_src = thrust::device_pointer_cast(src);
+  thrust::device_ptr<T> dev_dst = thrust::device_pointer_cast(dst);
+  thrust::copy(dev_src, dev_src + size, dev_dst);
+}
+
+template void gpu_copy<int64_t>(const int64_t* src, int64_t* dst, int64_t size);
+template void gpu_copy<float>(const float* src, float* dst, int64_t size);
 
 template <typename T>
 void gpu_sequence(T* data_ptr, int64_t size) {
