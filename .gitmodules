@@ -1,24 +1,21 @@
 [submodule "3rd/dlpack"]
-	path = 3rd/dlpack
-	url = https://github.com/dmlc/dlpack.git
+  path = 3rd/dlpack
+  url = https://github.com/dmlc/dlpack.git
 [submodule "3rd/pybind11"]
-	path = 3rd/pybind11
-	url = https://github.com/pybind/pybind11.git
+  path = 3rd/pybind11
+  url = https://github.com/pybind/pybind11.git
 [submodule "3rd/abseil"]
-	path = 3rd/abseil
-	url = https://github.com/abseil/abseil-cpp.git
+  path = 3rd/abseil
+  url = https://github.com/abseil/abseil-cpp.git
 [submodule "3rd/Catch2"]
-	path = 3rd/Catch2
-	url = https://github.com/catchorg/Catch2.git
+  path = 3rd/Catch2
+  url = https://github.com/catchorg/Catch2.git
 [submodule "3rd/loguru"]
-	path = 3rd/loguru
-	url = https://github.com/emilk/loguru.git
-[submodule "hunter-gate"]
-	path = hunter-gate
-	url = https://github.com/hunter-packages/gate.git
+  path = 3rd/loguru
+  url = https://github.com/emilk/loguru.git
 [submodule "3rd/cub"]
-	path = 3rd/cub
-	url = https://github.com/NVlabs/cub
+  path = 3rd/cub
+  url = https://github.com/NVlabs/cub
 [submodule "3rd/FP16"]
-	path = 3rd/FP16
-	url = https://github.com/Maratyszcza/FP16
+  path = 3rd/FP16
+  url = https://github.com/Maratyszcza/FP16

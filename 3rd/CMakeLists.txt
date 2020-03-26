@@ -56,3 +56,9 @@ add_library(cnpy STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET cnpy PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/cnpy/lib/libcnpy.a)
 target_include_directories(cnpy INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/cnpy/include/)
 add_dependencies(cnpy extern_cnpy)
+
+
+if (${BLAS_PROVIDER} STREQUAL "openblas")
+    include(openblas.cmake)
+    include(eigen.cmake)
+endif()
