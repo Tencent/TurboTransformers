@@ -29,15 +29,13 @@ namespace kernels {
 
 #define max(a, b) ((a) > (b)) ? (a) : (b)
 
-template <typename T, t>
-static __inline__ T __device__ ReduceOp(const T* target, int start_idx,
-                                        int stride, int len);
+template <typename T, types::PoolType t>
+__inline__ T __device__ ReduceOp(const T* target, int start_idx, int stride,
+                                 int len);
 
 template <>
-static __inline__ float __device__
-ReduceOp<float, layers::types::PoolType::kMax>(const float* input,
-                                               int start_idx, int stride,
-                                               int len) {
+__inline__ float __device__ ReduceOp<float, types::PoolType::kMax>(
+    const float* input, int start_idx, int stride, int len) {
   float res = input[start_idx];
   for (int k = 1; k < len; ++k) {
     res = max(res, input[start_idx + stride * k]);
@@ -46,10 +44,8 @@ ReduceOp<float, layers::types::PoolType::kMax>(const float* input,
 }
 
 template <>
-static __inline__ float __device__
-ReduceOp<float, layers::types::PoolType::kMean>(const float* input,
-                                                int start_idx, int stride,
-                                                int len) {
+__inline__ float __device__ ReduceOp<float, types::PoolType::kMean>(
+    const float* input, int start_idx, int stride, int len) {
   float res = input[start_idx];
   for (int k = 1; k < len; ++k) {
     res += input[start_idx + stride * k];
@@ -58,9 +54,9 @@ ReduceOp<float, layers::types::PoolType::kMean>(const float* input,
 }
 
 //[batch, seq_len, hidden_size] -> [batch, hidden_size]
-template <typename T, layers::types::PoolType t>
-static __global__ void ReduceAixsOne(const T* input, T* output, int batch_size,
-                                     int seq_len, int hidden_size) {
+template <typename T, types::PoolType t>
+__global__ void ReduceAixsOne(const T* input, T* output, int batch_size,
+                              int seq_len, int hidden_size) {
   int tid = threadIdx.x;  // hidden_size idx
   int gid = blockIdx.x;   // batch_size idx
   if (tid >= hidden_size || gid >= batch_size) return;
@@ -74,19 +70,14 @@ static __global__ void ReduceAixsOne(const T* input, T* output, int batch_size,
   }
 }
 
-template static __global__ void
-ReduceAixsOne<float, layers::types::PoolType::kMax>(const float* input,
-                                                    float* output,
-                                                    int batch_size, int seq_len,
-                                                    int hidden_size);
-template static __global__ void
-ReduceAixsOne<float, layers::types::PoolType::kMean>(const float* input,
-                                                     float* output,
-                                                     int batch_size,
-                                                     int seq_len,
-                                                     int hidden_size);
+template __global__ void ReduceAixsOne<float, types::PoolType::kMax>(
+    const float* input, float* output, int batch_size, int seq_len,
+    int hidden_size);
+template __global__ void ReduceAixsOne<float, types::PoolType::kMean>(
+    const float* input, float* output, int batch_size, int seq_len,
+    int hidden_size);
 
-template <typename T, layers::types::PoolType t>
+template <typename T, types::PoolType t>
 void GPUReduceAxisOne(const T* input, T* output, int batch_size, int seq_len,
                       int hidden_size) {
   dim3 grid_size(batch_size);
@@ -95,11 +86,13 @@ void GPUReduceAxisOne(const T* input, T* output, int batch_size, int seq_len,
                                                  seq_len, hidden_size);
 }
 
-template void GPUReduceAxisOne<float, layers::types::PoolType::kMax>(
-    const float* input, float* output, int batch_size, int seq_len,
-    int hidden_size);
+template void GPUReduceAxisOne<float, types::PoolType::kMax>(const float* input,
+                                                             float* output,
+                                                             int batch_size,
+                                                             int seq_len,
+                                                             int hidden_size);
 
-template void GPUReduceAxisOne<float, layers::types::PoolType::kMean>(
+template void GPUReduceAxisOne<float, types::PoolType::kMean>(
     const float* input, float* output, int batch_size, int seq_len,
     int hidden_size);
 
