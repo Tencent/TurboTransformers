@@ -109,11 +109,8 @@ TEST_CASE("activation CPU AddBiasGelu benchmark") {
           },
           step, "AddBiasGeluAct OMP", m * n * sizeof(float) / 1e9);
 
-      auto* out_parallel_ptr = out_parallel.mutableData<float>();
-      auto* out_ptr = out.mutableData<float>();
-      for (int64_t i = 0; i < m * n; ++i) {
-        FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_ptr[i]), 1e-6,
-                      "Gelu Wrong @ %d", i);
+      if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
+        FT_THROW("AddBiasGelu test failed");
       }
     }
 }
@@ -156,12 +153,8 @@ TEST_CASE("activation CPU AddBiasTanh benchmark") {
             AddBiasAct<ActivationType, ActivationType::Tanh, float>(bias, &out);
           },
           step, "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
-
-      auto* out_parallel_ptr = out_parallel.mutableData<float>();
-      auto* out_ptr = out.mutableData<float>();
-      for (int64_t i = 0; i < m * n; ++i) {
-        FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_ptr[i]), 1e-6,
-                      "Tanh Wrong @ %d", i);
+      if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
+        FT_THROW("AddBiasTanh test failed");
       }
     }
 }

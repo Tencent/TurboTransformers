@@ -30,8 +30,10 @@ namespace layers {
 
 void BertPooler::operator()(const core::Tensor& input_tensor,
                             core::Tensor* output_tensor) const {
-  // input_tensor [batch_size, sequence_length, hidden_size]
+  // input_tensor [batch_size, sequence_length=1, hidden_size]
   // output_tensor [batch_size, hidden_size]
+  FT_ENFORCE_EQ(input_tensor.shape(1), 1,
+                "input_tensor's sequence_length must be 1");
   output_tensor->Reshape<float>({input_tensor.shape(0), dense_weight_.shape(0)},
                                 input_tensor.device_type(),
                                 input_tensor.device_id());
