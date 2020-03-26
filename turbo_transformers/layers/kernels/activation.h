@@ -23,14 +23,6 @@ enum ActivationType { Gelu = 0, Tanh };
 template <typename ActivationType, ActivationType TypeVal, typename T>
 void AddBiasAct(const core::Tensor& bias, core::Tensor* out);
 
-template <>
-void AddBiasAct<ActivationType, ActivationType::Gelu, float>(
-    const core::Tensor& bias, core::Tensor* out);
-
-template <>
-void AddBiasAct<ActivationType, ActivationType::Tanh, float>(
-    const core::Tensor& bias, core::Tensor* out);
-
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers

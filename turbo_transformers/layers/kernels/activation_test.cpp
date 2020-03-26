@@ -70,7 +70,7 @@ void TestFunction(Func&& func, int step, const std::string& infor,
               << g_bytes / elapse << " GB/s";
 }
 
-TEST_CASE("activation CPU benchmark") {
+TEST_CASE("activation CPU AddBiasGelu benchmark") {
   auto tensor_create_and_fill_constant =
       [](std::initializer_list<int64_t> shape, float value) {
         turbo_transformers::core::Tensor tensor(nullptr);
@@ -107,18 +107,42 @@ TEST_CASE("activation CPU benchmark") {
           [&]() {
             AddBiasAct<ActivationType, ActivationType::Gelu, float>(bias, &out);
           },
-          step, "AddBiasGeLUAct OMP", m * n * sizeof(float) / 1e9);
+          step, "AddBiasGeluAct OMP", m * n * sizeof(float) / 1e9);
 
       auto* out_parallel_ptr = out_parallel.mutableData<float>();
       auto* out_ptr = out.mutableData<float>();
       for (int64_t i = 0; i < m * n; ++i) {
         FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_ptr[i]), 1e-6,
-                      "GeLU Wrong @ %d", i);
+                      "Gelu Wrong @ %d", i);
       }
+    }
+}
 
-      bias = tensor_create_and_fill_constant({n}, 0.01f);
-      out = tensor_create_and_fill_constant({m, n}, 0.02f);
-      out_parallel = tensor_create_and_fill_constant({m, n}, 0.02f);
+TEST_CASE("activation CPU AddBiasTanh benchmark") {
+  auto tensor_create_and_fill_constant =
+      [](std::initializer_list<int64_t> shape, float value) {
+        turbo_transformers::core::Tensor tensor(nullptr);
+        tensor.Reshape<float>(shape, kDLCPU, 0);
+        auto* ptr = tensor.mutableData<float>();
+        for (int64_t i = 0; i < tensor.numel(); ++i) {
+          ptr[i] = value;
+        }
+        return tensor;
+      };
+
+  int64_t hidden_size = 12 * 64;
+  const int step = 10;
+  for (auto batch_size : {1, 20, 24})
+    for (auto seq_length : {8, 16, 32, 48, 64, 128}) {
+      auto m = batch_size * seq_length;
+      auto n = hidden_size;
+
+      auto bias = tensor_create_and_fill_constant({n}, 0.01f);
+      auto out = tensor_create_and_fill_constant({m, n}, 0.02f);
+      auto out_parallel = tensor_create_and_fill_constant({m, n}, 0.02f);
+
+      std::cout << "batch_size: " << batch_size
+                << " seq_length: " << seq_length;
 
       TestFunction(
           [&]() {
@@ -133,8 +157,8 @@ TEST_CASE("activation CPU benchmark") {
           },
           step, "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
 
-      out_parallel_ptr = out_parallel.mutableData<float>();
-      out_ptr = out.mutableData<float>();
+      auto* out_parallel_ptr = out_parallel.mutableData<float>();
+      auto* out_ptr = out.mutableData<float>();
       for (int64_t i = 0; i < m * n; ++i) {
         FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_ptr[i]), 1e-6,
                       "Tanh Wrong @ %d", i);

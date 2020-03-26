@@ -99,7 +99,7 @@ def create_test(batch_size, seq_length):
 with open("bert_pooler_res.txt", "w") as fh:
     fh.write(", torch, turbo_transformers\n")
     for batch_size in [1, 2]:
-        for seq_length in [1]:
+        for seq_length in [1, 10]:
             create_test(batch_size, seq_length)
 
 if __name__ == '__main__':

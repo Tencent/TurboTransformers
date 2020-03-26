@@ -29,14 +29,17 @@ namespace turbo_transformers {
 namespace layers {
 
 void BertPooler::operator()(const core::Tensor& input_tensor,
-                                  core::Tensor* output_tensor) const {
-  output_tensor->Reshape<float>(
-      {input_tensor.shape(0) , dense_weight_.shape(0)},
-      input_tensor.device_type(), input_tensor.device_id());
+                            core::Tensor* output_tensor) const {
+  // input_tensor [batch_size, sequence_length, hidden_size]
+  // output_tensor [batch_size, hidden_size]
+  output_tensor->Reshape<float>({input_tensor.shape(0), dense_weight_.shape(0)},
+                                input_tensor.device_type(),
+                                input_tensor.device_id());
 
   kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
-  kernels::AddBiasAct<kernels::ActivationType, kernels::ActivationType::Tanh, float>(dense_bias_, output_tensor);
+  kernels::AddBiasAct<kernels::ActivationType, kernels::ActivationType::Tanh,
+                      float>(dense_bias_, output_tensor);
 }
 
 void BertPooler::EnforceShapeAndType() const {
@@ -47,13 +50,13 @@ void BertPooler::EnforceShapeAndType() const {
                 dense_bias_.shape(0));
 
   if (loguru::current_verbosity_cutoff() >= 3) {
-      std::ostringstream os;
-      os << ">>>>>>>>>>>> query_weight <<<<<<<<<<<<" << std::endl;
-      dense_weight_.Print<float>(os);
-      os << ">>>>>>>>>>>> query_bias <<<<<<<<<<<<" << std::endl;
-      dense_bias_.Print<float>(os);
-      LOG_S(3) << os.str();
-    }
+    std::ostringstream os;
+    os << ">>>>>>>>>>>> query_weight <<<<<<<<<<<<" << std::endl;
+    dense_weight_.Print<float>(os);
+    os << ">>>>>>>>>>>> query_bias <<<<<<<<<<<<" << std::endl;
+    dense_bias_.Print<float>(os);
+    LOG_S(3) << os.str();
+  }
 }
 
 }  // namespace layers
