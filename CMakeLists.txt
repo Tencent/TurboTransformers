@@ -21,13 +21,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-Wall")
 set(CMAKE_C_FLAGS "-Wall")
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/hunter-gate/cmake/HunterGate.cmake)
-HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.240.tar.gz"
-    SHA1 "ca19f3769e6c80cfdd19d8b12ba5102c27b074e0"
-)
-
 set(turbo_transformers_VERSION 0.1.1)
 
 option(WITH_PROFILER  "Compile with gperftools" OFF)
@@ -38,9 +31,6 @@ if (WITH_GPU)
 else ()
   project(turbo_transformers LANGUAGES CXX C)
 endif ()
-
-hunter_add_package(Eigen)
-find_package(Eigen3 CONFIG REQUIRED)
 
 if(WITH_GPU)
   set(CUDA_PATH "/usr/local/cuda" CACHE PATH "The cuda library root")
@@ -72,29 +62,6 @@ else ()
 endif ()
 
 message(STATUS "Blas provider is ${BLAS_PROVIDER}")
-
-if (${BLAS_PROVIDER} STREQUAL "mkl")
-    find_package(MKL REQUIRED)
-    add_definitions(
-            -DEIGEN_USE_THREADS # support openmp
-            -DEIGEN_USE_MKL_ALL # support mkl
-            -DEIGEN_NO_MALLOC  # if any eigen code needs malloc, just raise a compilation error
-            -DEIGEN_DEFAULT_TO_ROW_MAJOR
-            -DEIGEN_FAST_MATH=1 # fast math for cos/sin/...
-    )
-elseif (${BLAS_PROVIDER} STREQUAL "openblas")
-    hunter_add_package(OpenBLAS)
-    find_package(OpenBLAS CONFIG REQUIRED)
-
-    add_definitions(
-            -DEIGEN_USE_THREADS # support openmp
-            -DEIGEN_NO_MALLOC  # if any eigen code needs malloc, just raise a compilation error
-            -DEIGEN_DEFAULT_TO_ROW_MAJOR
-            -DEIGEN_FAST_MATH=1 # fast math for cos/sin/...
-    )
-else ()
-    message(SEND_ERROR "Blas Provider must in (openblas, mkl)")
-endif ()
 
 if (WITH_PROFILER)
     find_package(Gperftools REQUIRED)
