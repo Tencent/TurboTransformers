@@ -22,12 +22,13 @@
 #endif
 
 namespace turbo_transformers {
-namespace core {
+namespace layers {
+namespace kernels {
 namespace common {
 
 extern bool is_same_device_ctx(DLContext t1, DLContext t2);
 
-extern bool is_same_shape(const Tensor& t1, const Tensor& t2);
+extern bool is_same_shape(const core::Tensor& t1, const core::Tensor& t2);
 
 template <typename T>
 void ft_seqence(T* data, int64_t size, DLDeviceType device);
@@ -39,7 +40,7 @@ void ft_fill(T* data, int64_t size, T val, DLDeviceType device);
 // how can we pass a lambda function as __device__ to cuda?
 void ft_transform(int64_t* src_data, float* dst_data, int64_t size,
                   DLDeviceType device);
-
 }  // namespace common
-}  // namespace core
+}  // namespace kernels
+}  // namespace layers
 }  // namespace turbo_transformers

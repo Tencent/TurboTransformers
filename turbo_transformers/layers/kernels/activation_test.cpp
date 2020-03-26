@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define CATCH_CONFIG_MAIN
 #include "turbo_transformers/layers/kernels/activation.h"
+
 #include "loguru.hpp"
 #include "turbo_transformers/core/half.h"
 #ifdef FT_WITH_CUDA

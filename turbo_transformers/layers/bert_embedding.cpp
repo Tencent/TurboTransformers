@@ -15,7 +15,7 @@
 #include "turbo_transformers/layers/bert_embedding.h"
 
 #include "loguru.hpp"
-#include "turbo_transformers/core/common.h"
+#include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
 #ifdef FT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
@@ -29,14 +29,14 @@ template <bool Add>
 static void LookupEmbedding(core::Tensor &out_tensor,
                             const core::Tensor &embedding_table,
                             const core::Tensor &ids_tensor) {
-  FT_ENFORCE_EQ(core::common::is_same_device_ctx(out_tensor.device_ctx(),
-                                                 embedding_table.device_ctx()),
+  FT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
+                    out_tensor.device_ctx(), embedding_table.device_ctx()),
                 true,
                 "The out_tensor and embedding_table should have the same "
                 "device type and device id.");
 
-  FT_ENFORCE_EQ(core::common::is_same_device_ctx(out_tensor.device_ctx(),
-                                                 ids_tensor.device_ctx()),
+  FT_ENFORCE_EQ(kernels::common::is_same_device_ctx(out_tensor.device_ctx(),
+                                                    ids_tensor.device_ctx()),
                 true,
                 "The out_tensor and ids_tensor should have the same device "
                 "type and device id.");

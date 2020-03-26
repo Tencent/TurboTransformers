@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(modeling_bert modeling_bert.cpp)
-target_link_libraries(modeling_bert
+add_library(tt_cxx_interface modeling_bert.cpp)
+target_link_libraries(tt_cxx_interface
         PUBLIC dlpack
-        PRIVATE cnpy zlib tensor_copy bert_embedding bert_attention bert_intermediate bert_output prepare_bert_masks
-        sequence_pool)
+        PRIVATE cnpy zlib tt_core tt_layers tt_kernels)
 
-add_executable(modeling_bert_test modeling_bert_test.cpp)
-target_link_libraries(modeling_bert_test modeling_bert Catch2)
-add_test(NAME modeling_bert_test COMMAND modeling_bert_test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+add_executable(tt_cxx_interface_test modeling_bert_test.cpp)
+target_link_libraries(tt_cxx_interface_test catch2_test_main tt_cxx_interface)
+add_test(NAME tt_cxx_interface_test COMMAND tt_cxx_interface_test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})

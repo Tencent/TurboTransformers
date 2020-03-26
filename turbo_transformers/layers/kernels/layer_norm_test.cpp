@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define CATCH_CONFIG_MAIN
-
 #include "turbo_transformers/layers/kernels/layer_norm.h"
-#include "loguru.hpp"
 
 #include <chrono>
 
 #include "catch2/catch.hpp"
-
+#include "loguru.hpp"
 #include "turbo_transformers/core/aligned_scratchpad.h"
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/layers/kernels/test_helper.h"
