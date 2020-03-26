@@ -87,30 +87,30 @@ ReduceAixsOne<float, layers::types::PoolType::kMean>(const float* input,
                                                      int hidden_size);
 
 template <typename T, layers::types::PoolType t>
-static void GPUReduceAxisOne(const T* input, T* output, int batch_size,
-                             int seq_len, int hidden_size) {
+void GPUReduceAxisOne(const T* input, T* output, int batch_size, int seq_len,
+                      int hidden_size) {
   dim3 grid_size(batch_size);
   dim3 block_size(max(1024, hidden_size));
   ReduceAixsOne<T, t><<<grid_size, block_size>>>(input, output, batch_size,
                                                  seq_len, hidden_size);
 }
 
-template static void GPUReduceAxisOne<float, layers::types::PoolType::kMax>(
+template void GPUReduceAxisOne<float, layers::types::PoolType::kMax>(
     const float* input, float* output, int batch_size, int seq_len,
     int hidden_size);
 
-template static void GPUReduceAxisOne<float, layers::types::PoolType::kMean>(
+template void GPUReduceAxisOne<float, layers::types::PoolType::kMean>(
     const float* input, float* output, int batch_size, int seq_len,
     int hidden_size);
 
 template <typename T>
-void gpu_sequence(T* data_ptr, int64_t size) {
+void GPUSequence(T* data_ptr, int64_t size) {
   thrust::device_ptr<T> data_dev_ptr = thrust::device_pointer_cast(data_ptr);
   thrust::sequence(thrust::device, data_dev_ptr, data_dev_ptr + size);
 }
 
-template void gpu_sequence<int64_t>(int64_t* data_ptr, int64_t size);
-template void gpu_sequence<float>(float* data_ptr, int64_t size);
+template void GPUSequence<int64_t>(int64_t* data_ptr, int64_t size);
+template void GPUSequence<float>(float* data_ptr, int64_t size);
 
 template <typename T>
 void GPUFill(T* data_ptr, int64_t size, T val) {

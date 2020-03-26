@@ -40,7 +40,7 @@ void ft_seqence(T* data, int64_t size, DLDeviceType device) {
     std::iota(data, data + size, static_cast<T>(0));
   } else if (device == kDLGPU) {
 #ifdef FT_WITH_CUDA
-    turbo_transformers::layers::kernels::gpu_sequence(data, size);
+    turbo_transformers::layers::kernels::GPUSequence(data, size);
 #else
     FT_THROW("code is not compiled with CUDA.");
 #endif

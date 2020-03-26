@@ -25,7 +25,7 @@ void GPUReduceAxisOne(const T* input, T* output, int batch_size, int seq_len,
                       int hidden_size);
 
 template <typename T>
-void gpu_sequence(T* data_ptr, int64_t size);
+void GPUSequence(T* data_ptr, int64_t size);
 
 template <typename T>
 void GPUFill(T* data_ptr, int64_t size, T val);
