@@ -14,10 +14,10 @@
 
 #pragma once
 namespace turbo_transformers {
-namespace core {
+namespace layers {
 namespace types {
 
 enum class PoolType { kMax = 0, kMean, kFirst, kLast };
 }
-}  // namespace core
+}  // namespace layers
 }  // namespace turbo_transformers

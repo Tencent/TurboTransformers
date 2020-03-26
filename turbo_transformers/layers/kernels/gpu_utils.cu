@@ -29,13 +29,12 @@ namespace kernels {
 
 #define max(a, b) ((a) > (b)) ? (a) : (b)
 
-template <typename T, turbo_transformers::core::types::PoolType t>
+template <typename T, ≈ t>
 __inline__ T __device__ ReduceOp(const T* target, int start_idx, int stride,
                                  int len);
 
 template <>
-__inline__ float __device__
-ReduceOp<float, turbo_transformers::core::types::PoolType::kMax>(
+__inline__ float __device__ ReduceOp<float, layers::types::PoolType::kMax>(
     const float* input, int start_idx, int stride, int len) {
   float res = input[start_idx];
   for (int k = 1; k < len; ++k) {
@@ -45,8 +44,7 @@ ReduceOp<float, turbo_transformers::core::types::PoolType::kMax>(
 }
 
 template <>
-__inline__ float __device__
-ReduceOp<float, turbo_transformers::core::types::PoolType::kMean>(
+__inline__ float __device__ ReduceOp<float, layers::types::PoolType::kMean>(
     const float* input, int start_idx, int stride, int len) {
   float res = input[start_idx];
   for (int k = 1; k < len; ++k) {
@@ -56,7 +54,7 @@ ReduceOp<float, turbo_transformers::core::types::PoolType::kMean>(
 }
 
 //[batch, seq_len, hidden_size] -> [batch, hidden_size]
-template <typename T, turbo_transformers::core::types::PoolType t>
+template <typename T, layers::types::PoolType t>
 __global__ void ReduceAixsOne(const T* input, T* output, int batch_size,
                               int seq_len, int hidden_size) {
   int tid = threadIdx.x;  // hidden_size idx
@@ -72,31 +70,27 @@ __global__ void ReduceAixsOne(const T* input, T* output, int batch_size,
   }
 }
 
-template __global__ void
-ReduceAixsOne<float, turbo_transformers::core::types::PoolType::kMax>(
+template __global__ void ReduceAixsOne<float, layers::types::PoolType::kMax>(
     const float* input, float* output, int batch_size, int seq_len,
     int hidden_size);
-template __global__ void
-ReduceAixsOne<float, turbo_transformers::core::types::PoolType::kMean>(
+template __global__ void ReduceAixsOne<float, layers::types::PoolType::kMean>(
     const float* input, float* output, int batch_size, int seq_len,
     int hidden_size);
 
-template <typename T, turbo_transformers::core::types::PoolType t>
-void gpu_reduce_axis_one(const T* input, T* output, int batch_size, int seq_len,
-                         int hidden_size) {
+template <typename T, layers::types::PoolType t>
+void GPUReduceAxisOne(const T* input, T* output, int batch_size, int seq_len,
+                      int hidden_size) {
   dim3 grid_size(batch_size);
   dim3 block_size(max(1024, hidden_size));
   ReduceAixsOne<T, t><<<grid_size, block_size>>>(input, output, batch_size,
                                                  seq_len, hidden_size);
 }
 
-template void
-gpu_reduce_axis_one<float, turbo_transformers::core::types::PoolType::kMax>(
+template void GPUReduceAxisOne<float, layers::types::PoolType::kMax>(
     const float* input, float* output, int batch_size, int seq_len,
     int hidden_size);
 
-template void
-gpu_reduce_axis_one<float, turbo_transformers::core::types::PoolType::kMean>(
+template void GPUReduceAxisOne<float, layers::types::PoolType::kMean>(
     const float* input, float* output, int batch_size, int seq_len,
     int hidden_size);
 

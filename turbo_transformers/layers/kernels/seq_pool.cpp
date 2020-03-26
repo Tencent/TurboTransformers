@@ -22,7 +22,7 @@
 #include <limits>
 #include <unordered_map>
 
-#include "turbo_transformers/core/enforce.h"
+#include "turbo_transformers/core/memory.h"
 
 namespace turbo_transformers {
 namespace layers {
@@ -30,16 +30,16 @@ namespace kernels {
 
 namespace {
 
-template <typename T, turbo_transformers::core::types::PoolType t>
+template <typename T, layers::types::PoolType>
 inline void ProcessEle(const T* in_ptr, T* out_ptr, int64_t seq_len,
                        int64_t hidden_size);
 template <>
-inline void ProcessEle<float, turbo_transformers::core::types::PoolType::kMean>(
+inline void ProcessEle<float, layers::types::PoolType::kMean>(
     const float* in_ptr, float* out_ptr, int64_t seq_len, int64_t hidden_size) {
-  if (hidden_size < 1)
-    FT_THROW(
-        "Avg Pooling on tensor whose leading dimension should be larger than "
-        "0");
+  FT_ENFORCE_GT(
+      hidden_size, 0,
+      "Avg Pooling on tensor whose leading dimension should be larger than "
+      "0");
   for (int64_t i = 0; i < hidden_size; ++i) {
     out_ptr[i] = 0.;
     for (int64_t j = i; j < seq_len * hidden_size; j += hidden_size) {
@@ -50,12 +50,12 @@ inline void ProcessEle<float, turbo_transformers::core::types::PoolType::kMean>(
 };
 
 template <>
-inline void ProcessEle<float, turbo_transformers::core::types::PoolType::kMax>(
+inline void ProcessEle<float, layers::types::PoolType::kMax>(
     const float* in_ptr, float* out_ptr, int64_t seq_len, int64_t hidden_size) {
-  if (hidden_size < 1)
-    FT_THROW(
-        "Max Pooling on tensor whose leading dimension should be larger than "
-        "0");
+  FT_ENFORCE_GT(
+      hidden_size, 0,
+      "Max Pooling on tensor whose leading dimension should be larger than "
+      "0");
   for (int64_t i = 0; i < hidden_size; ++i) {
     out_ptr[i] = std::numeric_limits<float>::lowest();
     for (int64_t j = i; j < seq_len * hidden_size; j += hidden_size) {
@@ -64,7 +64,7 @@ inline void ProcessEle<float, turbo_transformers::core::types::PoolType::kMax>(
   }
 };
 
-template <typename T, turbo_transformers::core::types::PoolType t>
+template <typename T, layers::types::PoolType t>
 void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   auto batch_size = input.shape(0);
   auto seq_len = input.shape(1);
@@ -81,8 +81,7 @@ void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
     }
   } else {
 #ifdef FT_WITH_CUDA
-    gpu_reduce_axis_one<T, t>(in_ptr, out_ptr, batch_size, seq_len,
-                              hidden_size);
+    GPUReduceAxisOne<T, t>(in_ptr, out_ptr, batch_size, seq_len, hidden_size);
 #endif
   }
 }
@@ -104,15 +103,16 @@ void SeqPoolWithIdx(const core::Tensor& input, int64_t idx,
     for (int64_t i = 0; i < batch_size; ++i) {
       const T* sub_in_ptr = in_ptr + i * stride + idx * hidden_size;
       T* sub_out_ptr = out_ptr + i * hidden_size;
-      std::copy(sub_in_ptr, sub_in_ptr + hidden_size, sub_out_ptr);
+      core::Memcpy(sub_out_ptr, sub_in_ptr, hidden_size * sizeof(T),
+                   core::MemcpyFlag::kCPU2CPU);
     }
   } else if (input.device_type() == kDLGPU) {
 #ifdef FT_WITH_CUDA
     for (int64_t i = 0; i < batch_size; ++i) {
       const T* sub_in_ptr = in_ptr + i * stride + idx * hidden_size;
       T* sub_out_ptr = out_ptr + i * hidden_size;
-      turbo_transformers::layers::kernels::gpu_copy(sub_in_ptr, sub_out_ptr,
-                                                    hidden_size);
+      core::Memcpy(sub_out_ptr, sub_in_ptr, hidden_size * sizeof(T),
+                   core::MemcpyFlag::kGPU2GPU);
     }
 #endif
   } else {
@@ -123,8 +123,7 @@ void SeqPoolWithIdx(const core::Tensor& input, int64_t idx,
 }  // namespace
 
 template <typename T>
-void SeqPool(const core::Tensor& input,
-             turbo_transformers::core::types::PoolType pool_type,
+void SeqPool(const core::Tensor& input, layers::types::PoolType pool_type,
              core::Tensor* output) {
   FT_ENFORCE_EQ(input.n_dim(), 3,
                 "The input's dim should be 3, but the input's dim is %d",
@@ -138,34 +137,31 @@ void SeqPool(const core::Tensor& input,
                      input.device_id());
 
   switch (pool_type) {
-    case turbo_transformers::core::types::PoolType::kMax:
-      SeqPoolWithProcess<T, turbo_transformers::core::types::PoolType::kMax>(
-          input, output);
+    case layers::types::PoolType::kMax:
+      SeqPoolWithProcess<T, layers::types::PoolType::kMax>(input, output);
       break;
-    case turbo_transformers::core::types::PoolType::kMean:
-      SeqPoolWithProcess<T, turbo_transformers::core::types::PoolType::kMean>(
-          input, output);
+    case layers::types::PoolType::kMean:
+      SeqPoolWithProcess<T, layers::types::PoolType::kMean>(input, output);
       break;
-    case turbo_transformers::core::types::PoolType::kFirst:
+    case layers::types::PoolType::kFirst:
       SeqPoolWithIdx<T>(input, 0, output);
       break;
-    case turbo_transformers::core::types::PoolType::kLast:
+    case layers::types::PoolType::kLast:
       SeqPoolWithIdx<T>(input, seq_len - 1, output);
       break;
   }
 }
 
-template void SeqPool<float>(
-    const core::Tensor& input,
-    turbo_transformers::core::types::PoolType pool_type, core::Tensor* output);
+template void SeqPool<float>(const core::Tensor& input,
+                             layers::types::PoolType pool_type,
+                             core::Tensor* output);
 
-turbo_transformers::core::types::PoolType GetPoolType(
-    const std::string& pool_type) {
-#define _EnumCase(EnumValue)                                          \
-  do {                                                                \
-    if (pool_type == #EnumValue) {                                    \
-      return turbo_transformers::core::types::PoolType::k##EnumValue; \
-    }                                                                 \
+layers::types::PoolType GetPoolType(const std::string& pool_type) {
+#define _EnumCase(EnumValue)                        \
+  do {                                              \
+    if (pool_type == #EnumValue) {                  \
+      return layers::types::PoolType::k##EnumValue; \
+    }                                               \
   } while (0)
 
   _EnumCase(First);

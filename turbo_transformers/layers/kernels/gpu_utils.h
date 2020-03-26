@@ -14,15 +14,15 @@
 
 #pragma once
 #include <stdint.h>
-#include "turbo_transformers/core/types.h"
+#include "turbo_transformers/layers/types.h"
 
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-template <typename T, turbo_transformers::core::types::PoolType t>
-void gpu_reduce_axis_one(const T* input, T* output, int batch_size, int seq_len,
-                         int hidden_size);
+template <typename T, layers::types::PoolType t>
+void GPUReduceAxisOne(const T* input, T* output, int batch_size, int seq_len,
+                      int hidden_size);
 
 template <typename T>
 void gpu_copy(const T* src, T* dst, int64_t size);

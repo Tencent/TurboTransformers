@@ -51,8 +51,8 @@ static std::vector<MemcpyFuncTypes> InitMemcpyFuncs() {
   return results;
 }
 
-void FT_Memcpy(void *dst_data, const void *src_data, size_t data_size,
-               MemcpyFlag flag) {
+void Memcpy(void *dst_data, const void *src_data, size_t data_size,
+            MemcpyFlag flag) {
   if (data_size <= 0) return;
   static auto memcpyFuncs = InitMemcpyFuncs();
   auto f = static_cast<size_t>(flag);

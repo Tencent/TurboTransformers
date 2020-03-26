@@ -17,8 +17,8 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-enum class turbo_transformers::core::types::PoolType::turbo_transformers::core::
-    types::PoolType::turbo_transformers::core::types::PoolType {
+enum class layers::types::PoolType::turbo_transformers::core::types::PoolType::
+    layers::types::PoolType {
       kMax = 0,
       kMean,
       kFirst,

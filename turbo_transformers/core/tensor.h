@@ -231,7 +231,7 @@ class Tensor {
 #ifdef FT_WITH_CUDA
       auto n = numel();
       std::unique_ptr<T[]> cpu_data(new T[n]);
-      FT_Memcpy(cpu_data.get(), data<T>(), n * sizeof(T), MemcpyFlag::kGPU2CPU);
+      Memcpy(cpu_data.get(), data<T>(), n * sizeof(T), MemcpyFlag::kGPU2CPU);
       for (int i = 0; i < n; ++i) {
         sum += cpu_data[i];
         if (cnt-- >= 0) os << cpu_data[i] << ", ";
