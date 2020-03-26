@@ -30,10 +30,10 @@ TEST_CASE("Bert", "all") {
                    PoolingType::kFirst);
   REQUIRE(vec.size() == 768 * 3);
   // Write a better UT
-  //  for (size_t i = 0; i < vec.size(); ++i) {
-  //    REQUIRE(!std::isnan(vec.data()[i]));
-  //    REQUIRE(!std::isinf(vec.data()[i]));
-  //  }
+  for (size_t i = 0; i < vec.size(); ++i) {
+    REQUIRE(!std::isnan(vec.data()[i]));
+    REQUIRE(!std::isinf(vec.data()[i]));
+  }
 }
 
 }  // namespace loaders
