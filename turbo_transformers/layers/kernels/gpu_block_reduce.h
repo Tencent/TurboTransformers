@@ -20,7 +20,7 @@ namespace kernels {
 
 #define FINAL_MASK 0xffffffff
 
-enum ReduceType { kMax = 0, kSum, kAvg };
+enum ReduceType { kMax = 0, kSum };
 
 template <typename Type, Type t, int NumElem>
 __inline__ __device__ void blockReduce(float* val_list);
