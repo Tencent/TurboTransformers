@@ -13,16 +13,28 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
+
 #include "turbo_transformers/core/tensor.h"
 
 namespace turbo_transformers {
 namespace layers {
-namespace kernels {
-enum ActivationType { Gelu = 0, Tanh };
 
-template <typename ActivationType, ActivationType TypeVal, typename T>
-void AddBiasAct(const core::Tensor& bias, core::Tensor* out);
+class BertPooler {
+ public:
+  BertPooler(core::Tensor dense_weight, core::Tensor dense_bias)
+      : dense_weight_(std::move(dense_weight)),
+        dense_bias_(std::move(dense_bias)) {
+    EnforceShapeAndType();
+  }
 
-}  // namespace kernels
+  void EnforceShapeAndType() const;
+  void operator()(const core::Tensor& input_tensor, core::Tensor* output) const;
+
+ private:
+  core::Tensor dense_weight_;
+  core::Tensor dense_bias_;
+};
+
 }  // namespace layers
 }  // namespace turbo_transformers

@@ -14,6 +14,7 @@
 
 #define CATCH_CONFIG_MAIN
 #include "turbo_transformers/layers/kernels/activation.h"
+
 #include "loguru.hpp"
 #include "turbo_transformers/core/half.h"
 #ifdef FT_WITH_CUDA
@@ -28,7 +29,7 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 template <typename T>
-void AddBiasGeLUActNaive(const T* bias, T* out, int64_t m, int64_t n) {
+void AddBiasGeluActNaive(const T* bias, T* out, int64_t m, int64_t n) {
   for (int64_t i = 0; i < m; ++i) {
     int64_t k = 0;
     for (int64_t j = n * i; j < n * (i + 1); ++j) {
@@ -39,6 +40,18 @@ void AddBiasGeLUActNaive(const T* bias, T* out, int64_t m, int64_t n) {
           (1.0f + std::tanh(0.7978845608028654f *
                             (before_act + 0.044715f * before_act * before_act *
                                               before_act))));
+    }
+  }
+}
+
+template <typename T>
+void AddBiasTanhActNaive(const T* bias, T* out, int64_t m, int64_t n) {
+  for (int64_t i = 0; i < m; ++i) {
+    int64_t k = 0;
+    for (int64_t j = n * i; j < n * (i + 1); ++j) {
+      auto before_act =
+          static_cast<float>(out[j]) + static_cast<float>(bias[k++]);
+      out[j] = static_cast<T>(std::tanh(before_act));
     }
   }
 }
@@ -57,7 +70,7 @@ void TestFunction(Func&& func, int step, const std::string& infor,
               << g_bytes / elapse << " GB/s";
 }
 
-TEST_CASE("activation CPU benchmark") {
+TEST_CASE("activation CPU AddBiasGelu benchmark") {
   auto tensor_create_and_fill_constant =
       [](std::initializer_list<int64_t> shape, float value) {
         turbo_transformers::core::Tensor tensor(nullptr);
@@ -85,48 +98,64 @@ TEST_CASE("activation CPU benchmark") {
 
       TestFunction(
           [&]() {
-            AddBiasGeLUActNaive<float>(bias.data<float>(),
+            AddBiasGeluActNaive<float>(bias.data<float>(),
                                        out_parallel.mutableData<float>(), m, n);
           },
-          step, "AddBiasGeLUActNaive", m * n * sizeof(float) / 1e9);
+          step, "AddBiasGeluActNaive", m * n * sizeof(float) / 1e9);
 
-      TestFunction([&]() { AddBiasGeLUAct<float>(bias, &out); }, step,
-                   "AddBiasGeLUAct OMP", m * n * sizeof(float) / 1e9);
+      TestFunction(
+          [&]() {
+            AddBiasAct<ActivationType, ActivationType::Gelu, float>(bias, &out);
+          },
+          step, "AddBiasGeluAct OMP", m * n * sizeof(float) / 1e9);
 
-      auto* out_parallel_ptr = out_parallel.mutableData<float>();
-      for (int64_t i = 0; i < m * n; ++i) {
-        FT_ENFORCE_LT(fabs(out_parallel_ptr[i] - out_parallel_ptr[i]), 1e-6,
-                      "Wrong @ %d", i);
+      if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
+        FT_THROW("AddBiasGelu test failed");
       }
     }
 }
 
-#ifdef FT_WITH_CUDA
+TEST_CASE("activation CPU AddBiasTanh benchmark") {
+  auto tensor_create_and_fill_constant =
+      [](std::initializer_list<int64_t> shape, float value) {
+        turbo_transformers::core::Tensor tensor(nullptr);
+        tensor.Reshape<float>(shape, kDLCPU, 0);
+        auto* ptr = tensor.mutableData<float>();
+        for (int64_t i = 0; i < tensor.numel(); ++i) {
+          ptr[i] = value;
+        }
+        return tensor;
+      };
+  int64_t hidden_size = 12 * 64;
+  const int step = 10;
+  for (auto batch_size : {1, 20, 24})
+    for (auto seq_length : {8, 16, 32, 48, 64, 128}) {
+      auto m = batch_size * seq_length;
+      auto n = hidden_size;
 
-template <typename T>
-turbo_transformers::core::Tensor CreateTensor(
-    std::initializer_list<int64_t> shape, DLDeviceType device_type,
-    int dev_id) {
-  turbo_transformers::core::Tensor tensor(nullptr);
-  tensor.Reshape<T>(shape, device_type, dev_id);
-  return tensor;
-};
+      auto bias = tensor_create_and_fill_constant({n}, 0.01f);
+      auto out = tensor_create_and_fill_constant({m, n}, 0.02f);
+      auto out_parallel = tensor_create_and_fill_constant({m, n}, 0.02f);
 
-template <typename T, typename Func>
-void CreateTensorAndFillRandom(int batch_size, int seq_length, int hidden_size,
-                               Func&& func) {
-  auto gpu_bias = CreateTensor<T>({hidden_size}, kDLGPU, 0);
-  auto cpu_bias = CreateTensor<T>({hidden_size}, kDLCPU, 0);
+      std::cout << "batch_size: " << batch_size
+                << " seq_length: " << seq_length;
 
-  auto gpu_out =
-      CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLGPU, 0);
-  auto cpu_out =
-      CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLCPU, 0);
+      TestFunction(
+          [&]() {
+            AddBiasTanhActNaive<float>(bias.data<float>(),
+                                       out_parallel.mutableData<float>(), m, n);
+          },
+          step, "AddBiasTanhActNaive", m * n * sizeof(float) / 1e9);
 
-  ::turbo_transformers::test::FillDataForCPUGPUTensors<T>(cpu_bias, gpu_bias);
-  ::turbo_transformers::test::FillDataForCPUGPUTensors<T>(cpu_out, gpu_out);
-
-  func(cpu_bias, cpu_out, gpu_bias, gpu_out);
+      TestFunction(
+          [&]() {
+            AddBiasAct<ActivationType, ActivationType::Tanh, float>(bias, &out);
+          },
+          step, "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
+      if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
+        FT_THROW("AddBiasTanh test failed");
+      }
+    }
 }
 
 TEST_CASE("activation CPU and GPU correctness") {
@@ -186,19 +215,6 @@ void ActivationGPUBenchmark(int batch_size, int seq_length, int hidden_size,
   std::cout << " AddBiasGeLUAct GPU cost:" << elapse << " sec, Bandwidth "
             << m * n * sizeof(T) / 1e9 / elapse << " GB/s" << std::endl;
 }
-
-TEST_CASE("activation GPU benchmark") {
-  int64_t hidden_size = 12 * 64;
-  const int step = 10;
-  for (auto batch_size : {1, 20, 24}) {
-    for (auto seq_length : {8, 16, 32, 48, 64, 128}) {
-      ActivationGPUBenchmark<float>(batch_size, seq_length, hidden_size, step);
-      ActivationGPUBenchmark<core::Half>(batch_size, seq_length, hidden_size,
-                                         step);
-    }
-  }
-}
-#endif
 
 }  // namespace kernels
 }  // namespace layers
