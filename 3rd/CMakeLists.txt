@@ -41,7 +41,7 @@ add_dependencies(zlib extern_zlib)
 
 ExternalProject_Add(extern_cnpy
         GIT_REPOSITORY https://github.com/rogersce/cnpy.git
-        GIT_TAG 4e8810b1a8637695171ed346ce68f6984e585ef4
+        GIT_TAG e6536edb128bd0575bf07514d486eb67b5dfb04b
         CMAKE_ARGS -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/zlib/
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/cnpy
         CMAKE_ARGS -DZLIB_LIBRARY=${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libz.a
