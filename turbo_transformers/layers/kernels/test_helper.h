@@ -30,7 +30,7 @@ void FillDataForCPUGPUTensors(Tensor& cpu_tensor, Tensor& gpu_tensor) {
   for (int64_t i = 0; i < size; ++i) {
     cpu_data[i] = rand() / static_cast<T>(RAND_MAX);
   }
-  turbo_transformers::core::FT_Memcpy(
+  turbo_transformers::core::Memcpy(
       gpu_data, cpu_data, size * sizeof(T),
       ::turbo_transformers::core::MemcpyFlag::kCPU2GPU);
 }
@@ -43,7 +43,7 @@ bool CheckResultOfCPUAndGPU(const Tensor& cpu_tensor,
   auto size = cpu_tensor.numel();
 
   std::unique_ptr<T[]> gpu_data_ref(new T[size]);
-  turbo_transformers::core::FT_Memcpy(
+  turbo_transformers::core::Memcpy(
       gpu_data_ref.get(), gpu_data, size * sizeof(T),
       turbo_transformers::core::MemcpyFlag::kGPU2CPU);
   bool ret = true;
@@ -123,8 +123,8 @@ void Fill(turbo_transformers::core::Tensor& tensor, T lower_bound = 0.,
   } else {
     FT_THROW("Fill device_type wrong");
   }
-  ::turbo_transformers::core::FT_Memcpy(T_data, cpu_data.get(),
-                                        size * sizeof(T), flag);
+  ::turbo_transformers::core::Memcpy(T_data, cpu_data.get(), size * sizeof(T),
+                                     flag);
 }
 
 template <typename T>

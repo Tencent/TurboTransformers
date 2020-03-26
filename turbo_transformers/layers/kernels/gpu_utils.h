@@ -14,19 +14,24 @@
 
 #pragma once
 #include <stdint.h>
+#include "turbo_transformers/layers/types.h"
 
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-template <typename T>
-void gpu_sequence(T* data_ptr, int64_t size);
+template <typename T, layers::types::PoolType t>
+void GPUReduceAxisOne(const T* input, T* output, int batch_size, int seq_len,
+                      int hidden_size);
 
 template <typename T>
-void gpu_fill(T* data_ptr, int64_t size, T val);
+void GPUSequence(T* data_ptr, int64_t size);
 
-extern void gpu_transform(int64_t* src_data_ptr, float* dst_data_ptr,
-                          const int64_t size);
+template <typename T>
+void GPUFill(T* data_ptr, int64_t size, T val);
+
+extern void GPUTransform(int64_t* src_data_ptr, float* dst_data_ptr,
+                         const int64_t size);
 
 }  // namespace kernels
 }  // namespace layers
