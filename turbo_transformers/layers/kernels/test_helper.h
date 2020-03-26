@@ -127,24 +127,5 @@ void Fill(turbo_transformers::core::Tensor& tensor, T lower_bound = 0.,
                                      flag);
 }
 
-template <typename T>
-bool CheckResultOfCPU(const Tensor& cpu_tensor_lhs,
-                      const Tensor& cpu_tensor_rhs) {
-  const T* cpu_data_lhs = cpu_tensor_lhs.data<T>();
-  const T* cpu_data_rhs = cpu_tensor_rhs.data<T>();
-  auto size = cpu_tensor_lhs.numel();
-
-  bool ret = true;
-  for (int64_t i = 0; i < size; ++i) {
-    if (std::abs(cpu_data_lhs[i] - cpu_data_rhs[i]) > 1e-3) {
-      std::cerr << "@ " << i << ": " << cpu_data_lhs[i] << " vs "
-                << cpu_data_rhs[i] << std::endl;
-      ret = false;
-      break;
-    }
-  }
-  return ret;
-}
-
 }  // namespace test
 }  // namespace turbo_transformers

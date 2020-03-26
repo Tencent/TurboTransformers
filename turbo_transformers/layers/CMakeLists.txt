@@ -26,9 +26,6 @@ target_link_libraries(bert_attention tensor blas loguru enforce softmax transpos
 add_library(bert_intermediate bert_intermediate.cpp)
 target_link_libraries(bert_intermediate loguru activation mat_mul)
 
-add_library(bert_pooler bert_pooler.cpp)
-target_link_libraries(bert_pooler loguru activation mat_mul)
-
 add_library(bert_output bert_output.cpp)
 target_link_libraries(bert_output loguru activation mat_mul)
 

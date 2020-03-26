@@ -23,7 +23,6 @@
 #include "turbo_transformers/layers/bert_embedding.h"
 #include "turbo_transformers/layers/bert_intermediate.h"
 #include "turbo_transformers/layers/bert_output.h"
-#include "turbo_transformers/layers/bert_pooler.h"
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
 #ifdef _OPENMP
@@ -67,9 +66,8 @@ static void BindConfig(py::module &m) {
   py::enum_<BlasProvider>(m, "BlasProvider")
       .value("MKL", BlasProvider::MKL)
       .value("OpenBlas", BlasProvider::OpenBlas);
-  m.def("is_with_cuda", [] {
-     return core::IsCompiledWithCUDA();
-   }).def("get_blas_provider", GetBlasProvider);
+  m.def("is_with_cuda", [] { return core::IsCompiledWithCUDA(); })
+      .def("get_blas_provider", GetBlasProvider);
 }
 
 PYBIND11_MODULE(turbo_transformers_cxx, m) {
@@ -147,14 +145,6 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
                                             std::move(dense_bias));
       }))
       .def("__call__", &layers::BertIntermediate::operator());
-
-  py::class_<layers::BertPooler>(m, "BertPooler")
-      .def(py::init([](core::Tensor &dense_weight,
-                       core::Tensor &dense_bias) -> layers::BertPooler * {
-        return new layers::BertPooler(std::move(dense_weight),
-                                      std::move(dense_bias));
-      }))
-      .def("__call__", &layers::BertPooler::operator());
 
   py::class_<layers::BertOutput>(m, "BertOutput")
       .def(py::init([](core::Tensor &dense_weight, core::Tensor &dense_bias,
