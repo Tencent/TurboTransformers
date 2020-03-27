@@ -36,8 +36,8 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
 
   kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
-  kernels::AddBiasAct<kernels::ActivationType, kernels::ActivationType::Gelu,
-                      float>(dense_bias_, output_tensor);
+  kernels::AddBiasAct<float>(kernels::ActivationType::Gelu, dense_bias_,
+                             output_tensor);
 }
 
 void BertIntermediate::EnforceShapeAndType() const {

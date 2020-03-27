@@ -20,8 +20,9 @@ namespace layers {
 namespace kernels {
 enum ActivationType { Gelu = 0, Tanh };
 
-template <typename ActivationType, ActivationType TypeVal, typename T>
-void AddBiasAct(const core::Tensor& bias, core::Tensor* out);
+template <typename T>
+void AddBiasAct(const ActivationType& type, const core::Tensor& bias,
+                core::Tensor* out);
 
 }  // namespace kernels
 }  // namespace layers
