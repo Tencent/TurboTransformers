@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define CATCH_CONFIG_MAIN
 #include "turbo_transformers/core/aligned_scratchpad.h"
 
 #include <cstdint>
@@ -20,7 +19,7 @@
 #include "catch2/catch.hpp"
 namespace turbo_transformers {
 namespace core {
-TEST_CASE("Enforce", "[enforce]") {
+TEST_CASE("aligned_scratchpad", "[enforce]") {
   AlignedScratchpad<float> buf;
   float* ptr1 = buf.mutable_data(10);
   REQUIRE(reinterpret_cast<uintptr_t>(ptr1) % gAlignment == 0);

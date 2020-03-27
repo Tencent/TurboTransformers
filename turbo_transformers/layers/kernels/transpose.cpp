@@ -16,7 +16,8 @@
 
 #include <cstring>
 
-#include "turbo_transformers/core/common.h"
+#include "common.h"
+#include "turbo_transformers/layers/kernels/common.h"
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_transpose_kernel.h"
@@ -88,13 +89,13 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
   auto bias = bias_tensor.data<float>();
   auto output = output_tensor->mutableData<float>();
 
-  TT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
-                                                 bias_tensor.device_ctx()),
+  TT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
+                                           bias_tensor.device_ctx()),
                 true,
                 "SplitAddBiasTransposeForScore: input_tensor and bias_tensor "
                 "should have the same device type and device id.");
-  TT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
-                                                 output_tensor->device_ctx()),
+  TT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
+                                           output_tensor->device_ctx()),
                 true,
                 "SplitAddBiasTransposeForScore: input_tensor and output_tensor "
                 "should have the same device type and device id.");

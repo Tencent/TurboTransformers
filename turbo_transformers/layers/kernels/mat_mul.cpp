@@ -14,7 +14,7 @@
 
 #include "mat_mul.h"
 
-#include "turbo_transformers/core/common.h"
+#include "common.h"
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
@@ -35,11 +35,10 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   BlasInt K_a = a_trans ? a_rows : a_cols;
   BlasInt K_b = b_trans ? b_cols : b_rows;
   TT_ENFORCE_EQ(K_a, K_b, "matrix shape mismatch");
-  TT_ENFORCE(core::common::is_same_device_ctx(A.device_ctx(), B.device_ctx()),
+  TT_ENFORCE(common::is_same_device_ctx(A.device_ctx(), B.device_ctx()),
              "MatMul error: the device of A and B is different.");
-  TT_ENFORCE(
-      core::common::is_same_device_ctx(A.device_ctx(), out->device_ctx()),
-      "MatMul error: the device of A and out is different.");
+  TT_ENFORCE(common::is_same_device_ctx(A.device_ctx(), out->device_ctx()),
+             "MatMul error: the device of A and out is different.");
 
   if (A.device_type() == kDLCPU && B.device_type() == kDLCPU &&
       out->device_type() == kDLCPU) {

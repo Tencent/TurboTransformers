@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "turbo_transformers/core/common.h"
+#include "common.h"
 
 namespace turbo_transformers {
-namespace core {
+namespace layers {
+namespace kernels {
 namespace common {
 
 bool is_same_device_ctx(DLContext t1, DLContext t2) {
   return t1.device_id == t2.device_id && t1.device_type == t2.device_type;
 }
 
-bool is_same_shape(const Tensor& t1, const Tensor& t2) {
+bool is_same_shape(const core::Tensor& t1, const core::Tensor& t2) {
   if (t1.n_dim() != t2.n_dim()) {
     return false;
   }
@@ -75,20 +76,18 @@ template void tt_fill<int64_t>(int64_t* data, int64_t size, int64_t val,
 // how can we pass a lambda function as __device__ to cuda?
 void tt_transform(int64_t* src_data, float* dst_data, int64_t size,
                   DLDeviceType device) {
-  if (device == kDLCPU) {
     std::transform(src_data, src_data + size, dst_data,
-                   [](int64_t v) { return -10000.0f * (1 - v); });
-  } else if (device == kDLGPU) {
-#ifdef TT_WITH_CUDA
     layers::kernels::GPUTransform(src_data, dst_data, size);
 #else
     TT_THROW("code is not compiled with CUDA.");
 #endif
-  } else {
-    TT_THROW("device_type is not supported");
-  }
 }
-
+else {
+  TT_THROW("device_type is not supported");
+}
 }  // namespace common
-}  // namespace core
+
+}  // namespace kernels
+}  // namespace layers
+}  // namespace turbo_transformers
 }  // namespace turbo_transformers

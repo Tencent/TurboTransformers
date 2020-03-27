@@ -13,28 +13,34 @@
 // limitations under the License.
 
 #pragma once
-#include <memory>
+#include <dlpack/dlpack.h>
 
 #include "turbo_transformers/core/tensor.h"
 
+#ifdef TT_WITH_CUDA
+#include "turbo_transformers/layers/kernels/gpu_utils.h"
+#endif
+
 namespace turbo_transformers {
 namespace layers {
+namespace kernels {
+namespace common {
 
-class BertPooler {
- public:
-  BertPooler(core::Tensor dense_weight, core::Tensor dense_bias)
-      : dense_weight_(std::move(dense_weight)),
-        dense_bias_(std::move(dense_bias)) {
-    EnforceShapeAndType();
-  }
+extern bool is_same_device_ctx(DLContext t1, DLContext t2);
 
-  void EnforceShapeAndType() const;
-  void operator()(const core::Tensor& input_tensor, core::Tensor* output) const;
+extern bool is_same_shape(const core::Tensor& t1, const core::Tensor& t2);
 
- private:
-  core::Tensor dense_weight_;
-  core::Tensor dense_bias_;
-};
+template <typename T>
+void tt_seqence(T* data, int64_t size, DLDeviceType device);
 
+template <typename T>
+void tt_fill(T* data, int64_t size, T val, DLDeviceType device);
+
+// TODO(jiaruifang): this function should better pass a function in.
+// how can we pass a lambda function as __device__ to cuda?
+void tt_transform(int64_t* src_data, float* dst_data, int64_t size,
+                  DLDeviceType device);
+}  // namespace common
+}  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers

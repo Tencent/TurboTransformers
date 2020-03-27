@@ -41,7 +41,7 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
       qk_val = qk_val * scale + mask_val;
       qk_buf_ptr[j] = qk_val;
     }
-    float max_val = std::numeric_limits<float>::min();
+    float max_val = std::numeric_limits<float>::lowest();
 #pragma omp simd reduction(max : max_val)
     for (int64_t j = 0; j < N; ++j) {
       max_val = std::max(max_val, qk_buf_ptr[j]);

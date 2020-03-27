@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define CATCH_CONFIG_MAIN
 #include "turbo_transformers/loaders/modeling_bert.h"
+
+#include <cmath>
 
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/macros.h"
@@ -28,6 +29,11 @@ TEST_CASE("Bert", "all") {
   auto vec = model({{1, 2, 3, 4, 5}, {3, 4, 5}, {6, 7, 8, 9, 10, 11}},
                    PoolingType::kFirst);
   REQUIRE(vec.size() == 768 * 3);
+  // Write a better UT
+  for (size_t i = 0; i < vec.size(); ++i) {
+    REQUIRE(!std::isnan(vec.data()[i]));
+    REQUIRE(!std::isinf(vec.data()[i]));
+  }
 }
 
 }  // namespace loaders

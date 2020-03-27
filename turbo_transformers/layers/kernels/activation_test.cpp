@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define CATCH_CONFIG_MAIN
 #include "turbo_transformers/layers/kernels/activation.h"
 
 #include "loguru.hpp"
@@ -104,10 +103,8 @@ TEST_CASE("activation CPU AddBiasGelu benchmark") {
           step, "AddBiasGeluActNaive", m * n * sizeof(float) / 1e9);
 
       TestFunction(
-          [&]() {
-            AddBiasAct<ActivationType, ActivationType::Gelu, float>(bias, &out);
-          },
-          step, "AddBiasGeluAct OMP", m * n * sizeof(float) / 1e9);
+          [&]() { AddBiasAct<float>(ActivationType::Gelu, bias, &out); }, step,
+          "AddBiasGeluAct OMP", m * n * sizeof(float) / 1e9);
 
       if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
         TT_THROW("AddBiasGelu test failed");
@@ -148,17 +145,15 @@ TEST_CASE("activation CPU AddBiasTanh benchmark") {
           step, "AddBiasTanhActNaive", m * n * sizeof(float) / 1e9);
 
       TestFunction(
-          [&]() {
-            AddBiasAct<ActivationType, ActivationType::Tanh, float>(bias, &out);
-          },
-          step, "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
+          [&]() { AddBiasAct<float>(ActivationType::Tanh, bias, &out); }, step,
+          "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
       if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
         TT_THROW("AddBiasTanh test failed");
       }
     }
 }
 
-#ifdef TT_WITH_CUDA
+#ifdef FT_WITH_CUDA
 
 template <typename T>
 turbo_transformers::core::Tensor CreateTensor(
@@ -197,10 +192,8 @@ TEST_CASE("activation CPU and GPU correctness") {
             batch_size, seq_length, hidden_size,
             [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
                core::Tensor& gpu_bias, core::Tensor& gpu_out) {
-              AddBiasAct<ActivationType, ActivationType::Gelu, float>(cpu_bias,
-                                                                      &cpu_out);
-              AddBiasAct<ActivationType, ActivationType::Gelu, float>(gpu_bias,
-                                                                      &gpu_out);
+              AddBiasAct<float>(ActivationType::Gelu, cpu_bias, &cpu_out);
+              AddBiasAct<float>(ActivationType::Gelu, gpu_bias, &gpu_out);
               REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
                   cpu_out, gpu_out));
             });
@@ -213,8 +206,7 @@ TEST_CASE("activation CPU and GPU correctness") {
                                               cpu_out.mutableData<core::Half>(),
                                               batch_size * seq_length,
                                               hidden_size);
-              AddBiasAct<ActivationType, ActivationType::Gelu, core::Half>(
-                  gpu_bias, &gpu_out);
+              AddBiasAct<core::Half>(ActivationType::Gelu, gpu_bias, &gpu_out);
               REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<
                       core::Half>(cpu_out, gpu_out));
             });
@@ -235,12 +227,12 @@ void ActivationGPUBenchmark(int batch_size, int seq_length, int hidden_size,
   ::turbo_transformers::test::Fill<T>(bias);
 
   std::cout << "batch_size: " << batch_size << " seq_length: " << seq_length;
-  AddBiasAct<ActivationType, ActivationType::Gelu, T>(bias, &out);
+  AddBiasAct<T>(ActivationType::Gelu, bias, &out);
   auto& cuda_ctx = turbo_transformers::core::CUDADeviceContext::GetInstance();
   auto stream = cuda_ctx.stream();
   test::GPUTimer timer(stream);
   for (int i = 0; i < step; ++i) {
-    AddBiasAct<ActivationType, ActivationType::Gelu, T>(bias, &out);
+    AddBiasAct<T>(ActivationType::Gelu, bias, &out);
   }
   auto elapse = timer.ElapseSecond() / step;
   std::cout << " AddBiasGeLUAct GPU cost:" << elapse << " sec, Bandwidth "

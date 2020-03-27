@@ -16,8 +16,8 @@
 
 #include <loguru.hpp>
 
-#include "turbo_transformers/core/common.h"
 #include "turbo_transformers/core/memory.h"
+#include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
 #include "turbo_transformers/layers/kernels/mat_mul.h"
 
@@ -40,8 +40,8 @@ namespace layers {
 void BertOutput::operator()(const core::Tensor &hidden_states,
                             const core::Tensor &input_tensor,
                             core::Tensor *output_tensor) const {
-  TT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
-                                                 hidden_states.device_ctx()),
+  TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(input_tensor.device_ctx(),
+                                                    hidden_states.device_ctx()),
                 true,
                 "BertOutput: The input_tensor and hidden_states should have "
                 "the same device type and device id.");

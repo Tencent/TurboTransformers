@@ -15,7 +15,7 @@
 #include "turbo_transformers/layers/bert_embedding.h"
 
 #include "loguru.hpp"
-#include "turbo_transformers/core/common.h"
+#include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
@@ -35,8 +35,8 @@ static void LookupEmbedding(core::Tensor &out_tensor,
                 "The out_tensor and embedding_table should have the same "
                 "device type and device id.");
 
-  TT_ENFORCE_EQ(core::common::is_same_device_ctx(out_tensor.device_ctx(),
-                                                 ids_tensor.device_ctx()),
+  TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(out_tensor.device_ctx(),
+                                                    ids_tensor.device_ctx()),
                 true,
                 "The out_tensor and ids_tensor should have the same device "
                 "type and device id.");
