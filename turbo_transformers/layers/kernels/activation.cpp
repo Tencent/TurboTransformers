@@ -88,7 +88,6 @@ void AddBiasAct<ActivationType, ActivationType::Gelu, core::Half>(
 template <typename T>
 void AddBiasTanhActKernel(const T* bias, T* out, int64_t batch_size,
                           int64_t feature_dim) {
-  static core::AlignedScratchpad<float> scratchpad;
 #pragma omp parallel for
   for (int64_t i = 0; i < batch_size; ++i) {
     int64_t k = 0;
