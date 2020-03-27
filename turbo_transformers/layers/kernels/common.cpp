@@ -80,7 +80,7 @@ void tt_transform(int64_t* src_data, float* dst_data, int64_t size,
     std::transform(src_data, src_data + size, dst_data,
                    [](int64_t v) { return -10000.0f * (1 - v); });
   } else if (device == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     layers::kernels::GPUTransform(src_data, dst_data, size);
 #else
     TT_THROW("code is not compiled with CUDA.");
