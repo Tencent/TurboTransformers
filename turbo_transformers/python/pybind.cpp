@@ -54,9 +54,9 @@ enum class BlasProvider {
 };
 
 static BlasProvider GetBlasProvider() {
-#ifdef FT_BLAS_USE_MKL
+#ifdef TT_BLAS_USE_MKL
   return BlasProvider::MKL;
-#elif defined(FT_BLAS_USE_OPENBLAS)
+#elif defined(TT_BLAS_USE_OPENBLAS)
   return BlasProvider::OpenBlas;
 #else
 #error "unexpected code";
@@ -88,7 +88,7 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
   m.def("disable_gperf", &core::DisableGperf);
   m.def("set_num_threads", [](int n_th) {
   // The order seems important. Set MKL NUM_THREADS before OMP.
-#ifdef FT_BLAS_USE_MKL
+#ifdef TT_BLAS_USE_MKL
     mkl_set_num_threads(n_th);
 #else
     openblas_set_num_threads(n_th);

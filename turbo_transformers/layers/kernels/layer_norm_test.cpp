@@ -15,17 +15,16 @@
 #define CATCH_CONFIG_MAIN
 
 #include "turbo_transformers/layers/kernels/layer_norm.h"
-#include "loguru.hpp"
 
 #include <chrono>
 
 #include "catch2/catch.hpp"
-
+#include "loguru.hpp"
 #include "turbo_transformers/core/aligned_scratchpad.h"
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/layers/kernels/test_helper.h"
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
 
@@ -33,7 +32,7 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
   int64_t hidden_size = 12 * 64;
 

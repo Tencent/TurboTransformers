@@ -40,7 +40,7 @@ namespace layers {
 void BertOutput::operator()(const core::Tensor &hidden_states,
                             const core::Tensor &input_tensor,
                             core::Tensor *output_tensor) const {
-  FT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
+  TT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
                                                  hidden_states.device_ctx()),
                 true,
                 "BertOutput: The input_tensor and hidden_states should have "

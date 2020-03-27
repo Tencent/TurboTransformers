@@ -35,7 +35,7 @@ struct alignas(2) Half {
   ~Half() = default;
 
   Half(float other) {
-#if defined(FT_WITH_CUDA) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
+#if defined(TT_WITH_CUDA) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
     half tmp = __float2half(other);
     x = *reinterpret_cast<uint16_t *>(&tmp);
 #else
@@ -46,7 +46,7 @@ struct alignas(2) Half {
   Half(const T &other) : Half(static_cast<float>(other)) {}
 
   operator float() const {
-#if defined(FT_WITH_CUDA) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
+#if defined(TT_WITH_CUDA) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
     return __half2float(x);
 #else
     return fp16_ieee_to_fp32_value(x);

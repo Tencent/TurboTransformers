@@ -17,7 +17,7 @@
 
 #include "turbo_transformers/core/aligned_scratchpad.h"
 #include "turbo_transformers/layers/kernels/activation.h"
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_activation_kernel.h"
 #endif
@@ -60,20 +60,20 @@ void AddBiasAct<ActivationType, ActivationType::Gelu, float>(
   if (out_tensor->device_type() == kDLCPU) {
     AddBiasGeLUActKernel(bias, out, m, n);
   } else if (out_tensor->device_type() == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
     GPUAddBiasGeLUActKernel(bias, out, m, n, cuda_ctx.stream());
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 template <>
 void AddBiasAct<ActivationType, ActivationType::Gelu, core::Half>(
     const core::Tensor& bias_tensor, core::Tensor* out_tensor) {
-  FT_ENFORCE_EQ(bias_tensor.device_type(), kDLGPU, "The device should be GPU.");
+  TT_ENFORCE_EQ(bias_tensor.device_type(), kDLGPU, "The device should be GPU.");
   core::Half* out = out_tensor->mutableData<core::Half>();
   const core::Half* bias = bias_tensor.data<core::Half>();
   int64_t m = out_tensor->rows();
@@ -111,9 +111,9 @@ void AddBiasAct<ActivationType, ActivationType::Tanh, float>(
   if (out_tensor->device_type() == kDLCPU) {
     AddBiasTanhActKernel(bias, out, m, n);
   } else if (out_tensor->device_type() == kDLGPU) {
-    FT_THROW("GPU Tanh is not supported");
+    TT_THROW("GPU Tanh is not supported");
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 

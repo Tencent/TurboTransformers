@@ -14,11 +14,11 @@
 
 #define CATCH_CONFIG_MAIN
 #include "turbo_transformers/layers/kernels/transpose.h"
-#include "loguru.hpp"
 
 #include <chrono>
 
 #include "catch2/catch.hpp"
+#include "loguru.hpp"
 #include "turbo_transformers/core/aligned_scratchpad.h"
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/enforce.h"
@@ -28,7 +28,7 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 TEST_CASE("split_add_transpose CPU and GPU correctness") {
   int64_t num_attention_heads = 12;
 

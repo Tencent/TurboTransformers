@@ -17,7 +17,7 @@
 #include "loguru.hpp"
 #include "turbo_transformers/core/common.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_embedding_kernel.h"
 #endif
@@ -29,13 +29,13 @@ template <bool Add>
 static void LookupEmbedding(core::Tensor &out_tensor,
                             const core::Tensor &embedding_table,
                             const core::Tensor &ids_tensor) {
-  FT_ENFORCE_EQ(core::common::is_same_device_ctx(out_tensor.device_ctx(),
+  TT_ENFORCE_EQ(core::common::is_same_device_ctx(out_tensor.device_ctx(),
                                                  embedding_table.device_ctx()),
                 true,
                 "The out_tensor and embedding_table should have the same "
                 "device type and device id.");
 
-  FT_ENFORCE_EQ(core::common::is_same_device_ctx(out_tensor.device_ctx(),
+  TT_ENFORCE_EQ(core::common::is_same_device_ctx(out_tensor.device_ctx(),
                                                  ids_tensor.device_ctx()),
                 true,
                 "The out_tensor and ids_tensor should have the same device "
@@ -51,7 +51,7 @@ static void LookupEmbedding(core::Tensor &out_tensor,
 #pragma omp parallel for
     for (int64_t i = 0; i < num_ids; ++i) {
       int64_t id = ids[i];
-      FT_ENFORCE_LT(id, vocab_size, "embedding id out of index");
+      TT_ENFORCE_LT(id, vocab_size, "embedding id out of index");
       auto dst = out + i * hidden_size;
       auto src = embedding + id * hidden_size;
       if (Add) {
@@ -64,15 +64,15 @@ static void LookupEmbedding(core::Tensor &out_tensor,
       }
     }
   } else if (out_tensor.device_type() == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     auto &cuda_ctx = core::CUDADeviceContext::GetInstance();
     kernels::GPULookupKernel<Add>(out, embedding, ids, vocab_size, hidden_size,
                                   num_ids, cuda_ctx.stream());
 #else
-    FT_THROW("The current code is not compiled with CUDA.");
+    TT_THROW("The current code is not compiled with CUDA.");
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 
@@ -91,7 +91,7 @@ void BERTEmbedding::operator()(const core::Tensor &input_ids,
     LOG_S(3) << os.str();
   }
 
-  FT_ENFORCE_EQ(
+  TT_ENFORCE_EQ(
       input_ids.n_dim(), 2,
       "The input ids should be a matrix with shape [BatchSize, SeqLen].");
   auto batch_size = input_ids.shape(0);
@@ -99,7 +99,7 @@ void BERTEmbedding::operator()(const core::Tensor &input_ids,
   // TODO 1. switch DeviceType::CPU 2. how should I set stride?
   auto hidden_size = word_embedings_.shape(1);
 
-  FT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
+  TT_ENFORCE(output_tensor, "The output tensor should not be nullptr.");
   output_tensor->Reshape<float>({batch_size, seq_length, hidden_size},
                                 input_ids.device_type(), input_ids.device_id());
   LOG_S(3) << "Look up word embedding";

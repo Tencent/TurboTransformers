@@ -77,7 +77,7 @@ TEST_CASE("blas-sscal") {
   REQUIRE(float_eq(vec[1], 4));
 }
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 using ::turbo_transformers::test::CheckResultOfCPUAndGPU;
 using ::turbo_transformers::test::FillDataForCPUGPUTensors;
 

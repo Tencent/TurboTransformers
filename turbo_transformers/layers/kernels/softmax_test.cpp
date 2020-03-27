@@ -15,16 +15,16 @@
 #define CATCH_CONFIG_MAIN
 
 #include "turbo_transformers/layers/kernels/softmax.h"
-#include "loguru.hpp"
 
 #include <chrono>
-#include "catch2/catch.hpp"
 
+#include "catch2/catch.hpp"
+#include "loguru.hpp"
 #include "turbo_transformers/core/aligned_scratchpad.h"
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/layers/kernels/test_helper.h"
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
 
@@ -70,7 +70,7 @@ inline void _CreateBenchmark(DLDeviceType device_type) {
 
       auto start = std::chrono::system_clock::now();
       if (device_type == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
         cudaEvent_t start_event, stop_event;
         cudaEventCreate(&start_event);
         cudaEventCreate(&stop_event);
@@ -118,7 +118,7 @@ inline void _CreateBenchmark(DLDeviceType device_type) {
     }
 }
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 TEST_CASE("softmax CPU and GPU correctness") {
   int64_t num_attention_heads = 12;
 

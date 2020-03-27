@@ -19,7 +19,7 @@
 TEST_CASE("Enforce", "[enforce]") {
   bool ok = false;
   try {
-    FT_ENFORCE(false, "test");
+    TT_ENFORCE(false, "test");
   } catch (turbo_transformers::core::details::EnforceNotMet &) {
     ok = true;
   }
@@ -27,7 +27,7 @@ TEST_CASE("Enforce", "[enforce]") {
 
   ok = false;
   try {
-    FT_THROW("Test");
+    TT_THROW("Test");
   } catch (turbo_transformers::core::details::EnforceNotMet &) {
     ok = true;
   }

@@ -17,7 +17,7 @@
 
 #include "turbo_transformers/core/tensor.h"
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/layers/kernels/gpu_utils.h"
 #endif
 

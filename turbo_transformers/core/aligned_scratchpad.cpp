@@ -36,7 +36,7 @@ AlignedScratchpad<T>::AlignedScratchpad() : m_(new Impl()) {}
 
 template <typename T>
 T* AlignedScratchpad<T>::mutable_data(size_t numel) {
-  if (FT_UNLIKELY(m_->capacity_ < numel)) {
+  if (TT_UNLIKELY(m_->capacity_ < numel)) {
     m_->buf_.reset(align_alloc_t<T>(numel, gAlignment));
     m_->capacity_ = numel;
   }

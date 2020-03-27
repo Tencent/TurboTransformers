@@ -29,14 +29,14 @@ struct BadAlloc : public std::exception {
 static void *cuda_alloc(size_t sz) {
   void *device_mem;
   try {
-    FT_ENFORCE_CUDA_SUCCESS(cudaMalloc((void **)&(device_mem), sz));
+    TT_ENFORCE_CUDA_SUCCESS(cudaMalloc((void **)&(device_mem), sz));
   } catch (...) {
     throw BadAlloc("cudaMalloc failed.");
   }
   return device_mem;
 }
 
-static void cuda_free(void *data) { FT_ENFORCE_CUDA_SUCCESS(cudaFree(data)); }
+static void cuda_free(void *data) { TT_ENFORCE_CUDA_SUCCESS(cudaFree(data)); }
 
 void CUDAAllocator::FreeCache(size_t size) {
   if (size == 0) return;
