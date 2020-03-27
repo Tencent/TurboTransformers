@@ -158,6 +158,34 @@ TEST_CASE("activation CPU AddBiasTanh benchmark") {
     }
 }
 
+#ifdef FT_WITH_CUDA
+
+template <typename T>
+turbo_transformers::core::Tensor CreateTensor(
+    std::initializer_list<int64_t> shape, DLDeviceType device_type,
+    int dev_id) {
+  turbo_transformers::core::Tensor tensor(nullptr);
+  tensor.Reshape<T>(shape, device_type, dev_id);
+  return tensor;
+};
+
+template <typename T, typename Func>
+void CreateTensorAndFillRandom(int batch_size, int seq_length, int hidden_size,
+                               Func&& func) {
+  auto gpu_bias = CreateTensor<T>({hidden_size}, kDLGPU, 0);
+  auto cpu_bias = CreateTensor<T>({hidden_size}, kDLCPU, 0);
+
+  auto gpu_out =
+      CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLGPU, 0);
+  auto cpu_out =
+      CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLCPU, 0);
+
+  ::turbo_transformers::test::FillDataForCPUGPUTensors<T>(cpu_bias, gpu_bias);
+  ::turbo_transformers::test::FillDataForCPUGPUTensors<T>(cpu_out, gpu_out);
+
+  func(cpu_bias, cpu_out, gpu_bias, gpu_out);
+}
+
 TEST_CASE("activation CPU and GPU correctness") {
   for (auto hidden_size : {500, 12 * 64, 1000, 2000, 4096 * 2 + 1}) {
     for (auto batch_size : {1, 20, 24}) {
@@ -169,8 +197,10 @@ TEST_CASE("activation CPU and GPU correctness") {
             batch_size, seq_length, hidden_size,
             [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
                core::Tensor& gpu_bias, core::Tensor& gpu_out) {
-              AddBiasGeLUAct<float>(cpu_bias, &cpu_out);
-              AddBiasGeLUAct<float>(gpu_bias, &gpu_out);
+              AddBiasAct<ActivationType, ActivationType::Gelu, float>(cpu_bias,
+                                                                      &cpu_out);
+              AddBiasAct<ActivationType, ActivationType::Gelu, float>(gpu_bias,
+                                                                      &gpu_out);
               REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
                   cpu_out, gpu_out));
             });
@@ -179,11 +209,12 @@ TEST_CASE("activation CPU and GPU correctness") {
             batch_size, seq_length, hidden_size,
             [&](core::Tensor& cpu_bias, core::Tensor& cpu_out,
                 core::Tensor& gpu_bias, core::Tensor& gpu_out) {
-              AddBiasGeLUActNaive<core::Half>(cpu_bias.data<core::Half>(),
+              AddBiasGeluActNaive<core::Half>(cpu_bias.data<core::Half>(),
                                               cpu_out.mutableData<core::Half>(),
                                               batch_size * seq_length,
                                               hidden_size);
-              AddBiasGeLUAct<core::Half>(gpu_bias, &gpu_out);
+              AddBiasAct<ActivationType, ActivationType::Gelu, core::Half>(
+                  gpu_bias, &gpu_out);
               REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<
                       core::Half>(cpu_out, gpu_out));
             });
@@ -204,17 +235,18 @@ void ActivationGPUBenchmark(int batch_size, int seq_length, int hidden_size,
   ::turbo_transformers::test::Fill<T>(bias);
 
   std::cout << "batch_size: " << batch_size << " seq_length: " << seq_length;
-  AddBiasGeLUAct<T>(bias, &out);
+  AddBiasAct<ActivationType, ActivationType::Gelu, T>(bias, &out);
   auto& cuda_ctx = turbo_transformers::core::CUDADeviceContext::GetInstance();
   auto stream = cuda_ctx.stream();
   test::GPUTimer timer(stream);
   for (int i = 0; i < step; ++i) {
-    AddBiasGeLUAct<T>(bias, &out);
+    AddBiasAct<ActivationType, ActivationType::Gelu, T>(bias, &out);
   }
   auto elapse = timer.ElapseSecond() / step;
   std::cout << " AddBiasGeLUAct GPU cost:" << elapse << " sec, Bandwidth "
             << m * n * sizeof(T) / 1e9 / elapse << " GB/s" << std::endl;
 }
+#endif
 
 }  // namespace kernels
 }  // namespace layers
