@@ -30,9 +30,9 @@ model_torch.eval()
 model_torch.to(test_device)
 # the following two ways are the same
 # 1. load model from checkpoint in file
-# model_ft = turbo_transformers.BertModel.from_pretrained(model_id, test_device)
+# model_tt = turbo_transformers.BertModel.from_pretrained(model_id, test_device)
 # 2. load model from pytorch model
-model_ft = turbo_transformers.BertModel.from_torch(model_torch, test_device)
+model_tt = turbo_transformers.BertModel.from_torch(model_torch, test_device)
 cfg = model_torch.config  # type: transformers.BertConfig
 
 batch_size, seq_len = 10, 40
@@ -43,6 +43,6 @@ torch_result = model_torch(input_ids)
 torch_result = (torch_result[0][:, 0]).cpu().numpy()
 # print(torch_result)
 
-ft_result = model_ft(input_ids)
-ft_result = ft_result.cpu().numpy()
-print(numpy.max(numpy.abs(ft_result) - numpy.abs(torch_result)))
+tt_result = model_tt(input_ids)
+tt_result = tt_result.cpu().numpy()
+print(numpy.max(numpy.abs(tt_result) - numpy.abs(torch_result)))

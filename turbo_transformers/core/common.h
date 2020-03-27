@@ -30,15 +30,15 @@ extern bool is_same_device_ctx(DLContext t1, DLContext t2);
 extern bool is_same_shape(const Tensor& t1, const Tensor& t2);
 
 template <typename T>
-void ft_seqence(T* data, int64_t size, DLDeviceType device);
+void tt_seqence(T* data, int64_t size, DLDeviceType device);
 
 template <typename T>
-void ft_fill(T* data, int64_t size, T val, DLDeviceType device);
+voidtt_fill(T* data, int64_t size, T val, DLDeviceType device);
 
 // TODO(jiaruifang): this function should better pass a function in.
 // how can we pass a lambda function as __device__ to cuda?
-void ft_transform(int64_t* src_data, float* dst_data, int64_t size,
-                  DLDeviceType device);
+voidtt_transform(int64_t* src_data, float* dst_data, int64_t size,
+                 DLDeviceType device);
 
 }  // namespace common
 }  // namespace core

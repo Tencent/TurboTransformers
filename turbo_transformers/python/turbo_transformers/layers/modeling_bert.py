@@ -35,24 +35,25 @@ import enum
 
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
-    'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType', 'BertPooler'
+    'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType',
+    'BertPooler'
 ]
 
 
 def _try_convert(t):
     if isinstance(t, torch.Tensor):
-        return convert2ft_tensor(t)
+        return convert2tt_tensor(t)
     else:
         return t
 
 
-def convert2ft_tensor(t):
+def convert2tt_tensor(t):
     return cxx.Tensor.from_dlpack(dlpack.to_dlpack(t))
 
 
 def _to_param_dict(torch_module: torch.nn.Module):
     return {
-        k: convert2ft_tensor(v)
+        k: convert2tt_tensor(v)
         for k, v in torch_module.named_parameters()
     }
 
@@ -172,11 +173,11 @@ class BertAttention(cxx.BertAttention):
                  params['self.value.bias']), 0)
 
             att = BertAttention(
-                convert2ft_tensor(qkv_weight), convert2ft_tensor(qkv_bias),
-                convert2ft_tensor(params['output.dense.weight']),
-                convert2ft_tensor(params['output.dense.bias']),
-                convert2ft_tensor(params['output.LayerNorm.weight']),
-                convert2ft_tensor(params['output.LayerNorm.bias']),
+                convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
+                convert2tt_tensor(params['output.dense.weight']),
+                convert2tt_tensor(params['output.dense.bias']),
+                convert2tt_tensor(params['output.LayerNorm.weight']),
+                convert2tt_tensor(params['output.LayerNorm.bias']),
                 attention.self.num_attention_heads)
 
             return att
@@ -273,8 +274,8 @@ class PoolingType(enum.Enum):
     MAX = "Max"
 
 
-def pooling_layers(input_ft_tensor, pool_type):
-    input_torch = convert_returns_as_type(input_ft_tensor, ReturnType.TORCH)
+def pooling_layers(input_tt_tensor, pool_type):
+    input_torch = convert_returns_as_type(input_tt_tensor, ReturnType.TORCH)
     if pool_type == PoolingType.FIRST:
         return input_torch[:, 0, :]
     elif pool_type == PoolingType.LAST:
@@ -325,7 +326,7 @@ class BertModel:
                                     return_type=ReturnType.turbo_transformers,
                                     output=hidden_cache)
 
-        # hidden_states:ft_tensor, return torch_tensor
+        # hidden_states:tt_tensor, return torch_tensor
         output_tensor = pooling_layers(hidden_cache, pooling_type)
         if return_type == ReturnType.turbo_transformers:
             return _try_convert(output_tensor, return_type)

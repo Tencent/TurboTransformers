@@ -27,7 +27,7 @@ import os
 sys.path.append(os.path.dirname(__file__))
 import test_helper
 
-fname = "ft_bertlayer.txt"
+fname = "tt_bertlayer.txt"
 
 
 def create_test(batch_size, seq_length):
