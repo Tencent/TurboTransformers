@@ -29,13 +29,11 @@ from transformers.modeling_bert import BertAttention as TorchBertAttention
 from transformers.modeling_bert import BertLayer as TorchBertLayer
 from transformers.modeling_bert import BertEncoder as TorchBertEncoder
 from transformers.modeling_bert import BertModel as TorchBertModel
-from transformers.modeling_bert import BertPooler as TorchBertPooler
-
 import enum
 
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
-    'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType', 'BertPooler'
+    'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType'
 ]
 
 
@@ -106,23 +104,6 @@ class BertIntermediate(cxx.BertIntermediate):
         intermediate_params = _to_param_dict(intermediate)
         return BertIntermediate(intermediate_params['dense.weight'],
                                 intermediate_params['dense.bias'])
-
-
-class BertPooler(cxx.BertPooler):
-    def __call__(self,
-                 input_tensor: AnyTensor,
-                 return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
-        input_tensor = _try_convert(input_tensor)
-        output = _create_empty_if_none(output)
-        super(BertPooler, self).__call__(input_tensor, output)
-        return convert_returns_as_type(output, return_type)
-
-    @staticmethod
-    def from_torch(pooler: TorchBertPooler):
-        pooler_params = _to_param_dict(pooler)
-        return BertPooler(pooler_params['dense.weight'],
-                          pooler_params['dense.bias'])
 
 
 class BertOutput(cxx.BertOutput):

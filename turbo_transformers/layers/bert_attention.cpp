@@ -16,8 +16,8 @@
 
 #include "loguru.hpp"
 #include "turbo_transformers/core/aligned_scratchpad.h"
-#include "turbo_transformers/core/common.h"
 #include "turbo_transformers/core/memory.h"
+#include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
 #include "turbo_transformers/layers/kernels/mat_mul.h"
 #include "turbo_transformers/layers/kernels/softmax.h"
@@ -28,8 +28,8 @@ namespace layers {
 void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
                                core::Tensor* output) const {
-  FT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
-                                                 attention_mask.device_ctx()),
+  FT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
+                    input_tensor.device_ctx(), attention_mask.device_ctx()),
                 true,
                 "The input_tensor and attention_mask should have the same "
                 "device type and device id.");

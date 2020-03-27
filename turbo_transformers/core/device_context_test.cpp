@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define CATCH_CONFIG_MAIN
 #ifdef FT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
