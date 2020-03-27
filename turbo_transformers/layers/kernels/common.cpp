@@ -74,7 +74,7 @@ template void tt_fill<int64_t>(int64_t* data, int64_t size, int64_t val,
 
 // TODO(jiaruifang): this function should better pass a function in.
 // how can we pass a lambda function as __device__ to cuda?
-void ft_transform(int64_t* src_data, float* dst_data, int64_t size,
+void tt_transform(int64_t* src_data, float* dst_data, int64_t size,
                   DLDeviceType device) {
   if (device == kDLCPU) {
     std::transform(src_data, src_data + size, dst_data,
