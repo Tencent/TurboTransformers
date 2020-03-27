@@ -26,7 +26,7 @@ import os
 sys.path.append(os.path.dirname(__file__))
 import test_helper
 
-fname = "ft_attention.txt"
+fname = "tt_attention.txt"
 
 
 def create_test(batch_size, seq_length):

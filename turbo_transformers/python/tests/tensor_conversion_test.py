@@ -15,7 +15,7 @@
 import torch
 import torch.utils.dlpack as dlpack
 import unittest
-from turbo_transformers.layers.modeling_bert import convert2ft_tensor
+from turbo_transformers.layers.modeling_bert import convert2tt_tensor
 import turbo_transformers
 
 
@@ -27,7 +27,7 @@ class TestDLPack(unittest.TestCase):
             torch.set_num_threads(1)
 
         a = torch.rand(size=(4, 3), dtype=torch.float32, device=test_device)
-        tensor = convert2ft_tensor(a)
+        tensor = convert2tt_tensor(a)
         self.assertIsNotNone(tensor)
         b = dlpack.from_dlpack(tensor.to_dlpack())
 
