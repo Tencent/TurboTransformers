@@ -33,12 +33,12 @@ template <typename T>
 void tt_seqence(T* data, int64_t size, DLDeviceType device);
 
 template <typename T>
-voidtt_fill(T* data, int64_t size, T val, DLDeviceType device);
+void tt_fill(T* data, int64_t size, T val, DLDeviceType device);
 
 // TODO(jiaruifang): this function should better pass a function in.
 // how can we pass a lambda function as __device__ to cuda?
-voidtt_transform(int64_t* src_data, float* dst_data, int64_t size,
-                 DLDeviceType device);
+void tt_transform(int64_t* src_data, float* dst_data, int64_t size,
+                  DLDeviceType device);
 
 }  // namespace common
 }  // namespace core
