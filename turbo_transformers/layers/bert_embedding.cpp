@@ -29,8 +29,8 @@ template <bool Add>
 static void LookupEmbedding(core::Tensor &out_tensor,
                             const core::Tensor &embedding_table,
                             const core::Tensor &ids_tensor) {
-  TT_ENFORCE_EQ(core::common::is_same_device_ctx(out_tensor.device_ctx(),
-                                                 embedding_table.device_ctx()),
+  TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
+                    out_tensor.device_ctx(), embedding_table.device_ctx()),
                 true,
                 "The out_tensor and embedding_table should have the same "
                 "device type and device id.");

@@ -28,8 +28,8 @@ namespace layers {
 void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
                                core::Tensor* output) const {
-  TT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
-                                                 attention_mask.device_ctx()),
+  TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
+                    input_tensor.device_ctx(), attention_mask.device_ctx()),
                 true,
                 "The input_tensor and attention_mask should have the same "
                 "device type and device id.");
