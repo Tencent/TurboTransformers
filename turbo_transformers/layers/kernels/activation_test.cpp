@@ -153,7 +153,7 @@ TEST_CASE("activation CPU AddBiasTanh benchmark") {
     }
 }
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 
 template <typename T>
 turbo_transformers::core::Tensor CreateTensor(
