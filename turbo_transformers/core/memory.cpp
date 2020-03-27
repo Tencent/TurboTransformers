@@ -21,7 +21,7 @@ namespace turbo_transformers {
 namespace core {
 void *align_alloc(size_t sz, size_t align) {
   void *aligned_mem;
-  FT_ENFORCE_EQ(posix_memalign(&aligned_mem, align, sz), 0,
+  TT_ENFORCE_EQ(posix_memalign(&aligned_mem, align, sz), 0,
                 "Cannot allocate align memory with %d bytes, "
                 "align %d",
                 sz, align);
@@ -34,7 +34,7 @@ static std::vector<MemcpyFuncTypes> InitMemcpyFuncs() {
       static_cast<size_t>(MemcpyFlag::kNUM_MEMCPY_FLAGS));
   results[static_cast<size_t>(MemcpyFlag::kCPU2CPU)] = std::memcpy;
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
   for (auto &pair : std::vector<std::pair<MemcpyFlag, cudaMemcpyKind>>{
            {MemcpyFlag::kCPU2GPU, cudaMemcpyHostToDevice},
            {MemcpyFlag::kGPU2CPU, cudaMemcpyDeviceToHost},
@@ -42,7 +42,7 @@ static std::vector<MemcpyFuncTypes> InitMemcpyFuncs() {
     auto flag = pair.second;
     results[static_cast<size_t>(pair.first)] =
         [flag](void *dst, const void *src, size_t n) -> void * {
-      FT_ENFORCE_CUDA_SUCCESS(cudaMemcpy(dst, src, n, flag));
+      TT_ENFORCE_CUDA_SUCCESS(cudaMemcpy(dst, src, n, flag));
       return dst;
     };
   }
@@ -57,11 +57,11 @@ void Memcpy(void *dst_data, const void *src_data, size_t data_size,
   static auto memcpyFuncs = InitMemcpyFuncs();
   auto f = static_cast<size_t>(flag);
   if (f >= memcpyFuncs.size()) {
-    FT_THROW("The MemcpyFlag %d is not support now.", f);
+    TT_THROW("The MemcpyFlag %d is not support now.", f);
   }
   auto &func = memcpyFuncs[f];
   if (!func) {
-    FT_THROW(
+    TT_THROW(
         "The MemcpyFlag %d is not support since turbo transformers is not "
         "compiled with this device support",
         f);

@@ -20,7 +20,7 @@ namespace test {
 
 using Tensor = turbo_transformers::core::Tensor;
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 template <typename T>
 void FillDataForCPUGPUTensors(Tensor& cpu_tensor, Tensor& gpu_tensor) {
   T* gpu_data = gpu_tensor.mutableData<T>();
@@ -121,7 +121,7 @@ void Fill(turbo_transformers::core::Tensor& tensor, T lower_bound = 0.,
   } else if (tensor.device_type() == kDLGPU) {
     flag = turbo_transformers::core::MemcpyFlag::kCPU2GPU;
   } else {
-    FT_THROW("Fill device_type wrong");
+    TT_THROW("Fill device_type wrong");
   }
   ::turbo_transformers::core::Memcpy(T_data, cpu_data.get(), size * sizeof(T),
                                      flag);

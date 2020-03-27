@@ -67,7 +67,7 @@ inline void _CreateBenchmark(DLDeviceType device_type, bool trans_weight,
       layers::kernels::MatMul(input_tensor, false, weight_tensor, trans_weight,
                               1.0, &output_tensor, 0.0);
     }
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     if (device_type == kDLGPU) cudaDeviceSynchronize();
 #endif
     auto end = std::chrono::system_clock::system_clock::now();

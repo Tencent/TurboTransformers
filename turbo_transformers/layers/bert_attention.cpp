@@ -28,13 +28,13 @@ namespace layers {
 void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
                                core::Tensor* output) const {
-  FT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
+  TT_ENFORCE_EQ(core::common::is_same_device_ctx(input_tensor.device_ctx(),
                                                  attention_mask.device_ctx()),
                 true,
                 "The input_tensor and attention_mask should have the same "
                 "device type and device id.");
 
-  FT_ENFORCE_EQ(input_tensor.n_dim(), 3,
+  TT_ENFORCE_EQ(input_tensor.n_dim(), 3,
                 "The input ids should be a matrix with shape [BatchSize, "
                 "SeqLen, HiddenSize].");
 

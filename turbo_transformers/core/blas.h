@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(FT_BLAS_USE_MKL)
+#if defined(TT_BLAS_USE_MKL)
 #include "mkl.h"
 
 namespace turbo_transformers {

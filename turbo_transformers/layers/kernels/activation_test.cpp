@@ -17,7 +17,7 @@
 
 #include "loguru.hpp"
 #include "turbo_transformers/core/half.h"
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
 #include "catch2/catch.hpp"
@@ -110,7 +110,7 @@ TEST_CASE("activation CPU AddBiasGelu benchmark") {
           step, "AddBiasGeluAct OMP", m * n * sizeof(float) / 1e9);
 
       if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
-        FT_THROW("AddBiasGelu test failed");
+        TT_THROW("AddBiasGelu test failed");
       }
     }
 }
@@ -153,12 +153,12 @@ TEST_CASE("activation CPU AddBiasTanh benchmark") {
           },
           step, "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
       if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
-        FT_THROW("AddBiasTanh test failed");
+        TT_THROW("AddBiasTanh test failed");
       }
     }
 }
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 
 template <typename T>
 turbo_transformers::core::Tensor CreateTensor(

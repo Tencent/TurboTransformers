@@ -39,13 +39,13 @@ void ft_seqence(T* data, int64_t size, DLDeviceType device) {
   if (device == kDLCPU) {
     std::iota(data, data + size, static_cast<T>(0));
   } else if (device == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     turbo_transformers::layers::kernels::GPUSequence(data, size);
 #else
-    FT_THROW("code is not compiled with CUDA.");
+    TT_THROW("code is not compiled with CUDA.");
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 template void ft_seqence(float* data, int64_t size, DLDeviceType device);
@@ -56,13 +56,13 @@ void ft_fill(T* data, int64_t size, T val, DLDeviceType device) {
   if (device == kDLCPU) {
     std::fill(data, data + size, val);
   } else if (device == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     layers::kernels::GPUFill(data, size, val);
 #else
-    FT_THROW("code is not compiled with CUDA.");
+    TT_THROW("code is not compiled with CUDA.");
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 
@@ -79,13 +79,13 @@ void ft_transform(int64_t* src_data, float* dst_data, int64_t size,
     std::transform(src_data, src_data + size, dst_data,
                    [](int64_t v) { return -10000.0f * (1 - v); });
   } else if (device == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     layers::kernels::GPUTransform(src_data, dst_data, size);
 #else
-    FT_THROW("code is not compiled with CUDA.");
+    TT_THROW("code is not compiled with CUDA.");
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 
