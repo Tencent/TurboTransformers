@@ -36,7 +36,7 @@ endif ()
 if(WITH_GPU)
   set(CUDA_PATH "/usr/local/cuda" CACHE PATH "The cuda library root")
   include(cuda)
-  add_definitions(-DFT_WITH_CUDA)
+  add_definitions(-DTT_WITH_CUDA)
   include_directories(3rd/cub)
 endif()
 

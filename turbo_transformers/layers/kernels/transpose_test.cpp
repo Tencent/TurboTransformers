@@ -27,7 +27,7 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 TEST_CASE("split_add_transpose CPU and GPU correctness") {
   int64_t num_attention_heads = 12;
 

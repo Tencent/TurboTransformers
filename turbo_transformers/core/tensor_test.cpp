@@ -35,7 +35,7 @@ TEST_CASE("TensorTest2", "[tensor_init]") {
   REQUIRE(test_tensor.numel() == 3 * 4);
 }
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 template <typename T>
 inline void Fill(Tensor &tensor) {
   T *gpu_data = tensor.mutableData<T>();

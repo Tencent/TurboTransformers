@@ -92,7 +92,7 @@ struct VisitDLTensor {
   }
   const DLTensor &operator()(const DLTensorPtr &t) const { return *t; }
   const DLTensor &operator()(absl::monostate) const {
-    FT_THROW("Tensor is null");
+    TT_THROW("Tensor is null");
   }
 };
 
@@ -122,7 +122,7 @@ class Tensor {
   }
 
   DLManagedTensor *ToDLPack() {
-    FT_ENFORCE(absl::holds_alternative<details::DLManagedTensorPtr>(tensor_),
+    TT_ENFORCE(absl::holds_alternative<details::DLManagedTensorPtr>(tensor_),
                "Must own dltensor");
     return absl::get<details::DLManagedTensorPtr>(tensor_).release();
   }
@@ -134,7 +134,7 @@ class Tensor {
 
   const int64_t &shape(int pos) const {
     auto &dl_tensor = to_dl_tensor();
-    FT_ENFORCE_LT(pos, dl_tensor.ndim,
+    TT_ENFORCE_LT(pos, dl_tensor.ndim,
                   "The index(%d) is out of the range[0...%d]", pos,
                   dl_tensor.ndim - 1);
     return dl_tensor.shape[pos];
@@ -148,14 +148,14 @@ class Tensor {
 
   int64_t rows() const {
     auto &dl_tensor = to_dl_tensor();
-    FT_ENFORCE_GE(dl_tensor.ndim, 2, "n_dims() >= 2");
+    TT_ENFORCE_GE(dl_tensor.ndim, 2, "n_dims() >= 2");
     return std::accumulate(dl_tensor.shape,
                            dl_tensor.shape + dl_tensor.ndim - 1, 1,
                            std::multiplies<int64_t>());
   }
   int64_t cols() const {
     auto &dl_tensor = to_dl_tensor();
-    FT_ENFORCE_GE(dl_tensor.ndim, 2, "n_dims() >= 2");
+    TT_ENFORCE_GE(dl_tensor.ndim, 2, "n_dims() >= 2");
     return dl_tensor.shape[dl_tensor.ndim - 1];
   }
 
@@ -228,7 +228,7 @@ class Tensor {
         if (cnt-- >= 0) os << data<T>()[i] << ", ";
       }
     } else if (device_type() == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
       auto n = numel();
       std::unique_ptr<T[]> cpu_data(new T[n]);
       Memcpy(cpu_data.get(), data<T>(), n * sizeof(T), MemcpyFlag::kGPU2CPU);
@@ -237,7 +237,7 @@ class Tensor {
         if (cnt-- >= 0) os << cpu_data[i] << ", ";
       }
 #else
-      FT_THROW("No CUDA supported, Please Compile with FT_WITH_CUDA");
+      TT_THROW("No CUDA supported, Please Compile with TT_WITH_CUDA");
 #endif
     }
     os << ")\n";
@@ -246,7 +246,7 @@ class Tensor {
 
   Tensor operator[](int64_t n) {
     auto &dl_tensor = to_dl_tensor();
-    FT_ENFORCE_GT(dl_tensor.ndim, 1, "operator[] needs ndim > 1");
+    TT_ENFORCE_GT(dl_tensor.ndim, 1, "operator[] needs ndim > 1");
     details::DLTensorPtr result(new DLTensor());
     result->dtype = dl_tensor.dtype;
     result->byte_offset = 0;
@@ -295,9 +295,9 @@ class Tensor {
 
   template <typename T>
   static void EnforceDataType(DLTensor t) {
-    FT_ENFORCE_EQ(t.byte_offset, 0, "byte_offset must be zero");
+    TT_ENFORCE_EQ(t.byte_offset, 0, "byte_offset must be zero");
 
-    FT_ENFORCE(details::IsDataType<T>(t.dtype),
+    TT_ENFORCE(details::IsDataType<T>(t.dtype),
                "data type mismatch, request %s, actual (%d,%d)",
                typeid(T).name(), t.dtype.code, t.dtype.bits);
   }
@@ -351,7 +351,7 @@ struct TempTensor {
     } else if (context.device_type == kDLGPU) {
       return gpu_tensor;
     } else {
-      FT_THROW("This device is not support.");
+      TT_THROW("This device is not support.");
     }
   }
 

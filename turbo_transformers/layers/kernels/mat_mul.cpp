@@ -15,7 +15,7 @@
 #include "mat_mul.h"
 
 #include "common.h"
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
 
@@ -34,10 +34,10 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
 
   BlasInt K_a = a_trans ? a_rows : a_cols;
   BlasInt K_b = b_trans ? b_cols : b_rows;
-  FT_ENFORCE_EQ(K_a, K_b, "matrix shape mismatch");
-  FT_ENFORCE(common::is_same_device_ctx(A.device_ctx(), B.device_ctx()),
+  TT_ENFORCE_EQ(K_a, K_b, "matrix shape mismatch");
+  TT_ENFORCE(common::is_same_device_ctx(A.device_ctx(), B.device_ctx()),
              "MatMul error: the device of A and B is different.");
-  FT_ENFORCE(common::is_same_device_ctx(A.device_ctx(), out->device_ctx()),
+  TT_ENFORCE(common::is_same_device_ctx(A.device_ctx(), out->device_ctx()),
              "MatMul error: the device of A and out is different.");
 
   if (A.device_type() == kDLCPU && B.device_type() == kDLCPU &&
@@ -54,7 +54,7 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
                 out->mutableData<float>(), ldc);
   } else if (A.device_type() == kDLGPU && B.device_type() == kDLGPU &&
              out->device_type() == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     cublasOperation_t transA = a_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
     cublasOperation_t transB = b_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
 
@@ -68,10 +68,10 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
                 B.data<float>(), ldb, A.data<float>(), lda, &beta,
                 out->mutableData<float>(), ldc);
 #else
-    FT_THROW("CUDA is not supported for MatMul");
+    TT_THROW("CUDA is not supported for MatMul");
 #endif
   } else {
-    FT_THROW("device_type %d is not supported for MatMul", A.device_type());
+    TT_THROW("device_type %d is not supported for MatMul", A.device_type());
   }
 }
 void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
@@ -80,8 +80,8 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   auto A_ndim = A.n_dim();
   auto* B_shape = &B.shape(0);
   auto B_ndim = B.n_dim();
-  FT_ENFORCE_GT(A_ndim, 2, "A must at least be 3 dims");
-  FT_ENFORCE_GT(B_ndim, 2, "B must at least be 3 dims");
+  TT_ENFORCE_GT(A_ndim, 2, "A must at least be 3 dims");
+  TT_ENFORCE_GT(B_ndim, 2, "B must at least be 3 dims");
 
   BlasInt a_rows = A_shape[A_ndim - 2];
   BlasInt a_cols = A_shape[A_ndim - 1];
@@ -93,13 +93,13 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   BlasInt b_batch_size = std::accumulate(B_shape, B_shape + B_ndim - 2, 1,
                                          std::multiplies<int64_t>());
 
-  FT_ENFORCE_EQ(a_batch_size, b_batch_size, "BatchSize mismatch");
+  TT_ENFORCE_EQ(a_batch_size, b_batch_size, "BatchSize mismatch");
 
   BlasInt M = a_trans ? a_cols : a_rows;
   BlasInt N = b_trans ? b_rows : b_cols;
   BlasInt K_a = a_trans ? a_rows : a_cols;
   BlasInt K_b = b_trans ? b_cols : b_rows;
-  FT_ENFORCE_EQ(K_a, K_b, "K mismatch");
+  TT_ENFORCE_EQ(K_a, K_b, "K mismatch");
 
   auto* C_shape = &C->shape(0);
   auto C_ndim = C->n_dim();
@@ -109,9 +109,9 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   BlasInt c_batch_size = std::accumulate(C_shape, C_shape + C_ndim - 2, 1,
                                          std::multiplies<int64_t>());
 
-  FT_ENFORCE_EQ(c_rows, M, "C shape mismatch");
-  FT_ENFORCE_EQ(c_cols, N, "C shape mismatch");
-  FT_ENFORCE_EQ(c_batch_size, b_batch_size, "C BatchSize mismatch");
+  TT_ENFORCE_EQ(c_rows, M, "C shape mismatch");
+  TT_ENFORCE_EQ(c_cols, N, "C shape mismatch");
+  TT_ENFORCE_EQ(c_batch_size, b_batch_size, "C BatchSize mismatch");
 
   BlasInt offsetA = a_rows * a_cols;
   BlasInt offsetB = b_rows * b_cols;
@@ -143,7 +143,7 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
                       C_array.get(), &ldc, 1, &a_batch_size);
   } else if (A.device_type() == kDLGPU && B.device_type() == kDLGPU &&
              C->device_type() == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     auto transA = a_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
     auto transB = b_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
 
@@ -158,7 +158,7 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
         C->mutableData<float>(), ldc, offsetC, a_batch_size);
 #endif
   } else {
-    FT_THROW("device_type %d is not supported!", A.device_type());
+    TT_THROW("device_type %d is not supported!", A.device_type());
   }
 }
 

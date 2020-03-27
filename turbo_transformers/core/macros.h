@@ -32,7 +32,7 @@
 namespace turbo_transformers {
 namespace core {
 static constexpr bool IsCompiledWithCUDA() {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
   return true;
 #else
   return false;

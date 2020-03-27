@@ -29,7 +29,7 @@ CUDADeviceContext::CUDADeviceContext() {
 void CUDADeviceContext::Wait() const {
   cudaError_t e_sync = cudaSuccess;
   e_sync = cudaStreamSynchronize(stream_);
-  FT_ENFORCE_CUDA_SUCCESS(e_sync);
+  TT_ENFORCE_CUDA_SUCCESS(e_sync);
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
@@ -38,8 +38,8 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const { return handle_; }
 
 CUDADeviceContext::~CUDADeviceContext() {
   Wait();
-  FT_ENFORCE_CUDA_SUCCESS(cublasDestroy(handle_));
-  FT_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
+  TT_ENFORCE_CUDA_SUCCESS(cublasDestroy(handle_));
+  TT_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
 }
 
 }  // namespace core

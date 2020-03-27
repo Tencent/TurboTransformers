@@ -18,7 +18,7 @@
 
 #include "common.h"
 #include "turbo_transformers/layers/kernels/common.h"
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_transpose_kernel.h"
 #endif
@@ -55,7 +55,7 @@ void TransposeForScore(core::Tensor* output, const core::Tensor& input) {
                           output->shape(0), output->shape(1), input.shape(1),
                           input.shape(3));
   } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     auto batch_size = output->shape(0);
     auto seq_length = output->shape(1);
     auto num_attention_heads = input.shape(1);
@@ -66,17 +66,17 @@ void TransposeForScore(core::Tensor* output, const core::Tensor& input) {
         seq_length, num_attention_heads, width, cuda_ctx.stream());
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 
 void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
                                    const core::Tensor& input_tensor,
                                    const core::Tensor& bias_tensor) {
-  FT_ENFORCE_EQ(output_tensor->n_dim(), 5,
+  TT_ENFORCE_EQ(output_tensor->n_dim(), 5,
                 "output_tensor should be (weight_num, batch_size, seq_length, "
                 "num_attention_heads, size_per_head)");
-  FT_ENFORCE_EQ(output_tensor->shape(0), 3,
+  TT_ENFORCE_EQ(output_tensor->shape(0), 3,
                 "output_tensor should be (3, batch_size, seq_length, "
                 "num_attention_heads, size_per_head)");
 
@@ -89,12 +89,12 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
   auto bias = bias_tensor.data<float>();
   auto output = output_tensor->mutableData<float>();
 
-  FT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
+  TT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
                                            bias_tensor.device_ctx()),
                 true,
                 "SplitAddBiasTransposeForScore: input_tensor and bias_tensor "
                 "should have the same device type and device id.");
-  FT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
+  TT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
                                            output_tensor->device_ctx()),
                 true,
                 "SplitAddBiasTransposeForScore: input_tensor and output_tensor "
@@ -132,14 +132,14 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
   } else if (output_tensor->device_type() == kDLGPU &&
              input_tensor.device_type() == kDLGPU &&
              bias_tensor.device_type() == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
     GPUSplitAddBiasTransposeForScore<float>(
         input, bias, output, batch_size, seq_length, weight_num,
         num_attention_heads, width, cuda_ctx.stream());
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 

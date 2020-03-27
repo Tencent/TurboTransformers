@@ -124,10 +124,10 @@ print(torch_res[0][:,0,:])  # 获取encoder得到的第一个隐状态
 
 # 构建bert-encoder的模型，输出first方式pooling的结果
 # 两种方式载入模型，这里直接从pytorch模型载入
-ft_model = turbo_transformers.BertModel.from_torch(model)
+tt_model = turbo_transformers.BertModel.from_torch(model)
 # 从文件载入
 # model = turbo_transformers.BertModel.from_pretrained("bert-base-chinese")
-res = ft_model(input_ids)
+res = tt_model(input_ids)
 print(res)
 # tensor([[-1.4292,  1.0934, -0.3270,  ...,  0.7212, -0.3893, -0.1172],
 #         [-0.8878,  0.6571, -0.6331,  ...,  0.2759, -0.4496, -0.2375]])
@@ -153,9 +153,9 @@ model_torch.eval()
 model_torch.to(test_device)
 # the following two ways are the same
 # 1. load model from checkpoint in file
-# model_ft = turbo_transformers.BertModel.from_pretrained(model_id, test_device)
+# model_tt = turbo_transformers.BertModel.from_pretrained(model_id, test_device)
 # 2. load model from pytorch model
-model_ft = turbo_transformers.BertModel.from_torch(model_torch, test_device)
+model_tt = turbo_transformers.BertModel.from_torch(model_torch, test_device)
 cfg = model_torch.config  # type: transformers.BertConfig
 
 batch_size, seq_len = 10, 40
@@ -182,9 +182,9 @@ print(torch_result)
 #  [-0.56147367  0.6245851  -0.97631836 ...  1.300955    0.2231751
 #   -0.35811383]]
 
-ft_result = model_ft(input_ids)
-ft_result = ft_result.cpu().numpy()
-print(ft_result)
+tt_result = model_tt(input_ids)
+tt_result = tt_result.cpu().numpy()
+print(tt_result)
 # [[-1.0559868   0.70307076  0.01852467 ...  0.15004729  0.12565975
 #    0.0958093 ]
 #  [-0.37808716  0.8361676  -0.26031977 ...  0.36978582 -1.150511

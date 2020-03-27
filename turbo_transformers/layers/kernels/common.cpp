@@ -23,7 +23,7 @@ bool is_same_device_ctx(DLContext t1, DLContext t2) {
   return t1.device_id == t2.device_id && t1.device_type == t2.device_type;
 }
 
-bool is_same_shape(const core::Tensor &t1, const core::Tensor &t2) {
+bool is_same_shape(const core::Tensor& t1, const core::Tensor& t2) {
   if (t1.n_dim() != t2.n_dim()) {
     return false;
   }
@@ -36,45 +36,45 @@ bool is_same_shape(const core::Tensor &t1, const core::Tensor &t2) {
 }
 
 template <typename T>
-void ft_seqence(T *data, int64_t size, DLDeviceType device) {
+void tt_seqence(T* data, int64_t size, DLDeviceType device) {
   if (device == kDLCPU) {
     std::iota(data, data + size, static_cast<T>(0));
   } else if (device == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     turbo_transformers::layers::kernels::GPUSequence(data, size);
 #else
-    FT_THROW("code is not compiled with CUDA.");
+    TT_THROW("code is not compiled with CUDA.");
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
-template void ft_seqence(float *data, int64_t size, DLDeviceType device);
-template void ft_seqence(int64_t *data, int64_t size, DLDeviceType device);
+template void tt_seqence(float* data, int64_t size, DLDeviceType device);
+template void tt_seqence(int64_t* data, int64_t size, DLDeviceType device);
 
 template <typename T>
-void ft_fill(T *data, int64_t size, T val, DLDeviceType device) {
+void tt_fill(T* data, int64_t size, T val, DLDeviceType device) {
   if (device == kDLCPU) {
     std::fill(data, data + size, val);
   } else if (device == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     layers::kernels::GPUFill(data, size, val);
 #else
-    FT_THROW("code is not compiled with CUDA.");
+    TT_THROW("code is not compiled with CUDA.");
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 
-template void ft_fill<float>(float *data, int64_t size, float val,
+template void tt_fill<float>(float* data, int64_t size, float val,
                              DLDeviceType device);
-template void ft_fill<int64_t>(int64_t *data, int64_t size, int64_t val,
+template void tt_fill<int64_t>(int64_t* data, int64_t size, int64_t val,
                                DLDeviceType device);
 
 // TODO(jiaruifang): this function should better pass a function in.
 // how can we pass a lambda function as __device__ to cuda?
-void ft_transform(int64_t *src_data, float *dst_data, int64_t size,
+void ft_transform(int64_t* src_data, float* dst_data, int64_t size,
                   DLDeviceType device) {
   if (device == kDLCPU) {
     std::transform(src_data, src_data + size, dst_data,
@@ -83,13 +83,12 @@ void ft_transform(int64_t *src_data, float *dst_data, int64_t size,
 #ifdef FT_WITH_CUDA
     layers::kernels::GPUTransform(src_data, dst_data, size);
 #else
-    FT_THROW("code is not compiled with CUDA.");
+    TT_THROW("code is not compiled with CUDA.");
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
-
 }  // namespace common
 }  // namespace kernels
 }  // namespace layers

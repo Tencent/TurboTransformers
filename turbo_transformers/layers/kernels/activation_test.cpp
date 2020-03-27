@@ -16,7 +16,7 @@
 
 #include "loguru.hpp"
 #include "turbo_transformers/core/half.h"
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
 #include "catch2/catch.hpp"
@@ -103,13 +103,11 @@ TEST_CASE("activation CPU AddBiasGelu benchmark") {
           step, "AddBiasGeluActNaive", m * n * sizeof(float) / 1e9);
 
       TestFunction(
-          [&]() {
-            AddBiasAct<ActivationType, ActivationType::Gelu, float>(bias, &out);
-          },
-          step, "AddBiasGeluAct OMP", m * n * sizeof(float) / 1e9);
+          [&]() { AddBiasAct<float>(ActivationType::Gelu, bias, &out); }, step,
+          "AddBiasGeluAct OMP", m * n * sizeof(float) / 1e9);
 
       if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
-        FT_THROW("AddBiasGelu test failed");
+        TT_THROW("AddBiasGelu test failed");
       }
     }
 }
@@ -147,17 +145,15 @@ TEST_CASE("activation CPU AddBiasTanh benchmark") {
           step, "AddBiasTanhActNaive", m * n * sizeof(float) / 1e9);
 
       TestFunction(
-          [&]() {
-            AddBiasAct<ActivationType, ActivationType::Tanh, float>(bias, &out);
-          },
-          step, "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
+          [&]() { AddBiasAct<float>(ActivationType::Tanh, bias, &out); }, step,
+          "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
       if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
-        FT_THROW("AddBiasTanh test failed");
+        TT_THROW("AddBiasTanh test failed");
       }
     }
 }
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 
 template <typename T>
 turbo_transformers::core::Tensor CreateTensor(
@@ -196,10 +192,8 @@ TEST_CASE("activation CPU and GPU correctness") {
             batch_size, seq_length, hidden_size,
             [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
                core::Tensor& gpu_bias, core::Tensor& gpu_out) {
-              AddBiasAct<ActivationType, ActivationType::Gelu, float>(cpu_bias,
-                                                                      &cpu_out);
-              AddBiasAct<ActivationType, ActivationType::Gelu, float>(gpu_bias,
-                                                                      &gpu_out);
+              AddBiasAct<float>(ActivationType::Gelu, cpu_bias, &cpu_out);
+              AddBiasAct<float>(ActivationType::Gelu, gpu_bias, &gpu_out);
               REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
                   cpu_out, gpu_out));
             });
@@ -212,8 +206,7 @@ TEST_CASE("activation CPU and GPU correctness") {
                                               cpu_out.mutableData<core::Half>(),
                                               batch_size * seq_length,
                                               hidden_size);
-              AddBiasAct<ActivationType, ActivationType::Gelu, core::Half>(
-                  gpu_bias, &gpu_out);
+              AddBiasAct<core::Half>(ActivationType::Gelu, gpu_bias, &gpu_out);
               REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<
                       core::Half>(cpu_out, gpu_out));
             });
@@ -221,6 +214,29 @@ TEST_CASE("activation CPU and GPU correctness") {
       }  // for
     }
   }
+}
+
+template <typename T>
+void ActivationGPUBenchmark(int batch_size, int seq_length, int hidden_size,
+                            int step) {
+  auto m = batch_size * seq_length;
+  auto n = hidden_size;
+  auto bias = CreateTensor<T>({hidden_size}, kDLGPU, 0);
+  auto out = CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLGPU, 0);
+  ::turbo_transformers::test::Fill<T>(out);
+  ::turbo_transformers::test::Fill<T>(bias);
+
+  std::cout << "batch_size: " << batch_size << " seq_length: " << seq_length;
+  AddBiasAct<T>(ActivationType::Gelu, bias, &out);
+  auto& cuda_ctx = turbo_transformers::core::CUDADeviceContext::GetInstance();
+  auto stream = cuda_ctx.stream();
+  test::GPUTimer timer(stream);
+  for (int i = 0; i < step; ++i) {
+    AddBiasAct<T>(ActivationType::Gelu, bias, &out);
+  }
+  auto elapse = timer.ElapseSecond() / step;
+  std::cout << " AddBiasGeLUAct GPU cost:" << elapse << " sec, Bandwidth "
+            << m * n * sizeof(T) / 1e9 / elapse << " GB/s" << std::endl;
 }
 #endif
 

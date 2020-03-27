@@ -36,14 +36,14 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
 
   kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
-  kernels::AddBiasAct<kernels::ActivationType, kernels::ActivationType::Gelu,
-                      float>(dense_bias_, output_tensor);
+  kernels::AddBiasAct<float>(kernels::ActivationType::Gelu, dense_bias_,
+                             output_tensor);
 }
 
 void BertIntermediate::EnforceShapeAndType() const {
-  FT_ENFORCE_EQ(dense_weight_.n_dim(), 2, "dense weight must be matrix");
-  FT_ENFORCE_EQ(dense_bias_.n_dim(), 1, "dense bias must be vector");
-  FT_ENFORCE_EQ(dense_weight_.shape(0), dense_bias_.shape(0),
+  TT_ENFORCE_EQ(dense_weight_.n_dim(), 2, "dense weight must be matrix");
+  TT_ENFORCE_EQ(dense_bias_.n_dim(), 1, "dense bias must be vector");
+  TT_ENFORCE_EQ(dense_weight_.shape(0), dense_bias_.shape(0),
                 "weight and bias shape mismatch %d, %d", dense_weight_.shape(0),
                 dense_bias_.shape(0));
 

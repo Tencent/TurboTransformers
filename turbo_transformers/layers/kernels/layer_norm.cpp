@@ -16,7 +16,7 @@
 
 #include "common.h"
 #include "turbo_transformers/layers/kernels/common.h"
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/gpu_layer_norm_kernel.h"
@@ -30,7 +30,7 @@ static constexpr float g_epsilon = 1e-12;
 template <typename T>
 void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
                core::Tensor* out_tensor) {
-  FT_ENFORCE_EQ(
+  TT_ENFORCE_EQ(
       common::is_same_device_ctx(gamma.device_ctx(), beta.device_ctx()), true,
       "LayerNorm gamma and beta must be on the same device context.");
 
@@ -68,16 +68,16 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
       }
     }
   } else if (out_tensor->device_type() == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
     T* bias = nullptr;
     GPULayerNorm</*AddBias*/ false>(out, out, bias, gamma_ptr, beta_ptr,
                                     batch_size, feature_dim, cuda_ctx.stream());
 #else
-    FT_THROW("The current code is not compiled with CUDA.");
+    TT_THROW("The current code is not compiled with CUDA.");
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 
@@ -91,17 +91,17 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
                       const core::Tensor& gamma_tensor,
                       const core::Tensor& beta_tensor,
                       core::Tensor* out_tensor) {
-  FT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
+  TT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
                                            bias_tensor.device_ctx()),
                 true,
                 "AddBiasLayerNorm input_tensor and bias_tensor"
                 "should have the same device context.");
-  FT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
+  TT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
                                            gamma_tensor.device_ctx()),
                 true,
                 "AddBiasLayerNorm input_tensor and gamma_tensor"
                 "should have the same device context.");
-  FT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
+  TT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
                                            beta_tensor.device_ctx()),
                 true,
                 "AddBiasLayerNorm input_tensor and beta_tensor"
@@ -142,13 +142,13 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
       }
     }
   } else if (input_tensor.device_type() == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
     GPULayerNorm</*AddBias*/ true>(out, input, bias, gamma, beta, m, n,
                                    cuda_ctx.stream());
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 

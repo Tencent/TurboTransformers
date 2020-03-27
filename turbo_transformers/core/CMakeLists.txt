@@ -38,10 +38,10 @@ target_link_libraries(tt_core PUBLIC
 if (${BLAS_PROVIDER} STREQUAL "mkl")
     target_link_libraries(tt_core PUBLIC ${MKL_LIBRARIES})
     target_include_directories(tt_core PUBLIC ${MKL_INCLUDE_DIR})
-    target_compile_definitions(tt_core PUBLIC -DFT_BLAS_USE_MKL)
+    target_compile_definitions(tt_core PUBLIC -DTT_BLAS_USE_MKL)
 elseif (${BLAS_PROVIDER} STREQUAL "openblas")
     target_link_libraries(tt_core PUBLIC OpenBlas::OpenBlas PUBLIC Eigen3::Eigen)
-    target_compile_definitions(tt_core PUBLIC -DFT_BLAS_USE_OPENBLAS)
+    target_compile_definitions(tt_core PUBLIC -DTT_BLAS_USE_OPENBLAS)
 endif ()
 
 

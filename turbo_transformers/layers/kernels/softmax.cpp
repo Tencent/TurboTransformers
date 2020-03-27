@@ -16,7 +16,7 @@
 
 #include <cmath>
 #include <numeric>
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_softmax_kernel.h"
 #endif
@@ -71,16 +71,16 @@ void ApplyMaskAndSoftmax(core::Tensor* inout, const core::Tensor& att_mask,
     SoftmaxMask(inout->mutableData<float>(), att_mask.data<float>(), batch_size,
                 num_att_heads, seq_len, scale);
   } else if (inout->device_type() == kDLGPU) {
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
     auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
     GPUSoftmaxMask(inout->mutableData<float>(), att_mask.data<float>(),
                    batch_size, num_att_heads, seq_len, scale,
                    cuda_ctx.stream());
 #else
-    FT_THROW("The current code is not compiled with CUDA.");
+    TT_THROW("The current code is not compiled with CUDA.");
 #endif
   } else {
-    FT_THROW("device_type is not supported");
+    TT_THROW("device_type is not supported");
   }
 }
 

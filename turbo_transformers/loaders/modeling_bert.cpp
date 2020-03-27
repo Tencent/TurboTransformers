@@ -36,7 +36,7 @@ class NPZMapView {
   cnpy::NpyArray &operator[](const std::string &key) {
     auto actualKey = prefix_ + key;
     auto it = npz_->find(actualKey);
-    FT_ENFORCE(it != npz_->end(), "cannot find parameter %s in npz file",
+    TT_ENFORCE(it != npz_->end(), "cannot find parameter %s in npz file",
                actualKey);
     return it->second;
   }

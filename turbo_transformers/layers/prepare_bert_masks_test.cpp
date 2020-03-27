@@ -25,7 +25,7 @@
 namespace turbo_transformers {
 namespace layers {
 
-#ifdef FT_WITH_CUDA
+#ifdef TT_WITH_CUDA
 TEST_CASE("prepare_bert_masks CPU and GPU correctness") {
   std::vector<int64_t> batch_size_list{1, 20};
   std::vector<int64_t> seq_length_list{8, 16, 32, 48, 64, 128};

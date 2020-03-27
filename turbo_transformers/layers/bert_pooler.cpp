@@ -28,7 +28,7 @@ void BertPooler::operator()(const core::Tensor& input_tensor,
                             core::Tensor* output_tensor) const {
   // input_tensor [batch_size, sequence_length=1, hidden_size]
   // output_tensor [batch_size, hidden_size]
-  FT_ENFORCE_EQ(input_tensor.shape(1), 1,
+  TT_ENFORCE_EQ(input_tensor.shape(1), 1,
                 "input_tensor's sequence_length must be 1");
   output_tensor->Reshape<float>({input_tensor.shape(0), dense_weight_.shape(0)},
                                 input_tensor.device_type(),
@@ -41,9 +41,9 @@ void BertPooler::operator()(const core::Tensor& input_tensor,
 }
 
 void BertPooler::EnforceShapeAndType() const {
-  FT_ENFORCE_EQ(dense_weight_.n_dim(), 2, "dense weight must be matrix");
-  FT_ENFORCE_EQ(dense_bias_.n_dim(), 1, "dense bias must be vector");
-  FT_ENFORCE_EQ(dense_weight_.shape(0), dense_bias_.shape(0),
+  TT_ENFORCE_EQ(dense_weight_.n_dim(), 2, "dense weight must be matrix");
+  TT_ENFORCE_EQ(dense_bias_.n_dim(), 1, "dense bias must be vector");
+  TT_ENFORCE_EQ(dense_weight_.shape(0), dense_bias_.shape(0),
                 "weight and bias shape mismatch %d, %d", dense_weight_.shape(0),
                 dense_bias_.shape(0));
 

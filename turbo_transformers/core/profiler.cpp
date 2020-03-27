@@ -30,7 +30,7 @@ static bool gProfileStarted = false;
 void EnableGperf(const std::string &profile_file) {
 #ifdef WITH_GPERFTOOLS
   LOG_S(1) << "gperf tools enabled." << profile_file;
-  FT_ENFORCE_EQ(gProfileStarted, false, "Currently the gPerf is enabled.");
+  TT_ENFORCE_EQ(gProfileStarted, false, "Currently the gPerf is enabled.");
   ProfilerStart(profile_file.c_str());
   gProfileStarted = true;
 #else
@@ -40,7 +40,7 @@ void EnableGperf(const std::string &profile_file) {
 
 void DisableGperf() {
 #ifdef WITH_GPERFTOOLS
-  FT_ENFORCE_EQ(gProfileStarted, true, "Currently the gPerf is disabled.");
+  TT_ENFORCE_EQ(gProfileStarted, true, "Currently the gPerf is disabled.");
   ProfilerStop();
   gProfileStarted = false;
 #else

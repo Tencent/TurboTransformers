@@ -42,8 +42,8 @@ print(torch_res[0][:, 0, :])
 
 # there are two methods to load pretrained model.
 # 1, from a torch model, which has loaded a pretrained model
-ft_model = turbo_transformers.BertModel.from_torch(model)
+tt_model = turbo_transformers.BertModel.from_torch(model)
 # 2. directly load from checkpoint (torch saved model)
 # model = turbo_transformers.BertModel.from_pretrained(model_id)
-res = ft_model(input_ids)
+res = tt_model(input_ids)
 print(res)
