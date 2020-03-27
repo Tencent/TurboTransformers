@@ -13,54 +13,58 @@
 // limitations under the License.
 
 #include "turbo_transformers/layers/kernels/seq_pool.h"
+#ifdef FT_WITH_CUDA
+#include "turbo_transformers/layers/kernels/gpu_utils.h"
+#endif
 
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <unordered_map>
 
-#include "turbo_transformers/core/enforce.h"
+#include "turbo_transformers/core/memory.h"
 
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
 namespace {
-template <typename T>
-struct AvgProcess {
-  static void InitValue(T* ptr, int64_t len) {
-    memset(ptr, 0, len * sizeof(T));
+
+template <typename T, layers::types::PoolType>
+inline void ProcessEle(const T* in_ptr, T* out_ptr, int64_t seq_len,
+                       int64_t hidden_size);
+template <>
+inline void ProcessEle<float, layers::types::PoolType::kMean>(
+    const float* in_ptr, float* out_ptr, int64_t seq_len, int64_t hidden_size) {
+  FT_ENFORCE_GT(
+      hidden_size, 0,
+      "Avg Pooling on tensor whose leading dimension should be larger than "
+      "0");
+  for (int64_t i = 0; i < hidden_size; ++i) {
+    out_ptr[i] = 0.;
+    for (int64_t j = i; j < seq_len * hidden_size; j += hidden_size) {
+      out_ptr[i] += in_ptr[j];
+    }
+    out_ptr[i] /= seq_len;
   }
+};
 
-  static void ProcessEle(T* ptr, int64_t idx, T ele) { ptr[idx] += ele; }
-
-  static void Finalize(T* ptr, int64_t len, int64_t seq_len) {
-#pragma omp simd
-    for (int64_t i = 0; i < len; ++i) {
-      ptr[i] /= seq_len;
+template <>
+inline void ProcessEle<float, layers::types::PoolType::kMax>(
+    const float* in_ptr, float* out_ptr, int64_t seq_len, int64_t hidden_size) {
+  FT_ENFORCE_GT(
+      hidden_size, 0,
+      "Max Pooling on tensor whose leading dimension should be larger than "
+      "0");
+  for (int64_t i = 0; i < hidden_size; ++i) {
+    out_ptr[i] = std::numeric_limits<float>::lowest();
+    for (int64_t j = i; j < seq_len * hidden_size; j += hidden_size) {
+      out_ptr[i] = std::max(out_ptr[i], in_ptr[j]);
     }
   }
 };
 
-template <typename T>
-struct MaxProcess {
-  static void InitValue(T* ptr, int64_t len) {
-#pragma omp simd
-    for (int64_t i = 0; i < len; ++i) {
-      ptr[i] = std::numeric_limits<T>::lowest();
-    }
-  }
-
-  static void ProcessEle(T* ptr, int64_t idx, T ele) {
-    if (ptr[idx] < ele) {
-      ptr[idx] = ele;
-    }
-  }
-
-  static void Finalize(T* ptr, int64_t len, int64_t seq_len) {}
-};
-
-template <typename T, typename Process>
+template <typename T, layers::types::PoolType t>
 void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   auto batch_size = input.shape(0);
   auto seq_len = input.shape(1);
@@ -69,20 +73,16 @@ void SeqPoolWithProcess(const core::Tensor& input, core::Tensor* output) {
   const T* in_ptr = input.data<T>();
   T* out_ptr = output->mutableData<T>();
 
+  if (input.device_type() == kDLCPU) {
 #pragma omp parallel for
-  for (int64_t i = 0; i < batch_size; ++i) {
-    T* sub_out_ptr = out_ptr + i * hidden_size;
-    Process::InitValue(sub_out_ptr, hidden_size);
-    int64_t stride = i * seq_len * hidden_size;
-#pragma omp simd
-    for (int64_t j = 0; j < seq_len; ++j) {
-      const T* sub_in_ptr = in_ptr + stride + j * hidden_size;
-      for (int64_t k = 0; k < hidden_size; k++) {
-        Process::ProcessEle(sub_out_ptr, k, sub_in_ptr[k]);
-      }
+    for (int64_t i = 0; i < batch_size; ++i) {
+      ProcessEle<T, t>(in_ptr + i * hidden_size * seq_len,
+                       out_ptr + i * hidden_size, seq_len, hidden_size);
     }
-
-    Process::Finalize(sub_out_ptr, hidden_size, seq_len);
+  } else {
+#ifdef FT_WITH_CUDA
+    GPUReduceAxisOne<T, t>(in_ptr, out_ptr, batch_size, seq_len, hidden_size);
+#endif
   }
 }
 
@@ -98,17 +98,32 @@ void SeqPoolWithIdx(const core::Tensor& input, int64_t idx,
   const T* in_ptr = input.data<T>();
   T* out_ptr = output->mutableData<T>();
   int64_t stride = seq_len * hidden_size;
+  if (input.device_type() == kDLCPU) {
 #pragma omp parallel for
-  for (int64_t i = 0; i < batch_size; ++i) {
-    const T* sub_in_ptr = in_ptr + i * stride + idx * hidden_size;
-    T* sub_out_ptr = out_ptr + i * hidden_size;
-    std::copy(sub_in_ptr, sub_in_ptr + hidden_size, sub_out_ptr);
+    for (int64_t i = 0; i < batch_size; ++i) {
+      const T* sub_in_ptr = in_ptr + i * stride + idx * hidden_size;
+      T* sub_out_ptr = out_ptr + i * hidden_size;
+      core::Memcpy(sub_out_ptr, sub_in_ptr, hidden_size * sizeof(T),
+                   core::MemcpyFlag::kCPU2CPU);
+    }
+  } else if (input.device_type() == kDLGPU) {
+#ifdef FT_WITH_CUDA
+    for (int64_t i = 0; i < batch_size; ++i) {
+      const T* sub_in_ptr = in_ptr + i * stride + idx * hidden_size;
+      T* sub_out_ptr = out_ptr + i * hidden_size;
+      core::Memcpy(sub_out_ptr, sub_in_ptr, hidden_size * sizeof(T),
+                   core::MemcpyFlag::kGPU2GPU);
+    }
+#endif
+  } else {
+    FT_THROW("device_type %d is not supported for SeqPoolWithIdx",
+             input.device_type());
   }
 }
 }  // namespace
 
 template <typename T>
-void SeqPool(const core::Tensor& input, PoolType pool_type,
+void SeqPool(const core::Tensor& input, layers::types::PoolType pool_type,
              core::Tensor* output) {
   FT_ENFORCE_EQ(input.n_dim(), 3,
                 "The input's dim should be 3, but the input's dim is %d",
@@ -122,30 +137,31 @@ void SeqPool(const core::Tensor& input, PoolType pool_type,
                      input.device_id());
 
   switch (pool_type) {
-    case PoolType::kMax:
-      SeqPoolWithProcess<T, MaxProcess<T>>(input, output);
+    case layers::types::PoolType::kMax:
+      SeqPoolWithProcess<T, layers::types::PoolType::kMax>(input, output);
       break;
-    case PoolType::kMean:
-      SeqPoolWithProcess<T, AvgProcess<T>>(input, output);
+    case layers::types::PoolType::kMean:
+      SeqPoolWithProcess<T, layers::types::PoolType::kMean>(input, output);
       break;
-    case PoolType::kFirst:
+    case layers::types::PoolType::kFirst:
       SeqPoolWithIdx<T>(input, 0, output);
       break;
-    case PoolType::kLast:
+    case layers::types::PoolType::kLast:
       SeqPoolWithIdx<T>(input, seq_len - 1, output);
       break;
   }
 }
 
-template void SeqPool<float>(const core::Tensor& input, PoolType pool_type,
+template void SeqPool<float>(const core::Tensor& input,
+                             layers::types::PoolType pool_type,
                              core::Tensor* output);
 
-PoolType GetPoolType(const std::string& pool_type) {
-#define _EnumCase(EnumValue)         \
-  do {                               \
-    if (pool_type == #EnumValue) {   \
-      return PoolType::k##EnumValue; \
-    }                                \
+layers::types::PoolType GetPoolType(const std::string& pool_type) {
+#define _EnumCase(EnumValue)                        \
+  do {                                              \
+    if (pool_type == #EnumValue) {                  \
+      return layers::types::PoolType::k##EnumValue; \
+    }                                               \
   } while (0)
 
   _EnumCase(First);

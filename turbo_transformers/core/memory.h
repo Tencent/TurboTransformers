@@ -33,8 +33,8 @@ enum class MemcpyFlag {
   kNUM_MEMCPY_FLAGS
 };
 
-extern void FT_Memcpy(void *dst_data, const void *src_data, size_t data_size,
-                      MemcpyFlag flag);
+extern void Memcpy(void *dst_data, const void *src_data, size_t data_size,
+                   MemcpyFlag flag);
 
 extern MemcpyFlag ToMemcpyFlag(DLDeviceType dst, DLDeviceType src);
 

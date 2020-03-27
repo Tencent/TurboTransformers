@@ -45,7 +45,7 @@ inline void Fill(Tensor &tensor) {
   for (int64_t i = 0; i < size; ++i) {
     cpu_data[i] = static_cast<T>(rand() / RAND_MAX);
   }
-  FT_Memcpy(gpu_data, cpu_data.get(), size * sizeof(T), MemcpyFlag::kCPU2GPU);
+  Memcpy(gpu_data, cpu_data.get(), size * sizeof(T), MemcpyFlag::kCPU2GPU);
 }
 
 TEST_CASE("TensorTest3", "GPU init") {
