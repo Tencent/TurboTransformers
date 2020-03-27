@@ -14,8 +14,6 @@
 
 #include "prepare_bert_masks.h"
 
-#include <stdint.h>
-
 #include "turbo_transformers/layers/kernels/common.h"
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/layers/kernels/gpu_utils.h"
