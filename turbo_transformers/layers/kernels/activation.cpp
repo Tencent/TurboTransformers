@@ -119,9 +119,9 @@ void AddBiasAct<core::Half>(const ActivationType &type,
   int64_t m = out_tensor->rows();
   int64_t n = out_tensor->cols();
   core::CUDADeviceContext &cuda_ctx = core::CUDADeviceContext::GetInstance();
-  GPUAddBiasGeLUActKernel<half>(reinterpret_cast<const half *>(bias),
-                                reinterpret_cast<half *>(out), m, n,
-                                cuda_ctx.stream());
+  GPUAddBiasGeLUActKernel(reinterpret_cast<const half *>(bias),
+                          reinterpret_cast<half *>(out), m, n,
+                          cuda_ctx.stream());
 }
 #endif
 }  // namespace kernels
