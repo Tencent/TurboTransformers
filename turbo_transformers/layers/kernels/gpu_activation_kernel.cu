@@ -77,7 +77,11 @@ static __global__ void add_bias_act(T* out, const T* bias, int batch_size,
   for (int i = 0; i < elem_per_thread; ++i) {
     int offset = i * blockDim.x + tid;
     if (offset < feature_dim) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
       reg_bias = __ldg(&bias[offset]);
+#else
+      reg_bias = bias[offset];
+#endif
       row_id = blockIdx.x;
       val = add(out[offset + row_id * feature_dim], reg_bias);
       out[offset + row_id * feature_dim] = ActvationOp<T, aT>(val);

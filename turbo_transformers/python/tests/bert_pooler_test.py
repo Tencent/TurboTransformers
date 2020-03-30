@@ -29,7 +29,6 @@ import test_helper
 def create_test(batch_size, seq_length):
     class TestBertPooler(unittest.TestCase):
         def init_data(self, use_cuda: bool) -> None:
-            # we do not support GPU pooler for now
             self.test_device = torch.device('cuda:0') if use_cuda else \
                     torch.device('cpu:0')
             if not use_cuda:
@@ -52,6 +51,7 @@ def create_test(batch_size, seq_length):
         def check_torch_and_turbo(self, use_cuda):
             self.init_data(use_cuda=use_cuda)
             device = "GPU" if use_cuda else "CPU"
+
             num_iter = 2
             hidden_size = self.cfg.hidden_size
             input_tensor = torch.rand(size=(batch_size, seq_length,

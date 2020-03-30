@@ -33,7 +33,11 @@ static __global__ void lookup(float* dst, const float* embedding_table,
     asm("trap;");
   }
 
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
   float val = __ldg(&embedding_table[id * hidden_size + hidden_idx]);
+#else
+  float val = embedding_table[id * hidden_size + hidden_idx];
+#endif
   if (IsAdd) {
     dst[blockIdx.x * hidden_size + hidden_idx] += val;
   } else {

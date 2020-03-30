@@ -32,7 +32,7 @@ repos:
         - --comment-style
         - //                              # defaults to: #
     -   id: insert-license
-        files: \.(py|cmake)$
+        files: \.(py)$
         args:
         - --license-filepath
         - LICENSE          # defaults to: LICENSE.txt
