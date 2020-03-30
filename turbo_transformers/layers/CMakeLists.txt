@@ -20,6 +20,7 @@ add_library(tt_layers OBJECT
         bert_intermediate.cpp
         bert_output.cpp
         sequence_pool.cpp
+        bert_pooler.cpp
         prepare_bert_masks.cpp
         )
 

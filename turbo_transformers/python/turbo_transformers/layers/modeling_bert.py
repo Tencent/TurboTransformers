@@ -29,6 +29,8 @@ from transformers.modeling_bert import BertAttention as TorchBertAttention
 from transformers.modeling_bert import BertLayer as TorchBertLayer
 from transformers.modeling_bert import BertEncoder as TorchBertEncoder
 from transformers.modeling_bert import BertModel as TorchBertModel
+from transformers.modeling_bert import BertPooler as TorchBertPooler
+
 import enum
 
 __all__ = [
@@ -325,3 +327,20 @@ class BertModel:
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model
+
+
+class BertPooler(cxx.BertPooler):
+    def __call__(self,
+                 input_tensor: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None):
+        input_tensor = _try_convert(input_tensor)
+        output = _create_empty_if_none(output)
+        super(BertPooler, self).__call__(input_tensor, output)
+        return convert_returns_as_type(output, return_type)
+
+    @staticmethod
+    def from_torch(pooler: TorchBertPooler):
+        pooler_params = _to_param_dict(pooler)
+        return BertPooler(pooler_params['dense.weight'],
+                          pooler_params['dense.bias'])
