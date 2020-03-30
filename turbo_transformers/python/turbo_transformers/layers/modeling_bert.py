@@ -255,18 +255,12 @@ class PoolingType(enum.Enum):
     MAX = "Max"
 
 
-def pooling_layers(input_tt_tensor, pool_type):
-    input_torch = convert_returns_as_type(input_tt_tensor, ReturnType.TORCH)
-    if pool_type == PoolingType.FIRST:
-        return input_torch[:, 0, :]
-    elif pool_type == PoolingType.LAST:
-        return input_torch[:, -1, :]
-    elif pool_type == PoolingType.MEAN:
-        return np.mean(input_torch, axis=1)
-    elif pool_type == PoolingType.MAX:
-        return np.max(input_torch, axis=1)
-    else:
-        raise "{} is not support.".format(pool_type)
+pool_dict = {
+    PoolingType.FIRST: "First",
+    PoolingType.LAST: "Last",
+    PoolingType.MEAN: "Mean",
+    PoolingType.MAX: "Max"
+}
 
 
 class BertModel:
@@ -307,12 +301,11 @@ class BertModel:
                                     return_type=ReturnType.turbo_transformers,
                                     output=hidden_cache)
 
-        # hidden_states:tt_tensor, return torch_tensor
-        output_tensor = pooling_layers(hidden_cache, pooling_type)
-        if return_type == ReturnType.turbo_transformers:
-            return _try_convert(output_tensor, return_type)
-        else:
-            return output_tensor
+        self.seq_pool = SequencePool(pool_dict[pooling_type])
+        output = self.seq_pool(input_tensor=hidden_cache,
+                               return_type=return_type,
+                               output_tensor=output)
+        return output
 
     @staticmethod
     def from_torch(model: TorchBertModel,

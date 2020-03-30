@@ -36,8 +36,11 @@ class BertModel {
             size_t n_layers, int64_t n_heads);
   ~BertModel();
 
-  std::vector<float> operator()(const std::vector<std::vector<int64_t>> &inputs,
-                                PoolingType pooling) const;
+  std::vector<float> operator()(
+      const std::vector<std::vector<int64_t>> &inputs,
+      const std::vector<std::vector<int64_t>> &poistion_ids,
+      const std::vector<std::vector<int64_t>> &segment_ids,
+      PoolingType pooling = PoolingType::kFirst) const;
 
  private:
   struct Impl;

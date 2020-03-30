@@ -149,6 +149,9 @@ void SeqPool(const core::Tensor& input, layers::types::PoolType pool_type,
     case layers::types::PoolType::kLast:
       SeqPoolWithIdx<T>(input, seq_len - 1, output);
       break;
+    default:
+      TT_THROW("SeqPool pool type dose not supported!");
+      break;
   }
 }
 
