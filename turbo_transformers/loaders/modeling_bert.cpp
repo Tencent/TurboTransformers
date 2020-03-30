@@ -23,6 +23,7 @@
 #include "turbo_transformers/layers/bert_embedding.h"
 #include "turbo_transformers/layers/bert_intermediate.h"
 #include "turbo_transformers/layers/bert_output.h"
+#include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
 namespace turbo_transformers {
@@ -62,7 +63,7 @@ class NPZLoader {
     shape.resize(array.shape.size());
     std::copy(array.shape.begin(), array.shape.end(), shape.begin());
     core::Tensor tensor(core::NewDLPackTensorT<T>(shape, device_));
-    core::Copy(tensor, array.data<T>(), tensor.numel(), DLDeviceType::kDLCPU);
+    core::Copy(array.data<T>(), tensor.numel(), DLDeviceType::kDLCPU, tensor);
     return tensor;
   }
 
@@ -128,19 +129,53 @@ struct BertModel::Impl {
     }
   }
 
-  std::vector<float> operator()(const std::vector<std::vector<int64_t>> &inputs,
-                                PoolingType pooling) {
+  template <typename T>
+  void PadTensor(const std::vector<std::vector<T>> &data_array, int64_t n,
+                 int64_t m, T pad_val, DLDeviceType device_type,
+                 core::Tensor *output_tensor) {
+    if (m == 0 || n == 0 || data_array.size() == 0) {
+      return;
+    }
+    core::Tensor cpu_tensor(nullptr);
+    T *tensor_data_ptr;
+    if (device_type == DLDeviceType::kDLGPU) {
+      tensor_data_ptr = cpu_tensor.Reshape<T>({n, m}, DLDeviceType::kDLCPU, 0);
+      output_tensor->Reshape<T>({n, m}, device_type, 0);
+    } else {
+      tensor_data_ptr = output_tensor->Reshape<T>({n, m}, device_type, 0);
+    }
+    for (int64_t i = 0; i < n; ++i, tensor_data_ptr += m) {
+      auto &line = data_array[i];
+      if (line.size() > 0) {
+        core::Copy(line.data(), line.size(), DLDeviceType::kDLCPU,
+                   DLDeviceType::kDLCPU, tensor_data_ptr);
+      }
+      if (line.size() != static_cast<size_t>(m)) {
+        layers::kernels::common::Fill(tensor_data_ptr + line.size(),
+                                      static_cast<size_t>(m) - line.size(),
+                                      pad_val, DLDeviceType::kDLCPU);
+      }
+    }
+    if (device_type == DLDeviceType::kDLGPU) {
+      core::Copy<T>(cpu_tensor, *output_tensor);
+    }
+  }
+
+  std::vector<float> operator()(
+      const std::vector<std::vector<int64_t>> &inputs,
+      const std::vector<std::vector<int64_t>> &poistion_ids,
+      const std::vector<std::vector<int64_t>> &segment_ids,
+      PoolingType pooling) {
     int64_t max_seq_len =
         std::accumulate(inputs.begin(), inputs.end(), 0,
                         [](size_t len, const std::vector<int64_t> &input_ids) {
                           return std::max(len, input_ids.size());
                         });
-    auto *iptr = inputs_.Reshape<int64_t>(
-        {static_cast<int64_t>(inputs.size()), max_seq_len},
-        DLDeviceType::kDLCPU, 0);
-    auto *mptr = masks_.Reshape<int64_t>(
-        {static_cast<int64_t>(inputs.size()), max_seq_len},
-        DLDeviceType::kDLCPU, 0);
+    int64_t batch_size = inputs.size();
+    auto *iptr = inputs_.Reshape<int64_t>({batch_size, max_seq_len},
+                                          DLDeviceType::kDLCPU, 0);
+    auto *mptr = masks_.Reshape<int64_t>({batch_size, max_seq_len},
+                                         DLDeviceType::kDLCPU, 0);
 
     for (size_t i = 0; i < inputs.size();
          ++i, iptr += max_seq_len, mptr += max_seq_len) {
@@ -153,23 +188,35 @@ struct BertModel::Impl {
       }
     }
     if (device_type_ == DLDeviceType::kDLGPU) {
-      gpuInputs_.Reshape<int64_t>(
-          {static_cast<int64_t>(inputs.size()), max_seq_len},
-          DLDeviceType::kDLGPU, 0);
-      gpuMasks_.Reshape<int64_t>(
-          {static_cast<int64_t>(inputs.size()), max_seq_len},
-          DLDeviceType::kDLGPU, 0);
-      core::Copy(gpuInputs_, inputs_.data<int64_t>(), inputs_.numel(),
-                 DLDeviceType::kDLCPU);
-      core::Copy(gpuMasks_, masks_.data<int64_t>(), masks_.numel(),
-                 DLDeviceType::kDLCPU);
+      gpuInputs_.Reshape<int64_t>({batch_size, max_seq_len},
+                                  DLDeviceType::kDLGPU, 0);
+      gpuMasks_.Reshape<int64_t>({batch_size, max_seq_len},
+                                 DLDeviceType::kDLGPU, 0);
+      core::Copy(inputs_.data<int64_t>(), inputs_.numel(), DLDeviceType::kDLCPU,
+                 gpuInputs_);
+      core::Copy(masks_.data<int64_t>(), masks_.numel(), DLDeviceType::kDLCPU,
+                 gpuMasks_);
     }
+    auto &inputIds =
+        device_type_ == DLDeviceType::kDLCPU ? inputs_ : gpuInputs_;
+
     core::Tensor seqType(nullptr);
     core::Tensor positionIds(nullptr);
     core::Tensor extendedAttentionMask(nullptr);
+    if (poistion_ids.size() != 0) {
+      TT_ENFORCE_EQ(
+          poistion_ids.size(), static_cast<size_t>(batch_size),
+          "Position ids should have the same batch size as ibout ids");
+      PadTensor(poistion_ids, batch_size, max_seq_len, static_cast<int64_t>(0),
+                device_type_, &positionIds);
+    }
+    if (segment_ids.size() != 0) {
+      TT_ENFORCE_EQ(segment_ids.size(), static_cast<size_t>(batch_size),
+                    "Segment ids should have the same batch size as ibout ids");
+      PadTensor(segment_ids, batch_size, max_seq_len, static_cast<int64_t>(0),
+                device_type_, &seqType);
+    }
 
-    auto &inputIds =
-        device_type_ == DLDeviceType::kDLCPU ? inputs_ : gpuInputs_;
     layers::PrepareBertMasks()(
         inputIds, device_type_ == DLDeviceType::kDLCPU ? &masks_ : &gpuMasks_,
         &seqType, &positionIds, &extendedAttentionMask);
@@ -186,8 +233,8 @@ struct BertModel::Impl {
       cpuHidden.Reshape<float>(
           {hidden.shape(0), hidden.shape(1), hidden.shape(2)},
           DLDeviceType::kDLCPU, 0);
-      core::Copy(cpuHidden, hidden.data<float>(), hidden.numel(),
-                 hidden.device_type());
+      core::Copy(hidden.data<float>(), hidden.numel(), hidden.device_type(),
+                 cpuHidden);
     }
 
     core::Tensor output(nullptr);
@@ -197,7 +244,7 @@ struct BertModel::Impl {
         &output);
     std::vector<float> vec;
     vec.resize(output.numel());
-    core::Copy(vec, output);
+    core::Copy(output, vec);
     return vec;
   }
 
@@ -217,8 +264,10 @@ BertModel::BertModel(const std::string &filename, DLDeviceType device_type,
     : m_(new Impl(filename, device_type, n_layers, n_heads)) {}
 std::vector<float> BertModel::operator()(
     const std::vector<std::vector<int64_t>> &inputs,
+    const std::vector<std::vector<int64_t>> &poistion_ids,
+    const std::vector<std::vector<int64_t>> &segment_ids,
     PoolingType pooling) const {
-  return m_->operator()(inputs, pooling);
+  return m_->operator()(inputs, poistion_ids, segment_ids, pooling);
 }
 BertModel::~BertModel() = default;
 }  // namespace loaders

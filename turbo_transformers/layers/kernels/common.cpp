@@ -36,7 +36,7 @@ bool is_same_shape(const core::Tensor& t1, const core::Tensor& t2) {
 }
 
 template <typename T>
-void tt_seqence(T* data, int64_t size, DLDeviceType device) {
+void Sequence(T* data, int64_t size, DLDeviceType device) {
   if (device == kDLCPU) {
     std::iota(data, data + size, static_cast<T>(0));
   } else if (device == kDLGPU) {
@@ -49,11 +49,11 @@ void tt_seqence(T* data, int64_t size, DLDeviceType device) {
     TT_THROW("device_type is not supported");
   }
 }
-template void tt_seqence(float* data, int64_t size, DLDeviceType device);
-template void tt_seqence(int64_t* data, int64_t size, DLDeviceType device);
+template void Sequence(float* data, int64_t size, DLDeviceType device);
+template void Sequence(int64_t* data, int64_t size, DLDeviceType device);
 
 template <typename T>
-void tt_fill(T* data, int64_t size, T val, DLDeviceType device) {
+void Fill(T* data, int64_t size, T val, DLDeviceType device) {
   if (device == kDLCPU) {
     std::fill(data, data + size, val);
   } else if (device == kDLGPU) {
@@ -67,15 +67,15 @@ void tt_fill(T* data, int64_t size, T val, DLDeviceType device) {
   }
 }
 
-template void tt_fill<float>(float* data, int64_t size, float val,
-                             DLDeviceType device);
-template void tt_fill<int64_t>(int64_t* data, int64_t size, int64_t val,
-                               DLDeviceType device);
+template void Fill<float>(float* data, int64_t size, float val,
+                          DLDeviceType device);
+template void Fill<int64_t>(int64_t* data, int64_t size, int64_t val,
+                            DLDeviceType device);
 
 // TODO(jiaruifang): this function should better pass a function in.
 // how can we pass a lambda function as __device__ to cuda?
-void tt_transform(int64_t* src_data, float* dst_data, int64_t size,
-                  DLDeviceType device) {
+void Transform(int64_t* src_data, float* dst_data, int64_t size,
+               DLDeviceType device) {
   if (device == kDLCPU) {
     std::transform(src_data, src_data + size, dst_data,
                    [](int64_t v) { return -10000.0f * (1 - v); });
