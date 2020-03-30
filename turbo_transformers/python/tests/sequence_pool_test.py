@@ -55,7 +55,7 @@ def create_test_seq_pool(batch_size: int, seq_length: int, pool_type: str):
         def test_seq_pool(self):
             self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
-                turbo_transformers.config.is_with_cuda():
+                turbo_transformers.config.is_compiled_with_cuda():
                 self.check_torch_and_turbo(use_cuda=True)
 
 

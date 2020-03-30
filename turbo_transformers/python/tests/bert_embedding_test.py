@@ -85,7 +85,7 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
         def test_embedding(self):
             self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
-                turbo_transformers.config.is_with_cuda():
+                turbo_transformers.config.is_compiled_with_cuda():
                 self.check_torch_and_turbo(use_cuda=True)
 
     globals()[f"TestBertEmbedding{batch_size}_{seq_length:03}"] = \

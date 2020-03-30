@@ -36,7 +36,7 @@ import enum
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
     'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType',
-    'BertPooler'
+    'BertPooler', 'BertModelWithPooler'
 ]
 
 
@@ -344,3 +344,51 @@ class BertPooler(cxx.BertPooler):
         pooler_params = _to_param_dict(pooler)
         return BertPooler(pooler_params['dense.weight'],
                           pooler_params['dense.bias'])
+
+
+class BertModelWithPooler:
+    def __init__(self, bertmodel: BertModel, pooler: BertPooler):
+        self.bertmodel = bertmodel
+        self.pooler = pooler
+
+    def __call__(self,
+                 inputs: AnyTensor,
+                 attention_masks: Optional[AnyTensor] = None,
+                 token_type_ids: Optional[AnyTensor] = None,
+                 position_ids: Optional[AnyTensor] = None,
+                 pooling_type: PoolingType = PoolingType.FIRST,
+                 hidden_cache: Optional[AnyTensor] = None,
+                 pooler_output: Optional[AnyTensor] = None,
+                 return_type: Optional[ReturnType] = None):
+        encoder_output = self.bertmodel(
+            inputs,
+            attention_masks,
+            token_type_ids,
+            position_ids,
+            pooling_type,
+            hidden_cache,
+            output=None,
+            return_type=ReturnType.turbo_transformers)
+        pooler_output = self.pooler(encoder_output, return_type, pooler_output)
+        return encoder_output, pooler_output
+
+    @staticmethod
+    def from_torch(model: TorchBertModel,
+                   device: Optional[torch.device] = None):
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
+        ):
+            model.to(device)
+        embeddings = BertEmbeddings.from_torch(model.embeddings)
+        encoder = BertEncoder.from_torch(model.encoder)
+        bertmodel = BertModel(embeddings, encoder)
+        pooler = BertPooler.from_torch(model.pooler)
+        return BertModelWithPooler(bertmodel, pooler)
+
+    @staticmethod
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
+        torch_model = TorchBertModel.from_pretrained(model_id_or_path)
+        model = BertModelWithPooler.from_torch(torch_model, device)
+        model.config = torch_model.config
+        model._torch_model = torch_model  # prevent destroy torch model.
+        return model
