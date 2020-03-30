@@ -36,26 +36,15 @@ TEST_CASE("split_add_transpose CPU and GPU correctness") {
 
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
-      turbo_transformers::core::Tensor input_tensor_gpu(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, 3, num_attention_heads, 64}, kDLGPU, 0));
-      turbo_transformers::core::Tensor input_tensor_cpu(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, 3, num_attention_heads, 64}, kDLCPU, 0));
+      core::Tensor input_tensor_cpu(nullptr), input_tensor_gpu(nullptr);
+      std::tie(input_tensor_cpu, input_tensor_gpu) =
+          test::CreateAndFillRandomForCPUGPUTensors<float>(
+              {batch_size, seq_length, 3, num_attention_heads, 64});
 
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(
-          input_tensor_cpu, input_tensor_gpu);
-
-      turbo_transformers::core::Tensor bias_tensor_gpu(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {3, num_attention_heads, 64}, kDLGPU, 0));
-
-      turbo_transformers::core::Tensor bias_tensor_cpu(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {3, num_attention_heads, 64}, kDLCPU, 0));
-
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(
-          bias_tensor_cpu, bias_tensor_gpu);
+      core::Tensor bias_tensor_cpu(nullptr), bias_tensor_gpu(nullptr);
+      std::tie(bias_tensor_cpu, bias_tensor_gpu) =
+          test::CreateAndFillRandomForCPUGPUTensors<float>(
+              {3, num_attention_heads, 64});
 
       turbo_transformers::core::Tensor output_tensor_gpu(
           turbo_transformers::core::NewDLPackTensorT<float>(
