@@ -79,7 +79,11 @@ class TestBertModel(unittest.TestCase):
         self.check_torch_and_turbo(use_cuda=False, use_pooler=True)
         if torch.cuda.is_available() and \
             turbo_transformers.config.is_compiled_with_cuda():
-            self.check_torch_and_turbo(use_cuda=True)
+            self.check_torch_and_turbo(use_cuda=True, use_pooler=True)
+        self.check_torch_and_turbo(use_cuda=False, use_pooler=False)
+        if torch.cuda.is_available() and \
+            turbo_transformers.config.is_compiled_with_cuda():
+            self.check_torch_and_turbo(use_cuda=False, use_pooler=False)
 
 
 if __name__ == '__main__':
