@@ -91,7 +91,7 @@ def create_test(batch_size, seq_length):
         def test_intermediate(self):
             self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
-                turbo_transformers.config.is_with_cuda():
+                turbo_transformers.config.is_compiled_with_cuda():
                 self.check_torch_and_turbo(use_cuda=True)
 
     globals()[f"TestBertIntermediate_{batch_size}_{seq_length:03}"] = \
