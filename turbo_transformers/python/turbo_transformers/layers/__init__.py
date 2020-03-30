@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .modeling_bert import BertEmbeddings, BertIntermediate, BertOutput, BertAttention, BertLayer, SequencePool, \
-    BertEncoder, BertModel, PoolingType
+    BertEncoder, BertModel, PoolingType, BertPooler
 from .return_type import ReturnType
 
 __all__ = [
@@ -25,6 +25,7 @@ __all__ = [
     'BertEncoder',
     'BertModel',
     'ReturnType',
+    'BertPooler',
     'SequencePool',
     'PoolingType',
 ]

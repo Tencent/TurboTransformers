@@ -29,6 +29,8 @@ from transformers.modeling_bert import BertAttention as TorchBertAttention
 from transformers.modeling_bert import BertLayer as TorchBertLayer
 from transformers.modeling_bert import BertEncoder as TorchBertEncoder
 from transformers.modeling_bert import BertModel as TorchBertModel
+from transformers.modeling_bert import BertPooler as TorchBertPooler
+
 import enum
 
 __all__ = [
@@ -324,4 +326,64 @@ class BertModel:
         model = BertModel.from_torch(torch_model, device)
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
+        return model
+
+
+class BertPooler(cxx.BertPooler):
+    def __call__(self,
+                 input_tensor: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None):
+        input_tensor = _try_convert(input_tensor)
+        output = _create_empty_if_none(output)
+        super(BertPooler, self).__call__(input_tensor, output)
+        return convert_returns_as_type(output, return_type)
+
+    @staticmethod
+    def from_torch(pooler: TorchBertPooler):
+        pooler_params = _to_param_dict(pooler)
+        return BertPooler(pooler_params['dense.weight'],
+                          pooler_params['dense.bias'])
+
+
+class BertModelWithPooler:
+    def __init__(self, bertmodel: BertModel, pooler: BertPooler):
+        self.bertmodel = bertmodel
+        self.pooler = SequencePool
+
+    def __call__(self,
+                 inputs: AnyTensor,
+                 attention_masks: Optional[AnyTensor] = None,
+                 token_type_ids: Optional[AnyTensor] = None,
+                 position_ids: Optional[AnyTensor] = None,
+                 pooling_type: PoolingType = PoolingType.FIRST,
+                 hidden_cache: Optional[AnyTensor] = None,
+                 output: Optional[AnyTensor] = None,
+                 return_type: Optional[ReturnType] = None):
+        attention_masks = _try_convert(_create_empty_if_none(attention_masks))
+        token_type_ids = _try_convert(_create_empty_if_none(token_type_ids))
+        position_ids = _try_convert(_create_empty_if_none(position_ids))
+        inputs = _try_convert(inputs)
+        extended_attention_masks = cxx.Tensor.create_empty()
+        output = _create_empty_if_none(output)
+        hidden_cache = _create_empty_if_none(hidden_cache)
+
+        output = self.bertmodel(inputs, attention_masks, token_type_ids,
+                                position_ids, pooling_type, hidden_cache,
+                                output, return_type)
+        return output
+
+    @staticmethod
+    def from_torch(model: TorchBertModel,
+                   device: Optional[torch.device] = None):
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
+        ):
+            model.to(device)
+        return self.bertmodel.from_torch(model)
+
+    @staticmethod
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
+        torch_model = TorchBertModel.from_pretrained(model_id_or_path)
+        model = BertModel.from_torch(torch_model, device)
         return model
