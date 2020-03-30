@@ -24,8 +24,8 @@ namespace layers {
 namespace kernels {
 
 template <typename T>
-static void AddBiasGeLUActKernel(const T *bias, T *out, int64_t batch_size,
-                                 int64_t feature_dim) {
+static void CPUAddBiasGeLUActKernel(const T *bias, T *out, int64_t batch_size,
+                                    int64_t feature_dim) {
   static core::AlignedScratchpad<float> scratchpad;
   float *buff = scratchpad.mutable_data(batch_size * feature_dim);
 #pragma omp parallel for
@@ -46,8 +46,8 @@ static void AddBiasGeLUActKernel(const T *bias, T *out, int64_t batch_size,
 }
 
 template <typename T>
-static void AddBiasTanhActKernel(const T *bias, T *out, int64_t batch_size,
-                                 int64_t feature_dim) {
+static void CPUAddBiasTanhActKernel(const T *bias, T *out, int64_t batch_size,
+                                    int64_t feature_dim) {
 #pragma omp parallel for
   for (int64_t i = 0; i < batch_size; ++i) {
     int64_t k = 0;
@@ -62,11 +62,12 @@ static void AddBiasTanhActKernel(const T *bias, T *out, int64_t batch_size,
 static void AddBiasAndGeluFunc(const DLDeviceType &dev_type, const float *bias,
                                int64_t m, int64_t n, float *out) {
   if (dev_type == kDLCPU) {
-    AddBiasGeLUActKernel(bias, out, m, n);
+    CPUAddBiasGeLUActKernel(bias, out, m, n);
   } else if (dev_type == kDLGPU) {
 #ifdef TT_WITH_CUDA
     core::CUDADeviceContext &cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPUAddBiasGeLUActKernel(bias, out, m, n, cuda_ctx.stream());
+    GPUAddBiasActKernel<float, ActivationType::Gelu>(bias, out, m, n,
+                                                     cuda_ctx.stream());
 #endif
   } else {
     TT_THROW("device_type is not supported");
@@ -76,52 +77,55 @@ static void AddBiasAndGeluFunc(const DLDeviceType &dev_type, const float *bias,
 static void AddBiasAndTanhFunc(const DLDeviceType &dev_type, const float *bias,
                                int64_t m, int64_t n, float *out) {
   if (dev_type == kDLCPU) {
-    AddBiasTanhActKernel(bias, out, m, n);
+    CPUAddBiasTanhActKernel(bias, out, m, n);
   } else if (dev_type == kDLGPU) {
-    TT_THROW("GPU Tanh is not supported");
+#ifdef TT_WITH_CUDA
+    core::CUDADeviceContext &cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUAddBiasActKernel<float, ActivationType::Tanh>(bias, out, m, n,
+                                                     cuda_ctx.stream());
+#endif
   } else {
     TT_THROW("device_type is not supported");
   }
 }
 
 template <>
-void AddBiasAct<float>(const ActivationType &type,
-                       const core::Tensor &bias_tensor,
-                       core::Tensor *out_tensor) {
+void AddBiasAct<float, ActivationType::Gelu>(const core::Tensor &bias_tensor,
+                                             core::Tensor *out_tensor) {
   auto *out = out_tensor->mutableData<float>();
   auto *bias = bias_tensor.data<float>();
 
   int64_t m = out_tensor->rows();
   int64_t n = out_tensor->cols();
 
-  switch (type) {
-    case ActivationType::Gelu:
-      AddBiasAndGeluFunc(out_tensor->device_type(), bias, m, n, out);
-      break;
-    case ActivationType::Tanh:
-      AddBiasAndTanhFunc(out_tensor->device_type(), bias, m, n, out);
-      break;
-    default:
-      TT_THROW("Currently, only Gelu and Tanh are supported.");
-  }
+  AddBiasAndGeluFunc(out_tensor->device_type(), bias, m, n, out);
+}
+
+template <>
+void AddBiasAct<float, ActivationType::Tanh>(const core::Tensor &bias_tensor,
+                                             core::Tensor *out_tensor) {
+  auto *out = out_tensor->mutableData<float>();
+  auto *bias = bias_tensor.data<float>();
+
+  int64_t m = out_tensor->rows();
+  int64_t n = out_tensor->cols();
+
+  AddBiasAndTanhFunc(out_tensor->device_type(), bias, m, n, out);
 }
 
 #ifdef TT_WITH_CUDA
 template <>
-void AddBiasAct<core::Half>(const ActivationType &type,
-                            const core::Tensor &bias_tensor,
-                            core::Tensor *out_tensor) {
-  TT_ENFORCE_EQ(type, ActivationType::Gelu,
-                "Currently, only Gelu supports GPU.");
+void AddBiasAct<core::Half, ActivationType::Gelu>(
+    const core::Tensor &bias_tensor, core::Tensor *out_tensor) {
   TT_ENFORCE_EQ(bias_tensor.device_type(), kDLGPU, "The device should be GPU.");
   core::Half *out = out_tensor->mutableData<core::Half>();
   const core::Half *bias = bias_tensor.data<core::Half>();
   int64_t m = out_tensor->rows();
   int64_t n = out_tensor->cols();
   core::CUDADeviceContext &cuda_ctx = core::CUDADeviceContext::GetInstance();
-  GPUAddBiasGeLUActKernel(reinterpret_cast<const half *>(bias),
-                          reinterpret_cast<half *>(out), m, n,
-                          cuda_ctx.stream());
+  GPUAddBiasActKernel<half, ActivationType::Gelu>(
+      reinterpret_cast<const half *>(bias), reinterpret_cast<half *>(out), m, n,
+      cuda_ctx.stream());
 }
 #endif
 }  // namespace kernels

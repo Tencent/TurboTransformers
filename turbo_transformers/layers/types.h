@@ -16,8 +16,8 @@
 namespace turbo_transformers {
 namespace layers {
 namespace types {
-
+enum ActivationType { Gelu = 0, Tanh };
 enum class PoolType { kMax = 0, kMean, kFirst, kLast };
-}
+}  // namespace types
 }  // namespace layers
 }  // namespace turbo_transformers
