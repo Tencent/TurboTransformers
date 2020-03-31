@@ -61,7 +61,11 @@ static __global__ void add_bias_act(T* out, const T* bias, int batch_size,
   for (int i = 0; i < elem_per_thread; ++i) {
     int offset = i * blockDim.x + tid;
     if (offset < feature_dim) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
       reg_bias = __ldg(&bias[offset]);
+#else
+      reg_bias = bias[offset];
+#endif
       row_id = blockIdx.x;
       val = add(out[offset + row_id * feature_dim], reg_bias);
       out[offset + row_id * feature_dim] = gelu(val);
@@ -74,10 +78,10 @@ void GPUAddBiasGeLUActKernel(const T* bias_data, T* out_data,
                              int64_t batch_size, int64_t feature_dim,
                              cudaStream_t stream) {
   dim3 grid(batch_size);
-  int block_size = min(1024, (int)(feature_dim/4));
+  int block_size = min(1024, (int)(feature_dim / 4));
   dim3 block(block_size);
   add_bias_act<<<grid, block, 0, stream>>>(out_data, bias_data, batch_size,
-    feature_dim);
+                                           feature_dim);
 }
 
 template void GPUAddBiasGeLUActKernel<float>(const float* bias_data,

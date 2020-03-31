@@ -47,8 +47,11 @@ static __global__ void split_add_bias_transpose_for_score(
 
   int head_id = threadIdx.x % n / size_per_head;
   int hidden_id = threadIdx.x % size_per_head;
-
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
   float bias = __ldg(&bias_ptr[threadIdx.x]);
+#else
+  float bias = bias_ptr[threadIdx.x];
+#endif
 
   for (int i = row_offset; i < row_offset + word_per_block; ++i) {
     if (i >= m) break;

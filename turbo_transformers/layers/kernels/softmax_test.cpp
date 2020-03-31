@@ -129,28 +129,15 @@ TEST_CASE("softmax CPU and GPU correctness") {
 
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
-      turbo_transformers::core::Tensor qk_buf_gpu(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, num_attention_heads, seq_length, seq_length}, kDLGPU,
-              0));
+      core::Tensor qk_buf_cpu(nullptr), qk_buf_gpu(nullptr);
+      std::tie(qk_buf_cpu, qk_buf_gpu) =
+          test::CreateAndFillRandomForCPUGPUTensors<float>(
+              {batch_size, num_attention_heads, seq_length, seq_length});
 
-      turbo_transformers::core::Tensor qk_buf_cpu(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, num_attention_heads, seq_length, seq_length}, kDLCPU,
-              0));
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(qk_buf_cpu,
-                                                                  qk_buf_gpu);
-
-      turbo_transformers::core::Tensor attr_mask_gpu(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length}, kDLGPU, 0));
-
-      turbo_transformers::core::Tensor attr_mask_cpu(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length}, kDLCPU, 0));
-
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(
-          attr_mask_cpu, attr_mask_gpu);
+      core::Tensor attr_mask_cpu(nullptr), attr_mask_gpu(nullptr);
+      std::tie(attr_mask_cpu, attr_mask_gpu) =
+          test::CreateAndFillRandomForCPUGPUTensors<float>(
+              {batch_size, seq_length});
 
       ApplyMaskAndSoftmax(&qk_buf_gpu, attr_mask_gpu, scaler);
 

@@ -67,7 +67,11 @@ static void BindConfig(py::module &m) {
   py::enum_<BlasProvider>(m, "BlasProvider")
       .value("MKL", BlasProvider::MKL)
       .value("OpenBlas", BlasProvider::OpenBlas);
+<<<<<<< HEAD
   m.def("is_with_cuda", [] { return core::IsCompiledWithCUDA(); })
+=======
+  m.def("is_compiled_with_cuda", [] { return core::IsCompiledWithCUDA(); })
+>>>>>>> f757f8a84a7e395646b9e2caf98f1b21f7b91b6c
       .def("get_blas_provider", GetBlasProvider);
 }
 

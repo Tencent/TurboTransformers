@@ -35,7 +35,11 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
 
   float local_out = 0.0f;
   if (AddBias) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
     local_out = out[offset] + input[offset] + __ldg(&bias[tid]);
+#else
+    local_out = out[offset] + input[offset] + bias[tid];
+#endif
   } else {
     local_out = out[offset];
   }
@@ -51,8 +55,12 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
   }
   __syncthreads();
 
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
   out[offset] = (local_out - s_mean) * s_variance * __ldg(&gamma[tid]) +
                 __ldg(&beta[tid]);
+#else
+  out[offset] = (local_out - s_mean) * s_variance * gamma[tid] + beta[tid];
+#endif
 }
 
 template <bool AddBias, typename T>

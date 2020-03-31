@@ -36,7 +36,7 @@ import enum
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
     'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType',
-    'BertPooler'
+    'BertPooler', 'BertModelWithPooler'
 ]
 
 
@@ -349,7 +349,7 @@ class BertPooler(cxx.BertPooler):
 class BertModelWithPooler:
     def __init__(self, bertmodel: BertModel, pooler: BertPooler):
         self.bertmodel = bertmodel
-        self.pooler = SequencePool
+        self.pooler = pooler
 
     def __call__(self,
                  inputs: AnyTensor,
@@ -358,20 +358,19 @@ class BertModelWithPooler:
                  position_ids: Optional[AnyTensor] = None,
                  pooling_type: PoolingType = PoolingType.FIRST,
                  hidden_cache: Optional[AnyTensor] = None,
-                 output: Optional[AnyTensor] = None,
+                 pooler_output: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None):
-        attention_masks = _try_convert(_create_empty_if_none(attention_masks))
-        token_type_ids = _try_convert(_create_empty_if_none(token_type_ids))
-        position_ids = _try_convert(_create_empty_if_none(position_ids))
-        inputs = _try_convert(inputs)
-        extended_attention_masks = cxx.Tensor.create_empty()
-        output = _create_empty_if_none(output)
-        hidden_cache = _create_empty_if_none(hidden_cache)
-
-        output = self.bertmodel(inputs, attention_masks, token_type_ids,
-                                position_ids, pooling_type, hidden_cache,
-                                output, return_type)
-        return output
+        encoder_output = self.bertmodel(
+            inputs,
+            attention_masks,
+            token_type_ids,
+            position_ids,
+            pooling_type,
+            hidden_cache,
+            output=None,
+            return_type=ReturnType.turbo_transformers)
+        pooler_output = self.pooler(encoder_output, return_type, pooler_output)
+        return encoder_output, pooler_output
 
     @staticmethod
     def from_torch(model: TorchBertModel,
@@ -379,11 +378,17 @@ class BertModelWithPooler:
         if device is not None and 'cuda' in device.type and torch.cuda.is_available(
         ):
             model.to(device)
-        return self.bertmodel.from_torch(model)
+        embeddings = BertEmbeddings.from_torch(model.embeddings)
+        encoder = BertEncoder.from_torch(model.encoder)
+        bertmodel = BertModel(embeddings, encoder)
+        pooler = BertPooler.from_torch(model.pooler)
+        return BertModelWithPooler(bertmodel, pooler)
 
     @staticmethod
     def from_pretrained(model_id_or_path: str,
                         device: Optional[torch.device] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
-        model = BertModel.from_torch(torch_model, device)
+        model = BertModelWithPooler.from_torch(torch_model, device)
+        model.config = torch_model.config
+        model._torch_model = torch_model  # prevent destroy torch model.
         return model

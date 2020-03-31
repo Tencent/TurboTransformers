@@ -43,7 +43,10 @@ class TestBertModel(unittest.TestCase):
         self.turbo_model = turbo_transformers.BertModel.from_pretrained(
             model_id, self.test_device)
 
-    def check_torch_and_turbo(self, use_cuda):
+        self.turbo_pooler_model = turbo_transformers.BertModelWithPooler.from_pretrained(
+            model_id, self.test_device)
+
+    def check_torch_and_turbo(self, use_cuda, use_pooler):
         self.init_data(use_cuda)
         num_iter = 2
         device = "GPU" if use_cuda else "CPU"
@@ -57,22 +60,30 @@ class TestBertModel(unittest.TestCase):
             test_helper.run_model(torch_model, use_cuda, num_iter)
         print(f'BertModel Plain PyTorch({device}) QPS {torch_qps}')
 
-        turbo_model = lambda: self.turbo_model(input_ids)
+        turbo_model = (
+            lambda: self.turbo_model(input_ids)) if use_pooler else (
+                lambda: self.turbo_pooler_model(input_ids))
         turbo_result, turbo_qps, turbo_time = \
             test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'BertModel FastTransform({device}) QPS {turbo_qps}')
 
-        torch_result = (torch_result[0][:, 0]).cpu().numpy()
+        torch_result = (
+            torch_result[0][:, 0]).cpu().numpy() if use_pooler else (
+                torch_result[1]).cpu().numpy()
         turbo_result = turbo_result.cpu().numpy()
 
         self.assertTrue(
             numpy.allclose(torch_result, turbo_result, atol=5e-3, rtol=1e-4))
 
     def test_bert_model(self):
-        self.check_torch_and_turbo(use_cuda=False)
+        self.check_torch_and_turbo(use_cuda=False, use_pooler=True)
         if torch.cuda.is_available() and \
-            turbo_transformers.config.is_with_cuda():
-            self.check_torch_and_turbo(use_cuda=True)
+            turbo_transformers.config.is_compiled_with_cuda():
+            self.check_torch_and_turbo(use_cuda=True, use_pooler=True)
+        self.check_torch_and_turbo(use_cuda=False, use_pooler=False)
+        if torch.cuda.is_available() and \
+            turbo_transformers.config.is_compiled_with_cuda():
+            self.check_torch_and_turbo(use_cuda=False, use_pooler=False)
 
 
 if __name__ == '__main__':

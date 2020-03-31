@@ -18,8 +18,6 @@
 
 #include "catch2/catch.hpp"
 #include "loguru.hpp"
-#include "turbo_transformers/core/aligned_scratchpad.h"
-#include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/layers/kernels/test_helper.h"
 
 #ifdef TT_WITH_CUDA
@@ -39,51 +37,22 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
                                        100, 200, 300, 400, 500};
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
-      turbo_transformers::core::Tensor gpu_input(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLGPU, 0));
-      turbo_transformers::core::Tensor cpu_input(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLCPU, 0));
-
-      turbo_transformers::core::Tensor gpu_bias(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLGPU, 0));
-      turbo_transformers::core::Tensor cpu_bias(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLCPU, 0));
-
-      turbo_transformers::core::Tensor gpu_gamma(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLGPU, 0));
-      turbo_transformers::core::Tensor cpu_gamma(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLCPU, 0));
-
-      turbo_transformers::core::Tensor gpu_beta(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLGPU, 0));
-      turbo_transformers::core::Tensor cpu_beta(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLCPU, 0));
-
-      turbo_transformers::core::Tensor gpu_out(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLGPU, 0));
-      turbo_transformers::core::Tensor cpu_out(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLCPU, 0));
-
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(cpu_input,
-                                                                  gpu_input);
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(cpu_bias,
-                                                                  gpu_bias);
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(cpu_gamma,
-                                                                  gpu_gamma);
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(cpu_beta,
-                                                                  gpu_beta);
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<float>(cpu_out,
-                                                                  gpu_out);
+      core::Tensor gpu_input(nullptr), cpu_input(nullptr), gpu_bias(nullptr),
+          cpu_bias(nullptr), gpu_out(nullptr), cpu_out(nullptr),
+          gpu_gamma(nullptr), cpu_gamma(nullptr), gpu_beta(nullptr),
+          cpu_beta(nullptr);
+      std::tie(cpu_input, gpu_input) =
+          test::CreateAndFillRandomForCPUGPUTensors<float>(
+              {batch_size, seq_length, hidden_size});
+      std::tie(cpu_bias, gpu_bias) =
+          test::CreateAndFillRandomForCPUGPUTensors<float>({hidden_size});
+      std::tie(cpu_out, gpu_out) =
+          test::CreateAndFillRandomForCPUGPUTensors<float>(
+              {batch_size, seq_length, hidden_size});
+      std::tie(cpu_gamma, gpu_gamma) =
+          test::CreateAndFillRandomForCPUGPUTensors<float>({hidden_size});
+      std::tie(cpu_beta, gpu_beta) =
+          test::CreateAndFillRandomForCPUGPUTensors<float>({hidden_size});
 
       std::cout << "batch_size: " << batch_size
                 << " seq_length: " << seq_length;
@@ -91,16 +60,14 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
         LayerNorm<float>(cpu_gamma, cpu_beta, &cpu_out);
         LayerNorm<float>(gpu_gamma, gpu_beta, &gpu_out);
       }
-      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
-          cpu_out, gpu_out));
+      REQUIRE(test::CheckResultOfCPUAndGPU<float>(cpu_out, gpu_out));
       {
         AddBiasLayerNorm<float>(cpu_input, cpu_bias, cpu_gamma, cpu_beta,
                                 &cpu_out);
         AddBiasLayerNorm<float>(gpu_input, gpu_bias, gpu_gamma, gpu_beta,
                                 &gpu_out);
       }
-      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
-          cpu_out, gpu_out));
+      REQUIRE(test::CheckResultOfCPUAndGPU<float>(cpu_out, gpu_out));
 
       // WARM UP
       for (int i = 0; i < 5; ++i) {
@@ -111,8 +78,7 @@ TEST_CASE("add_bias_layer_norm CPU and GPU correctness") {
       cudaEvent_t start_event, stop_event;
       cudaEventCreate(&start_event);
       cudaEventCreate(&stop_event);
-      auto& cuda_ctx =
-          turbo_transformers::core::CUDADeviceContext::GetInstance();
+      auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
       auto stream = cuda_ctx.stream();
       cudaEventRecord(start_event, stream);
 
@@ -145,31 +111,16 @@ TEST_CASE("add_bias_layer_norm CPU benchmark") {
                                        100, 200, 300, 400, 500};
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
-      turbo_transformers::core::Tensor cpu_input(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLCPU, 0));
-
-      turbo_transformers::core::Tensor cpu_bias(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLCPU, 0));
-
-      turbo_transformers::core::Tensor cpu_gamma(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLCPU, 0));
-
-      turbo_transformers::core::Tensor cpu_beta(
-          turbo_transformers::core::NewDLPackTensorT<float>({hidden_size},
-                                                            kDLCPU, 0));
-
-      turbo_transformers::core::Tensor cpu_out(
-          turbo_transformers::core::NewDLPackTensorT<float>(
-              {batch_size, seq_length, hidden_size}, kDLCPU, 0));
-
-      test::RandomFillHost(cpu_input.mutableData<float>(), cpu_input.numel());
-      test::RandomFillHost(cpu_bias.mutableData<float>(), cpu_bias.numel());
-      test::RandomFillHost(cpu_gamma.mutableData<float>(), cpu_gamma.numel());
-      test::RandomFillHost(cpu_beta.mutableData<float>(), cpu_beta.numel());
-      test::RandomFillHost(cpu_out.mutableData<float>(), cpu_out.numel());
+      auto cpu_input = test::CreateTensorAndFillRandom<float>(
+          {batch_size, seq_length, hidden_size}, kDLCPU, 0);
+      auto cpu_bias =
+          test::CreateTensorAndFillRandom<float>({hidden_size}, kDLCPU, 0);
+      auto cpu_gamma =
+          test::CreateTensorAndFillRandom<float>({hidden_size}, kDLCPU, 0);
+      auto cpu_beta =
+          test::CreateTensorAndFillRandom<float>({hidden_size}, kDLCPU, 0);
+      auto cpu_out = test::CreateTensorAndFillRandom<float>(
+          {batch_size, seq_length, hidden_size}, kDLCPU, 0);
 
       std::cout << "batch_size: " << batch_size << " seq_length: " << seq_length
                 << " ";

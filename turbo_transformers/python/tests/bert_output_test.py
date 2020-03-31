@@ -91,7 +91,7 @@ def create_shape_test(batch_size: int, seq_length: int):
         def test_bertout(self):
             self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
-                turbo_transformers.config.is_with_cuda():
+                turbo_transformers.config.is_compiled_with_cuda():
                 self.check_torch_and_turbo(use_cuda=True)
 
     TestBertOut.__name__ = f"TestBertOut_BatchSize_{batch_size}_SeqLen_{seq_length}"
