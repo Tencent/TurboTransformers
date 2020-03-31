@@ -56,10 +56,18 @@ def create_test(batch_size):
             device = "CPU"
             num_iter = 2
             hidden_size = self.cfg.hidden_size
-            input_tensor = torch.rand(size=(batch_size, hidden_size),
+            input_tensor = torch.rand(size=(batch_size, 1, hidden_size),
                                       dtype=torch.float32,
                                       device=self.test_device)
-            turbo_model = lambda: self.turbo_pooler(input_tensor)
+
+            torch_model = lambda: self.torch_pooler(input_tensor)
+            torch_result, torch_qps, torch_time = \
+                test_helper.run_model(torch_model, use_cuda, num_iter)
+            print(f"BertPooler \"({batch_size},{hidden_size:03})\" ",
+                  f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
+
+            turbo_model = lambda: self.turbo_pooler(
+                input_tensor.reshape((batch_size, hidden_size)))
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
 
@@ -67,12 +75,6 @@ def create_test(batch_size):
                 f"BertPooler \"({batch_size}, {hidden_size}\" ",
                 f"{device} TurboTransform QPS,  {turbo_qps}, time, {turbo_time}"
             )
-
-            torch_model = lambda: self.torch_pooler(input_tensor)
-            torch_result, torch_qps, torch_time = \
-                test_helper.run_model(torch_model, use_cuda, num_iter)
-            print(f"BertPooler \"({batch_size},{hidden_size:03})\" ",
-                  f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
             torch_result = torch_result.cpu().numpy()
             turbo_result = turbo_result.cpu().numpy()
