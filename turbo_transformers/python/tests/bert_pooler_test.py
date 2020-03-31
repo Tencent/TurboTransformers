@@ -26,7 +26,7 @@ sys.path.append(os.path.dirname(__file__))
 import test_helper
 
 
-def create_test(batch_size, seq_length):
+def create_test(batch_size):
     class TestBertPooler(unittest.TestCase):
         def init_data(self, use_cuda: bool) -> None:
             # we do not support GPU pooler for now
@@ -56,8 +56,7 @@ def create_test(batch_size, seq_length):
             device = "CPU"
             num_iter = 2
             hidden_size = self.cfg.hidden_size
-            input_tensor = torch.rand(size=(batch_size, seq_length,
-                                            hidden_size),
+            input_tensor = torch.rand(size=(batch_size, hidden_size),
                                       dtype=torch.float32,
                                       device=self.test_device)
             turbo_model = lambda: self.turbo_pooler(input_tensor)
@@ -65,14 +64,14 @@ def create_test(batch_size, seq_length):
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
 
             print(
-                f"BertPooler \"({batch_size},{seq_length:03})\" ",
+                f"BertPooler \"({batch_size}, {hidden_size}\" ",
                 f"{device} TurboTransform QPS,  {turbo_qps}, time, {turbo_time}"
             )
 
             torch_model = lambda: self.torch_pooler(input_tensor)
             torch_result, torch_qps, torch_time = \
                 test_helper.run_model(torch_model, use_cuda, num_iter)
-            print(f"BertPooler \"({batch_size},{seq_length:03})\" ",
+            print(f"BertPooler \"({batch_size},{hidden_size:03})\" ",
                   f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
             torch_result = torch_result.cpu().numpy()
@@ -86,21 +85,20 @@ def create_test(batch_size, seq_length):
 
             with open("bert_pooler_res.txt", "a") as fh:
                 fh.write(
-                    f"\"({batch_size},{seq_length:03})\", {torch_qps}, {torch_qps}\n"
+                    f"\"({batch_size},{hidden_size:03})\", {torch_qps}, {torch_qps}\n"
                 )
 
         def test_pooler(self):
             self.check_torch_and_turbo(use_cuda=False)
 
-    globals()[f"TestBertPooler_{batch_size}_{seq_length:03}"] = \
+    globals()[f"TestBertPooler_{batch_size}"] = \
         TestBertPooler
 
 
 with open("bert_pooler_res.txt", "w") as fh:
     fh.write(", torch, turbo_transformers\n")
     for batch_size in [1, 2, 4, 8, 50, 100]:
-        for seq_length in [1]:
-            create_test(batch_size, seq_length)
+        create_test(batch_size)
 
 if __name__ == '__main__':
     unittest.main()
