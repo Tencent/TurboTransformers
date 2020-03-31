@@ -14,6 +14,7 @@ Transformer是近两年来NLP领域最重要的模型创新，在带来更高的
 | pytorch (CPU/GPU) | Medium/Medium | No | Yes | Easy |
 | **turbo-transformers (CPU/GPU)** | **Fastest/Fastest** | **No** | **Yes** | **Easy** |
 
+
 ### CPU版本安装
 git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
 1. 本机构建docker镜像和容器
