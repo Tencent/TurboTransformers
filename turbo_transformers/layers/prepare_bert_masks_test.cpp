@@ -31,26 +31,16 @@ TEST_CASE("prepare_bert_masks CPU and GPU correctness") {
   std::vector<int64_t> seq_length_list{8, 16, 32, 48, 64, 128};
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
-      turbo_transformers::core::Tensor gpu_inputs(
-          turbo_transformers::core::NewDLPackTensorT<int64_t>(
-              {batch_size, seq_length}, kDLGPU, 0));
+      core::Tensor gpu_inputs(nullptr), cpu_inputs(nullptr);
+      std::tie(cpu_inputs, gpu_inputs) =
+          test::CreateAndFillRandomForCPUGPUTensors<float>(
+              {batch_size, seq_length});
 
-      turbo_transformers::core::Tensor cpu_inputs(
-          turbo_transformers::core::NewDLPackTensorT<int64_t>(
-              {batch_size, seq_length}, kDLCPU, 0));
-
-      turbo_transformers::core::Tensor gpu_att_mask(nullptr);
-      turbo_transformers::core::Tensor cpu_att_mask(nullptr);
-      turbo_transformers::core::Tensor gpu_seq_type(nullptr);
-      turbo_transformers::core::Tensor cpu_seq_type(nullptr);
-
-      turbo_transformers::core::Tensor gpu_position_ids(nullptr);
-      turbo_transformers::core::Tensor cpu_position_ids(nullptr);
-      turbo_transformers::core::Tensor gpu_extended_attention_mask(nullptr);
-      turbo_transformers::core::Tensor cpu_extended_attention_mask(nullptr);
-
-      ::turbo_transformers::test::FillDataForCPUGPUTensors<int64_t>(cpu_inputs,
-                                                                    gpu_inputs);
+      core::Tensor gpu_att_mask(nullptr), cpu_att_mask(nullptr),
+          gpu_seq_type(nullptr), cpu_seq_type(nullptr);
+      core::Tensor gpu_position_ids(nullptr), cpu_position_ids(nullptr),
+          gpu_extended_attention_mask(nullptr),
+          cpu_extended_attention_mask(nullptr);
 
       LOG_S(INFO) << "batch_size: " << batch_size
                   << " seq_length: " << seq_length;
@@ -62,14 +52,14 @@ TEST_CASE("prepare_bert_masks CPU and GPU correctness") {
         func(gpu_inputs, &gpu_att_mask, &gpu_seq_type, &gpu_position_ids,
              &gpu_extended_attention_mask);
       }
-      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<int64_t>(
-          cpu_att_mask, gpu_att_mask));
-      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
-          cpu_extended_attention_mask, gpu_extended_attention_mask));
-      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<int64_t>(
-          cpu_seq_type, gpu_seq_type));
-      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<int64_t>(
-          cpu_position_ids, gpu_position_ids));
+      REQUIRE(
+          test::CheckResultOfCPUAndGPU<int64_t>(cpu_att_mask, gpu_att_mask));
+      REQUIRE(test::CheckResultOfCPUAndGPU<float>(cpu_extended_attention_mask,
+                                                  gpu_extended_attention_mask));
+      REQUIRE(
+          test::CheckResultOfCPUAndGPU<int64_t>(cpu_seq_type, gpu_seq_type));
+      REQUIRE(test::CheckResultOfCPUAndGPU<int64_t>(cpu_position_ids,
+                                                    gpu_position_ids));
     }  // for
 }
 #endif

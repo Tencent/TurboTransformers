@@ -20,7 +20,6 @@
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
 #include "catch2/catch.hpp"
-#include "turbo_transformers/core/aligned_scratchpad.h"
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/layers/kernels/test_helper.h"
 
@@ -55,102 +54,78 @@ void AddBiasTanhActNaive(const T* bias, T* out, int64_t m, int64_t n) {
   }
 }
 
-template <typename Func>
-void TestFunction(Func&& func, int step, const std::string& infor,
-                  double g_bytes) {
-  func();
-  test::Timer timer;
-  for (int i = 0; i < step; ++i) {
-    func();
-  }
-  auto elapse = timer.ElapseSecond() / step;
-
-  LOG_S(INFO) << infor << " cost:" << elapse << " ms, Bandwidth "
-              << g_bytes / elapse << " GB/s";
-}
-
-TEST_CASE("activation-cpu-test-benchmark") {
-  auto tensor_create_and_fill_constant =
-      [](std::initializer_list<int64_t> shape, float value) {
-        turbo_transformers::core::Tensor tensor(nullptr);
-        tensor.Reshape<float>(shape, kDLCPU, 0);
-        auto* ptr = tensor.mutableData<float>();
-        for (int64_t i = 0; i < tensor.numel(); ++i) {
-          ptr[i] = value;
-        }
-        return tensor;
-      };
-
+template <typename T>
+void TestActResultAndSpeed(
+    const std::function<void(const int step, int m, int64_t n,
+                             const core::Tensor& bias, core::Tensor& out,
+                             core::Tensor& out_parallel)>& func) {
   int64_t hidden_size = 12 * 64;
   const int step = 10;
-  for (auto batch_size : {1, 20, 24})
+  for (auto batch_size : {1, 20, 24}) {
     for (auto seq_length : {8, 16, 32, 48, 64, 128}) {
       auto m = batch_size * seq_length;
       auto n = hidden_size;
 
-      auto bias = tensor_create_and_fill_constant({n}, 0.01f);
-      auto out = tensor_create_and_fill_constant({m, n}, 0.02f);
-      auto out_parallel = tensor_create_and_fill_constant({m, n}, 0.02f);
+      auto bias = test::CreateTensorAndFillConstant<T>({n}, kDLCPU, 0, 0.01f);
+      auto out = test::CreateTensorAndFillConstant<T>({m, n}, kDLCPU, 0, 0.02f);
+      auto out_parallel =
+          test::CreateTensorAndFillConstant<T>({m, n}, kDLCPU, 0, 0.02f);
 
       std::cout << "batch_size: " << batch_size
                 << " seq_length: " << seq_length;
-
-      TestFunction(
-          [&]() {
-            AddBiasGeluActNaive<float>(bias.data<float>(),
-                                       out_parallel.mutableData<float>(), m, n);
-          },
-          step, "AddBiasGeluActNaive", m * n * sizeof(float) / 1e9);
-
-      TestFunction(
-          [&]() { AddBiasAct<float, ActivationType::Gelu>(bias, &out); }, step,
-          "AddBiasGeluAct OMP", m * n * sizeof(float) / 1e9);
-
-      if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
+      func(step, m, n, bias, out, out_parallel);
+      if (!test::CheckResultOfCPU<T>(out, out_parallel)) {
         TT_THROW("AddBiasGelu test failed");
       }
-
-      TestFunction(
-          [&]() {
-            AddBiasTanhActNaive<float>(bias.data<float>(),
-                                       out_parallel.mutableData<float>(), m, n);
-          },
-          step, "AddBiasTanhActNaive", m * n * sizeof(float) / 1e9);
-
-      TestFunction(
-          [&]() { AddBiasAct<float, ActivationType::Tanh>(bias, &out); }, step,
-          "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
-      if (!test::CheckResultOfCPU<float>(out, out_parallel)) {
-        TT_THROW("AddBiasTanh test failed");
-      }
     }
+  }
+}
+
+template <typename T>
+void TestGelu(const int step, int m, int64_t n, const core::Tensor& bias,
+              core::Tensor& out, core::Tensor& out_parallel) {
+  test::TestFuncSpeed(
+      [&]() {
+        AddBiasGeluActNaive<T>(bias.data<T>(), out_parallel.mutableData<T>(), m,
+                               n);
+      },
+      step, "AddBiasGeluActNaive", m * n * sizeof(T) / 1e9);
+
+  test::TestFuncSpeed(
+      [&]() { AddBiasAct<T, ActivationType::Gelu>(bias, &out); }, step,
+      "AddBiasGeluAct OMP", m * n * sizeof(T) / 1e9);
+}
+
+template <typename T>
+void TestTanh(const int step, int m, int64_t n, const core::Tensor& bias,
+              core::Tensor& out, core::Tensor& out_parallel) {
+  test::TestFuncSpeed(
+      [&]() {
+        AddBiasTanhActNaive<float>(bias.data<float>(),
+                                   out_parallel.mutableData<float>(), m, n);
+      },
+      step, "AddBiasTanhActNaive", m * n * sizeof(float) / 1e9);
+
+  test::TestFuncSpeed(
+      [&]() { AddBiasAct<float, ActivationType::Tanh>(bias, &out); }, step,
+      "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
+}
+
+TEST_CASE("activation CPU AddBiasGelu and AddBiasTanh benchmark") {
+  TestActResultAndSpeed<float>(TestGelu<float>);
+  TestActResultAndSpeed<float>(TestTanh<float>);
 }
 
 #ifdef TT_WITH_CUDA
-
-template <typename T>
-turbo_transformers::core::Tensor CreateTensor(
-    std::initializer_list<int64_t> shape, DLDeviceType device_type,
-    int dev_id) {
-  turbo_transformers::core::Tensor tensor(nullptr);
-  tensor.Reshape<T>(shape, device_type, dev_id);
-  return tensor;
-};
-
 template <typename T, typename Func>
-void CreateGPUTestCase(int batch_size, int seq_length, int hidden_size,
-                       Func&& func) {
-  auto gpu_bias = CreateTensor<T>({hidden_size}, kDLGPU, 0);
-  auto cpu_bias = CreateTensor<T>({hidden_size}, kDLCPU, 0);
-
-  auto gpu_out =
-      CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLGPU, 0);
-  auto cpu_out =
-      CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLCPU, 0);
-
-  ::turbo_transformers::test::FillDataForCPUGPUTensors<T>(cpu_bias, gpu_bias);
-  ::turbo_transformers::test::FillDataForCPUGPUTensors<T>(cpu_out, gpu_out);
-
+void CheckResultOfGPUAndCPU(int batch_size, int seq_length, int hidden_size,
+                            const Func& func) {
+  core::Tensor gpu_bias(nullptr), cpu_bias(nullptr), gpu_out(nullptr),
+      cpu_out(nullptr);
+  std::tie(cpu_bias, gpu_bias) =
+      test::CreateAndFillRandomForCPUGPUTensors<T>({hidden_size});
+  std::tie(cpu_out, gpu_out) = test::CreateAndFillRandomForCPUGPUTensors<T>(
+      {batch_size, seq_length, hidden_size});
   func(cpu_bias, cpu_out, gpu_bias, gpu_out);
 }
 
@@ -161,17 +136,25 @@ TEST_CASE("activation-gpu-test") {
         std::cout << "batch_size: " << batch_size
                   << " seq_length: " << seq_length
                   << " hidden_size: " << hidden_size;
-        CreateGPUTestCase<float>(
+        CheckResultOfGPUAndCPU<float>(
             batch_size, seq_length, hidden_size,
             [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
                core::Tensor& gpu_bias, core::Tensor& gpu_out) {
               AddBiasAct<float, ActivationType::Gelu>(cpu_bias, &cpu_out);
               AddBiasAct<float, ActivationType::Gelu>(gpu_bias, &gpu_out);
-              REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
-                  cpu_out, gpu_out));
+              REQUIRE(test::CheckResultOfCPUAndGPU<float>(cpu_out, gpu_out));
             });
 
-        CreateGPUTestCase<core::Half>(
+        CheckResultOfGPUAndCPU<float>(
+            batch_size, seq_length, hidden_size,
+            [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
+               core::Tensor& gpu_bias, core::Tensor& gpu_out) {
+              AddBiasAct<float, ActivationType::Tanh>(cpu_bias, &cpu_out);
+              AddBiasAct<float, ActivationType::Tanh>(gpu_bias, &gpu_out);
+              REQUIRE(test::CheckResultOfCPUAndGPU<float>(cpu_out, gpu_out));
+            });
+
+        CheckResultOfGPUAndCPU<core::Half>(
             batch_size, seq_length, hidden_size,
             [&](core::Tensor& cpu_bias, core::Tensor& cpu_out,
                 core::Tensor& gpu_bias, core::Tensor& gpu_out) {
@@ -180,18 +163,8 @@ TEST_CASE("activation-gpu-test") {
                                               batch_size * seq_length,
                                               hidden_size);
               AddBiasAct<core::Half, ActivationType::Gelu>(gpu_bias, &gpu_out);
-              REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<
-                      core::Half>(cpu_out, gpu_out));
-            });
-
-        CreateGPUTestCase<float>(
-            batch_size, seq_length, hidden_size,
-            [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
-               core::Tensor& gpu_bias, core::Tensor& gpu_out) {
-              AddBiasAct<float, ActivationType::Tanh>(cpu_bias, &cpu_out);
-              AddBiasAct<float, ActivationType::Tanh>(gpu_bias, &gpu_out);
-              REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
-                  cpu_out, gpu_out));
+              REQUIRE(
+                  test::CheckResultOfCPUAndGPU<core::Half>(cpu_out, gpu_out));
             });
         std::cout << " PASSED" << std::endl;
       }  // for
@@ -199,28 +172,6 @@ TEST_CASE("activation-gpu-test") {
   }
 }
 
-template <typename T>
-void ActivationGPUBenchmark(int batch_size, int seq_length, int hidden_size,
-                            int step) {
-  auto m = batch_size * seq_length;
-  auto n = hidden_size;
-  auto bias = CreateTensor<T>({hidden_size}, kDLGPU, 0);
-  auto out = CreateTensor<T>({batch_size, seq_length, hidden_size}, kDLGPU, 0);
-  ::turbo_transformers::test::Fill<T>(out);
-  ::turbo_transformers::test::Fill<T>(bias);
-
-  std::cout << "batch_size: " << batch_size << " seq_length: " << seq_length;
-  AddBiasAct<T>(ActivationType::Gelu, bias, &out);
-  auto& cuda_ctx = turbo_transformers::core::CUDADeviceContext::GetInstance();
-  auto stream = cuda_ctx.stream();
-  test::GPUTimer timer(stream);
-  for (int i = 0; i < step; ++i) {
-    AddBiasAct<T>(ActivationType::Gelu, bias, &out);
-  }
-  auto elapse = timer.ElapseSecond() / step;
-  std::cout << " AddBiasGeLUAct GPU cost:" << elapse << " sec, Bandwidth "
-            << m * n * sizeof(T) / 1e9 / elapse << " GB/s" << std::endl;
-}
 #endif
 
 }  // namespace kernels

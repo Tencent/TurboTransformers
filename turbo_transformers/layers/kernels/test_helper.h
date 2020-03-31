@@ -12,42 +12,57 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include <chrono>
+#include <tuple>
 
+#include "loguru.hpp"
 #include "turbo_transformers/core/memory.h"
+#include "turbo_transformers/core/tensor_copy.h"
+#include "turbo_transformers/layers/kernels/common.h"
 
 namespace turbo_transformers {
 namespace test {
 
-using Tensor = turbo_transformers::core::Tensor;
+using Tensor = core::Tensor;
+
+template <typename T>
+void RandomFillHost(T* m, size_t size) {
+  srand(static_cast<unsigned>(time(nullptr)));
+  for (size_t i = 0; i < size; i++) {
+    m[i] = static_cast<T>(rand() / static_cast<T>(RAND_MAX));
+  }
+}
+
+template <typename T>
+Tensor CreateTensor(std::initializer_list<int64_t> shape,
+                    DLDeviceType device_type, int dev_id) {
+  Tensor tensor(nullptr);
+  tensor.Reshape<T>(shape, device_type, dev_id);
+
+  return tensor;
+}
 
 #ifdef TT_WITH_CUDA
 template <typename T>
-void FillDataForCPUGPUTensors(Tensor& cpu_tensor, Tensor& gpu_tensor) {
-  T* gpu_data = gpu_tensor.mutableData<T>();
-  T* cpu_data = cpu_tensor.mutableData<T>();
-  auto size = cpu_tensor.numel();
-  srand((unsigned)time(NULL));
-  for (int64_t i = 0; i < size; ++i) {
-    cpu_data[i] = rand() / static_cast<T>(RAND_MAX);
-  }
-  turbo_transformers::core::Memcpy(
-      gpu_data, cpu_data, size * sizeof(T),
-      ::turbo_transformers::core::MemcpyFlag::kCPU2GPU);
+std::tuple<Tensor, Tensor> CreateAndFillRandomForCPUGPUTensors(
+    std::initializer_list<int64_t> shape) {
+  Tensor cpu_tensor = CreateTensor<T>(shape, kDLCPU, 0);
+  Tensor gpu_tensor = CreateTensor<T>(shape, kDLGPU, 0);
+  RandomFillHost(cpu_tensor.mutableData<T>(), cpu_tensor.numel());
+  core::Copy<T>(cpu_tensor, gpu_tensor);
+  return std::make_tuple(std::move(cpu_tensor), std::move(gpu_tensor));
 }
 
 template <typename T>
 bool CheckResultOfCPUAndGPU(const Tensor& cpu_tensor,
                             const Tensor& gpu_tensor) {
-  const T* gpu_data = gpu_tensor.data<T>();
+  TT_ENFORCE(layers::kernels::common::is_same_shape(cpu_tensor, gpu_tensor),
+             "The shape of the inputs is not equal.");
   const T* cpu_data = cpu_tensor.data<T>();
-  auto size = cpu_tensor.numel();
-
-  std::unique_ptr<T[]> gpu_data_ref(new T[size]);
-  turbo_transformers::core::Memcpy(
-      gpu_data_ref.get(), gpu_data, size * sizeof(T),
-      turbo_transformers::core::MemcpyFlag::kGPU2CPU);
+  Tensor tmp_tensor = CreateTensor<T>({gpu_tensor.numel()}, kDLCPU, 0);
+  core::Copy<T>(gpu_tensor, tmp_tensor);
+  const T* gpu_data_ref = tmp_tensor.data<T>();
   bool ret = true;
-  for (int64_t i = 0; i < size; ++i) {
+  for (int64_t i = 0; i < gpu_tensor.numel(); ++i) {
     if (std::abs(gpu_data_ref[i] - cpu_data[i]) > 1e-3) {
       std::cerr << "@ " << i << ": " << gpu_data_ref[i] << " vs " << cpu_data[i]
                 << std::endl;
@@ -98,33 +113,58 @@ class Timer {
   std::chrono::time_point<std::chrono::system_clock> start_;
 };
 
-template <typename T>
-inline void RandomFillHost(T* m, const int mSize, float LO = 0.,
-                           float HI = 1.) {
-  srand(static_cast<unsigned>(time(0)));
-  for (int i = 0; i < mSize; i++)
-    m[i] = LO +
-           static_cast<T>(rand()) / (static_cast<float>(RAND_MAX / (HI - LO)));
+template <typename Func>
+void TestFuncSpeed(Func&& func, int step, const std::string& infor,
+                   double g_bytes) {
+  func();
+  test::Timer timer;
+  for (int i = 0; i < step; ++i) {
+    func();
+  }
+  auto elapse = timer.ElapseSecond() / step;
+
+  LOG_S(INFO) << infor << " cost:" << elapse << " ms, Bandwidth "
+              << g_bytes / elapse << " GB/s";
 }
 
 template <typename T>
-void Fill(turbo_transformers::core::Tensor& tensor, T lower_bound = 0.,
-          T upper_bound = 1.) {
+Tensor CreateTensorAndFillConstant(std::initializer_list<int64_t> shape,
+                                   DLDeviceType dev_type, int dev_id, T value) {
+  Tensor tensor = CreateTensor<T>(shape, dev_type, dev_id);
+  layers::kernels::common::Fill<T>(tensor.mutableData<T>(), tensor.numel(),
+                                   value, dev_type);
+  return tensor;
+}
+
+template <typename T>
+Tensor CreateTensorAndFillRandom(std::initializer_list<int64_t> shape,
+                                 DLDeviceType dev_type, int dev_id) {
+  Tensor cpu_tensor = CreateTensor<T>(shape, kDLCPU, dev_id);
+  RandomFillHost(cpu_tensor.mutableData<T>(), cpu_tensor.numel());
+  if (dev_type == kDLGPU) {
+    Tensor gpu_tensor = CreateTensor<T>(shape, dev_type, dev_id);
+    core::Copy<T>(cpu_tensor, gpu_tensor);
+    return gpu_tensor;
+  }
+  return cpu_tensor;
+}
+
+template <typename T>
+void Fill(Tensor& tensor) {
   T* T_data = tensor.mutableData<T>();
   auto size = tensor.numel();
   std::unique_ptr<T> cpu_data(new T[size]);
-  RandomFillHost(cpu_data.get(), size, lower_bound, upper_bound);
+  RandomFillHost(cpu_data.get(), size);
 
-  turbo_transformers::core::MemcpyFlag flag;
+  core::MemcpyFlag flag;
   if (tensor.device_type() == kDLCPU) {
-    flag = turbo_transformers::core::MemcpyFlag::kCPU2CPU;
+    flag = core::MemcpyFlag::kCPU2CPU;
   } else if (tensor.device_type() == kDLGPU) {
-    flag = turbo_transformers::core::MemcpyFlag::kCPU2GPU;
+    flag = core::MemcpyFlag::kCPU2GPU;
   } else {
     TT_THROW("Fill device_type wrong");
   }
-  ::turbo_transformers::core::Memcpy(T_data, cpu_data.get(), size * sizeof(T),
-                                     flag);
+  core::Memcpy(T_data, cpu_data.get(), size * sizeof(T), flag);
 }
 
 template <typename T>
