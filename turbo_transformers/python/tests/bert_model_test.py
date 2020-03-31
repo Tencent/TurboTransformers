@@ -72,8 +72,12 @@ class TestBertModel(unittest.TestCase):
         turbo_result = turbo_result[1].cpu().numpy(
         ) if use_pooler else turbo_result.cpu().numpy()
 
-        # self.assertTrue(
-        #     numpy.allclose(torch_result, turbo_result, atol=5e-3, rtol=1e-4))
+        if not use_pooler:
+            self.assertTrue(
+                numpy.allclose(torch_result,
+                               turbo_result,
+                               atol=5e-3,
+                               rtol=1e-4))
 
     def test_bert_model(self):
         self.check_torch_and_turbo(use_cuda=False, use_pooler=True)
