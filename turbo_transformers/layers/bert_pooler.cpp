@@ -24,12 +24,12 @@
 namespace turbo_transformers {
 namespace layers {
 
-void BertPooler::operator()(const core::Tensor& input_tensor,
-                            core::Tensor* output_tensor) const {
-  // input_tensor [batch_size, sequence_length=1, hidden_size]
+void BertPooler::operator()(const core::Tensor &input_tensor,
+                            core::Tensor *output_tensor) const {
+  // input_tensor [batch_size, hidden_size]
   // output_tensor [batch_size, hidden_size]
-  TT_ENFORCE_EQ(input_tensor.shape(1), 1,
-                "input_tensor's sequence_length must be 1");
+  TT_ENFORCE_EQ(input_tensor.n_dim(), 2, "input's dim should be 2, not %d",
+                input_tensor.n_dim());
   output_tensor->Reshape<float>({input_tensor.shape(0), dense_weight_.shape(0)},
                                 input_tensor.device_type(),
                                 input_tensor.device_id());
