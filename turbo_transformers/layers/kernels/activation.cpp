@@ -26,7 +26,7 @@ namespace kernels {
 template <typename T>
 static void CPUAddBiasGeLUActKernel(const T *bias, T *out, int64_t batch_size,
                                     int64_t feature_dim) {
-  static core::AlignedScratchpad<float> scratchpad;
+  core::AlignedScratchpad<float> scratchpad;
   float *buff = scratchpad.mutable_data(batch_size * feature_dim);
 #pragma omp parallel for
   for (int64_t i = 0; i < batch_size; ++i) {
