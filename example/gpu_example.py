@@ -37,7 +37,7 @@ cfg = model_torch.config  # type: transformers.BertConfig
 
 batch_size, seq_len = 10, 40
 tokenizer = BertTokenizer.from_pretrained(model_id)
-input_ids = tokenizer.encode('²âһÏbertģÐµÄÔܺ;«¶Èǲ»Ê·ûÇ?')
+input_ids = tokenizer.encode('测试一下哈')
 input_ids = torch.tensor([input_ids], dtype=torch.long, device=test_device)
 torch_result = model_torch(input_ids)
 torch_result = (torch_result[0][:, 0]).cpu().numpy()
