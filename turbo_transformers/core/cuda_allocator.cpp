@@ -11,13 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "turbo_transformers/core/cuda_allocator.h"
 
-#include "turbo_transformers/core/enforce.h"
+#include <cuda_runtime.h>
+
+#include <cub/util_allocator.cuh>
+
+#include "turbo_transformers/core/cuda_device_context.h"
 
 namespace turbo_transformers {
 namespace core {
+
 struct BadAlloc : public std::exception {
   explicit BadAlloc(std::string err_msg) : err_str_(err_msg) {}
 
@@ -26,63 +30,48 @@ struct BadAlloc : public std::exception {
   std::string err_str_;
 };
 
-static void *cuda_alloc(size_t sz) {
-  void *device_mem;
-  try {
-    TT_ENFORCE_CUDA_SUCCESS(cudaMalloc((void **)&(device_mem), sz));
-  } catch (...) {
-    throw BadAlloc("cudaMalloc failed.");
+struct CUDAAllocator::AllocatorImpl {
+  void *alloc(size_t size) {
+    static auto stream = core::CUDADeviceContext::GetInstance().stream();
+    void *data = nullptr;
+    cudaError_t result = cub_allocator.DeviceAllocate(&data, size, stream);
+    if (result != cudaSuccess) {
+      throw BadAlloc("DeviceAllocate failed.");
+    }
+    return data;
   }
-  return device_mem;
-}
 
-static void cuda_free(void *data) { TT_ENFORCE_CUDA_SUCCESS(cudaFree(data)); }
-
-void CUDAAllocator::FreeCache(size_t size) {
-  if (size == 0) return;
-  size_t cur = 0;
-  while (!allocations_.empty()) {  // free the largest
-    auto it = --allocations_.end();
-    cur += it->first;
-    cuda_free(it->second);
-    allocation_size_ -= it->first;
-    allocations_.erase(it);
-    if (cur >= size) return;
+  void free(void *data) {
+    try {
+      cudaError_t result = cub_allocator.DeviceFree(data);
+      if (result != cudaErrorCudartUnloading && result != cudaSuccess) {
+        throw std::runtime_error("DeviceFree failed ");
+      }
+    } catch (...) {
+    }
   }
-}
 
-CUDAAllocator::~CUDAAllocator() {
-  while (!allocations_.empty()) {
-    auto it = --allocations_.end();
-    // use cudaFree directly here, because when destroying the Allocator,
-    // the cuda runtime lib may have been unloaded, and in this case,
-    // there will have cudaErrorCudartUnloading.
-    // https://stackoverflow.com/questions/35815597/cuda-call-fails-in-destructor
-    cudaFree(it->second);
-    allocations_.erase(it);
-  }
-}
+  void free_all_cache() { cub_allocator.FreeAllCached(); }
+
+  ~AllocatorImpl() { cub_allocator.FreeAllCached(); }
+
+  cub::CachingDeviceAllocator cub_allocator;
+};
+
+CUDAAllocator::CUDAAllocator() : allocator_(new AllocatorImpl()) {}
+
+CUDAAllocator::~CUDAAllocator() = default;
 
 void *CUDAAllocator::allocate(size_t size) {
-  auto it = allocations_.lower_bound(size);
-
-  if (it != allocations_.end() && it->first < size) {
-    void *result = it->second;
-    allocations_.erase(it);
-    return result;
-  }
-
   try {
-    return cuda_alloc(size);
+    return allocator_->alloc(size);
   } catch (BadAlloc &) {
-    FreeCache(size);
-    return cuda_alloc(size);
+    allocator_->free_all_cache();
+    return allocator_->alloc(size);
   }
 }
 
-void CUDAAllocator::free(void *memory, size_t size) {
-  allocations_.emplace(size, memory);
-  allocation_size_ += size;
-}
+void CUDAAllocator::free(void *memory) { allocator_->free(memory); }
+
 }  // namespace core
 }  // namespace turbo_transformers
