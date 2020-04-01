@@ -23,6 +23,7 @@
 #include "turbo_transformers/layers/bert_embedding.h"
 #include "turbo_transformers/layers/bert_intermediate.h"
 #include "turbo_transformers/layers/bert_output.h"
+#include "turbo_transformers/layers/bert_pooler.h"
 #include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
@@ -44,6 +45,14 @@ class NPZMapView {
 
   NPZMapView Sub(const std::string &subview) {
     return NPZMapView(prefix_ + subview + ".", npz_);
+  }
+
+  bool IsExist(const std::string &subprefix) {
+    auto actualPrefix = prefix_ + subprefix;
+    for (auto it = npz_->begin(); it != npz_->end(); ++it) {
+      if (it->first.rfind(actualPrefix, 0) == 0) return true;
+    }
+    return false;
   }
 
  private:
@@ -83,6 +92,14 @@ static std::unique_ptr<layers::BERTEmbedding> LoadEmbedding(NPZMapView npz,
       params["word_embeddings.weight"], params["position_embeddings.weight"],
       params["token_type_embeddings.weight"], params["LayerNorm.weight"],
       params["LayerNorm.bias"], 0));
+}
+
+static std::unique_ptr<layers::BertPooler> LoadPooler(NPZMapView npz,
+                                                      DLDeviceType dev) {
+  NPZLoader params(std::move(npz), dev);
+
+  return std::unique_ptr<layers::BertPooler>(
+      new layers::BertPooler(params["dense.weight"], params["dense.bias"]));
 }
 
 struct BERTLayer {
@@ -127,6 +144,10 @@ struct BertModel::Impl {
       NPZLoader params(view, device_type);
       encoders_.emplace_back(std::move(params), n_heads);
     }
+
+    if (root.IsExist("pooler")) {
+      pooler_ = LoadPooler(root.Sub("pooler"), device_type);
+    }
   }
 
   template <typename T>
@@ -164,8 +185,8 @@ struct BertModel::Impl {
   std::vector<float> operator()(
       const std::vector<std::vector<int64_t>> &inputs,
       const std::vector<std::vector<int64_t>> &poistion_ids,
-      const std::vector<std::vector<int64_t>> &segment_ids,
-      PoolingType pooling) {
+      const std::vector<std::vector<int64_t>> &segment_ids, PoolingType pooling,
+      bool use_pooler) {
     int64_t max_seq_len =
         std::accumulate(inputs.begin(), inputs.end(), 0,
                         [](size_t len, const std::vector<int64_t> &input_ids) {
@@ -228,28 +249,28 @@ struct BertModel::Impl {
     for (auto &layer : encoders_) {
       layer(hidden, extendedAttentionMask, &attOut, &intermediateOut, &hidden);
     }
-    core::Tensor cpuHidden(nullptr);
-    if (hidden.device_type() == DLDeviceType::kDLGPU) {
-      cpuHidden.Reshape<float>(
-          {hidden.shape(0), hidden.shape(1), hidden.shape(2)},
-          DLDeviceType::kDLCPU, 0);
-      core::Copy(hidden.data<float>(), hidden.numel(), hidden.device_type(),
-                 cpuHidden);
+
+    core::Tensor poolingOutput(nullptr);
+    layers::SequencePool(static_cast<layers::types::PoolType>(pooling))(
+        hidden, &poolingOutput);
+    std::vector<float> vec;
+    if (use_pooler) {
+      core::Tensor output(nullptr);
+      (*pooler_)(poolingOutput, &output);
+      vec.resize(output.numel());
+      core::Copy(output, vec);
+    } else {
+      vec.resize(poolingOutput.numel());
+      core::Copy(poolingOutput, vec);
     }
 
-    core::Tensor output(nullptr);
-
-    layers::SequencePool(static_cast<layers::types::PoolType>(pooling))(
-        hidden.device_type() == DLDeviceType::kDLGPU ? cpuHidden : hidden,
-        &output);
-    std::vector<float> vec;
-    vec.resize(output.numel());
-    core::Copy(output, vec);
     return vec;
   }
 
   std::unique_ptr<layers::BERTEmbedding> embedding_;
   std::vector<BERTLayer> encoders_;
+  std::unique_ptr<layers::BertPooler> pooler_;
+
   core::Tensor inputs_{nullptr};
   core::Tensor masks_{nullptr};
 
@@ -265,9 +286,9 @@ BertModel::BertModel(const std::string &filename, DLDeviceType device_type,
 std::vector<float> BertModel::operator()(
     const std::vector<std::vector<int64_t>> &inputs,
     const std::vector<std::vector<int64_t>> &poistion_ids,
-    const std::vector<std::vector<int64_t>> &segment_ids,
-    PoolingType pooling) const {
-  return m_->operator()(inputs, poistion_ids, segment_ids, pooling);
+    const std::vector<std::vector<int64_t>> &segment_ids, PoolingType pooling,
+    bool use_pooler) const {
+  return m_->operator()(inputs, poistion_ids, segment_ids, pooling, use_pooler);
 }
 BertModel::~BertModel() = default;
 }  // namespace loaders

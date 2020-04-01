@@ -40,7 +40,7 @@ class BertModel {
       const std::vector<std::vector<int64_t>> &inputs,
       const std::vector<std::vector<int64_t>> &poistion_ids,
       const std::vector<std::vector<int64_t>> &segment_ids,
-      PoolingType pooling = PoolingType::kFirst) const;
+      PoolingType pooling = PoolingType::kFirst, bool use_pooler = false) const;
 
  private:
   struct Impl;
