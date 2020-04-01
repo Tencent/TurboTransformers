@@ -21,7 +21,7 @@ namespace layers {
 namespace kernels {
 
 using types::ActivationType;
-template <typename T, ActivationType aT>
+template <typename T, ActivationType ActType>
 void AddBiasAct(const core::Tensor& bias, core::Tensor* out);
 
 }  // namespace kernels

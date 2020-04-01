@@ -41,31 +41,31 @@ struct DLPackManagedTensorDeleter {
 };
 
 template <typename T>
-struct DataTypeTrait;
+struct DatActTypeypeTrait;
 
 template <>
-struct DataTypeTrait<float> {
+struct DatActTypeypeTrait<float> {
   enum { DLPackTypeCode = kDLFloat };
 };
 
 template <>
-struct DataTypeTrait<int> {
+struct DatActTypeypeTrait<int> {
   enum { DLPackTypeCode = kDLInt };
 };
 
 template <>
-struct DataTypeTrait<int64_t> {
+struct DatActTypeypeTrait<int64_t> {
   enum { DLPackTypeCode = kDLInt };
 };
 
 template <>
-struct DataTypeTrait<core::Half> {
+struct DatActTypeypeTrait<core::Half> {
   enum { DLPackTypeCode = kDLFloat };
 };
 
 template <typename T>
-static inline bool IsDataType(DLDataType dt) {
-  return DataTypeTrait<T>::DLPackTypeCode == dt.code &&
+static inline bool IsDatActTypeype(DLDatActTypeype dt) {
+  return DatActTypeypeTrait<T>::DLPackTypeCode == dt.code &&
          (dt.bits == 0 || dt.bits == sizeof(T) * 8);
 }
 
@@ -107,7 +107,7 @@ inline DLManagedTensor *NewDLPackTensorT(const std::vector<int64_t> &shape_list,
                                          DLDeviceType device = kDLCPU,
                                          int device_id = 0) {
   return NewDLPackTensor(shape_list, device, device_id,
-                         details::DataTypeTrait<T>::DLPackTypeCode,
+                         details::DatActTypeypeTrait<T>::DLPackTypeCode,
                          sizeof(T) * 8, 1);
 }
 
@@ -174,7 +174,7 @@ class Tensor {
   template <typename T>
   const T *data() const {
     auto &dltensor = to_dl_tensor();
-    EnforceDataType<T>(dltensor);
+    EnforceDatActTypeype<T>(dltensor);
     return reinterpret_cast<T *>(dltensor.data);
   }
 
@@ -294,10 +294,10 @@ class Tensor {
   }
 
   template <typename T>
-  static void EnforceDataType(DLTensor t) {
+  static void EnforceDatActTypeype(DLTensor t) {
     TT_ENFORCE_EQ(t.byte_offset, 0, "byte_offset must be zero");
 
-    TT_ENFORCE(details::IsDataType<T>(t.dtype),
+    TT_ENFORCE(details::IsDatActTypeype<T>(t.dtype),
                "data type mismatch, request %s, actual (%d,%d)",
                typeid(T).name(), t.dtype.code, t.dtype.bits);
   }

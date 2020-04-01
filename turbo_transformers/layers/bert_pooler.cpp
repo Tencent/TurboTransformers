@@ -26,6 +26,8 @@ namespace layers {
 
 void BertPooler::operator()(const core::Tensor& input_tensor,
                             core::Tensor* output_tensor) const {
+  TT_ENFORCE_EQ(input_tensor.n_dim(), 2, "input's dim should be 2, not %d",
+                input_tensor.n_dim());
   output_tensor->Reshape<float>({input_tensor.shape(0), dense_weight_.shape(0)},
                                 input_tensor.device_type(),
                                 input_tensor.device_id());

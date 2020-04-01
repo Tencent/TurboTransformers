@@ -37,7 +37,7 @@ static __inline__ __device__ __half2 add(const __half2& a, const __half2& b) {
 }
 #endif
 
-template <typename T, ActivationType aT>
+template <typename T, ActivationType ActType>
 __device__ T ActvationOp(const T& x);
 
 template <>
@@ -65,7 +65,7 @@ __device__ __half ActvationOp<__half, ActivationType::Tanh>(const __half& x) {
   return __float2half(ActvationOp<float, ActivationType::Tanh>(x_f));
 }
 
-template <typename T, ActivationType aT>
+template <typename T, ActivationType ActType>
 static __global__ void add_bias_act(T* out, const T* bias, int batch_size,
                                     int feature_dim) {
   T val, reg_bias;
@@ -84,19 +84,19 @@ static __global__ void add_bias_act(T* out, const T* bias, int batch_size,
 #endif
       row_id = blockIdx.x;
       val = add(out[offset + row_id * feature_dim], reg_bias);
-      out[offset + row_id * feature_dim] = ActvationOp<T, aT>(val);
+      out[offset + row_id * feature_dim] = ActvationOp<T, ActType>(val);
     }
   }
 }
 
-template <typename T, ActivationType aT>
+template <typename T, ActivationType ActType>
 void GPUAddBiasActKernel(const T* bias_data, T* out_data, int64_t batch_size,
                          int64_t feature_dim, cudaStream_t stream) {
   dim3 grid(batch_size);
   int block_size = min(1024, (int)(feature_dim / 4));
   dim3 block(block_size);
-  add_bias_act<T, aT><<<grid, block, 0, stream>>>(out_data, bias_data,
-                                                  batch_size, feature_dim);
+  add_bias_act<T, ActType><<<grid, block, 0, stream>>>(out_data, bias_data,
+                                                       batch_size, feature_dim);
 }
 
 template void GPUAddBiasActKernel<float, ActivationType::Gelu>(

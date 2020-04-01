@@ -20,7 +20,7 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 using types::ActivationType;
-template <typename T, ActivationType aT>
+template <typename T, ActivationType ActType>
 void GPUAddBiasActKernel(const T* bias_data, T* out_data, int64_t batch_size,
                          int64_t feature_dim, cudaStream_t stream);
 
