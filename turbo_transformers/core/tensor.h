@@ -64,7 +64,7 @@ struct DatActTypeypeTrait<core::Half> {
 };
 
 template <typename T>
-static inline bool IsDatActTypeype(DLDatActTypeype dt) {
+static inline bool IsDatActTypeype(DLDataType dt) {
   return DatActTypeypeTrait<T>::DLPackTypeCode == dt.code &&
          (dt.bits == 0 || dt.bits == sizeof(T) * 8);
 }
