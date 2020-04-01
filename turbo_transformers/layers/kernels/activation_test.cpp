@@ -74,7 +74,6 @@ void TestActResultAndSpeed(
       std::cout << "batch_size: " << batch_size
                 << " seq_length: " << seq_length;
       func(step, m, n, bias, out, out_parallel);
-
       if (!test::CheckResultOfCPU<T>(out, out_parallel)) {
         TT_THROW("AddBiasGelu test failed");
       }
@@ -93,7 +92,7 @@ void TestGelu(const int step, int m, int64_t n, const core::Tensor& bias,
       step, "AddBiasGeluActNaive", m * n * sizeof(T) / 1e9);
 
   test::TestFuncSpeed(
-      [&]() { AddBiasAct<T>(ActivationType::Gelu, bias, &out); }, step,
+      [&]() { AddBiasAct<T, ActivationType::Gelu>(bias, &out); }, step,
       "AddBiasGeluAct OMP", m * n * sizeof(T) / 1e9);
 }
 
@@ -108,7 +107,7 @@ void TestTanh(const int step, int m, int64_t n, const core::Tensor& bias,
       step, "AddBiasTanhActNaive", m * n * sizeof(float) / 1e9);
 
   test::TestFuncSpeed(
-      [&]() { AddBiasAct<float>(ActivationType::Tanh, bias, &out); }, step,
+      [&]() { AddBiasAct<float, ActivationType::Tanh>(bias, &out); }, step,
       "AddBiasTanhAct OMP", m * n * sizeof(float) / 1e9);
 }
 
@@ -127,11 +126,10 @@ void CheckResultOfGPUAndCPU(int batch_size, int seq_length, int hidden_size,
       test::CreateAndFillRandomForCPUGPUTensors<T>({hidden_size});
   std::tie(cpu_out, gpu_out) = test::CreateAndFillRandomForCPUGPUTensors<T>(
       {batch_size, seq_length, hidden_size});
-
   func(cpu_bias, cpu_out, gpu_bias, gpu_out);
 }
 
-TEST_CASE("activation CPU and GPU correctness") {
+TEST_CASE("activation-gpu-test") {
   for (auto hidden_size : {500, 12 * 64, 1000, 2000, 4096 * 2 + 1}) {
     for (auto batch_size : {1, 20, 24}) {
       for (auto seq_length : {8, 16, 32, 48, 64, 128}) {
@@ -142,8 +140,17 @@ TEST_CASE("activation CPU and GPU correctness") {
             batch_size, seq_length, hidden_size,
             [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
                core::Tensor& gpu_bias, core::Tensor& gpu_out) {
-              AddBiasAct<float>(ActivationType::Gelu, cpu_bias, &cpu_out);
-              AddBiasAct<float>(ActivationType::Gelu, gpu_bias, &gpu_out);
+              AddBiasAct<float, ActivationType::Gelu>(cpu_bias, &cpu_out);
+              AddBiasAct<float, ActivationType::Gelu>(gpu_bias, &gpu_out);
+              REQUIRE(test::CheckResultOfCPUAndGPU<float>(cpu_out, gpu_out));
+            });
+
+        CheckResultOfGPUAndCPU<float>(
+            batch_size, seq_length, hidden_size,
+            [](core::Tensor& cpu_bias, core::Tensor& cpu_out,
+               core::Tensor& gpu_bias, core::Tensor& gpu_out) {
+              AddBiasAct<float, ActivationType::Tanh>(cpu_bias, &cpu_out);
+              AddBiasAct<float, ActivationType::Tanh>(gpu_bias, &gpu_out);
               REQUIRE(test::CheckResultOfCPUAndGPU<float>(cpu_out, gpu_out));
             });
 
@@ -155,7 +162,19 @@ TEST_CASE("activation CPU and GPU correctness") {
                                               cpu_out.mutableData<core::Half>(),
                                               batch_size * seq_length,
                                               hidden_size);
-              AddBiasAct<core::Half>(ActivationType::Gelu, gpu_bias, &gpu_out);
+              AddBiasAct<core::Half, ActivationType::Gelu>(gpu_bias, &gpu_out);
+              REQUIRE(
+                  test::CheckResultOfCPUAndGPU<core::Half>(cpu_out, gpu_out));
+            });
+        CheckResultOfGPUAndCPU<core::Half>(
+            batch_size, seq_length, hidden_size,
+            [&](core::Tensor& cpu_bias, core::Tensor& cpu_out,
+                core::Tensor& gpu_bias, core::Tensor& gpu_out) {
+              AddBiasTanhActNaive<core::Half>(cpu_bias.data<core::Half>(),
+                                              cpu_out.mutableData<core::Half>(),
+                                              batch_size * seq_length,
+                                              hidden_size);
+              AddBiasAct<core::Half, ActivationType::Tanh>(gpu_bias, &gpu_out);
               REQUIRE(
                   test::CheckResultOfCPUAndGPU<core::Half>(cpu_out, gpu_out));
             });

@@ -24,10 +24,8 @@
 namespace turbo_transformers {
 namespace layers {
 
-void BertPooler::operator()(const core::Tensor &input_tensor,
-                            core::Tensor *output_tensor) const {
-  // input_tensor [batch_size, hidden_size]
-  // output_tensor [batch_size, hidden_size]
+void BertPooler::operator()(const core::Tensor& input_tensor,
+                            core::Tensor* output_tensor) const {
   TT_ENFORCE_EQ(input_tensor.n_dim(), 2, "input's dim should be 2, not %d",
                 input_tensor.n_dim());
   output_tensor->Reshape<float>({input_tensor.shape(0), dense_weight_.shape(0)},
@@ -36,8 +34,8 @@ void BertPooler::operator()(const core::Tensor &input_tensor,
 
   kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
                   0.0);
-  kernels::AddBiasAct<float>(kernels::ActivationType::Tanh, dense_bias_,
-                             output_tensor);
+  kernels::AddBiasAct<float, kernels::ActivationType::Tanh>(dense_bias_,
+                                                            output_tensor);
 }
 
 void BertPooler::EnforceShapeAndType() const {

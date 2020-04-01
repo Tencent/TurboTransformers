@@ -14,15 +14,15 @@
 
 #pragma once
 #include <cuda_runtime.h>
+#include "turbo_transformers/layers/types.h"
 
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
-
-template <typename T>
-void GPUAddBiasGeLUActKernel(const T* bias_data, T* out_data,
-                             int64_t batch_size, int64_t feature_dim,
-                             cudaStream_t stream);
+using types::ActivationType;
+template <typename T, ActivationType ActType>
+void GPUAddBiasActKernel(const T* bias_data, T* out_data, int64_t batch_size,
+                         int64_t feature_dim, cudaStream_t stream);
 
 }  // namespace kernels
 }  // namespace layers

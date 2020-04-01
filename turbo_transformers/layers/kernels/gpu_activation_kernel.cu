@@ -22,6 +22,7 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
+namespace {
 template <typename T>
 static __inline__ __device__ T add(const T& a, const T& b) {
   return a + b;
@@ -37,19 +38,40 @@ static __inline__ __device__ __half2 add(const __half2& a, const __half2& b) {
 }
 #endif
 
-static __inline__ __device__ float gelu(const float& x) {
+template <typename T, ActivationType ActType>
+__inline__ __device__ T ActvationOp(const T& x);
+
+template <>
+__inline__ __device__ float ActvationOp<float, ActivationType::Gelu>(
+    const float& x) {
   float cdf =
       0.5f *
       (1.0f + tanhf((0.7978845608028654f * (x + 0.044715f * x * x * x))));
   return x * cdf;
 }
 
-static __inline__ __device__ half gelu(const __half& x) {
+template <>
+__inline__ __device__ __half
+ActvationOp<__half, ActivationType::Gelu>(const __half& x) {
   float x_f = __half2float(x);
-  return __float2half(gelu(x_f));
+  return __float2half(ActvationOp<float, ActivationType::Gelu>(x_f));
 }
 
-template <typename T>
+template <>
+__inline__ __device__ float ActvationOp<float, ActivationType::Tanh>(
+    const float& x) {
+  return tanhf(x);
+}
+
+template <>
+__inline__ __device__ __half
+ActvationOp<__half, ActivationType::Tanh>(const __half& x) {
+  float x_f = __half2float(x);
+  return __float2half(tanh(x_f));
+}
+}  // namespace
+
+template <typename T, ActivationType ActType>
 static __global__ void add_bias_act(T* out, const T* bias, int batch_size,
                                     int feature_dim) {
   T val, reg_bias;
@@ -68,33 +90,36 @@ static __global__ void add_bias_act(T* out, const T* bias, int batch_size,
 #endif
       row_id = blockIdx.x;
       val = add(out[offset + row_id * feature_dim], reg_bias);
-      out[offset + row_id * feature_dim] = gelu(val);
+      out[offset + row_id * feature_dim] = ActvationOp<T, ActType>(val);
     }
   }
 }
 
-template <typename T>
-void GPUAddBiasGeLUActKernel(const T* bias_data, T* out_data,
-                             int64_t batch_size, int64_t feature_dim,
-                             cudaStream_t stream) {
+template <typename T, ActivationType ActType>
+void GPUAddBiasActKernel(const T* bias_data, T* out_data, int64_t batch_size,
+                         int64_t feature_dim, cudaStream_t stream) {
   dim3 grid(batch_size);
   int block_size = min(1024, (int)(feature_dim / 4));
   dim3 block(block_size);
-  add_bias_act<<<grid, block, 0, stream>>>(out_data, bias_data, batch_size,
-                                           feature_dim);
+  add_bias_act<T, ActType><<<grid, block, 0, stream>>>(out_data, bias_data,
+                                                       batch_size, feature_dim);
 }
 
-template void GPUAddBiasGeLUActKernel<float>(const float* bias_data,
-                                             float* out_data,
-                                             int64_t batch_size,
-                                             int64_t feature_dim,
-                                             cudaStream_t stream);
+template void GPUAddBiasActKernel<float, ActivationType::Gelu>(
+    const float* bias_data, float* out_data, int64_t batch_size,
+    int64_t feature_dim, cudaStream_t stream);
 
-template void GPUAddBiasGeLUActKernel<half>(const half* bias_data,
-                                            half* out_data, int64_t batch_size,
-                                            int64_t feature_dim,
-                                            cudaStream_t stream);
+template void GPUAddBiasActKernel<float, ActivationType::Tanh>(
+    const float* bias_data, float* out_data, int64_t batch_size,
+    int64_t feature_dim, cudaStream_t stream);
 
+template void GPUAddBiasActKernel<half, ActivationType::Gelu>(
+    const half* bias_data, half* out_data, int64_t batch_size,
+    int64_t feature_dim, cudaStream_t stream);
+
+template void GPUAddBiasActKernel<half, ActivationType::Tanh>(
+    const half* bias_data, half* out_data, int64_t batch_size,
+    int64_t feature_dim, cudaStream_t stream);
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers

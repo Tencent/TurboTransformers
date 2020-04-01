@@ -14,15 +14,15 @@
 
 #pragma once
 #include "turbo_transformers/core/tensor.h"
+#include "turbo_transformers/layers/types.h"
 
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
-enum ActivationType { Gelu = 0, Tanh };
 
-template <typename T>
-void AddBiasAct(const ActivationType& type, const core::Tensor& bias,
-                core::Tensor* out);
+using types::ActivationType;
+template <typename T, ActivationType ActType>
+void AddBiasAct(const core::Tensor& bias, core::Tensor* out);
 
 }  // namespace kernels
 }  // namespace layers

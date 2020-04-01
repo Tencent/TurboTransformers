@@ -257,7 +257,7 @@ class PoolingType(enum.Enum):
     MAX = "Max"
 
 
-pool_dict = {
+PoolingMap = {
     PoolingType.FIRST: "First",
     PoolingType.LAST: "Last",
     PoolingType.MEAN: "Mean",
@@ -303,7 +303,7 @@ class BertModel:
                                     return_type=ReturnType.turbo_transformers,
                                     output=hidden_cache)
 
-        self.seq_pool = SequencePool(pool_dict[pooling_type])
+        self.seq_pool = SequencePool(PoolingMap[pooling_type])
         output = self.seq_pool(input_tensor=hidden_cache,
                                return_type=return_type,
                                output_tensor=output)
@@ -370,7 +370,8 @@ class BertModelWithPooler:
             output=None,
             return_type=ReturnType.turbo_transformers)
         pooler_output = self.pooler(encoder_output, return_type, pooler_output)
-        return encoder_output, pooler_output
+        return pooler_output, convert_returns_as_type(encoder_output,
+                                                      return_type)
 
     @staticmethod
     def from_torch(model: TorchBertModel,
