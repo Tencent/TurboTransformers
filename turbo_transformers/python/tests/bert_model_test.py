@@ -83,12 +83,12 @@ class TestBertModel(unittest.TestCase):
                 "pooler output diff: ",
                 numpy.max(
                     (turbo_result_final - torch_result_final).reshape(-1)))
-
+        atol, rtol = 1e-2, 1e-2 if use_pooler else 5e-3, 1e-4
         self.assertTrue(
             numpy.allclose(torch_result_final,
                            turbo_result_final,
-                           atol=1e-2,
-                           rtol=1e-2))
+                           atol=atol,
+                           rtol=rtol))
 
     def test_bert_model(self):
         self.check_torch_and_turbo(use_cuda=False, use_pooler=False)

@@ -127,6 +127,20 @@ void AddBiasAct<core::Half, ActivationType::Gelu>(
       reinterpret_cast<const half *>(bias), reinterpret_cast<half *>(out), m, n,
       cuda_ctx.stream());
 }
+
+template <>
+void AddBiasAct<core::Half, ActivationType::Tanh>(
+    const core::Tensor &bias_tensor, core::Tensor *out_tensor) {
+  TT_ENFORCE_EQ(bias_tensor.device_type(), kDLGPU, "The device should be GPU.");
+  core::Half *out = out_tensor->mutableData<core::Half>();
+  const core::Half *bias = bias_tensor.data<core::Half>();
+  int64_t m = out_tensor->rows();
+  int64_t n = out_tensor->cols();
+  core::CUDADeviceContext &cuda_ctx = core::CUDADeviceContext::GetInstance();
+  GPUAddBiasActKernel<half, ActivationType::Tanh>(
+      reinterpret_cast<const half *>(bias), reinterpret_cast<half *>(out), m, n,
+      cuda_ctx.stream());
+}
 #endif
 }  // namespace kernels
 }  // namespace layers
