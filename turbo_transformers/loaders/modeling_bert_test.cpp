@@ -90,14 +90,20 @@ bool CheckCppBertWithPooler(bool use_cuda, bool only_input) {
 TEST_CASE("Bert", "Cpp interface") {
   CheckCppBert(false /*use_cuda*/, true /* only_input*/);
   CheckCppBert(false /*use_cuda*/, false /* only_input*/);
-  CheckCppBertWithPooler(false /*use_cuda*/, false /* only_input*/);
-  CheckCppBertWithPooler(false /*use_cuda*/, true /* only_input*/);
   if (core::IsCompiledWithCUDA()) {
     CheckCppBert(true /*use_cuda*/, true /* only_input*/);
     CheckCppBert(true /*use_cuda*/, false /* only_input*/);
+  }
+}
+
+TEST_CASE("BertWithPooler", "Cpp interface") {
+  CheckCppBertWithPooler(false /*use_cuda*/, false /* only_input*/);
+  CheckCppBertWithPooler(false /*use_cuda*/, true /* only_input*/);
+  if (core::IsCompiledWithCUDA()) {
     CheckCppBertWithPooler(true /*use_cuda*/, false /* only_input*/);
     CheckCppBertWithPooler(true /*use_cuda*/, true /* only_input*/);
   }
 }
+
 }  // namespace loaders
 }  // namespace turbo_transformers

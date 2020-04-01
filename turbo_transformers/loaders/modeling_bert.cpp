@@ -47,6 +47,14 @@ class NPZMapView {
     return NPZMapView(prefix_ + subview + ".", npz_);
   }
 
+  bool IsExist(const std::string &subprefix) {
+    auto actualPrefix = prefix_ + subprefix;
+    for (auto it = npz_->begin(); it != npz_->end(); ++it) {
+      if (it->first.rfind(actualPrefix, 0) == 0) return true;
+    }
+    return false;
+  }
+
  private:
   std::string prefix_;
   cnpy::npz_t *npz_;
@@ -137,8 +145,9 @@ struct BertModel::Impl {
       encoders_.emplace_back(std::move(params), n_heads);
     }
 
-    // TODO(jiaruifang) make pooler_ optional
-    pooler_ = LoadPooler(root.Sub("pooler"), device_type);
+    if (root.IsExist("pooler")) {
+      pooler_ = LoadPooler(root.Sub("pooler"), device_type);
+    }
   }
 
   template <typename T>
