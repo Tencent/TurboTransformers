@@ -240,19 +240,10 @@ struct BertModel::Impl {
     for (auto &layer : encoders_) {
       layer(hidden, extendedAttentionMask, &attOut, &intermediateOut, &hidden);
     }
-    core::Tensor cpuHidden(nullptr);
-    if (hidden.device_type() == DLDeviceType::kDLGPU) {
-      cpuHidden.Reshape<float>(
-          {hidden.shape(0), hidden.shape(1), hidden.shape(2)},
-          DLDeviceType::kDLCPU, 0);
-      core::Copy(hidden.data<float>(), hidden.numel(), hidden.device_type(),
-                 cpuHidden);
-    }
+
     core::Tensor poolingOutput(nullptr);
     layers::SequencePool(static_cast<layers::types::PoolType>(pooling))(
-        hidden.device_type() == DLDeviceType::kDLGPU ? cpuHidden : hidden,
-        &poolingOutput);
-
+        hidden, &poolingOutput);
     std::vector<float> vec;
     if (use_pooler) {
       core::Tensor output(nullptr);
