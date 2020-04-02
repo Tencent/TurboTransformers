@@ -15,6 +15,8 @@
 #include "turbo_transformers/loaders/modeling_bert.h"
 
 #include <cmath>
+#include <thread>
+#include <vector>
 
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/macros.h"
@@ -102,6 +104,20 @@ TEST_CASE("BertWithPooler", "Cpp interface") {
   if (core::IsCompiledWithCUDA()) {
     CheckCppBertWithPooler(true /*use_cuda*/, false /* only_input*/);
     CheckCppBertWithPooler(true /*use_cuda*/, true /* only_input*/);
+  }
+}
+
+TEST_CASE("MultiThreadsBert", "Multi threads test") {
+  size_t n_threads = 40;
+  std::vector<std::thread> threads;
+  threads.reserve(n_threads);
+
+  for (size_t i = 0; i < n_threads; ++i) {
+    threads.emplace_back(std::thread(CheckCppBert, false, false));
+  }
+
+  for (size_t i = 0; i < n_threads; ++i) {
+    threads[i].join();
   }
 }
 
