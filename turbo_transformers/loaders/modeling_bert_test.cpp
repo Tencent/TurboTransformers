@@ -133,6 +133,7 @@ bool CheckCppBertWithPoolerMultipleThread(bool use_cuda, bool only_input,
   std::vector<std::thread> threads;
   threads.reserve(n_threads);
 
+  std::vector<std::future<std::vector<float>>> result_list;
   for (int i = 0; i < n_threads; ++i) {
     std::packaged_task<std::vector<float>(
         const std::shared_ptr<BertModel>,
@@ -140,11 +141,14 @@ bool CheckCppBertWithPoolerMultipleThread(bool use_cuda, bool only_input,
         const std::vector<std::vector<int64_t>> &,
         const std::vector<std::vector<int64_t>> &, PoolingType, bool)>
         task(CallBackFunction);
-    auto ftr_res = task.get_future();
+    result_list.emplace_back(task.get_future());
     threads.emplace_back(std::thread(std::move(task), model_ptr, input_ids,
                                      position_ids, segment_ids,
                                      PoolingType::kFirst, true));
-    auto vec = ftr_res.get();
+  }
+
+  for (int i = 0; i < n_threads; ++i) {
+    auto vec = result_list[i].get();
     REQUIRE(vec.size() == 768 * 2);
 
     for (size_t i = 0; i < vec.size(); ++i) {
@@ -163,6 +167,7 @@ bool CheckCppBertWithPoolerMultipleThread(bool use_cuda, bool only_input,
       REQUIRE(fabs(vec.data()[768 + 1] - 0.9321) < 1e-3);
     }
   }
+
   for (int i = 0; i < n_threads; ++i) {
     threads[i].join();
   }
@@ -170,7 +175,7 @@ bool CheckCppBertWithPoolerMultipleThread(bool use_cuda, bool only_input,
 }
 
 TEST_CASE("BertWithPooler2", "multithread") {
-  CheckCppBertWithPoolerMultipleThread(false, false, 1);
+  CheckCppBertWithPoolerMultipleThread(false, false, 40);
 }
 
 }  // namespace loaders
