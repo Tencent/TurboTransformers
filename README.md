@@ -93,7 +93,8 @@ bash gpu_run_benchmark.sh
 turbo_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
 下面代码片段展示了如何将huggingface预训练BERT模型导入turbo_transformers并进行一次BERT encoder的计算。
 
-1. CPU
+#### 1. CPU
+##### python interface
 ```python
 import torch
 import transformers
@@ -132,9 +133,14 @@ print(res)
 # tensor([[-1.4292,  1.0934, -0.3270,  ...,  0.7212, -0.3893, -0.1172],
 #         [-0.8878,  0.6571, -0.6331,  ...,  0.2759, -0.4496, -0.2375]])
 ```
-更多使用接口可以参考 ./benchmark/benchmark.py文件
+更多使用接口可以参考 ./example/cpu_example.py文件
 
-2. GPU
+##### C++ interface
+请参考如下例子
+https://git.code.oa.com/jiaruifang/turbo-transformers-cpp
+
+#### 2. GPU
+##### python interface
 ```python
 import os
 import numpy

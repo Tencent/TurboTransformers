@@ -16,6 +16,7 @@
 #include <memory.h>
 
 #include <map>
+#include <memory>
 
 #include "macros.h"
 
@@ -26,19 +27,20 @@ class CUDAAllocator {
  public:
   ~CUDAAllocator();
 
-  static CUDAAllocator& GetInstance() {
+  static CUDAAllocator &GetInstance() {
     static CUDAAllocator instance;
     return instance;
   }
 
-  void* allocate(size_t size);
-  void free(void* memory, size_t size);
+  void *allocate(size_t size);
+
+  void free(void *memory);
 
  private:
-  CUDAAllocator() : allocation_size_(0) {}
-  void FreeCache(size_t size);
-  std::multimap<size_t, void*> allocations_;
-  size_t allocation_size_;
+  CUDAAllocator();
+
+  struct AllocatorImpl;
+  std::unique_ptr<AllocatorImpl> allocator_;
 
   DISABLE_COPY_AND_ASSIGN(CUDAAllocator);
 };
