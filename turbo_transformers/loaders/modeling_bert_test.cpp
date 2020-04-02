@@ -118,7 +118,7 @@ std::vector<float> CallBackFunction(
 }
 
 bool CheckCppBertWithPoolerMultipleThread(bool use_cuda, bool only_input,
-                                          int thread_num) {
+                                          int n_threads) {
   std::shared_ptr<BertModel> model_ptr = std::make_shared<BertModel>(
       "models/bert.npz", use_cuda ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU,
       12, 12);
@@ -130,40 +130,42 @@ bool CheckCppBertWithPoolerMultipleThread(bool use_cuda, bool only_input,
     position_ids.clear();
     segment_ids.clear();
   }
+  std::vector<std::thread> threads;
+  threads.reserve(n_threads);
 
-  std::packaged_task<std::vector<float>(
-      const std::shared_ptr<BertModel>,
-      const std::vector<std::vector<int64_t>> &,
-      const std::vector<std::vector<int64_t>> &,
-      const std::vector<std::vector<int64_t>> &, PoolingType, bool)>
-      task(CallBackFunction);
-  auto ftr_res = task.get_future();
-  std::thread t1(std::move(task), model_ptr, input_ids, position_ids,
-                 segment_ids, PoolingType::kFirst, true);
+  for (int i = 0; i < n_threads; ++i) {
+    std::packaged_task<std::vector<float>(
+        const std::shared_ptr<BertModel>,
+        const std::vector<std::vector<int64_t>> &,
+        const std::vector<std::vector<int64_t>> &,
+        const std::vector<std::vector<int64_t>> &, PoolingType, bool)>
+        task(CallBackFunction);
+    auto ftr_res = task.get_future();
+    threads.emplace_back(std::thread(std::move(task), model_ptr, input_ids,
+                                     position_ids, segment_ids,
+                                     PoolingType::kFirst, true));
+    auto vec = ftr_res.get();
+    REQUIRE(vec.size() == 768 * 2);
 
-  // main thread
-  CallBackFunction(model_ptr, input_ids, position_ids, segment_ids,
-                   PoolingType::kFirst, true);
-
-  auto vec = ftr_res.get();
-  REQUIRE(vec.size() == 768 * 2);
-  // Write a better UT
-  for (size_t i = 0; i < vec.size(); ++i) {
-    REQUIRE(!std::isnan(vec.data()[i]));
-    REQUIRE(!std::isinf(vec.data()[i]));
+    for (size_t i = 0; i < vec.size(); ++i) {
+      REQUIRE(!std::isnan(vec.data()[i]));
+      REQUIRE(!std::isinf(vec.data()[i]));
+    }
+    if (only_input) {
+      REQUIRE(fabs(vec.data()[0] - 0.9671) < 1e-3);
+      REQUIRE(fabs(vec.data()[1] - 0.9860) < 1e-3);
+      REQUIRE(fabs(vec.data()[768] - 0.9757) < 1e-3);
+      REQUIRE(fabs(vec.data()[768 + 1] - 0.9794) < 1e-3);
+    } else {
+      REQUIRE(fabs(vec.data()[0] - 0.9151) < 1e-3);
+      REQUIRE(fabs(vec.data()[1] - 0.5919) < 1e-3);
+      REQUIRE(fabs(vec.data()[768] - 0.9802) < 1e-3);
+      REQUIRE(fabs(vec.data()[768 + 1] - 0.9321) < 1e-3);
+    }
   }
-  if (only_input) {
-    REQUIRE(fabs(vec.data()[0] - 0.9671) < 1e-3);
-    REQUIRE(fabs(vec.data()[1] - 0.9860) < 1e-3);
-    REQUIRE(fabs(vec.data()[768] - 0.9757) < 1e-3);
-    REQUIRE(fabs(vec.data()[768 + 1] - 0.9794) < 1e-3);
-  } else {
-    REQUIRE(fabs(vec.data()[0] - 0.9151) < 1e-3);
-    REQUIRE(fabs(vec.data()[1] - 0.5919) < 1e-3);
-    REQUIRE(fabs(vec.data()[768] - 0.9802) < 1e-3);
-    REQUIRE(fabs(vec.data()[768 + 1] - 0.9321) < 1e-3);
+  for (int i = 0; i < n_threads; ++i) {
+    threads[i].join();
   }
-  t1.join();
   return true;
 }
 
