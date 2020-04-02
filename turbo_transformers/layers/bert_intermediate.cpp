@@ -16,7 +16,6 @@
 
 #include <loguru.hpp>
 
-#include "turbo_transformers/core/aligned_scratchpad.h"
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/memory.h"
 #include "turbo_transformers/layers/kernels/activation.h"

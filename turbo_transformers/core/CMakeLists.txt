@@ -20,8 +20,7 @@ add_library(tt_core
             blas_${BLAS_PROVIDER}.cpp
             enforce.cpp
             memory.cpp
-            aligned_scratchpad.cpp
-            tensor.cpp
+        tensor.cpp
             profiler.cpp
         )
 target_link_libraries(tt_core PUBLIC
@@ -57,7 +56,6 @@ add_executable(tt_core_test
         enforce_test.cpp
         device_context_test.cpp
         tensor_test.cpp
-        aligned_scratchpad_test.cpp
         fp16_test.cpp)
 target_link_libraries(tt_core_test catch2_test_main tt_core)
 add_test(NAME tt_core_test  COMMAND tt_core_test)

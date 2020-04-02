@@ -13,7 +13,6 @@
 // limitations under the License.
 #include "turbo_transformers/layers/kernels/activation.h"
 
-#include "turbo_transformers/core/aligned_scratchpad.h"
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_activation_kernel.h"
@@ -26,8 +25,9 @@ namespace kernels {
 template <typename T>
 static void CPUAddBiasGeLUActKernel(const T *bias, T *out, int64_t batch_size,
                                     int64_t feature_dim) {
-  core::AlignedScratchpad<float> scratchpad;
-  float *buff = scratchpad.mutable_data(batch_size * feature_dim);
+  core::Tensor temp_tensor(nullptr);
+  auto *buff =
+      temp_tensor.Reshape<float>({batch_size * feature_dim}, kDLCPU, 0);
 #pragma omp parallel for
   for (int64_t i = 0; i < batch_size; ++i) {
     int64_t k = 0;
