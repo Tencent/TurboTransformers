@@ -133,6 +133,7 @@ struct BertModel::Impl {
       const std::vector<std::vector<int64_t>> &inputs,
       const std::vector<std::vector<int64_t>> &poistion_ids,
       const std::vector<std::vector<int64_t>> &segment_ids, PoolType pooling,
+
       bool use_pooler) {
     int64_t max_seq_len =
         std::accumulate(inputs.begin(), inputs.end(), 0,
@@ -234,6 +235,7 @@ std::vector<float> BertModel::operator()(
     const std::vector<std::vector<int64_t>> &inputs,
     const std::vector<std::vector<int64_t>> &poistion_ids,
     const std::vector<std::vector<int64_t>> &segment_ids, PoolType pooling,
+
     bool use_pooler) const {
   return m_->operator()(inputs, poistion_ids, segment_ids, pooling, use_pooler);
 }

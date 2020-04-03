@@ -65,7 +65,7 @@ class TestBertModel(unittest.TestCase):
                 lambda: self.turbo_model(input_ids))
         turbo_result, turbo_qps, turbo_time = \
             test_helper.run_model(turbo_model, use_cuda, num_iter)
-        print(f'BertModel FastTransform({device}) QPS {turbo_qps}')
+        print(f'BertModel TurboTransformer({device}) QPS {turbo_qps}')
 
         torch_result_final = (torch_result[1]).cpu().numpy(
         ) if use_pooler else torch_result[0][:, 0].cpu().numpy()
@@ -92,12 +92,12 @@ class TestBertModel(unittest.TestCase):
                            rtol=rtol))
 
     def test_bert_model(self):
-        self.check_torch_and_turbo(use_cuda=False, use_pooler=False)
-        self.check_torch_and_turbo(use_cuda=False, use_pooler=True)
         if torch.cuda.is_available() and \
             turbo_transformers.config.is_compiled_with_cuda():
             self.check_torch_and_turbo(use_cuda=True, use_pooler=False)
             self.check_torch_and_turbo(use_cuda=True, use_pooler=True)
+        self.check_torch_and_turbo(use_cuda=False, use_pooler=False)
+        self.check_torch_and_turbo(use_cuda=False, use_pooler=True)
 
 
 if __name__ == '__main__':

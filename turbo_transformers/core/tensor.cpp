@@ -30,13 +30,8 @@ static void DLManagedTensorDeletor(DLManagedTensor *self) {
       free(self->dl_tensor.data);
     } else if (self->dl_tensor.ctx.device_type == kDLGPU) {
 #ifdef TT_WITH_CUDA
-      auto ndim = self->dl_tensor.ndim;
-      auto bits = self->dl_tensor.dtype.bits;
-      size_t numel =
-          std::accumulate(self->dl_tensor.shape, self->dl_tensor.shape + ndim,
-                          1, std::multiplies<int64_t>());
       CUDAAllocator &cuda_allocator = CUDAAllocator::GetInstance();
-      cuda_allocator.free(self->dl_tensor.data, numel * bits / 8);
+      cuda_allocator.free(self->dl_tensor.data);
 #endif
     }
   }

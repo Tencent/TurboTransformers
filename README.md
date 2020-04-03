@@ -93,7 +93,8 @@ bash gpu_run_benchmark.sh
 turbo_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
 下面代码片段展示了如何将huggingface预训练BERT模型导入turbo_transformers并进行一次BERT encoder的计算。
 
-1. CPU
+#### 1. CPU
+##### python interface
 ```python
 import torch
 import transformers
@@ -132,9 +133,14 @@ print(res)
 # tensor([[-1.4292,  1.0934, -0.3270,  ...,  0.7212, -0.3893, -0.1172],
 #         [-0.8878,  0.6571, -0.6331,  ...,  0.2759, -0.4496, -0.2375]])
 ```
-更多使用接口可以参考 ./benchmark/benchmark.py文件
+更多使用接口可以参考 ./example/cpu_example.py文件
 
-2. GPU
+##### C++ interface
+请参考如下例子
+https://git.code.oa.com/jiaruifang/turbo-transformers-cpp
+
+#### 2. GPU
+##### python interface
 ```python
 import os
 import numpy
@@ -201,8 +207,89 @@ print(tt_result)
 
 ```
 
+###  用户自定义后处理实现示例
+
+因为turbo_transformer关于bert加速的C++部分改写只做到pooler层，后续需要用户根据自己的场景需要来定制后处理部分。
+
+这里以BertForSequenceClassification任务为例，BertForSequenceClassification是在bert pooler结果之后加一个linear层，以下是用户自定义后处理的步骤。
+
+1. 首先我们需要准备一个classification model，即bert层 + linear层的模型文件，我准备了一个从bert-base pretrained model生成的带有linear层的classification model，有需要的可以从这里下载，将这个文件夹放在与example文件的同目录下即可，链接:https://pan.baidu.com/s/1WzMIQ2I3ncXb9aPLTJ7QNQ  密码:hj18
+2. 接下来我们可以定义一个类，实现如下四个函数，init、call、from_torch、from_pretrained。
+3. 用户可以在from_pretrained函数中用将classification model的模型参数载入，再将模型参数中的bert部分使用BertModelWithPooler加载成turbo_transformer中的BertModel，获得加速效果，并且将模型参数中的linear层部分作为参数传入构造函数。
+4. 在call函数中将inputs传入bertmodel，获得pooler_output后导入linear层获得结果
+5. 使用时，使用这个类的from_pretrained方法载入模型，得到turbo_model，再使用turbo_model(input_ids)获得logits结果
+
+```python
+import turbo_transformers
+from turbo_transformers import PoolingType
+from turbo_transformers import ReturnType
+from transformers.modeling_bert import BertModel as TorchBertModel
+from transformers import BertTokenizer
+from transformers.modeling_bert import BertForSequenceClassification as TorchBertForSequenceClassification
+import os
+import torch
+from typing import Optional
+
+
+class BertForSequenceClassification:
+    def __init__(self, bertmodel, classifier):
+        self.bert = bertmodel
+        self.classifier = classifier
+
+    def __call__(self,
+                 inputs,
+                 attention_masks=None,
+                 token_type_ids=None,
+                 position_ids=None,
+                 pooling_type=PoolingType.FIRST,
+                 hidden_cache=None,
+                 output=None,
+                 return_type=None):
+        pooler_output, _ = self.bert(inputs,
+                                     attention_masks,
+                                     token_type_ids,
+                                     position_ids,
+                                     pooling_type,
+                                     hidden_cache,
+                                     return_type=ReturnType.TORCH)
+        logits = self.classifier(pooler_output)
+        return logits
+
+    @staticmethod
+    def from_torch(model: TorchBertModel,
+                   device: Optional[torch.device] = None):
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
+        ):
+            model.to(device)
+        bertmodel = turbo_transformers.BertModelWithPooler.from_torch(
+            model.bert)
+        return BertForSequenceClassification(bertmodel, model.classifier)
+
+    @staticmethod
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
+        torch_model = TorchBertForSequenceClassification.from_pretrained(
+            model_id_or_path)
+        model = BertForSequenceClassification.from_torch(torch_model, device)
+        model._torch_model = torch_model  # prevent destroy torch model.
+        return model
+
+
+model_id = os.path.join(os.path.dirname(__file__),
+                        'test-seq-classification-model')
+tokenizer = BertTokenizer.from_pretrained(model_id)
+turbo_model = turbo_transformers.BertForSequenceClassification.from_pretrained(
+    model_id, torch.device('cpu:0'))
+input_ids = torch.tensor(
+    tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求?',
+                     add_special_tokens=True)).unsqueeze(0)
+torch_result = turbo_model(input_ids)
+print(torch_result)
+# tensor([[ 0.1451, -0.0373]], grad_fn=<AddmmBackward>)
+```
 
 ## 性能
+
 ### CPU测试效果
 我们在三种CPU硬件平台测试了turbo_transformers的性能表现。
 我们选择[pytorch](https://github.com/huggingface "pytorch")，[pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit")和[onnxruntime-mkldnn]( https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn")实现作为对比。性能测试结果为迭代150次的均值。为了避免多次测试时，上次迭代的数据在cache中缓存的现象，每次测试采用随机数据，并在计算后刷新的cache数据。

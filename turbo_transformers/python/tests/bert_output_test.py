@@ -76,8 +76,9 @@ def create_shape_test(batch_size: int, seq_length: int):
                                                      self.attention_output)
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
-            print(f'BertModel Plain FastTransform({device}) QPS {turbo_qps}',
-                  file=sio)
+            print(
+                f'BertModel Plain TurboTransformer({device}) QPS {turbo_qps}',
+                file=sio)
 
             self.assertTrue(
                 torch.max(torch.abs(torch_result - turbo_result)) < 1e-4)
