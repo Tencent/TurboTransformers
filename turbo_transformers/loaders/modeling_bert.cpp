@@ -84,7 +84,9 @@ struct BertModel::Impl {
       : device_type_(device_type) {
     auto npz = cnpy::npz_load(filename);
     NPZMapView root("", &npz);
-    embedding_ = LoadEmbedding(root.Sub("embeddings"), device_type);
+    embedding_ = std::move(std::unique_ptr<layers::BERTEmbedding>(
+        new layers::BERTEmbedding(root, "embeddings", device_type)));
+    // embedding_ = LoadEmbedding(root.Sub("embeddings"), device_type);
 
     for (size_t i = 0; i < n_layers; ++i) {
       auto view = root.Sub("encoder.layer." + std::to_string(i));

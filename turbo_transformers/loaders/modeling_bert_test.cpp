@@ -174,9 +174,5 @@ bool CheckCppBertWithPoolerMultipleThread(bool use_cuda, bool only_input,
   return true;
 }
 
-TEST_CASE("BertWithPooler2", "multithread") {
-  CheckCppBertWithPoolerMultipleThread(false, false, 40);
-}
-
 }  // namespace loaders
 }  // namespace turbo_transformers

@@ -24,7 +24,7 @@ add_library(tt_layers OBJECT
         prepare_bert_masks.cpp
         )
 
-target_link_libraries(tt_layers PUBLIC tt_core tt_kernels)
+target_link_libraries(tt_layers PUBLIC tt_core tt_kernels tt_npz_loader)
 
 add_executable(tt_layers_test prepare_bert_masks_test.cpp)
 target_link_libraries(tt_layers_test catch2_test_main tt_layers tt_core tt_kernels)
