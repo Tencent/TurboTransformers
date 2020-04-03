@@ -15,106 +15,98 @@
 #include "turbo_transformers/loaders/modeling_bert.h"
 
 #include <cmath>
-<<<<<<< HEAD
 #include <future>
 #include <thread>
-=======
-#include <thread>
 #include <vector>
->>>>>>> 11dff92d50ced1826eca49586eb5fdca99567791
 
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/macros.h"
 
 namespace turbo_transformers {
-  namespace loaders {
+namespace loaders {
 
-  bool CheckCppBert(bool use_cuda, bool only_input) {
-    BertModel model("models/bert.npz",
-                    use_cuda ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU, 12,
-                    12);
-    std::vector<std::vector<int64_t>> position_ids{{1, 0, 0, 0}, {1, 1, 1, 0}};
-    std::vector<std::vector<int64_t>> segment_ids{{1, 1, 1, 0}, {1, 0, 0, 0}};
-    if (only_input) {
-      position_ids.clear();
-      segment_ids.clear();
-    }
-    auto vec = model({{12166, 10699, 16752, 4454}, {5342, 16471, 817, 16022}},
-<<<<<<< HEAD
-                     position_ids, segment_ids, PoolType::kFirst, false);
-=======
-                     position_ids, segment_ids, PoolingType::kFirst, false);
->>>>>>> 11dff92d50ced1826eca49586eb5fdca99567791
-    REQUIRE(vec.size() == 768 * 2);
-    // Write a better UT
-    for (size_t i = 0; i < vec.size(); ++i) {
-      REQUIRE(!std::isnan(vec.data()[i]));
-      REQUIRE(!std::isinf(vec.data()[i]));
-    }
-    if (only_input) {
-      REQUIRE(fabs(vec.data()[0] - -0.9791) < 1e-3);
-      REQUIRE(fabs(vec.data()[1] - 0.8283) < 1e-3);
-      REQUIRE(fabs(vec.data()[768] - 0.3837) < 1e-3);
-      REQUIRE(fabs(vec.data()[768 + 1] - 0.1659) < 1e-3);
-    } else {
-      REQUIRE(fabs(vec.data()[0] - -0.3760) < 1e-3);
-      REQUIRE(fabs(vec.data()[1] - 0.5674) < 1e-3);
-      REQUIRE(fabs(vec.data()[768] - -0.2701) < 1e-3);
-      REQUIRE(fabs(vec.data()[768 + 1] - 0.2676) < 1e-3);
-    }
-    return true;
+bool CheckCppBert(bool use_cuda, bool only_input) {
+  BertModel model("models/bert.npz",
+                  use_cuda ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU, 12,
+                  12);
+  std::vector<std::vector<int64_t>> position_ids{{1, 0, 0, 0}, {1, 1, 1, 0}};
+  std::vector<std::vector<int64_t>> segment_ids{{1, 1, 1, 0}, {1, 0, 0, 0}};
+  if (only_input) {
+    position_ids.clear();
+    segment_ids.clear();
   }
-
-  bool CheckCppBertWithPooler(bool use_cuda, bool only_input) {
-    BertModel model("models/bert.npz",
-                    use_cuda ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU, 12,
-                    12);
-    std::vector<std::vector<int64_t>> position_ids{{1, 0, 0, 0}, {1, 1, 1, 0}};
-    std::vector<std::vector<int64_t>> segment_ids{{1, 1, 1, 0}, {1, 0, 0, 0}};
-    if (only_input) {
-      position_ids.clear();
-      segment_ids.clear();
-    }
-    auto vec = model({{12166, 10699, 16752, 4454}, {5342, 16471, 817, 16022}},
-                     position_ids, segment_ids, PoolType::kFirst,
-                     /*use_pooler*/ true);
-    REQUIRE(vec.size() == 768 * 2);
-    // Write a better UT
-    for (size_t i = 0; i < vec.size(); ++i) {
-      REQUIRE(!std::isnan(vec.data()[i]));
-      REQUIRE(!std::isinf(vec.data()[i]));
-    }
-    if (only_input) {
-      REQUIRE(fabs(vec.data()[0] - 0.9671) < 1e-3);
-      REQUIRE(fabs(vec.data()[1] - 0.9860) < 1e-3);
-      REQUIRE(fabs(vec.data()[768] - 0.9757) < 1e-3);
-      REQUIRE(fabs(vec.data()[768 + 1] - 0.9794) < 1e-3);
-    } else {
-      REQUIRE(fabs(vec.data()[0] - 0.9151) < 1e-3);
-      REQUIRE(fabs(vec.data()[1] - 0.5919) < 1e-3);
-      REQUIRE(fabs(vec.data()[768] - 0.9802) < 1e-3);
-      REQUIRE(fabs(vec.data()[768 + 1] - 0.9321) < 1e-3);
-    }
-    return true;
+  auto vec = model({{12166, 10699, 16752, 4454}, {5342, 16471, 817, 16022}},
+                   position_ids, segment_ids, PoolType::kFirst, false);
+  REQUIRE(vec.size() == 768 * 2);
+  // Write a better UT
+  for (size_t i = 0; i < vec.size(); ++i) {
+    REQUIRE(!std::isnan(vec.data()[i]));
+    REQUIRE(!std::isinf(vec.data()[i]));
   }
-
-  TEST_CASE("Bert", "Cpp interface") {
-    CheckCppBert(false /*use_cuda*/, true /* only_input*/);
-    CheckCppBert(false /*use_cuda*/, false /* only_input*/);
-    if (core::IsCompiledWithCUDA()) {
-      CheckCppBert(true /*use_cuda*/, true /* only_input*/);
-      CheckCppBert(true /*use_cuda*/, false /* only_input*/);
-    }
+  if (only_input) {
+    REQUIRE(fabs(vec.data()[0] - -0.9791) < 1e-3);
+    REQUIRE(fabs(vec.data()[1] - 0.8283) < 1e-3);
+    REQUIRE(fabs(vec.data()[768] - 0.3837) < 1e-3);
+    REQUIRE(fabs(vec.data()[768 + 1] - 0.1659) < 1e-3);
+  } else {
+    REQUIRE(fabs(vec.data()[0] - -0.3760) < 1e-3);
+    REQUIRE(fabs(vec.data()[1] - 0.5674) < 1e-3);
+    REQUIRE(fabs(vec.data()[768] - -0.2701) < 1e-3);
+    REQUIRE(fabs(vec.data()[768 + 1] - 0.2676) < 1e-3);
   }
+  return true;
+}
 
-  TEST_CASE("BertWithPooler", "Cpp interface") {
-    CheckCppBertWithPooler(false /*use_cuda*/, false /* only_input*/);
-    CheckCppBertWithPooler(false /*use_cuda*/, true /* only_input*/);
-    if (core::IsCompiledWithCUDA()) {
-      CheckCppBertWithPooler(true /*use_cuda*/, false /* only_input*/);
-      CheckCppBertWithPooler(true /*use_cuda*/, true /* only_input*/);
-    }
+bool CheckCppBertWithPooler(bool use_cuda, bool only_input) {
+  BertModel model("models/bert.npz",
+                  use_cuda ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU, 12,
+                  12);
+  std::vector<std::vector<int64_t>> position_ids{{1, 0, 0, 0}, {1, 1, 1, 0}};
+  std::vector<std::vector<int64_t>> segment_ids{{1, 1, 1, 0}, {1, 0, 0, 0}};
+  if (only_input) {
+    position_ids.clear();
+    segment_ids.clear();
   }
+  auto vec = model({{12166, 10699, 16752, 4454}, {5342, 16471, 817, 16022}},
+                   position_ids, segment_ids, PoolType::kFirst,
+                   /*use_pooler*/ true);
+  REQUIRE(vec.size() == 768 * 2);
+  // Write a better UT
+  for (size_t i = 0; i < vec.size(); ++i) {
+    REQUIRE(!std::isnan(vec.data()[i]));
+    REQUIRE(!std::isinf(vec.data()[i]));
+  }
+  if (only_input) {
+    REQUIRE(fabs(vec.data()[0] - 0.9671) < 1e-3);
+    REQUIRE(fabs(vec.data()[1] - 0.9860) < 1e-3);
+    REQUIRE(fabs(vec.data()[768] - 0.9757) < 1e-3);
+    REQUIRE(fabs(vec.data()[768 + 1] - 0.9794) < 1e-3);
+  } else {
+    REQUIRE(fabs(vec.data()[0] - 0.9151) < 1e-3);
+    REQUIRE(fabs(vec.data()[1] - 0.5919) < 1e-3);
+    REQUIRE(fabs(vec.data()[768] - 0.9802) < 1e-3);
+    REQUIRE(fabs(vec.data()[768 + 1] - 0.9321) < 1e-3);
+  }
+  return true;
+}
 
-  }  // namespace loaders
+TEST_CASE("Bert", "Cpp interface") {
+  CheckCppBert(false /*use_cuda*/, true /* only_input*/);
+  CheckCppBert(false /*use_cuda*/, false /* only_input*/);
+  if (core::IsCompiledWithCUDA()) {
+    CheckCppBert(true /*use_cuda*/, true /* only_input*/);
+    CheckCppBert(true /*use_cuda*/, false /* only_input*/);
+  }
+}
+
+TEST_CASE("BertWithPooler", "Cpp interface") {
+  CheckCppBertWithPooler(false /*use_cuda*/, false /* only_input*/);
+  CheckCppBertWithPooler(false /*use_cuda*/, true /* only_input*/);
+  if (core::IsCompiledWithCUDA()) {
+    CheckCppBertWithPooler(true /*use_cuda*/, false /* only_input*/);
+    CheckCppBertWithPooler(true /*use_cuda*/, true /* only_input*/);
+  }
+}
+
+}  // namespace loaders
 }  // namespace turbo_transformers
