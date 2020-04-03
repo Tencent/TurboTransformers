@@ -102,7 +102,7 @@ tensorflow模型可以转化为pytorch saved模型载入，我们尚未提供示
 参考[./example/cpp](https://git.code.oa.com/PRC_alg/fast_transformers/tree/develop/example/cpp "C++")的例子。
 C++载入npz格式的模型文件，pytorch saved模型和npz转换的脚本在./tools/convert_huggingface_bert_to_npz.py
 我们的例子提供了GPU和两种CPU多线程的调用方式。一种是串行响应BERT计算请求，每次BERT计算使用多线程（omp）方式计算，另一种是多线程并行的响应BERT计算请求，每次BERT计算使用单线程方式的方式。
-
+用户使用时候可以通过add_subdirectory方式连接turbo-transformers，这里提供了一个例子[cmake-usage]("https://git.code.oa.com/jiaruifang/turbo-transformers-cpp" "cmake-usage")。
 ## 性能
 
 ### CPU测试效果
