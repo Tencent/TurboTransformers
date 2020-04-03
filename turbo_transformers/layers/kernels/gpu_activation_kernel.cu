@@ -21,22 +21,7 @@
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
-
 namespace {
-template <typename T>
-static __inline__ __device__ T add(const T& a, const T& b) {
-  return a + b;
-}
-
-static __inline__ __device__ __half add(const __half& a, const __half& b) {
-  return __hadd(a, b);
-}
-
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
-static __inline__ __device__ __half2 add(const __half2& a, const __half2& b) {
-  return __hadd2(a, b);
-}
-#endif
 
 template <typename T, ActivationType ActType>
 __inline__ __device__ T ActvationOp(const T& x);
@@ -89,7 +74,7 @@ static __global__ void add_bias_act(const T* bias, int batch_size,
       reg_bias = bias[offset];
 #endif
       row_id = blockIdx.x;
-      val = add(out[offset + row_id * feature_dim], reg_bias);
+      val = out[offset + row_id * feature_dim] + reg_bias;
       out[offset + row_id * feature_dim] = ActvationOp<T, ActType>(val);
     }
   }
