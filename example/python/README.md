@@ -1,0 +1,11 @@
+
+###  用户自定义后处理实现示例
+因为turbo_transformer关于bert加速的C++部分改写只做到pooler层，后续需要用户根据自己的场景需要来定制后处理部分。
+
+这里以BertForSequenceClassification任务为例，BertForSequenceClassification是在bert pooler结果之后加一个linear层，以下是用户自定义后处理的步骤。
+
+1. 首先我们需要准备一个classification model，即bert层 + linear层的模型文件，我准备了一个从bert-base pretrained model生成的带有linear层的classification model，有需要的可以从这里下载，将这个文件夹放在与example文件的同目录下即可，链接:https://pan.baidu.com/s/1WzMIQ2I3ncXb9aPLTJ7QNQ  密码:hj18
+2. 接下来我们可以定义一个类，实现如下四个函数，init、call、from_torch、from_pretrained。
+3. 用户可以在from_pretrained函数中用将classification model的模型参数载入，再将模型参数中的bert部分使用BertModelWithPooler加载成turbo_transformer中的BertModel，获得加速效果，并且将模型参数中的linear层部分作为参数传入构造函数。
+4. 在call函数中将inputs传入bertmodel，获得pooler_output后导入linear层获得结果
+5. 使用时，使用这个类的from_pretrained方法载入模型，得到turbo_model，再使用turbo_model(input_ids)获得logits结果
