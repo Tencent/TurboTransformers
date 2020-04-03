@@ -31,6 +31,16 @@
 
 using namespace turbo_transformers::loaders;
 
+static std::unique_ptr<layers::BERTEmbedding> LoadEmbedding(NPZMapView npz,
+                                                            DLDeviceType dev) {
+  NPZLoader params(std::move(npz), dev);
+
+  return std::unique_ptr<layers::BERTEmbedding>(new layers::BERTEmbedding(
+      params["word_embeddings.weight"], params["position_embeddings.weight"],
+      params["token_type_embeddings.weight"], params["LayerNorm.weight"],
+      params["LayerNorm.bias"], 0));
+}
+
 static std::unique_ptr<layers::BertPooler> LoadPooler(NPZMapView npz,
                                                       DLDeviceType dev) {
   NPZLoader params(std::move(npz), dev);
@@ -77,8 +87,7 @@ struct BertModel::Impl {
     NPZMapView root("", &npz);
 
     // HERE define your network model
-    embedding_ = std::move(std::unique_ptr<layers::BERTEmbedding>(
-        new layers::BERTEmbedding(root, "embeddings", device_type)));
+    embedding_ = LoadEmbedding(root.Sub("embeddings"), device_type);
 
     for (size_t i = 0; i < n_layers; ++i) {
       auto view = root.Sub("encoder.layer." + std::to_string(i));
@@ -227,6 +236,7 @@ struct BertModel::Impl {
 BertModel::BertModel(const std::string &filename, DLDeviceType device_type,
                      size_t n_layers, int64_t n_heads)
     : m_(new Impl(filename, device_type, n_layers, n_heads)) {}
+
 std::vector<float> BertModel::operator()(
     const std::vector<std::vector<int64_t>> &inputs,
     const std::vector<std::vector<int64_t>> &poistion_ids,
@@ -234,4 +244,5 @@ std::vector<float> BertModel::operator()(
     bool use_pooler) const {
   return m_->operator()(inputs, poistion_ids, segment_ids, pooling, use_pooler);
 }
+
 BertModel::~BertModel() = default;

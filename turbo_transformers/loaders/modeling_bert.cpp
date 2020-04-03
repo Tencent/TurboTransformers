@@ -84,9 +84,7 @@ struct BertModel::Impl {
       : device_type_(device_type) {
     auto npz = cnpy::npz_load(filename);
     NPZMapView root("", &npz);
-    embedding_ = std::move(std::unique_ptr<layers::BERTEmbedding>(
-        new layers::BERTEmbedding(root, "embeddings", device_type)));
-    // embedding_ = LoadEmbedding(root.Sub("embeddings"), device_type);
+    embedding_ = LoadEmbedding(root.Sub("embeddings"), device_type);
 
     for (size_t i = 0; i < n_layers; ++i) {
       auto view = root.Sub("encoder.layer." + std::to_string(i));
@@ -134,7 +132,7 @@ struct BertModel::Impl {
   std::vector<float> operator()(
       const std::vector<std::vector<int64_t>> &inputs,
       const std::vector<std::vector<int64_t>> &poistion_ids,
-      const std::vector<std::vector<int64_t>> &segment_ids, PoolingType pooling,
+      const std::vector<std::vector<int64_t>> &segment_ids, PoolType pooling,
       bool use_pooler) {
     int64_t max_seq_len =
         std::accumulate(inputs.begin(), inputs.end(), 0,
@@ -235,7 +233,7 @@ BertModel::BertModel(const std::string &filename, DLDeviceType device_type,
 std::vector<float> BertModel::operator()(
     const std::vector<std::vector<int64_t>> &inputs,
     const std::vector<std::vector<int64_t>> &poistion_ids,
-    const std::vector<std::vector<int64_t>> &segment_ids, PoolingType pooling,
+    const std::vector<std::vector<int64_t>> &segment_ids, PoolType pooling,
     bool use_pooler) const {
   return m_->operator()(inputs, poistion_ids, segment_ids, pooling, use_pooler);
 }

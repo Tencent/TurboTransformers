@@ -35,7 +35,7 @@ bool CheckCppBert(bool use_cuda, bool only_input) {
     segment_ids.clear();
   }
   auto vec = model({{12166, 10699, 16752, 4454}, {5342, 16471, 817, 16022}},
-                   position_ids, segment_ids, PoolingType::kFirst, false);
+                   position_ids, segment_ids, PoolType::kFirst, false);
   REQUIRE(vec.size() == 768 * 2);
   // Write a better UT
   for (size_t i = 0; i < vec.size(); ++i) {
@@ -67,7 +67,7 @@ bool CheckCppBertWithPooler(bool use_cuda, bool only_input) {
     segment_ids.clear();
   }
   auto vec = model({{12166, 10699, 16752, 4454}, {5342, 16471, 817, 16022}},
-                   position_ids, segment_ids, PoolingType::kFirst,
+                   position_ids, segment_ids, PoolType::kFirst,
                    /*use_pooler*/ true);
   REQUIRE(vec.size() == 768 * 2);
   // Write a better UT
@@ -107,11 +107,11 @@ TEST_CASE("BertWithPooler", "Cpp interface") {
   }
 }
 
-std::vector<float> CallBackFunction(
+static std::vector<float> CallBackFunction(
     const std::shared_ptr<BertModel> model,
     const std::vector<std::vector<int64_t>> input_ids,
     const std::vector<std::vector<int64_t>> position_ids,
-    const std::vector<std::vector<int64_t>> segment_ids, PoolingType pooltype,
+    const std::vector<std::vector<int64_t>> segment_ids, PoolType pooltype,
     bool use_pooler) {
   return model->operator()(input_ids, position_ids, segment_ids, pooltype,
                            use_pooler);
@@ -139,12 +139,12 @@ bool CheckCppBertWithPoolerMultipleThread(bool use_cuda, bool only_input,
         const std::shared_ptr<BertModel>,
         const std::vector<std::vector<int64_t>> &,
         const std::vector<std::vector<int64_t>> &,
-        const std::vector<std::vector<int64_t>> &, PoolingType, bool)>
+        const std::vector<std::vector<int64_t>> &, PoolType, bool)>
         task(CallBackFunction);
     result_list.emplace_back(task.get_future());
     threads.emplace_back(std::thread(std::move(task), model_ptr, input_ids,
                                      position_ids, segment_ids,
-                                     PoolingType::kFirst, true));
+                                     PoolType::kFirst, true));
   }
 
   for (int i = 0; i < n_threads; ++i) {
