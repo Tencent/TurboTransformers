@@ -17,7 +17,10 @@
 #include <cassert>
 #include <cmath>
 #include <future>
+#include <iostream>
 #include <thread>
+
+#include <omp.h>
 
 static bool test(bool use_cuda = false) {
   // construct a bert model using n_layers and n_heads,
@@ -106,11 +109,16 @@ bool test_multiple_threads(bool only_input, int n_threads) {
 }
 
 int main() {
-  // run bert on GPU, device id is 0
+  std::cout << "run bert on GPU, device id is 0" << std::endl;
   test(true);
-  // run bert on CPU
+  std::cout << "run bert on CPU, use 4 threads to do bert inference"
+            << std::endl;
+  omp_set_num_threads(4);
   test(false);
-  // run bert on CPU, mulptiple threads shared one model
+  std::cout
+      << "10 threads do 10 difference bert inference, one thread one bert."
+      << std::endl;
+  omp_set_num_threads(1);
   test_multiple_threads(false, 10);
   test_multiple_threads(true, 10);
 }

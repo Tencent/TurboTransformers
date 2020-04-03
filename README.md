@@ -5,6 +5,7 @@
 Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，高效部署Transformer线上服务面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为turbo_transformers的面向Intel多核CPU和NVIDIA GPU硬件平台的Transformer实现。turbo_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。turbo_transformers在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn/onnxruntime-gpu, torch JIT, NVIDIA faster transformers）的性能表现，详细benchmark结果见下文，它对常用的短序列的处理速度提升更为显著。turbo_transformers CPU版本已经应用于多个线上服务服务场景，WXG的FAQ的BERT服务获得1.88x加速，CSIG的在公有云情感分析服务两层BERT encoder获得2.11x加速。
 
 下表是本工作和相关工作的对比
+
 | Related Works  |  Performance | Need Preprocess  |  Variable Length  | Usage |
 |------------------|---|---|---|---|
 | pytorch JIT (CPU) |  Fast |  Yes  | No  | Hard   |
@@ -92,13 +93,13 @@ bash gpu_run_benchmark.sh
 ### 使用方法
 turbo_transformers提供了简单的C++/python调用接口，我们希望尽最大努力适配多样的上线环境，减轻使用者的开发难度。
 #### python接口
-提供兼容huggingface/transformers[pytorch](https://github.com/huggingface "pytorch")模型载入方式和python saved模型的载入方式。
+提供兼容[huggingface/transformerspytorch](https://github.com/huggingface "pytorch")模型载入方式和python saved模型的载入方式。
 tensorflow模型可以转化为pytorch saved模型载入，我们尚未提供示例，读者可自行探索。
 我们提供了bert seqence classification的书写方式示例。
-参考./example/python [python](https://git.code.oa.com/PRC_alg/fast_transformers/raw/develop/example/pythonce "python")的例子。
+参考[./example/python](https://git.code.oa.com/PRC_alg/fast_transformers/tree/develop/example/python "python")的例子。
 在工蜂上我们还内部开源了一套可以使用turbo的python severing框架[bertserving](https://git.code.oa.com/PRC_alg/bert-serving/tree/develop "bertserving")供使用者参考，它通过asyncio方式异步响应BERT推理的http请求。
 #### C++接口
-参考./example/cpp [C++](https://git.code.oa.com/PRC_alg/fast_transformers/raw/develop/example/cpp "C++")的例子。
+参考[./example/cpp](https://git.code.oa.com/PRC_alg/fast_transformers/tree/develop/example/cpp "C++")的例子。
 C++载入npz格式的模型文件，pytorch saved模型和npz转换的脚本在./tools/convert_huggingface_bert_to_npz.py
 我们的例子两种调用方式。一种是串行响应BERT计算请求，每次BERT计算使用多线程（omp）方式计算，另一种是多线程并行的响应BERT计算请求，每次BERT计算使用单线程方式的方式。
 
@@ -107,7 +108,6 @@ C++载入npz格式的模型文件，pytorch saved模型和npz转换的脚本在.
 ### CPU测试效果
 我们在三种CPU硬件平台测试了turbo_transformers的性能表现。
 我们选择[pytorch](https://github.com/huggingface "pytorch")，[pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit")和[onnxruntime-mkldnn]( https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn")实现作为对比。性能测试结果为迭代150次的均值。为了避免多次测试时，上次迭代的数据在cache中缓存的现象，每次测试采用随机数据，并在计算后刷新的cache数据。
-
 
 * Intel Xeon 61xx
 
