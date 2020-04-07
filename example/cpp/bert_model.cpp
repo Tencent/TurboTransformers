@@ -139,6 +139,12 @@ struct BertModel::Impl {
       const std::vector<std::vector<int64_t>> &poistion_ids,
       const std::vector<std::vector<int64_t>> &segment_ids, PoolType pooling,
       bool use_pooler) {
+    core::Tensor inputs_{nullptr};
+    core::Tensor masks_{nullptr};
+
+    core::Tensor gpuInputs_{nullptr};
+    core::Tensor gpuMasks_{nullptr};
+
     int64_t max_seq_len =
         std::accumulate(inputs.begin(), inputs.end(), 0,
                         [](size_t len, const std::vector<int64_t> &input_ids) {
@@ -223,12 +229,6 @@ struct BertModel::Impl {
   std::unique_ptr<layers::BERTEmbedding> embedding_;
   std::vector<BERTLayer> encoders_;
   std::unique_ptr<layers::BertPooler> pooler_;
-
-  core::Tensor inputs_{nullptr};
-  core::Tensor masks_{nullptr};
-
-  core::Tensor gpuInputs_{nullptr};
-  core::Tensor gpuMasks_{nullptr};
 
   DLDeviceType device_type_;
 };
