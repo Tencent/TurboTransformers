@@ -135,7 +135,7 @@ template <bool AddBias, typename T>
 void GPULayerNorm(T* out, const T* input, const T* bias, const T* gamma,
                   const T* beta, int m, int n, cudaStream_t stream) {
   dim3 grid(m);
-  if (n < 1024 && n % 32 == 0) {
+  if (n <= 1024 && n % 32 == 0) {
     dim3 block(n);
     layer_norm_kernel_common<AddBias>
         <<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);
