@@ -72,8 +72,8 @@ ActvationOp<__half, ActivationType::Tanh>(const __half& x) {
 }  // namespace
 
 template <typename T, ActivationType ActType>
-static __global__ void add_bias_act(T* out, const T* bias, int batch_size,
-                                    int feature_dim) {
+static __global__ void add_bias_act(const T* bias, int batch_size,
+                                    int feature_dim, T* out) {
   T val, reg_bias;
 
   int row_id;
@@ -96,30 +96,31 @@ static __global__ void add_bias_act(T* out, const T* bias, int batch_size,
 }
 
 template <typename T, ActivationType ActType>
-void GPUAddBiasActKernel(const T* bias_data, T* out_data, int64_t batch_size,
-                         int64_t feature_dim, cudaStream_t stream) {
+void GPUAddBiasActKernel(const T* bias_data, int64_t batch_size,
+                         int64_t feature_dim, cudaStream_t stream,
+                         T* out_data) {
   dim3 grid(batch_size);
   int block_size = min(1024, (int)(feature_dim / 4));
   dim3 block(block_size);
-  add_bias_act<T, ActType><<<grid, block, 0, stream>>>(out_data, bias_data,
-                                                       batch_size, feature_dim);
+  add_bias_act<T, ActType><<<grid, block, 0, stream>>>(bias_data, batch_size,
+                                                       feature_dim, out_data);
 }
 
 template void GPUAddBiasActKernel<float, ActivationType::Gelu>(
-    const float* bias_data, float* out_data, int64_t batch_size,
-    int64_t feature_dim, cudaStream_t stream);
+    const float* bias_data, int64_t batch_size, int64_t feature_dim,
+    cudaStream_t stream, float* out_data);
 
 template void GPUAddBiasActKernel<float, ActivationType::Tanh>(
-    const float* bias_data, float* out_data, int64_t batch_size,
-    int64_t feature_dim, cudaStream_t stream);
+    const float* bias_data, int64_t batch_size, int64_t feature_dim,
+    cudaStream_t stream, float* out_data);
 
 template void GPUAddBiasActKernel<half, ActivationType::Gelu>(
-    const half* bias_data, half* out_data, int64_t batch_size,
-    int64_t feature_dim, cudaStream_t stream);
+    const half* bias_data, int64_t batch_size, int64_t feature_dim,
+    cudaStream_t stream, half* out_data);
 
 template void GPUAddBiasActKernel<half, ActivationType::Tanh>(
-    const half* bias_data, half* out_data, int64_t batch_size,
-    int64_t feature_dim, cudaStream_t stream);
+    const half* bias_data, int64_t batch_size, int64_t feature_dim,
+    cudaStream_t stream, half* out_data);
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers
