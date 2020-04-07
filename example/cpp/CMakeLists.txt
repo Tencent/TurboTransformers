@@ -17,8 +17,12 @@ target_link_libraries(bert_model
         PUBLIC tt_npz_loader
         PRIVATE tt_layers tt_kernels)
 
-add_executable(bert_model_test bert_model_test.cpp)
-target_link_libraries(bert_model_test bert_model)
+add_executable(bert_model_example bert_model_example.cpp)
+target_link_libraries(bert_model_example bert_model)
+
+add_executable(tt_cxx_bert_model_test bert_model_test.cpp)
+target_link_libraries(tt_cxx_bert_model_test catch2_test_main bert_model)
+add_test(NAME tt_cxx_bert_model_test COMMAND tt_cxx_bert_model_test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 ADD_CUSTOM_TARGET(copy_bertnpz ALL COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${CMAKE_SOURCE_DIR}/turbo_transformers/loaders/models ${CMAKE_CURRENT_BINARY_DIR}/models)
+    ${CMAKE_CURRENT_SOURCE_DIR}/models ${CMAKE_CURRENT_BINARY_DIR}/models)

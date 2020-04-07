@@ -16,7 +16,6 @@
 #include <memory>
 
 #include "turbo_transformers/core/tensor.h"
-#include "turbo_transformers/loaders/npz_load.h"
 
 namespace turbo_transformers {
 namespace layers {
