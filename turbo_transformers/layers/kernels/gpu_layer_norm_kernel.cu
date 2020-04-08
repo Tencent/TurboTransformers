@@ -106,15 +106,14 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
     while (idx < n) {
       out[idx + offset] =
           (out[idx + offset] + input[idx + offset] + bias[idx] - s_mean) *
-              s_variance * __ldg(&gamma[idx]) +
-          __ldg(&beta[idx]);
+              s_variance * gamma[idx] +
+          beta[idx];
       idx += block_dim_x;
     }
   } else {
     while (idx < n) {
       out[idx + offset] =
-          (out[idx + offset] - s_mean) * s_variance * __ldg(&gamma[idx]) +
-          __ldg(&beta[idx]);
+          (out[idx + offset] - s_mean) * s_variance * gamma[idx] + beta[idx];
       idx += block_dim_x;
     }
   }
