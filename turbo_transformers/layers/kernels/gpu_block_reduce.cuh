@@ -14,25 +14,27 @@
 
 #pragma once
 #include <cuda_runtime.h>
+#include "turbo_transformers/layers/types.h"
+#include <algorithm>
+
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-#define FINAL_MASK 0xffffffff
+using ReduceType = types::ReduceType;
 
-enum ReduceType { kMax = 0, kSum };
+#define FINAL_MASK 0xffffffff
 
 template <typename Type, Type t, int NumElem>
 __inline__ __device__ void blockReduce(float* val_list);
 
 // use template to make code more concise
-template <typename ReduceType, ReduceType TypeVal, int NumElem>
+template <ReduceType TypeVal, int NumElem>
 __inline__ __device__ void warpReduce(float* val_list);
 
 // static
 template <>
-__inline__ __device__ void warpReduce<ReduceType, ReduceType::kMax, 1>(
-    float* val_list) {
+__inline__ __device__ void warpReduce<ReduceType::kMax, 1>(float* val_list) {
   *val_list = max(*val_list, __shfl_xor_sync(FINAL_MASK, *val_list, 16, 32));
   *val_list = max(*val_list, __shfl_xor_sync(FINAL_MASK, *val_list, 8, 32));
   *val_list = max(*val_list, __shfl_xor_sync(FINAL_MASK, *val_list, 4, 32));
@@ -41,8 +43,7 @@ __inline__ __device__ void warpReduce<ReduceType, ReduceType::kMax, 1>(
 }
 
 template <>
-__inline__ __device__ void warpReduce<ReduceType, ReduceType::kMax, 2>(
-    float* val_list) {
+__inline__ __device__ void warpReduce<ReduceType::kMax, 2>(float* val_list) {
   float val0_tmp, val1_tmp;
 #define WarpReduceMaxOneStep(a, b)                               \
   val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val_list), a, b);     \
@@ -59,8 +60,7 @@ __inline__ __device__ void warpReduce<ReduceType, ReduceType::kMax, 2>(
 }
 
 template <>
-__inline__ __device__ void warpReduce<ReduceType, ReduceType::kMax, 4>(
-    float* val_list) {
+__inline__ __device__ void warpReduce<ReduceType::kMax, 4>(float* val_list) {
   float val0_tmp, val1_tmp, val2_tmp, val3_tmp;
 #define WarpReduceMaxOneStep(a, b)                               \
   val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val_list + 0), a, b); \
@@ -81,8 +81,7 @@ __inline__ __device__ void warpReduce<ReduceType, ReduceType::kMax, 4>(
 }
 
 template <>
-__inline__ __device__ void warpReduce<ReduceType, ReduceType::kSum, 1>(
-    float* val_list) {
+__inline__ __device__ void warpReduce<ReduceType::kSum, 1>(float* val_list) {
   *val_list += __shfl_xor_sync(FINAL_MASK, *val_list, 16, 32);
   *val_list += __shfl_xor_sync(FINAL_MASK, *val_list, 8, 32);
   *val_list += __shfl_xor_sync(FINAL_MASK, *val_list, 4, 32);
@@ -97,8 +96,7 @@ __inline__ __device__ void warpReduce<ReduceType, ReduceType::kSum, 1>(
  */
 
 template <>
-__inline__ __device__ void warpReduce<ReduceType, ReduceType::kSum, 2>(
-    float* val_list) {
+__inline__ __device__ void warpReduce<ReduceType::kSum, 2>(float* val_list) {
   float val0_tmp, val1_tmp;
 #define WarpReduceSumOneStep(a, b)                               \
   val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val_list + 0), a, b); \
@@ -116,8 +114,7 @@ __inline__ __device__ void warpReduce<ReduceType, ReduceType::kSum, 2>(
 }
 
 template <>
-__inline__ __device__ void warpReduce<ReduceType, ReduceType::kSum, 4>(
-    float* val_list) {
+__inline__ __device__ void warpReduce<ReduceType::kSum, 4>(float* val_list) {
   float val0_tmp, val1_tmp, val2_tmp, val3_tmp;
 #define WarpReduceSumOneStep(a, b)                               \
   val0_tmp = __shfl_xor_sync(FINAL_MASK, *(val_list + 0), a, b); \
@@ -137,14 +134,14 @@ __inline__ __device__ void warpReduce<ReduceType, ReduceType::kSum, 4>(
 #undef WarpReduceSumOneStep
 }
 
-template <typename ReduceType, ReduceType TypeVal, int NumElem>
+template <ReduceType TypeVal, int NumElem>
 __inline__ __device__ void blockReduce(float* val_list) {
   const int n = NumElem;
   static __shared__ float shared[n][32];
   int lane_id = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
 
-  warpReduce<ReduceType, TypeVal, NumElem>(val_list);
+  warpReduce<TypeVal, NumElem>(val_list);
 
   if (lane_id == 0) {
 #pragma unroll
@@ -165,7 +162,7 @@ __inline__ __device__ void blockReduce(float* val_list) {
       *(val_list + i) = 0.f;
     }
   }
-  warpReduce<ReduceType, TypeVal, NumElem>(val_list);
+  warpReduce<TypeVal, NumElem>(val_list);
 }
 
 #undef FINAL_MASK

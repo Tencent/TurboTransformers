@@ -22,9 +22,16 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-template <typename T>
-static void CPUAddBiasGeLUActKernel(const T *bias, T *out, int64_t batch_size,
-                                    int64_t feature_dim) {
+namespace {
+template <typename T, ActivationType ActType>
+void CPUAddBiasActKernel(const T *bias, int64_t batch_size, int64_t feature_dim,
+                         T *out);
+
+template <>
+void CPUAddBiasActKernel<float, ActivationType::Gelu>(const float *bias,
+                                                      int64_t batch_size,
+                                                      int64_t feature_dim,
+                                                      float *out) {
   core::Tensor temp_tensor(nullptr);
   auto *buff =
       temp_tensor.Reshape<float>({batch_size * feature_dim}, kDLCPU, 0);
@@ -45,9 +52,11 @@ static void CPUAddBiasGeLUActKernel(const T *bias, T *out, int64_t batch_size,
   }
 }
 
-template <typename T>
-static void CPUAddBiasTanhActKernel(const T *bias, T *out, int64_t batch_size,
-                                    int64_t feature_dim) {
+template <>
+void CPUAddBiasActKernel<float, ActivationType::Tanh>(const float *bias,
+                                                      int64_t batch_size,
+                                                      int64_t feature_dim,
+                                                      float *out) {
 #pragma omp parallel for
   for (int64_t i = 0; i < batch_size; ++i) {
     int64_t k = 0;
@@ -58,90 +67,36 @@ static void CPUAddBiasTanhActKernel(const T *bias, T *out, int64_t batch_size,
     vsTanh(feature_dim, &out[i * feature_dim], &out[i * feature_dim]);
   }
 }
+}  // namespace
 
-static void AddBiasAndGeluFunc(const DLDeviceType &dev_type, const float *bias,
-                               int64_t m, int64_t n, float *out) {
-  if (dev_type == kDLCPU) {
-    CPUAddBiasGeLUActKernel(bias, out, m, n);
-  } else if (dev_type == kDLGPU) {
+template <typename T, ActivationType ActType>
+void AddBiasAct(const core::Tensor &bias_tensor, core::Tensor *out_tensor) {
+  auto *out = out_tensor->mutableData<T>();
+  auto *bias = bias_tensor.data<T>();
+
+  int64_t m = out_tensor->rows();
+  int64_t n = out_tensor->cols();
+
+  if (out_tensor->device_type() == kDLCPU &&
+      bias_tensor.device_type() == kDLCPU) {
+    CPUAddBiasActKernel<T, ActType>(bias, m, n, out);
+  } else if (out_tensor->device_type() == kDLGPU &&
+             bias_tensor.device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
     core::CUDADeviceContext &cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPUAddBiasActKernel<float, ActivationType::Gelu>(bias, out, m, n,
-                                                     cuda_ctx.stream());
+    GPUAddBiasActKernel<T, ActType>(bias, m, n, cuda_ctx.stream(), out);
 #endif
   } else {
-    TT_THROW("device_type is not supported");
+    TT_THROW("device_type %d is not supported for AddBiasAct",
+             out_tensor->device_type());
   }
 }
 
-static void AddBiasAndTanhFunc(const DLDeviceType &dev_type, const float *bias,
-                               int64_t m, int64_t n, float *out) {
-  if (dev_type == kDLCPU) {
-    CPUAddBiasTanhActKernel(bias, out, m, n);
-  } else if (dev_type == kDLGPU) {
-#ifdef TT_WITH_CUDA
-    core::CUDADeviceContext &cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPUAddBiasActKernel<float, ActivationType::Tanh>(bias, out, m, n,
-                                                     cuda_ctx.stream());
-#endif
-  } else {
-    TT_THROW("device_type is not supported");
-  }
-}
+template void AddBiasAct<float, ActivationType::Tanh>(
+    const core::Tensor &bias_tensor, core::Tensor *out_tensor);
 
-template <>
-void AddBiasAct<float, ActivationType::Gelu>(const core::Tensor &bias_tensor,
-                                             core::Tensor *out_tensor) {
-  auto *out = out_tensor->mutableData<float>();
-  auto *bias = bias_tensor.data<float>();
-
-  int64_t m = out_tensor->rows();
-  int64_t n = out_tensor->cols();
-
-  AddBiasAndGeluFunc(out_tensor->device_type(), bias, m, n, out);
-}
-
-template <>
-void AddBiasAct<float, ActivationType::Tanh>(const core::Tensor &bias_tensor,
-                                             core::Tensor *out_tensor) {
-  auto *out = out_tensor->mutableData<float>();
-  auto *bias = bias_tensor.data<float>();
-
-  int64_t m = out_tensor->rows();
-  int64_t n = out_tensor->cols();
-
-  AddBiasAndTanhFunc(out_tensor->device_type(), bias, m, n, out);
-}
-
-#ifdef TT_WITH_CUDA
-template <>
-void AddBiasAct<core::Half, ActivationType::Gelu>(
-    const core::Tensor &bias_tensor, core::Tensor *out_tensor) {
-  TT_ENFORCE_EQ(bias_tensor.device_type(), kDLGPU, "The device should be GPU.");
-  core::Half *out = out_tensor->mutableData<core::Half>();
-  const core::Half *bias = bias_tensor.data<core::Half>();
-  int64_t m = out_tensor->rows();
-  int64_t n = out_tensor->cols();
-  core::CUDADeviceContext &cuda_ctx = core::CUDADeviceContext::GetInstance();
-  GPUAddBiasActKernel<half, ActivationType::Gelu>(
-      reinterpret_cast<const half *>(bias), reinterpret_cast<half *>(out), m, n,
-      cuda_ctx.stream());
-}
-
-template <>
-void AddBiasAct<core::Half, ActivationType::Tanh>(
-    const core::Tensor &bias_tensor, core::Tensor *out_tensor) {
-  TT_ENFORCE_EQ(bias_tensor.device_type(), kDLGPU, "The device should be GPU.");
-  core::Half *out = out_tensor->mutableData<core::Half>();
-  const core::Half *bias = bias_tensor.data<core::Half>();
-  int64_t m = out_tensor->rows();
-  int64_t n = out_tensor->cols();
-  core::CUDADeviceContext &cuda_ctx = core::CUDADeviceContext::GetInstance();
-  GPUAddBiasActKernel<half, ActivationType::Tanh>(
-      reinterpret_cast<const half *>(bias), reinterpret_cast<half *>(out), m, n,
-      cuda_ctx.stream());
-}
-#endif
+template void AddBiasAct<float, ActivationType::Gelu>(
+    const core::Tensor &bias_tensor, core::Tensor *out_tensor);
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers

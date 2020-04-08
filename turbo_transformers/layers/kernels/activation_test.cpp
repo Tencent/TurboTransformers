@@ -15,7 +15,6 @@
 #include "turbo_transformers/layers/kernels/activation.h"
 
 #include "loguru.hpp"
-#include "turbo_transformers/core/half.h"
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
@@ -152,31 +151,6 @@ TEST_CASE("activation-gpu-test") {
               AddBiasAct<float, ActivationType::Tanh>(cpu_bias, &cpu_out);
               AddBiasAct<float, ActivationType::Tanh>(gpu_bias, &gpu_out);
               REQUIRE(test::CheckResultOfCPUAndGPU<float>(cpu_out, gpu_out));
-            });
-
-        CheckResultOfGPUAndCPU<core::Half>(
-            batch_size, seq_length, hidden_size,
-            [&](core::Tensor& cpu_bias, core::Tensor& cpu_out,
-                core::Tensor& gpu_bias, core::Tensor& gpu_out) {
-              AddBiasGeluActNaive<core::Half>(cpu_bias.data<core::Half>(),
-                                              cpu_out.mutableData<core::Half>(),
-                                              batch_size * seq_length,
-                                              hidden_size);
-              AddBiasAct<core::Half, ActivationType::Gelu>(gpu_bias, &gpu_out);
-              REQUIRE(
-                  test::CheckResultOfCPUAndGPU<core::Half>(cpu_out, gpu_out));
-            });
-        CheckResultOfGPUAndCPU<core::Half>(
-            batch_size, seq_length, hidden_size,
-            [&](core::Tensor& cpu_bias, core::Tensor& cpu_out,
-                core::Tensor& gpu_bias, core::Tensor& gpu_out) {
-              AddBiasTanhActNaive<core::Half>(cpu_bias.data<core::Half>(),
-                                              cpu_out.mutableData<core::Half>(),
-                                              batch_size * seq_length,
-                                              hidden_size);
-              AddBiasAct<core::Half, ActivationType::Tanh>(gpu_bias, &gpu_out);
-              REQUIRE(
-                  test::CheckResultOfCPUAndGPU<core::Half>(cpu_out, gpu_out));
             });
         std::cout << " PASSED" << std::endl;
       }  // for

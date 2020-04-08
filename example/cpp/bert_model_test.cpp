@@ -132,6 +132,7 @@ static bool test_multiple_threads(bool only_input, int n_threads) {
   threads.reserve(n_threads);
 
   std::vector<std::future<std::vector<float>>> result_list;
+  result_list.reserve(n_threads);
   for (int i = 0; i < n_threads; ++i) {
     std::packaged_task<std::vector<float>(
         const std::shared_ptr<BertModel>,
@@ -171,7 +172,6 @@ static bool test_multiple_threads(bool only_input, int n_threads) {
   }
   return true;
 }
-
 TEST_CASE("Bert-multiple-thread", "Cpp interface") {
   test_multiple_threads(false, 10);
   test_multiple_threads(true, 10);
