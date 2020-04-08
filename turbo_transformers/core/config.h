@@ -13,18 +13,23 @@
 // limitations under the License.
 
 #pragma once
-#include <cfloat>
+namespace turbo_transformers {
+namespace core {
+enum class BlasProvider {
+  MKL,
+  OpenBlas,
+};
 
-// Disable the copy and assignment operator for a class.
-#ifndef DISABLE_COPY_AND_ASSIGN
-#define DISABLE_COPY_AND_ASSIGN(classname)         \
- private:                                          \
-  classname(const classname&) = delete;            \
-  classname(classname&&) = delete;                 \
-  classname& operator=(const classname&) = delete; \
-  classname& operator=(classname&&) = delete
+BlasProvider GetBlasProvider();
+
+void SetNumThreads(int n_th);
+
+constexpr bool IsCompiledWithCUDA() {
+#ifdef TT_WITH_CUDA
+  return true;
+#else
+  return false;
 #endif
-
-#if defined(__FLT_MAX__)
-#define FLT_MAX __FLT_MAX__
-#endif  // __FLT_MAX__
+}
+}  // namespace core
+}  // namespace turbo_transformers

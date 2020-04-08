@@ -20,7 +20,8 @@ add_library(tt_core
             blas_${BLAS_PROVIDER}.cpp
             enforce.cpp
             memory.cpp
-        tensor.cpp
+            tensor.cpp
+            config.cpp
             profiler.cpp
         )
 target_link_libraries(tt_core PUBLIC

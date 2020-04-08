@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "catch2/catch.hpp"
-#include "turbo_transformers/core/macros.h"
+#include "turbo_transformers/core/config.h"
 
 namespace turbo_transformers {
 namespace loaders {
