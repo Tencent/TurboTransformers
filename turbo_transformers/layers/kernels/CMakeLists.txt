@@ -35,8 +35,6 @@ add_executable(tt_kernels_test
         transpose_test.cpp
         layer_norm_test.cpp
         mat_mul_test.cpp)
-if (WITH_GPU)
-    target_sources(tt_kernels_test PRIVATE mat_mul_benchmark.cpp)
-endif()
+
 target_link_libraries(tt_kernels_test tt_kernels tt_core catch2_test_main)
 add_test(NAME tt_kernels_test COMMAND tt_kernels_test)

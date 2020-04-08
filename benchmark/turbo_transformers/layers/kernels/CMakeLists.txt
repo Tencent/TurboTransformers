@@ -1,0 +1,11 @@
+add_executable(activation_benchmark activation_benchmark.cpp)
+target_link_libraries(activation_benchmark tt_kernels tt_core catch2_test_main)
+
+add_executable(mat_mul_benchmark mat_mul_benchmark.cpp)
+target_link_libraries(mat_mul_benchmark tt_kernels tt_core catch2_test_main)
+
+add_executable(layernorm_benchmark layernorm_benchmark.cpp)
+target_link_libraries(layernorm_benchmark tt_kernels tt_core catch2_test_main)
+
+add_executable(softmax_benchmark softmax_benchmark.cpp)
+target_link_libraries(softmax_benchmark tt_kernels tt_core catch2_test_main)

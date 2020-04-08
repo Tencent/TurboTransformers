@@ -20,7 +20,7 @@
 #include "loguru.hpp"
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/enforce.h"
-#include "turbo_transformers/layers/kernels/test_helper.h"
+#include "turbo_transformers/layers/kernels/common.h"
 
 namespace turbo_transformers {
 namespace layers {
@@ -37,12 +37,12 @@ TEST_CASE("split_add_transpose CPU and GPU correctness") {
     for (auto seq_length : seq_length_list) {
       core::Tensor input_tensor_cpu(nullptr), input_tensor_gpu(nullptr);
       std::tie(input_tensor_cpu, input_tensor_gpu) =
-          test::CreateAndFillRandomForCPUGPUTensors<float>(
+          common::CreateAndFillRandomForCPUGPUTensors<float>(
               {batch_size, seq_length, 3, num_attention_heads, 64});
 
       core::Tensor bias_tensor_cpu(nullptr), bias_tensor_gpu(nullptr);
       std::tie(bias_tensor_cpu, bias_tensor_gpu) =
-          test::CreateAndFillRandomForCPUGPUTensors<float>(
+          common::CreateAndFillRandomForCPUGPUTensors<float>(
               {3, num_attention_heads, 64});
 
       turbo_transformers::core::Tensor output_tensor_gpu(
@@ -59,8 +59,8 @@ TEST_CASE("split_add_transpose CPU and GPU correctness") {
                                     bias_tensor_gpu);
       SplitAddBiasTransposeForScore(&output_tensor_cpu, input_tensor_cpu,
                                     bias_tensor_cpu);
-      REQUIRE(::turbo_transformers::test::CheckResultOfCPUAndGPU<float>(
-          output_tensor_cpu, output_tensor_gpu));
+      REQUIRE(common::CheckResultOfCPUAndGPU<float>(output_tensor_cpu,
+                                                    output_tensor_gpu));
     }
 }
 #endif

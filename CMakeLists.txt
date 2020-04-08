@@ -26,6 +26,8 @@ set(turbo_transformers_VERSION 0.1.1)
 
 option(WITH_PROFILER  "Compile with gperftools" OFF)
 option(WITH_GPU       "Build with GPU"          OFF)
+option(WITH_MODULE_BENCHMAKR       "Build with GPU"          ON)
+
 
 if (WITH_GPU)
   project(turbo_transformers LANGUAGES CXX C CUDA)
@@ -84,4 +86,8 @@ IF (UNIX AND NOT APPLE)
 ENDIF ()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(turbo_transformers)
+if (WITH_MODULE_BENCHMAKR)
+    add_definitions(-DCATCH_CONFIG_ENABLE_BENCHMARKING)
+    add_subdirectory(benchmark)
+endif()
 add_subdirectory(example)

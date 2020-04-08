@@ -89,6 +89,7 @@ void Transform(int64_t* src_data, float* dst_data, int64_t size,
     TT_THROW("device_type is not supported");
   }
 }
+
 }  // namespace common
 }  // namespace kernels
 }  // namespace layers

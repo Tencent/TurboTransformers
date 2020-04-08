@@ -19,7 +19,7 @@
 #include "catch2/catch.hpp"
 #include "loguru.hpp"
 #include "turbo_transformers/core/enforce.h"
-#include "turbo_transformers/layers/kernels/test_helper.h"
+#include "turbo_transformers/layers/kernels/common.h"
 
 namespace turbo_transformers {
 namespace layers {
@@ -32,7 +32,7 @@ TEST_CASE("prepare_bert_masks CPU and GPU correctness") {
     for (auto seq_length : seq_length_list) {
       core::Tensor gpu_inputs(nullptr), cpu_inputs(nullptr);
       std::tie(cpu_inputs, gpu_inputs) =
-          test::CreateAndFillRandomForCPUGPUTensors<float>(
+          kernels::common::CreateAndFillRandomForCPUGPUTensors<float>(
               {batch_size, seq_length});
 
       core::Tensor gpu_att_mask(nullptr), cpu_att_mask(nullptr),
@@ -51,14 +51,14 @@ TEST_CASE("prepare_bert_masks CPU and GPU correctness") {
         func(gpu_inputs, &gpu_att_mask, &gpu_seq_type, &gpu_position_ids,
              &gpu_extended_attention_mask);
       }
-      REQUIRE(
-          test::CheckResultOfCPUAndGPU<int64_t>(cpu_att_mask, gpu_att_mask));
-      REQUIRE(test::CheckResultOfCPUAndGPU<float>(cpu_extended_attention_mask,
-                                                  gpu_extended_attention_mask));
-      REQUIRE(
-          test::CheckResultOfCPUAndGPU<int64_t>(cpu_seq_type, gpu_seq_type));
-      REQUIRE(test::CheckResultOfCPUAndGPU<int64_t>(cpu_position_ids,
-                                                    gpu_position_ids));
+      REQUIRE(kernels::common::CheckResultOfCPUAndGPU<int64_t>(cpu_att_mask,
+                                                               gpu_att_mask));
+      REQUIRE(kernels::common::CheckResultOfCPUAndGPU<float>(
+          cpu_extended_attention_mask, gpu_extended_attention_mask));
+      REQUIRE(kernels::common::CheckResultOfCPUAndGPU<int64_t>(cpu_seq_type,
+                                                               gpu_seq_type));
+      REQUIRE(kernels::common::CheckResultOfCPUAndGPU<int64_t>(
+          cpu_position_ids, gpu_position_ids));
     }  // for
 }
 #endif

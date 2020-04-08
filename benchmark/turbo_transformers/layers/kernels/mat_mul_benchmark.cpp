@@ -18,15 +18,15 @@
 
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/tensor.h"
+#include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/mat_mul.h"
-#include "turbo_transformers/layers/kernels/test_helper.h"
 
 namespace turbo_transformers {
 namespace core {
 
-using ::turbo_transformers::test::Fill;
+using layers::kernels::common::FillRandom;
 
-inline void _CreateBenchmark(DLDeviceType device_type, bool trans_weight,
+static void _CreateBenchmark(DLDeviceType device_type, bool trans_weight,
                              std::initializer_list<int64_t> weight_shape,
                              std::vector<int64_t> m_list) {
   const int step = 1000;
@@ -49,15 +49,15 @@ inline void _CreateBenchmark(DLDeviceType device_type, bool trans_weight,
 
     core::Tensor input_tensor(
         NewDLPackTensorT<float>(input_shape, device_type, 0));
-    Fill<float>(input_tensor);
+    FillRandom<float>(input_tensor);
 
     core::Tensor weight_tensor(
         NewDLPackTensorT<float>(weight_shape, device_type, 0));
-    Fill<float>(weight_tensor);
+    FillRandom<float>(weight_tensor);
 
     core::Tensor output_tensor(
         NewDLPackTensorT<float>(output_shape, device_type, 0));
-    Fill<float>(output_tensor);
+    FillRandom<float>(output_tensor);
 
     layers::kernels::MatMul(input_tensor, false, weight_tensor, trans_weight,
                             1.0, &output_tensor, 0.0);
@@ -81,14 +81,18 @@ inline void _CreateBenchmark(DLDeviceType device_type, bool trans_weight,
   }
 }
 
-TEST_CASE("MatMul CPU benchmark") {
+TEST_CASE("matmal-cpu-benchmark") {
+  std::cout << "=================================" << std::endl;
+  std::cout << "CPU QKV MatMul Benchmark" << std::endl;
   int64_t k = 12 * 64, n = 12 * 64 * 3;
   std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
   _CreateBenchmark(kDLCPU, false, {k, n}, m_list);
   std::cout << std::endl;
 }
 
-TEST_CASE("Attention QKV MatMul GPU benchmark") {
+TEST_CASE("matmal-gpu-qkv-benchmark") {
+  std::cout << "=================================" << std::endl;
+  std::cout << "GPU QKV MatMul Benchmark" << std::endl;
   int64_t k = 12 * 64, n = 12 * 64 * 3;
   std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
   std::cout << "weight no trans" << std::endl;
@@ -104,8 +108,9 @@ TEST_CASE("Attention QKV MatMul GPU benchmark") {
   _CreateBenchmark(kDLGPU, true, {n, k}, m_list);
 }
 
-TEST_CASE("Attention Intermediate GPU benchmark") {
-  std::cout << "Intermediate Layer Benchmark" << std::endl;
+TEST_CASE("matmal-gpu-inter-benchmark") {
+  std::cout << "=================================" << std::endl;
+  std::cout << "GPU Intermediate Layer Benchmark" << std::endl;
   int64_t k = 12 * 64, n = 12 * 64;
   DLDeviceType device_type = kDLGPU;
   std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};

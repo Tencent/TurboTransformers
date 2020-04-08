@@ -19,10 +19,12 @@
 
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/tensor.h"
-#include "turbo_transformers/layers/kernels/test_helper.h"
+#include "turbo_transformers/layers/kernels/common.h"
 
 namespace turbo_transformers {
-namespace core {
+namespace layers {
+namespace kernels {
+
 static bool float_eq(float a, float b) { return std::abs(a - b) < 1e-5; }
 
 TEST_CASE("blas-gemm") {
@@ -90,16 +92,16 @@ void check_cpu_gpu_res(bool isTransB) {
 
     core::Tensor cpu_input_tensor(nullptr), gpu_input_tensor(nullptr);
     std::tie(cpu_input_tensor, gpu_input_tensor) =
-        test::CreateAndFillRandomForCPUGPUTensors<float>(input_shape);
+        common::CreateAndFillRandomForCPUGPUTensors<float>(input_shape);
 
     core::Tensor cpu_weight_tensor(nullptr), gpu_weight_tensor(nullptr);
     std::tie(cpu_weight_tensor, gpu_weight_tensor) =
-        test::CreateAndFillRandomForCPUGPUTensors<float>(
+        common::CreateAndFillRandomForCPUGPUTensors<float>(
             isTransB ? weight_shape_trans : weight_shape);
 
     core::Tensor cpu_output_tensor(nullptr), gpu_output_tensor(nullptr);
     std::tie(cpu_output_tensor, gpu_output_tensor) =
-        test::CreateAndFillRandomForCPUGPUTensors<float>(output_shape);
+        common::CreateAndFillRandomForCPUGPUTensors<float>(output_shape);
 
     layers::kernels::MatMul(cpu_input_tensor, false, cpu_weight_tensor,
                             isTransB, 1.0, &cpu_output_tensor, 0.0);
@@ -107,10 +109,11 @@ void check_cpu_gpu_res(bool isTransB) {
     layers::kernels::MatMul(gpu_input_tensor, false, gpu_weight_tensor,
                             isTransB, 1.0, &gpu_output_tensor, 0.0);
 
-    test::CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
+    common::CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
   }
 }
 #endif
 
-}  // namespace core
+}  // namespace kernels
+}  // namespace layers
 }  // namespace turbo_transformers

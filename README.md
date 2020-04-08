@@ -158,4 +158,4 @@ C++载入npz格式的模型文件，pytorch saved模型和npz转换的脚本在.
 [turbo-transformers (2): GPU Serving Can Also Be You Need](http://km.oa.com/group/18832/articles/show/413605?kmref=author_post "turbo-transformers-gpu")
 
 ## 加入用户群
-请联系josephyu, jiauifang, florianzhao加入我们的用户使用群，我们将竭诚为您服务。
+请联系josephyu, jiaruifang, florianzhao加入我们的用户使用群，我们将竭诚为你服务。
