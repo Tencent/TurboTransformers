@@ -21,8 +21,8 @@ namespace layers {
 namespace kernels {
 using types::ActivationType;
 template <typename T, ActivationType ActType>
-void GPUAddBiasActKernel(const T* bias_data, T* out_data, int64_t batch_size,
-                         int64_t feature_dim, cudaStream_t stream);
+void GPUAddBiasActKernel(const T* bias_data, int64_t batch_size,
+                         int64_t feature_dim, cudaStream_t stream, T* out_data);
 
 }  // namespace kernels
 }  // namespace layers
