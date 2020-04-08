@@ -16,7 +16,7 @@
 #include "loguru.hpp"
 #include "pybind11/pybind11.h"
 #include "turbo_transformers/core/blas.h"
-#include "turbo_transformers/core/macros.h"
+#include "turbo_transformers/core/config.h"
 #include "turbo_transformers/core/profiler.h"
 #include "turbo_transformers/core/tensor.h"
 #include "turbo_transformers/layers/bert_attention.h"
@@ -26,9 +26,6 @@
 #include "turbo_transformers/layers/bert_pooler.h"
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
-#ifdef _OPENMP
-#include "omp.h"
-#endif
 
 namespace turbo_transformers {
 namespace python {
@@ -48,28 +45,13 @@ static void DLPack_Capsule_Destructor(PyObject *data) {
   }
 }
 
-enum class BlasProvider {
-  MKL,
-  OpenBlas,
-};
-
-static BlasProvider GetBlasProvider() {
-#ifdef TT_BLAS_USE_MKL
-  return BlasProvider::MKL;
-#elif defined(TT_BLAS_USE_OPENBLAS)
-  return BlasProvider::OpenBlas;
-#else
-#error "unexpected code";
-#endif
-}
-
 static void BindConfig(py::module &m) {
-  py::enum_<BlasProvider>(m, "BlasProvider")
-      .value("MKL", BlasProvider::MKL)
-      .value("OpenBlas", BlasProvider::OpenBlas);
+  py::enum_<core::BlasProvider>(m, "BlasProvider")
+      .value("MKL", core::BlasProvider::MKL)
+      .value("OpenBlas", core::BlasProvider::OpenBlas);
 
-  m.def("is_compiled_with_cuda", [] { return core::IsCompiledWithCUDA(); })
-      .def("get_blas_provider", GetBlasProvider);
+  m.def("is_compiled_with_cuda", &core::IsCompiledWithCUDA)
+      .def("get_blas_provider", &core::GetBlasProvider);
 }
 
 PYBIND11_MODULE(turbo_transformers_cxx, m) {
@@ -86,17 +68,8 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
         [](int v) { loguru::g_stderr_verbosity = v; });
   m.def("enable_gperf", &core::EnableGperf);
   m.def("disable_gperf", &core::DisableGperf);
-  m.def("set_num_threads", [](int n_th) {
-  // The order seems important. Set MKL NUM_THREADS before OMP.
-#ifdef TT_BLAS_USE_MKL
-    mkl_set_num_threads(n_th);
-#else
-    openblas_set_num_threads(n_th);
-#endif
-#ifdef _OPENMP
-    omp_set_num_threads(n_th);
-#endif
-  });
+  m.def("set_num_threads", &core::SetNumThreads);
+
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",
                   [](py::capsule capsule) -> std::unique_ptr<core::Tensor> {

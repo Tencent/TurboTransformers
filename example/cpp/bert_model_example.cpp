@@ -20,7 +20,7 @@
 #include <iostream>
 #include <thread>
 
-#include <omp.h>
+#include "turbo_transformers/core/config.h"
 
 static bool test(bool use_cuda = false) {
   // construct a bert model using n_layers and n_heads,
@@ -113,12 +113,10 @@ int main() {
   test(true);
   std::cout << "run bert on CPU, use 4 threads to do bert inference"
             << std::endl;
-  omp_set_num_threads(4);
+  turbo_transformers::core::SetNumThreads(4);
   test(false);
-  std::cout
-      << "10 threads do 10 difference bert inference, one thread one bert."
-      << std::endl;
-  omp_set_num_threads(1);
+  std::cout << "10 threads do 10 independent bert inferences." << std::endl;
+  turbo_transformers::core::SetNumThreads(1);
   test_multiple_threads(false, 10);
   test_multiple_threads(true, 10);
 }

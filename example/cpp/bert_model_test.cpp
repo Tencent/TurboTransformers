@@ -17,9 +17,10 @@
 #include <future>
 #include <thread>
 #include <vector>
-#include "turbo_transformers/core/macros.h"
 
 #include "catch2/catch.hpp"
+#include "turbo_transformers/core/config.h"
+#include "turbo_transformers/core/macros.h"
 
 namespace turbo_transformers {
 namespace loaders {
