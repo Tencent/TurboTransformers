@@ -17,7 +17,7 @@
 
 #include <numeric>
 
-#include "turbo_transformers/layers/kernels/gpu_block_reduce.h"
+#include "turbo_transformers/layers/kernels/gpu_block_reduce.cuh"
 #include "turbo_transformers/layers/kernels/gpu_layer_norm_kernel.h"
 
 namespace turbo_transformers {

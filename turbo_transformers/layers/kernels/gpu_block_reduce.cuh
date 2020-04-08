@@ -15,6 +15,7 @@
 #pragma once
 #include <cuda_runtime.h>
 #include "turbo_transformers/layers/types.h"
+#include <algorithm>
 
 namespace turbo_transformers {
 namespace layers {
