@@ -7,3 +7,4 @@ turbo_transformers/python/tests/test-model/special_tokens_map.json filter=lfs di
 turbo_transformers/python/tests/test-model/tokenizer_config.json filter=lfs diff=lfs merge=lfs -text
 turbo_transformers/python/tests/test-model/vocab.txt filter=lfs diff=lfs merge=lfs -text
 turbo_transformers/loaders/models/*npz filter=lfs diff=lfs merge=lfs -text
+example/cpp/models/bert.npz filter=lfs diff=lfs merge=lfs -text

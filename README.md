@@ -5,6 +5,7 @@
 Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，高效部署Transformer线上服务面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为turbo_transformers的面向Intel多核CPU和NVIDIA GPU硬件平台的Transformer实现。turbo_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。turbo_transformers在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn/onnxruntime-gpu, torch JIT, NVIDIA faster transformers）的性能表现，详细benchmark结果见下文，它对常用的短序列的处理速度提升更为显著。turbo_transformers CPU版本已经应用于多个线上服务服务场景，WXG的FAQ的BERT服务获得1.88x加速，CSIG的在公有云情感分析服务两层BERT encoder获得2.11x加速。
 
 下表是本工作和相关工作的对比
+
 | Related Works  |  Performance | Need Preprocess  |  Variable Length  | Usage |
 |------------------|---|---|---|---|
 | pytorch JIT (CPU) |  Fast |  Yes  | No  | Hard   |
@@ -89,211 +90,24 @@ bash gpu_run_benchmark.sh
 ```
 
 
-### 使用示例
-turbo_transformers提供了简单的调用接口，提供兼容huggingface/transformers [pytorch](https://github.com/huggingface "pytorch")模型的调用方式。
-下面代码片段展示了如何将huggingface预训练BERT模型导入turbo_transformers并进行一次BERT encoder的计算。
-
-#### 1. CPU
-##### python interface
-```python
-import torch
-import transformers
-import turbo_transformers
-
-# 使用4个线程运行turbo_transformers
-turbo_transformers.set_num_threads(4)
-# 调用transformers提供的预训练模型
-model = transformers.BertModel.from_pretrained(
-    "bert-base-chinese")
-model.eval()
-# 预训练模型的配置
-cfg = model.config
-batch_size = 2
-seq_len = 128
-#随机生成文本序列
-torch.manual_seed(1)
-input_ids = torch.randint(low=0,
-                            high=cfg.vocab_size - 1,
-                            size=(batch_size, seq_len),
-                            dtype=torch.long)
-
-torch.set_grad_enabled(False)
-torch_res = model(input_ids) # sequence_output, pooled_output, (hidden_states), (attentions)
-print(torch_res[0][:,0,:])  # 获取encoder得到的第一个隐状态
-# tensor([[-1.4238,  1.0980, -0.3257,  ...,  0.7149, -0.3883, -0.1134],
-#        [-0.8828,  0.6565, -0.6298,  ...,  0.2776, -0.4459, -0.2346]])
-
-# 构建bert-encoder的模型，输出first方式pooling的结果
-# 两种方式载入模型，这里直接从pytorch模型载入
-tt_model = turbo_transformers.BertModel.from_torch(model)
-# 从文件载入
-# model = turbo_transformers.BertModel.from_pretrained("bert-base-chinese")
-res = tt_model(input_ids)
-print(res)
-# tensor([[-1.4292,  1.0934, -0.3270,  ...,  0.7212, -0.3893, -0.1172],
-#         [-0.8878,  0.6571, -0.6331,  ...,  0.2759, -0.4496, -0.2375]])
-```
-更多使用接口可以参考 ./example/cpu_example.py文件
-
-##### C++ interface
-请参考如下例子
-https://git.code.oa.com/jiaruifang/turbo-transformers-cpp
-
-#### 2. GPU
-##### python interface
-```python
-import os
-import numpy
-import torch
-import transformers
-import turbo_transformers
-
-torch.set_grad_enabled(False)
-test_device = torch.device('cuda:0')
-# load model from file, adapted to offline enviroments, run in directory ./benchmark
-model_id = os.path.join(os.path.dirname(__file__),
-                         '../turbo_transformers/python/tests/test-model')
-# model_id = "bert-base-chinese"
-model_torch = transformers.BertModel.from_pretrained(model_id)
-model_torch.eval()
-model_torch.to(test_device)
-# the following two ways are the same
-# 1. load model from checkpoint in file
-# model_tt = turbo_transformers.BertModel.from_pretrained(model_id, test_device)
-# 2. load model from pytorch model
-model_tt = turbo_transformers.BertModel.from_torch(model_torch, test_device)
-cfg = model_torch.config  # type: transformers.BertConfig
-
-batch_size, seq_len = 10, 40
-input_ids = torch.randint(low=0,
-                          high=cfg.vocab_size - 1,
-                          size=(batch_size, seq_len),
-                          dtype=torch.long,
-                          device=test_device)
-
-torch_result = model_torch(input_ids)
-torch_result = (torch_result[0][:, 0]).cpu().numpy()
-print(torch_result)
-# [[-1.0547106   0.6978769   0.01930561 ...  0.14942119  0.12424274
-#    0.09840814]
-#  [-0.38007614  0.8337314  -0.26551855 ...  0.37165833 -1.1472359
-#   -0.02053148]
-#  [-1.0879238   0.33059713 -1.5077729  ...  1.1362088  -1.1507283
-#    0.72761345]
-#  ...
-#  [-0.13508567  0.5811261  -0.7433949  ...  0.787879    0.19001244
-#    0.2780586 ]
-#  [-0.2851665   1.0065655  -0.15112075 ... -0.39093181  0.07916196
-#   -0.2520734 ]
-#  [-0.56147367  0.6245851  -0.97631836 ...  1.300955    0.2231751
-#   -0.35811383]]
-
-tt_result = model_tt(input_ids)
-tt_result = tt_result.cpu().numpy()
-print(tt_result)
-# [[-1.0559868   0.70307076  0.01852467 ...  0.15004729  0.12565975
-#    0.0958093 ]
-#  [-0.37808716  0.8361676  -0.26031977 ...  0.36978582 -1.150511
-#   -0.02066079]
-#  [-1.0828258   0.32773003 -1.5136379  ...  1.1391504  -1.1485292
-#    0.7275925 ]
-#  ...
-#  [-0.13846944  0.5822965  -0.7396279  ...  0.78931236  0.19155282
-#    0.27686128]
-#  [-0.28799683  1.007286   -0.15279569 ... -0.38764566  0.07981472
-#   -0.2519405 ]
-#  [-0.5681539   0.62843543 -0.982041   ...  1.2941586   0.22365712
-#   -0.3616636 ]]
-
-```
-
-###  用户自定义后处理实现示例
-
-因为turbo_transformer关于bert加速的C++部分改写只做到pooler层，后续需要用户根据自己的场景需要来定制后处理部分。
-
-这里以BertForSequenceClassification任务为例，BertForSequenceClassification是在bert pooler结果之后加一个linear层，以下是用户自定义后处理的步骤。
-
-1. 首先我们需要准备一个classification model，即bert层 + linear层的模型文件，我准备了一个从bert-base pretrained model生成的带有linear层的classification model，有需要的可以从这里下载，将这个文件夹放在与example文件的同目录下即可，链接:https://pan.baidu.com/s/1WzMIQ2I3ncXb9aPLTJ7QNQ  密码:hj18
-2. 接下来我们可以定义一个类，实现如下四个函数，init、call、from_torch、from_pretrained。
-3. 用户可以在from_pretrained函数中用将classification model的模型参数载入，再将模型参数中的bert部分使用BertModelWithPooler加载成turbo_transformer中的BertModel，获得加速效果，并且将模型参数中的linear层部分作为参数传入构造函数。
-4. 在call函数中将inputs传入bertmodel，获得pooler_output后导入linear层获得结果
-5. 使用时，使用这个类的from_pretrained方法载入模型，得到turbo_model，再使用turbo_model(input_ids)获得logits结果
-
-```python
-import turbo_transformers
-from turbo_transformers import PoolingType
-from turbo_transformers import ReturnType
-from transformers.modeling_bert import BertModel as TorchBertModel
-from transformers import BertTokenizer
-from transformers.modeling_bert import BertForSequenceClassification as TorchBertForSequenceClassification
-import os
-import torch
-from typing import Optional
-
-
-class BertForSequenceClassification:
-    def __init__(self, bertmodel, classifier):
-        self.bert = bertmodel
-        self.classifier = classifier
-
-    def __call__(self,
-                 inputs,
-                 attention_masks=None,
-                 token_type_ids=None,
-                 position_ids=None,
-                 pooling_type=PoolingType.FIRST,
-                 hidden_cache=None,
-                 output=None,
-                 return_type=None):
-        pooler_output, _ = self.bert(inputs,
-                                     attention_masks,
-                                     token_type_ids,
-                                     position_ids,
-                                     pooling_type,
-                                     hidden_cache,
-                                     return_type=ReturnType.TORCH)
-        logits = self.classifier(pooler_output)
-        return logits
-
-    @staticmethod
-    def from_torch(model: TorchBertModel,
-                   device: Optional[torch.device] = None):
-        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
-        ):
-            model.to(device)
-        bertmodel = turbo_transformers.BertModelWithPooler.from_torch(
-            model.bert)
-        return BertForSequenceClassification(bertmodel, model.classifier)
-
-    @staticmethod
-    def from_pretrained(model_id_or_path: str,
-                        device: Optional[torch.device] = None):
-        torch_model = TorchBertForSequenceClassification.from_pretrained(
-            model_id_or_path)
-        model = BertForSequenceClassification.from_torch(torch_model, device)
-        model._torch_model = torch_model  # prevent destroy torch model.
-        return model
-
-
-model_id = os.path.join(os.path.dirname(__file__),
-                        'test-seq-classification-model')
-tokenizer = BertTokenizer.from_pretrained(model_id)
-turbo_model = turbo_transformers.BertForSequenceClassification.from_pretrained(
-    model_id, torch.device('cpu:0'))
-input_ids = torch.tensor(
-    tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求?',
-                     add_special_tokens=True)).unsqueeze(0)
-torch_result = turbo_model(input_ids)
-print(torch_result)
-# tensor([[ 0.1451, -0.0373]], grad_fn=<AddmmBackward>)
-```
-
+### 使用方法
+turbo_transformers提供了简单的C++/python调用接口，我们希望尽最大努力适配多样的上线环境，减轻使用者的开发难度。
+#### python接口
+提供兼容[huggingface/transformerspytorch](https://github.com/huggingface "pytorch")模型载入方式和python saved模型的载入方式。
+tensorflow模型可以转化为pytorch saved模型载入，我们尚未提供示例，读者可自行探索。
+我们提供了bert seqence classification的书写方式示例。
+参考[./example/python](https://git.code.oa.com/PRC_alg/fast_transformers/tree/develop/example/python "python")的例子。
+在工蜂上我们还内部开源了一套可以使用turbo的python severing框架[bertserving](https://git.code.oa.com/PRC_alg/bert-serving/tree/develop "bertserving")供使用者参考，它通过asyncio方式异步响应BERT推理的http请求。
+#### C++接口
+参考[./example/cpp](https://git.code.oa.com/PRC_alg/fast_transformers/tree/develop/example/cpp "C++")的例子。
+C++载入npz格式的模型文件，pytorch saved模型和npz转换的脚本在./tools/convert_huggingface_bert_to_npz.py
+我们的例子提供了GPU和两种CPU多线程的调用方式。一种是串行响应BERT计算请求，每次BERT计算使用多线程（omp）方式计算，另一种是多线程并行的响应BERT计算请求，每次BERT计算使用单线程方式的方式。
+用户使用时候可以通过add_subdirectory方式连接turbo-transformers，这里提供了一个例子[cmake-usage]("https://git.code.oa.com/jiaruifang/turbo-transformers-cpp" "cmake-usage")。
 ## 性能
 
 ### CPU测试效果
 我们在三种CPU硬件平台测试了turbo_transformers的性能表现。
 我们选择[pytorch](https://github.com/huggingface "pytorch")，[pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit")和[onnxruntime-mkldnn]( https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn")实现作为对比。性能测试结果为迭代150次的均值。为了避免多次测试时，上次迭代的数据在cache中缓存的现象，每次测试采用随机数据，并在计算后刷新的cache数据。
-
 
 * Intel Xeon 61xx
 
@@ -342,3 +156,6 @@ print(torch_result)
 2020.03.16之前我们的项目曾以fast-transformers发布。
 [turbo-transformers (1): CPU Serving is All You Need](http://km.oa.com/group/24938/articles/show/405322?kmref=author_post "turbo-transformers-cpu")
 [turbo-transformers (2): GPU Serving Can Also Be You Need](http://km.oa.com/group/18832/articles/show/413605?kmref=author_post "turbo-transformers-gpu")
+
+## 加入用户群
+请联系josephyu, jiauifang, florianzhao加入我们的用户使用群，我们将竭诚为您服务。

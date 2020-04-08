@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "turbo_transformers/loaders/modeling_bert.h"
-
+#include "example/cpp/bert_model.h"
 #include <cmath>
 #include <future>
 #include <thread>
@@ -21,6 +20,7 @@
 
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/config.h"
+#include "turbo_transformers/core/macros.h"
 
 namespace turbo_transformers {
 namespace loaders {
@@ -36,7 +36,7 @@ bool CheckCppBert(bool use_cuda, bool only_input) {
     segment_ids.clear();
   }
   auto vec = model({{12166, 10699, 16752, 4454}, {5342, 16471, 817, 16022}},
-                   position_ids, segment_ids, PoolingType::kFirst, false);
+                   position_ids, segment_ids, PoolType::kFirst, false);
   REQUIRE(vec.size() == 768 * 2);
   // Write a better UT
   for (size_t i = 0; i < vec.size(); ++i) {
@@ -68,7 +68,7 @@ bool CheckCppBertWithPooler(bool use_cuda, bool only_input) {
     segment_ids.clear();
   }
   auto vec = model({{12166, 10699, 16752, 4454}, {5342, 16471, 817, 16022}},
-                   position_ids, segment_ids, PoolingType::kFirst,
+                   position_ids, segment_ids, PoolType::kFirst,
                    /*use_pooler*/ true);
   REQUIRE(vec.size() == 768 * 2);
   // Write a better UT
@@ -108,21 +108,19 @@ TEST_CASE("BertWithPooler", "Cpp interface") {
   }
 }
 
-std::vector<float> CallBackFunction(
+static std::vector<float> CallBackFunction(
     const std::shared_ptr<BertModel> model,
     const std::vector<std::vector<int64_t>> input_ids,
     const std::vector<std::vector<int64_t>> position_ids,
-    const std::vector<std::vector<int64_t>> segment_ids, PoolingType pooltype,
+    const std::vector<std::vector<int64_t>> segment_ids, PoolType pooltype,
     bool use_pooler) {
   return model->operator()(input_ids, position_ids, segment_ids, pooltype,
                            use_pooler);
 }
 
-bool CheckCppBertWithPooler_1_model_N_threads(bool use_cuda, bool only_input,
-                                              int n_threads) {
+static bool test_multiple_threads(bool only_input, int n_threads) {
   std::shared_ptr<BertModel> model_ptr = std::make_shared<BertModel>(
-      "models/bert.npz", use_cuda ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU,
-      12, 12);
+      "models/bert.npz", DLDeviceType::kDLCPU, 12, 12);
   std::vector<std::vector<int64_t>> input_ids{{12166, 10699, 16752, 4454},
                                               {5342, 16471, 817, 16022}};
   std::vector<std::vector<int64_t>> position_ids{{1, 0, 0, 0}, {1, 1, 1, 0}};
@@ -136,38 +134,37 @@ bool CheckCppBertWithPooler_1_model_N_threads(bool use_cuda, bool only_input,
 
   std::vector<std::future<std::vector<float>>> result_list;
   result_list.reserve(n_threads);
-
   for (int i = 0; i < n_threads; ++i) {
     std::packaged_task<std::vector<float>(
         const std::shared_ptr<BertModel>,
         const std::vector<std::vector<int64_t>> &,
         const std::vector<std::vector<int64_t>> &,
-        const std::vector<std::vector<int64_t>> &, PoolingType, bool)>
+        const std::vector<std::vector<int64_t>> &, PoolType, bool)>
         task(CallBackFunction);
     result_list.emplace_back(task.get_future());
     threads.emplace_back(std::thread(std::move(task), model_ptr, input_ids,
                                      position_ids, segment_ids,
-                                     PoolingType::kFirst, true));
+                                     PoolType::kFirst, true));
   }
 
   for (int i = 0; i < n_threads; ++i) {
     auto vec = result_list[i].get();
-    REQUIRE(vec.size() == 768 * 2);
+    assert(vec.size() == 768 * 2);
 
     for (size_t i = 0; i < vec.size(); ++i) {
-      REQUIRE(!std::isnan(vec.data()[i]));
-      REQUIRE(!std::isinf(vec.data()[i]));
+      assert(!std::isnan(vec.data()[i]));
+      assert(!std::isinf(vec.data()[i]));
     }
     if (only_input) {
-      REQUIRE(fabs(vec.data()[0] - 0.9671) < 1e-3);
-      REQUIRE(fabs(vec.data()[1] - 0.9860) < 1e-3);
-      REQUIRE(fabs(vec.data()[768] - 0.9757) < 1e-3);
-      REQUIRE(fabs(vec.data()[768 + 1] - 0.9794) < 1e-3);
+      assert(fabs(vec.data()[0] - 0.9671) < 1e-3);
+      assert(fabs(vec.data()[1] - 0.9860) < 1e-3);
+      assert(fabs(vec.data()[768] - 0.9757) < 1e-3);
+      assert(fabs(vec.data()[768 + 1] - 0.9794) < 1e-3);
     } else {
-      REQUIRE(fabs(vec.data()[0] - 0.9151) < 1e-3);
-      REQUIRE(fabs(vec.data()[1] - 0.5919) < 1e-3);
-      REQUIRE(fabs(vec.data()[768] - 0.9802) < 1e-3);
-      REQUIRE(fabs(vec.data()[768 + 1] - 0.9321) < 1e-3);
+      assert(fabs(vec.data()[0] - 0.9151) < 1e-3);
+      assert(fabs(vec.data()[1] - 0.5919) < 1e-3);
+      assert(fabs(vec.data()[768] - 0.9802) < 1e-3);
+      assert(fabs(vec.data()[768 + 1] - 0.9321) < 1e-3);
     }
   }
 
@@ -176,10 +173,9 @@ bool CheckCppBertWithPooler_1_model_N_threads(bool use_cuda, bool only_input,
   }
   return true;
 }
-
-TEST_CASE("MultiThreadsBert1",
-          "CPU multiple threading with 1 model N threads") {
-  CheckCppBertWithPooler_1_model_N_threads(false, false, 40);
+TEST_CASE("Bert-multiple-thread", "Cpp interface") {
+  test_multiple_threads(false, 10);
+  test_multiple_threads(true, 10);
 }
 
 }  // namespace loaders

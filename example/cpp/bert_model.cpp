@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "turbo_transformers/loaders/modeling_bert.h"
+#include "bert_model.h"
 
 #include <string>
 #include <utility>
@@ -27,62 +27,9 @@
 #include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
-namespace turbo_transformers {
-namespace loaders {
+#include "turbo_transformers/loaders/npz_load.h"
 
-class NPZMapView {
- public:
-  NPZMapView(std::string prefix, cnpy::npz_t *npz)
-      : prefix_(std::move(prefix)), npz_(npz) {}
-
-  cnpy::NpyArray &operator[](const std::string &key) {
-    auto actualKey = prefix_ + key;
-    auto it = npz_->find(actualKey);
-    TT_ENFORCE(it != npz_->end(), "cannot find parameter %s in npz file",
-               actualKey);
-    return it->second;
-  }
-
-  NPZMapView Sub(const std::string &subview) {
-    return NPZMapView(prefix_ + subview + ".", npz_);
-  }
-
-  bool IsExist(const std::string &subprefix) {
-    auto actualPrefix = prefix_ + subprefix;
-    for (auto it = npz_->begin(); it != npz_->end(); ++it) {
-      if (it->first.rfind(actualPrefix, 0) == 0) return true;
-    }
-    return false;
-  }
-
- private:
-  std::string prefix_;
-  cnpy::npz_t *npz_;
-};
-
-class NPZLoader {
- public:
-  NPZLoader(NPZMapView view, DLDeviceType device)
-      : view_(std::move(view)), device_(device) {}
-
-  template <typename T>
-  core::Tensor LoadT(const std::string &name) {
-    auto &array = view_[name];
-    std::vector<int64_t> shape;
-    shape.resize(array.shape.size());
-    std::copy(array.shape.begin(), array.shape.end(), shape.begin());
-    core::Tensor tensor(core::NewDLPackTensorT<T>(shape, device_));
-    core::Copy(array.data<T>(), tensor.numel(), DLDeviceType::kDLCPU, tensor);
-    return tensor;
-  }
-
-  core::Tensor LoadFloat(const std::string &name) { return LoadT<float>(name); }
-  core::Tensor operator[](const std::string &name) { return LoadFloat(name); }
-
- private:
-  NPZMapView view_;
-  DLDeviceType device_;
-};
+using namespace turbo_transformers::loaders;
 
 static std::unique_ptr<layers::BERTEmbedding> LoadEmbedding(NPZMapView npz,
                                                             DLDeviceType dev) {
@@ -104,6 +51,7 @@ static std::unique_ptr<layers::BertPooler> LoadPooler(NPZMapView npz,
 
 struct BERTLayer {
   explicit BERTLayer(NPZLoader params, int64_t n_heads) {
+    // define layer network here
     attention_.reset(new layers::BertAttention(
         params["attention.qkv.weight"], params["attention.qkv.bias"],
         params["attention.output.dense.weight"],
@@ -137,6 +85,8 @@ struct BertModel::Impl {
       : device_type_(device_type) {
     auto npz = cnpy::npz_load(filename);
     NPZMapView root("", &npz);
+
+    // HERE define your network model
     embedding_ = LoadEmbedding(root.Sub("embeddings"), device_type);
 
     for (size_t i = 0; i < n_layers; ++i) {
@@ -150,6 +100,7 @@ struct BertModel::Impl {
     }
   }
 
+  // preprocess helper function
   template <typename T>
   void PadTensor(const std::vector<std::vector<T>> &data_array, int64_t n,
                  int64_t m, T pad_val, DLDeviceType device_type,
@@ -182,21 +133,28 @@ struct BertModel::Impl {
     }
   }
 
+  // do inference
   std::vector<float> operator()(
       const std::vector<std::vector<int64_t>> &inputs,
       const std::vector<std::vector<int64_t>> &poistion_ids,
-      const std::vector<std::vector<int64_t>> &segment_ids, PoolingType pooling,
+      const std::vector<std::vector<int64_t>> &segment_ids, PoolType pooling,
       bool use_pooler) {
+    core::Tensor inputs_tensor{nullptr};
+    core::Tensor masks_tensor{nullptr};
+
+    core::Tensor gpuInputs_tensor{nullptr};
+    core::Tensor gpuMasks_tensor{nullptr};
+
     int64_t max_seq_len =
         std::accumulate(inputs.begin(), inputs.end(), 0,
                         [](size_t len, const std::vector<int64_t> &input_ids) {
                           return std::max(len, input_ids.size());
                         });
     int64_t batch_size = inputs.size();
-    auto *iptr = inputs_.Reshape<int64_t>({batch_size, max_seq_len},
-                                          DLDeviceType::kDLCPU, 0);
-    auto *mptr = masks_.Reshape<int64_t>({batch_size, max_seq_len},
-                                         DLDeviceType::kDLCPU, 0);
+    auto *iptr = inputs_tensor.Reshape<int64_t>({batch_size, max_seq_len},
+                                                DLDeviceType::kDLCPU, 0);
+    auto *mptr = masks_tensor.Reshape<int64_t>({batch_size, max_seq_len},
+                                               DLDeviceType::kDLCPU, 0);
 
     for (size_t i = 0; i < inputs.size();
          ++i, iptr += max_seq_len, mptr += max_seq_len) {
@@ -209,17 +167,17 @@ struct BertModel::Impl {
       }
     }
     if (device_type_ == DLDeviceType::kDLGPU) {
-      gpuInputs_.Reshape<int64_t>({batch_size, max_seq_len},
-                                  DLDeviceType::kDLGPU, 0);
-      gpuMasks_.Reshape<int64_t>({batch_size, max_seq_len},
-                                 DLDeviceType::kDLGPU, 0);
-      core::Copy(inputs_.data<int64_t>(), inputs_.numel(), DLDeviceType::kDLCPU,
-                 gpuInputs_);
-      core::Copy(masks_.data<int64_t>(), masks_.numel(), DLDeviceType::kDLCPU,
-                 gpuMasks_);
+      gpuInputs_tensor.Reshape<int64_t>({batch_size, max_seq_len},
+                                        DLDeviceType::kDLGPU, 0);
+      gpuMasks_tensor.Reshape<int64_t>({batch_size, max_seq_len},
+                                       DLDeviceType::kDLGPU, 0);
+      core::Copy(inputs_tensor.data<int64_t>(), inputs_tensor.numel(),
+                 DLDeviceType::kDLCPU, gpuInputs_tensor);
+      core::Copy(masks_tensor.data<int64_t>(), masks_tensor.numel(),
+                 DLDeviceType::kDLCPU, gpuMasks_tensor);
     }
     auto &inputIds =
-        device_type_ == DLDeviceType::kDLCPU ? inputs_ : gpuInputs_;
+        device_type_ == DLDeviceType::kDLCPU ? inputs_tensor : gpuInputs_tensor;
 
     core::Tensor seqType(nullptr);
     core::Tensor positionIds(nullptr);
@@ -239,9 +197,11 @@ struct BertModel::Impl {
     }
 
     layers::PrepareBertMasks()(
-        inputIds, device_type_ == DLDeviceType::kDLCPU ? &masks_ : &gpuMasks_,
+        inputIds,
+        device_type_ == DLDeviceType::kDLCPU ? &masks_tensor : &gpuMasks_tensor,
         &seqType, &positionIds, &extendedAttentionMask);
 
+    // start inference the BERT
     core::Tensor hidden(nullptr);
     (*embedding_)(inputIds, positionIds, seqType, &hidden);
     core::Tensor attOut(nullptr);
@@ -271,25 +231,19 @@ struct BertModel::Impl {
   std::vector<BERTLayer> encoders_;
   std::unique_ptr<layers::BertPooler> pooler_;
 
-  core::Tensor inputs_{nullptr};
-  core::Tensor masks_{nullptr};
-
-  core::Tensor gpuInputs_{nullptr};
-  core::Tensor gpuMasks_{nullptr};
-
   DLDeviceType device_type_;
 };
 
 BertModel::BertModel(const std::string &filename, DLDeviceType device_type,
                      size_t n_layers, int64_t n_heads)
     : m_(new Impl(filename, device_type, n_layers, n_heads)) {}
+
 std::vector<float> BertModel::operator()(
     const std::vector<std::vector<int64_t>> &inputs,
     const std::vector<std::vector<int64_t>> &poistion_ids,
-    const std::vector<std::vector<int64_t>> &segment_ids, PoolingType pooling,
+    const std::vector<std::vector<int64_t>> &segment_ids, PoolType pooling,
     bool use_pooler) const {
   return m_->operator()(inputs, poistion_ids, segment_ids, pooling, use_pooler);
 }
+
 BertModel::~BertModel() = default;
-}  // namespace loaders
-}  // namespace turbo_transformers

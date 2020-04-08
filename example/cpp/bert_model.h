@@ -19,16 +19,10 @@
 #include <vector>
 
 #include "dlpack/dlpack.h"
-namespace turbo_transformers {
-namespace loaders {
+#include "turbo_transformers/layers/types.h"
 
-enum class PoolingType {
-  kMax = 0,
-  kMean,
-  kFirst,
-  kLast,
-
-};
+using namespace turbo_transformers;
+using PoolType = layers::types::PoolType;
 
 class BertModel {
  public:
@@ -40,12 +34,9 @@ class BertModel {
       const std::vector<std::vector<int64_t>> &inputs,
       const std::vector<std::vector<int64_t>> &poistion_ids,
       const std::vector<std::vector<int64_t>> &segment_ids,
-      PoolingType pooling = PoolingType::kFirst, bool use_pooler = false) const;
+      PoolType pooling = PoolType::kFirst, bool use_pooler = false) const;
 
  private:
   struct Impl;
   std::unique_ptr<Impl> m_;
 };
-
-}  // namespace loaders
-}  // namespace turbo_transformers

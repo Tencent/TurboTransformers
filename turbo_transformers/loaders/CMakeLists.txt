@@ -11,14 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-add_library(tt_cxx_interface modeling_bert.cpp)
-target_link_libraries(tt_cxx_interface
-        PUBLIC dlpack
-        PRIVATE cnpy zlib tt_core tt_layers tt_kernels)
-
-add_executable(tt_cxx_interface_test modeling_bert_test.cpp)
-target_link_libraries(tt_cxx_interface_test catch2_test_main tt_cxx_interface)
-add_test(NAME tt_cxx_interface_test COMMAND tt_cxx_interface_test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-ADD_CUSTOM_TARGET(bertnpzmodel ALL COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/models ${CMAKE_CURRENT_BINARY_DIR}/models)
+add_library(tt_npz_loader npz_load.cpp)
+target_link_libraries(tt_npz_loader
+        PUBLIC dlpack cnpy
+        PRIVATE tt_core zlib
+)
