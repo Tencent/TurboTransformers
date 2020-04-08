@@ -9,8 +9,7 @@ setup(name='turbo-transformers',
       description='turbo_transformers',
       packages=[
           'turbo_transformers',
-          'turbo_transformers.layers',
-          'turbo_transformers.tools'
+          'turbo_transformers.layers'
       ],
       package_data={
           '': [
