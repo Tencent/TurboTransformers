@@ -139,11 +139,11 @@ struct BertModel::Impl {
       const std::vector<std::vector<int64_t>> &poistion_ids,
       const std::vector<std::vector<int64_t>> &segment_ids, PoolType pooling,
       bool use_pooler) {
-    core::Tensor inputs_{nullptr};
-    core::Tensor masks_{nullptr};
+    core::Tensor inputs_tensor{nullptr};
+    core::Tensor masks_tensor{nullptr};
 
-    core::Tensor gpuInputs_{nullptr};
-    core::Tensor gpuMasks_{nullptr};
+    core::Tensor gpuInputs_tensor{nullptr};
+    core::Tensor gpuMasks_tensor{nullptr};
 
     int64_t max_seq_len =
         std::accumulate(inputs.begin(), inputs.end(), 0,
@@ -151,10 +151,10 @@ struct BertModel::Impl {
                           return std::max(len, input_ids.size());
                         });
     int64_t batch_size = inputs.size();
-    auto *iptr = inputs_.Reshape<int64_t>({batch_size, max_seq_len},
-                                          DLDeviceType::kDLCPU, 0);
-    auto *mptr = masks_.Reshape<int64_t>({batch_size, max_seq_len},
-                                         DLDeviceType::kDLCPU, 0);
+    auto *iptr = inputs_tensor.Reshape<int64_t>({batch_size, max_seq_len},
+                                                DLDeviceType::kDLCPU, 0);
+    auto *mptr = masks_tensor.Reshape<int64_t>({batch_size, max_seq_len},
+                                               DLDeviceType::kDLCPU, 0);
 
     for (size_t i = 0; i < inputs.size();
          ++i, iptr += max_seq_len, mptr += max_seq_len) {
@@ -167,17 +167,17 @@ struct BertModel::Impl {
       }
     }
     if (device_type_ == DLDeviceType::kDLGPU) {
-      gpuInputs_.Reshape<int64_t>({batch_size, max_seq_len},
-                                  DLDeviceType::kDLGPU, 0);
-      gpuMasks_.Reshape<int64_t>({batch_size, max_seq_len},
-                                 DLDeviceType::kDLGPU, 0);
-      core::Copy(inputs_.data<int64_t>(), inputs_.numel(), DLDeviceType::kDLCPU,
-                 gpuInputs_);
-      core::Copy(masks_.data<int64_t>(), masks_.numel(), DLDeviceType::kDLCPU,
-                 gpuMasks_);
+      gpuInputs_tensor.Reshape<int64_t>({batch_size, max_seq_len},
+                                        DLDeviceType::kDLGPU, 0);
+      gpuMasks_tensor.Reshape<int64_t>({batch_size, max_seq_len},
+                                       DLDeviceType::kDLGPU, 0);
+      core::Copy(inputs_tensor.data<int64_t>(), inputs_tensor.numel(),
+                 DLDeviceType::kDLCPU, gpuInputs_tensor);
+      core::Copy(masks_tensor.data<int64_t>(), masks_tensor.numel(),
+                 DLDeviceType::kDLCPU, gpuMasks_tensor);
     }
     auto &inputIds =
-        device_type_ == DLDeviceType::kDLCPU ? inputs_ : gpuInputs_;
+        device_type_ == DLDeviceType::kDLCPU ? inputs_tensor : gpuInputs_tensor;
 
     core::Tensor seqType(nullptr);
     core::Tensor positionIds(nullptr);
@@ -197,7 +197,8 @@ struct BertModel::Impl {
     }
 
     layers::PrepareBertMasks()(
-        inputIds, device_type_ == DLDeviceType::kDLCPU ? &masks_ : &gpuMasks_,
+        inputIds,
+        device_type_ == DLDeviceType::kDLCPU ? &masks_tensor : &gpuMasks_tensor,
         &seqType, &positionIds, &extendedAttentionMask);
 
     // start inference the BERT
