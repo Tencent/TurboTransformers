@@ -17,7 +17,7 @@
 
 #include <numeric>
 
-#include "turbo_transformers/layers/kernels/gpu_block_reduce.h"
+#include "turbo_transformers/layers/kernels/gpu_block_reduce.cuh"
 #include "turbo_transformers/layers/kernels/gpu_layer_norm_kernel.h"
 
 namespace turbo_transformers {
@@ -25,9 +25,9 @@ namespace layers {
 namespace kernels {
 
 template <bool AddBias>
-static __global__ void layer_norm_kernel(float* out, const float* input,
-                                         const float* bias, const float* gamma,
-                                         const float* beta, int m, int n) {
+static __global__ void layer_norm_kernel_32x_le_1024(
+    float* out, const float* input, const float* bias, const float* gamma,
+    const float* beta, int m, int n) {
   int tid = threadIdx.x;
   int offset = blockIdx.x * n + tid;
   __shared__ float s_mean;
@@ -35,17 +35,63 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
 
   float local_out = 0.0f;
   if (AddBias) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
-    local_out = out[offset] + input[offset] + __ldg(&bias[tid]);
-#else
     local_out = out[offset] + input[offset] + bias[tid];
-#endif
   } else {
     local_out = out[offset];
   }
 
   float sum_list[2] = {local_out, local_out * local_out};
-  blockReduce<ReduceType, ReduceType::kSum, 2>(sum_list);
+  blockReduce<ReduceType::kSum, 2>(sum_list);
+
+  if (tid == 0) {
+    float mean = sum_list[0] / n;
+    float mean_2 = sum_list[1] / n;
+    s_mean = mean;
+    s_variance = rsqrtf(mean_2 - mean * mean + 1e-6f);
+  }
+  __syncthreads();
+  out[offset] = (local_out - s_mean) * s_variance * gamma[tid] + beta[tid];
+}
+
+// TODO(jiaruifang) if the lowese dimension is not 32x and <= 1024,
+// implementation is not optimized
+template <bool AddBias>
+static __global__ void layer_norm_kernel(float* out, const float* input,
+                                         const float* bias, const float* gamma,
+                                         const float* beta, int m, int n) {
+  int tid = threadIdx.x;
+  int offset = blockIdx.x * n;
+  int block_dim_x = blockDim.x;
+  __shared__ float s_mean;
+  __shared__ float s_variance;
+
+  // local reduce
+  int idx = tid;
+  float local_sum_out = 0.;
+  float local_sum_square_out = 0.;
+
+  if (AddBias) {
+    idx = tid;
+    while (idx < n) {
+      float tmp = (bias[idx] + input[idx + offset] + out[idx + offset]);
+      local_sum_out += tmp;
+      local_sum_square_out += tmp * tmp;
+      idx += block_dim_x;
+    }
+  } else {
+    idx = tid;
+    while (idx < n) {
+      float tmp = out[idx + offset];
+      local_sum_out += tmp;
+      local_sum_square_out += tmp * tmp;
+      idx += block_dim_x;
+    }
+  }
+
+  // remote reduce
+  float sum_list[2] = {local_sum_out, local_sum_square_out};
+
+  blockReduce<ReduceType::kSum, 2>(sum_list);
 
   if (tid == 0) {
     float mean = sum_list[0] / n;
@@ -55,24 +101,39 @@ static __global__ void layer_norm_kernel(float* out, const float* input,
   }
   __syncthreads();
 
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
-  out[offset] = (local_out - s_mean) * s_variance * __ldg(&gamma[tid]) +
-                __ldg(&beta[tid]);
-#else
-  out[offset] = (local_out - s_mean) * s_variance * gamma[tid] + beta[tid];
-#endif
+  idx = tid;
+  if (AddBias) {
+    while (idx < n) {
+      out[idx + offset] =
+          (out[idx + offset] + input[idx + offset] + bias[idx] - s_mean) *
+              s_variance * __ldg(&gamma[idx]) +
+          __ldg(&beta[idx]);
+      idx += block_dim_x;
+    }
+  } else {
+    while (idx < n) {
+      out[idx + offset] =
+          (out[idx + offset] - s_mean) * s_variance * __ldg(&gamma[idx]) +
+          __ldg(&beta[idx]);
+      idx += block_dim_x;
+    }
+  }
 }
 
 template <bool AddBias, typename T>
 void GPULayerNorm(T* out, const T* input, const T* bias, const T* gamma,
                   const T* beta, int m, int n, cudaStream_t stream) {
-  dim3 block(n);
-  if (block.x > 1024) {
-    throw std::runtime_error("GPULayerNorm thread block size large than 1024");
-  }
   dim3 grid(m);
-  layer_norm_kernel<AddBias>
-      <<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);
+  if (n <= 1024 && n % 32 == 0) {
+    dim3 block(n);
+    layer_norm_kernel_32x_le_1024<AddBias>
+        <<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);
+  } else {
+    int block_size = min(1024, (int)((n + 31) / 32 * 32));
+    dim3 block(block_size);
+    layer_norm_kernel<AddBias>
+        <<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);
+  }
 }
 
 template void GPULayerNorm<true>(float* out, const float* input,

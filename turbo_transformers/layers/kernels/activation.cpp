@@ -86,12 +86,12 @@ template <typename T, DLDeviceType deviceType>
 struct ActivationTypeTrait {
   typedef T Type;
 };
-
+#ifdef TT_WITH_CUDA
 template <>
 struct ActivationTypeTrait<core::Half, kDLGPU> {
   typedef half Type;
 };
-
+#endif
 }  // namespace
 
 template <typename T, ActivationType ActType>
@@ -131,11 +131,13 @@ template void AddBiasAct<float, ActivationType::Tanh>(
 template void AddBiasAct<float, ActivationType::Gelu>(
     const core::Tensor &bias_tensor, core::Tensor *out_tensor);
 
+#ifdef TT_WITH_CUDA
 template void AddBiasAct<core::Half, ActivationType::Tanh>(
     const core::Tensor &bias_tensor, core::Tensor *out_tensor);
 
 template void AddBiasAct<core::Half, ActivationType::Gelu>(
     const core::Tensor &bias_tensor, core::Tensor *out_tensor);
+#endif
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers
