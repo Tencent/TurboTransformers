@@ -67,31 +67,6 @@ void CPUAddBiasActKernel<float, ActivationType::Tanh>(const float *bias,
     vsTanh(feature_dim, &out[i * feature_dim], &out[i * feature_dim]);
   }
 }
-
-template <>
-void CPUAddBiasActKernel<core::Half, ActivationType::Tanh>(
-    const core::Half *bias, int64_t batch_size, int64_t feature_dim,
-    core::Half *out) {
-  TT_THROW("CPUAddBiasActKernel Tanh FP16 is not supported");
-}
-
-template <>
-void CPUAddBiasActKernel<core::Half, ActivationType::Gelu>(
-    const core::Half *bias, int64_t batch_size, int64_t feature_dim,
-    core::Half *out) {
-  TT_THROW("CPUAddBiasActKernel Gelu FP16 is not supported");
-}
-
-template <typename T, DLDeviceType deviceType>
-struct ActivationTypeTrait {
-  typedef T Type;
-};
-#ifdef TT_WITH_CUDA
-template <>
-struct ActivationTypeTrait<core::Half, kDLGPU> {
-  typedef half Type;
-};
-#endif
 }  // namespace
 
 template <typename T, ActivationType ActType>
@@ -104,20 +79,12 @@ void AddBiasAct(const core::Tensor &bias_tensor, core::Tensor *out_tensor) {
 
   if (out_tensor->device_type() == kDLCPU &&
       bias_tensor.device_type() == kDLCPU) {
-    CPUAddBiasActKernel<typename ActivationTypeTrait<T, kDLCPU>::Type, ActType>(
-        reinterpret_cast<const typename ActivationTypeTrait<T, kDLCPU>::Type *>(
-            bias),
-        m, n,
-        reinterpret_cast<typename ActivationTypeTrait<T, kDLCPU>::Type *>(out));
+    CPUAddBiasActKernel<T, ActType>(bias, m, n, out);
   } else if (out_tensor->device_type() == kDLGPU &&
              bias_tensor.device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
     core::CUDADeviceContext &cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPUAddBiasActKernel<typename ActivationTypeTrait<T, kDLGPU>::Type, ActType>(
-        reinterpret_cast<const typename ActivationTypeTrait<T, kDLGPU>::Type *>(
-            bias),
-        m, n, cuda_ctx.stream(),
-        reinterpret_cast<typename ActivationTypeTrait<T, kDLGPU>::Type *>(out));
+    GPUAddBiasActKernel<T, ActType>(bias, m, n, cuda_ctx.stream(), out);
 #endif
   } else {
     TT_THROW("device_type %d is not supported for AddBiasAct",
@@ -130,14 +97,6 @@ template void AddBiasAct<float, ActivationType::Tanh>(
 
 template void AddBiasAct<float, ActivationType::Gelu>(
     const core::Tensor &bias_tensor, core::Tensor *out_tensor);
-
-#ifdef TT_WITH_CUDA
-template void AddBiasAct<core::Half, ActivationType::Tanh>(
-    const core::Tensor &bias_tensor, core::Tensor *out_tensor);
-
-template void AddBiasAct<core::Half, ActivationType::Gelu>(
-    const core::Tensor &bias_tensor, core::Tensor *out_tensor);
-#endif
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers

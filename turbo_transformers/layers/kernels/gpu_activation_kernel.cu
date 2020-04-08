@@ -15,7 +15,6 @@
 #include <numeric>
 
 #include "ide_macro.h"
-#include "turbo_transformers/core/half.h"
 #include "turbo_transformers/layers/kernels/gpu_activation_kernel.h"
 
 namespace turbo_transformers {
@@ -36,23 +35,9 @@ __inline__ __device__ float ActvationOp<float, ActivationType::Gelu>(
 }
 
 template <>
-__inline__ __device__ __half
-ActvationOp<__half, ActivationType::Gelu>(const __half& x) {
-  float x_f = __half2float(x);
-  return __float2half(ActvationOp<float, ActivationType::Gelu>(x_f));
-}
-
-template <>
 __inline__ __device__ float ActvationOp<float, ActivationType::Tanh>(
     const float& x) {
   return tanhf(x);
-}
-
-template <>
-__inline__ __device__ __half
-ActvationOp<__half, ActivationType::Tanh>(const __half& x) {
-  float x_f = __half2float(x);
-  return __float2half(tanh(x_f));
 }
 }  // namespace
 
@@ -68,11 +53,7 @@ static __global__ void add_bias_act(const T* bias, int batch_size,
   for (int i = 0; i < elem_per_thread; ++i) {
     int offset = i * blockDim.x + tid;
     if (offset < feature_dim) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
-      reg_bias = __ldg(&bias[offset]);
-#else
       reg_bias = bias[offset];
-#endif
       row_id = blockIdx.x;
       val = out[offset + row_id * feature_dim] + reg_bias;
       out[offset + row_id * feature_dim] = ActvationOp<T, ActType>(val);
@@ -98,14 +79,6 @@ template void GPUAddBiasActKernel<float, ActivationType::Gelu>(
 template void GPUAddBiasActKernel<float, ActivationType::Tanh>(
     const float* bias_data, int64_t batch_size, int64_t feature_dim,
     cudaStream_t stream, float* out_data);
-
-template void GPUAddBiasActKernel<half, ActivationType::Gelu>(
-    const half* bias_data, int64_t batch_size, int64_t feature_dim,
-    cudaStream_t stream, half* out_data);
-
-template void GPUAddBiasActKernel<half, ActivationType::Tanh>(
-    const half* bias_data, int64_t batch_size, int64_t feature_dim,
-    cudaStream_t stream, half* out_data);
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers
