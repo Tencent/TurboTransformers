@@ -25,11 +25,9 @@ namespace layers {
 namespace kernels {
 
 template <bool AddBias>
-static __global__ void layer_norm_kernel_common(float* out, const float* input,
-                                                const float* bias,
-                                                const float* gamma,
-                                                const float* beta, int m,
-                                                int n) {
+static __global__ void layer_norm_kernel_32x_le_1024(
+    float* out, const float* input, const float* bias, const float* gamma,
+    const float* beta, int m, int n) {
   int tid = threadIdx.x;
   int offset = blockIdx.x * n + tid;
   __shared__ float s_mean;
@@ -37,11 +35,7 @@ static __global__ void layer_norm_kernel_common(float* out, const float* input,
 
   float local_out = 0.0f;
   if (AddBias) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
-    local_out = out[offset] + input[offset] + __ldg(&bias[tid]);
-#else
     local_out = out[offset] + input[offset] + bias[tid];
-#endif
   } else {
     local_out = out[offset];
   }
@@ -56,16 +50,11 @@ static __global__ void layer_norm_kernel_common(float* out, const float* input,
     s_variance = rsqrtf(mean_2 - mean * mean + 1e-6f);
   }
   __syncthreads();
-
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ > 300
-  out[offset] = (local_out - s_mean) * s_variance * __ldg(&gamma[tid]) +
-                __ldg(&beta[tid]);
-#else
   out[offset] = (local_out - s_mean) * s_variance * gamma[tid] + beta[tid];
-#endif
 }
 
-// TODO(jiaruifang) if m is not 32x and < 1024, implementation is not optimized
+// TODO(jiaruifang) if the lowese dimension is not 32x and <= 1024,
+// implementation is not optimized
 template <bool AddBias>
 static __global__ void layer_norm_kernel(float* out, const float* input,
                                          const float* bias, const float* gamma,
@@ -137,7 +126,7 @@ void GPULayerNorm(T* out, const T* input, const T* bias, const T* gamma,
   dim3 grid(m);
   if (n <= 1024 && n % 32 == 0) {
     dim3 block(n);
-    layer_norm_kernel_common<AddBias>
+    layer_norm_kernel_32x_le_1024<AddBias>
         <<<grid, block, 0, stream>>>(out, input, bias, gamma, beta, m, n);
   } else {
     int block_size = min(1024, (int)((n + 31) / 32 * 32));
