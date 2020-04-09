@@ -46,19 +46,18 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
   if (out_tensor->device_type() == kDLCPU) {
 #pragma omp parallel for
     for (int64_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
-      T mean = static_cast<T>(0);
-      T var = static_cast<T>(0);
+      T mean = 0;
+      T var = 0;
+      auto start_idx = batch_idx * feature_dim;
+      auto end_idx = (batch_idx + 1) * feature_dim;
 #pragma omp simd reduction(+ : mean, var)
-      for (int64_t i = batch_idx * feature_dim;
-           i < (batch_idx + 1) * feature_dim; i++) {
-        T t = out[i];
-        mean += t;
-        var += t * t;
+      for (int64_t i = start_idx; i < end_idx; i++) {
+        mean += out[i];
+        var += out[i] * out[i];
       }
       mean = mean / feature_dim;
       var = var / feature_dim - mean * mean;
 
-      // 1 / sqrt(var)
       var = 1.f / sqrtf(var + g_epsilon);
 
 #pragma omp simd
@@ -77,7 +76,8 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
     TT_THROW("The current code is not compiled with CUDA.");
 #endif
   } else {
-    TT_THROW("device_type is not supported");
+    TT_THROW("AddBiasLayerNorm device_type %d is not supported",
+             out_tensor->device_type());
   }
 }
 
@@ -120,19 +120,18 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
   if (input_tensor.device_type() == kDLCPU) {
 #pragma omp parallel for
     for (int64_t batch_idx = 0; batch_idx < m; ++batch_idx) {
-      float mean = 0;
-      float var = 0;
+      T mean = 0;
+      T var = 0;
 #pragma omp simd reduction(+ : mean, var)
       for (int64_t i = batch_idx * n; i < (batch_idx + 1) * n; i++) {
         int64_t j = i - batch_idx * n;
-        float t = out[i] = out[i] + input[i] + bias[j];
+        T t = out[i] = out[i] + input[i] + bias[j];
         mean += t;
         var += t * t;
       }
       mean = mean / n;
       var = var / n - mean * mean;
 
-      // 1 / sqrt(var)
       var = 1.f / sqrtf(var + g_epsilon);
 
 #pragma omp simd
@@ -146,9 +145,12 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
     GPULayerNorm</*AddBias*/ true>(out, input, bias, gamma, beta, m, n,
                                    cuda_ctx.stream());
+#else
+    TT_THROW("The current code is not compiled with CUDA.");
 #endif
   } else {
-    TT_THROW("device_type is not supported");
+    TT_THROW("LayerNorm device_type %d is not supported",
+             input_tensor.device_type());
   }
 }
 

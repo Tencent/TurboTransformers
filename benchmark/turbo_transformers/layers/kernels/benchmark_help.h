@@ -92,8 +92,8 @@ void TestFuncSpeed(Func&& func, int step, const std::string& infor,
   }
   auto elapse = timer->ElapseSecond() / step;
 
-  LOG_S(INFO) << infor << " cost:" << elapse << " ms, Bandwidth "
-              << g_bytes / elapse << " GB/s";
+  std::cout << infor << " cost:" << elapse << " ms, Bandwidth "
+            << g_bytes / elapse << " GB/s" << std::endl;
 }
 
 }  // namespace benchmark

@@ -29,86 +29,56 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-#ifdef TT_WITH_CUDA
-TEST_CASE("add_bias_layer_norm-test") {
+static void LayerNormBenmarkHelper(int batch_size, int hidden_size,
+                                   int seq_length, bool is_add_bias,
+                                   const std::string& info, DLDeviceType dev,
+                                   int n_step) {
+  auto g_bytes = batch_size * seq_length * hidden_size * sizeof(float) / 1e9;
+  auto input = common::CreateTensorAndFillRandom<float>(
+      {batch_size, seq_length, hidden_size}, dev, 0);
+  auto bias = common::CreateTensorAndFillRandom<float>({hidden_size}, dev, 0);
+  auto gamma = common::CreateTensorAndFillRandom<float>({hidden_size}, dev, 0);
+  auto beta = common::CreateTensorAndFillRandom<float>({hidden_size}, dev, 0);
+  auto out = common::CreateTensorAndFillRandom<float>(
+      {batch_size, seq_length, hidden_size}, dev, 0);
+
+  if (is_add_bias) {
+    benchmark::TestFuncSpeed(
+        [&]() { AddBiasLayerNorm<float>(input, bias, gamma, beta, &out); },
+        n_step, info, g_bytes, dev);
+  } else {
+    benchmark::TestFuncSpeed([&]() { LayerNorm<float>(gamma, beta, &out); },
+                             n_step, info, g_bytes, dev);
+  }
+}
+
+TEST_CASE("layernorm-cpu-benchmark") {
+  constexpr int n_step = 150;
   std::vector<int64_t> hidden_size_list{12 * 64, 2000};
   std::vector<int64_t> batch_size_list{1, 20};
   std::vector<int64_t> seq_length_list{10,  20,  40,  60,  80,
                                        100, 200, 300, 400, 500};
+
   for (auto hidden_size : hidden_size_list) {
     for (auto batch_size : batch_size_list) {
       for (auto seq_length : seq_length_list) {
-        core::Tensor gpu_input(nullptr), cpu_input(nullptr), gpu_bias(nullptr),
-            cpu_bias(nullptr), gpu_out(nullptr), cpu_out(nullptr),
-            gpu_gamma(nullptr), cpu_gamma(nullptr), gpu_beta(nullptr),
-            cpu_beta(nullptr);
-        std::tie(cpu_input, gpu_input) =
-            common::CreateAndFillRandomForCPUGPUTensors<float>(
-                {batch_size, seq_length, hidden_size});
-        std::tie(cpu_bias, gpu_bias) =
-            common::CreateAndFillRandomForCPUGPUTensors<float>({hidden_size});
-        std::tie(cpu_out, gpu_out) =
-            common::CreateAndFillRandomForCPUGPUTensors<float>(
-                {batch_size, seq_length, hidden_size});
-        std::tie(cpu_gamma, gpu_gamma) =
-            common::CreateAndFillRandomForCPUGPUTensors<float>({hidden_size});
-        std::tie(cpu_beta, gpu_beta) =
-            common::CreateAndFillRandomForCPUGPUTensors<float>({hidden_size});
-
-        std::cout << "batch_size: " << batch_size
-                  << " seq_length: " << seq_length
-                  << " hidden_size: " << hidden_size;
-        {
-          LayerNorm<float>(cpu_gamma, cpu_beta, &cpu_out);
-          LayerNorm<float>(gpu_gamma, gpu_beta, &gpu_out);
-        }
-        REQUIRE(common::CheckResultOfCPUAndGPU<float>(cpu_out, gpu_out));
-
-        {
-          AddBiasLayerNorm<float>(cpu_input, cpu_bias, cpu_gamma, cpu_beta,
-                                  &cpu_out);
-          AddBiasLayerNorm<float>(gpu_input, gpu_bias, gpu_gamma, gpu_beta,
-                                  &gpu_out);
-        }
-        REQUIRE(common::CheckResultOfCPUAndGPU<float>(cpu_out, gpu_out));
-
-        // WARM UP
-        for (int i = 0; i < 5; ++i) {
-          AddBiasLayerNorm<float>(gpu_input, gpu_bias, gpu_gamma, gpu_beta,
-                                  &gpu_out);
-        }
-
-        cudaEvent_t start_event, stop_event;
-        cudaEventCreate(&start_event);
-        cudaEventCreate(&stop_event);
-        auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
-        auto stream = cuda_ctx.stream();
-        cudaEventRecord(start_event, stream);
-
-        int step = 150;
-        for (int i = 0; i < step; ++i) {
-          AddBiasLayerNorm<float>(gpu_input, gpu_bias, gpu_gamma, gpu_beta,
-                                  &gpu_out);
-        }
-
-        cudaEventRecord(stop_event, stream);
-        cudaEventSynchronize(stop_event);
-        float elapse;
-        cudaEventElapsedTime(&elapse, start_event, stop_event);
-        elapse /= step;
-        elapse /= 1000;  // ms
-
-        std::cout << "AddBiasLayerNorm gpu cost, "
-                  << batch_size * seq_length * hidden_size * sizeof(float) /
-                         1e9 / elapse
-                  << ", GB/s, time consumed, " << elapse << std::endl;
+        std::stringstream ss;
+        ss << "CPU LayerNorm " << batch_size << ", " << seq_length << ", "
+           << hidden_size;
+        LayerNormBenmarkHelper(batch_size, hidden_size, seq_length, true,
+                               ss.str(), kDLCPU, n_step);
+        ss << " AddBias";
+        LayerNormBenmarkHelper(batch_size, hidden_size, seq_length, false,
+                               ss.str(), kDLCPU, n_step);
       }  // for
     }
   }
 }
-#endif
 
-TEST_CASE("add_bias_layer_norm-cpu-test") {
+#ifdef TT_WITH_CUDA
+TEST_CASE("layernorm-gpu-benchmark") {
+  constexpr int n_step = 150;
+
   int64_t hidden_size = 12 * 64;
 
   std::vector<int64_t> batch_size_list{1, 20};
@@ -116,38 +86,17 @@ TEST_CASE("add_bias_layer_norm-cpu-test") {
                                        100, 200, 300, 400, 500};
   for (auto batch_size : batch_size_list)
     for (auto seq_length : seq_length_list) {
-      auto cpu_input = common::CreateTensorAndFillRandom<float>(
-          {batch_size, seq_length, hidden_size}, kDLCPU, 0);
-      auto cpu_bias =
-          common::CreateTensorAndFillRandom<float>({hidden_size}, kDLCPU, 0);
-      auto cpu_gamma =
-          common::CreateTensorAndFillRandom<float>({hidden_size}, kDLCPU, 0);
-      auto cpu_beta =
-          common::CreateTensorAndFillRandom<float>({hidden_size}, kDLCPU, 0);
-      auto cpu_out = common::CreateTensorAndFillRandom<float>(
-          {batch_size, seq_length, hidden_size}, kDLCPU, 0);
-
-      std::cout << "batch_size: " << batch_size << " seq_length: " << seq_length
-                << " ";
-
-      int step = 150;
-      auto start = std::chrono::system_clock::now();
-      for (int i = 0; i < step; ++i) {
-        AddBiasLayerNorm<float>(cpu_input, cpu_bias, cpu_gamma, cpu_beta,
-                                &cpu_out);
-      }
-      auto end = std::chrono::system_clock::system_clock::now();
-      auto duration =
-          std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-      auto elapse = double(duration.count()) *
-                    std::chrono::microseconds::period::num /
-                    std::chrono::microseconds::period::den / step;
-      std::cout << "CPU AddBiasLayerNorm cost,"
-                << batch_size * seq_length * hidden_size * sizeof(float) / 1e9 /
-                       elapse
-                << ", GB/s" << std::endl;
+      std::stringstream ss;
+      ss << "GPU LayerNorm " << batch_size << ", " << seq_length << ", "
+         << hidden_size;
+      LayerNormBenmarkHelper(batch_size, hidden_size, seq_length, true,
+                             ss.str(), kDLGPU, n_step);
+      ss << " AddBias";
+      LayerNormBenmarkHelper(batch_size, hidden_size, seq_length, false,
+                             ss.str(), kDLGPU, n_step);
     }  // for
 }
+#endif
 
 }  // namespace kernels
 }  // namespace layers
