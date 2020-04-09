@@ -11,25 +11,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include <chrono>
 #include <cstdlib>
 #include <ctime>
-
+#include "benchmark_help.h"
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/tensor.h"
 #include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/mat_mul.h"
 
 namespace turbo_transformers {
-namespace core {
+namespace layers {
+namespace kernels {
 
 using layers::kernels::common::FillRandom;
 
-static void _CreateBenchmark(DLDeviceType device_type, bool trans_weight,
-                             std::initializer_list<int64_t> weight_shape,
-                             std::vector<int64_t> m_list) {
-  const int step = 1000;
+static void MatmulBenchmarkHelper(DLDeviceType device_type, bool trans_weight,
+                                  std::initializer_list<int64_t> weight_shape,
+                                  std::vector<int64_t> m_list) {
+  constexpr int n_step = 1000;
   const std::string device_name = device_type == kDLCPU ? "CPU" : "GPU";
   const std::string trans_name = trans_weight ? "Tran" : "NoTrans";
 
@@ -59,25 +58,16 @@ static void _CreateBenchmark(DLDeviceType device_type, bool trans_weight,
         NewDLPackTensorT<float>(output_shape, device_type, 0));
     FillRandom<float>(output_tensor);
 
-    layers::kernels::MatMul(input_tensor, false, weight_tensor, trans_weight,
-                            1.0, &output_tensor, 0.0);
-    auto start = std::chrono::system_clock::now();
-    for (int i = 0; i < step; ++i) {
-      layers::kernels::MatMul(input_tensor, false, weight_tensor, trans_weight,
-                              1.0, &output_tensor, 0.0);
-    }
-#ifdef TT_WITH_CUDA
-    if (device_type == kDLGPU) cudaDeviceSynchronize();
-#endif
-    auto end = std::chrono::system_clock::system_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    auto elapse = static_cast<double>(duration.count()) *
-                  std::chrono::microseconds::period::num /
-                  std::chrono::microseconds::period::den / step;
-    std::cout << m << "," << n << "," << k << ", mat_mul " << device_name
-              << ", " << trans_name << " :" << elapse << " s, "
-              << 2. * m * n * k / 1e9 / elapse << " GFlops" << std::endl;
+    std::stringstream ss;
+    ss << device_name << " " << trans_name << " MaytMul " << m << " " << k
+       << " " << n << " ";
+    auto g_flops = m * n * k * 2 / 1e9;
+    benchmark::TestFuncSpeed(
+        [&]() {
+          layers::kernels::MatMul(input_tensor, false, weight_tensor,
+                                  trans_weight, 1.0, &output_tensor, 0.0);
+        },
+        n_step, ss.str(), g_flops, device_type);
   }
 }
 
@@ -86,26 +76,26 @@ TEST_CASE("matmal-cpu-benchmark") {
   std::cout << "CPU QKV MatMul Benchmark" << std::endl;
   int64_t k = 12 * 64, n = 12 * 64 * 3;
   std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
-  _CreateBenchmark(kDLCPU, false, {k, n}, m_list);
+  MatmulBenchmarkHelper(kDLCPU, false, {k, n}, m_list);
   std::cout << std::endl;
 }
 
+#ifdef TT_WITH_CUDA
 TEST_CASE("matmal-gpu-qkv-benchmark") {
   std::cout << "=================================" << std::endl;
   std::cout << "GPU QKV MatMul Benchmark" << std::endl;
   int64_t k = 12 * 64, n = 12 * 64 * 3;
   std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
   std::cout << "weight no trans" << std::endl;
-  _CreateBenchmark(kDLGPU, false, {k, n}, m_list);
+  MatmulBenchmarkHelper(kDLGPU, false, {k, n}, m_list);
   std::cout << "weight trans" << std::endl;
-  _CreateBenchmark(kDLGPU, true, {n, k}, m_list);
+  MatmulBenchmarkHelper(kDLGPU, true, {n, k}, m_list);
 
-  std::cout << "batch = 20" << std::endl;
   for (auto& m : m_list) m *= 20;
   std::cout << "weight no trans" << std::endl;
-  _CreateBenchmark(kDLGPU, false, {k, n}, m_list);
+  MatmulBenchmarkHelper(kDLGPU, false, {k, n}, m_list);
   std::cout << "weight trans" << std::endl;
-  _CreateBenchmark(kDLGPU, true, {n, k}, m_list);
+  MatmulBenchmarkHelper(kDLGPU, true, {n, k}, m_list);
 }
 
 TEST_CASE("matmal-gpu-inter-benchmark") {
@@ -115,17 +105,19 @@ TEST_CASE("matmal-gpu-inter-benchmark") {
   DLDeviceType device_type = kDLGPU;
   std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
   std::cout << "weight trans" << std::endl;
-  _CreateBenchmark(device_type, true, {n, k}, m_list);
+  MatmulBenchmarkHelper(device_type, true, {n, k}, m_list);
   std::cout << "weight no trans" << std::endl;
-  _CreateBenchmark(device_type, false, {k, n}, m_list);
+  MatmulBenchmarkHelper(device_type, false, {k, n}, m_list);
 
   std::cout << "batch = 20" << std::endl;
   for (auto& m : m_list) m *= 20;
   std::cout << "weight trans" << std::endl;
-  _CreateBenchmark(device_type, true, {n, k}, m_list);
+  MatmulBenchmarkHelper(device_type, true, {n, k}, m_list);
   std::cout << "weight no trans" << std::endl;
-  _CreateBenchmark(device_type, false, {k, n}, m_list);
+  MatmulBenchmarkHelper(device_type, false, {k, n}, m_list);
 }
+#endif
 
-}  // namespace core
+}  // namespace kernels
+}  // namespace layers
 }  // namespace turbo_transformers

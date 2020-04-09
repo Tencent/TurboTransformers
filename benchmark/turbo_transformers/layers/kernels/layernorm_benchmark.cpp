@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "turbo_transformers/layers/kernels/layer_norm.h"
-
-#include <chrono>
-
 #include "benchmark_help.h"
 #include "catch2/catch.hpp"
 #include "loguru.hpp"
 #include "turbo_transformers/layers/kernels/common.h"
+#include "turbo_transformers/layers/kernels/layer_norm.h"
 
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"

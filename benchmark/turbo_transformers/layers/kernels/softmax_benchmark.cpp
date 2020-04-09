@@ -21,18 +21,15 @@
 #include "loguru.hpp"
 #include "turbo_transformers/core/tensor.h"
 #include "turbo_transformers/layers/kernels/common.h"
-#ifdef TT_WITH_CUDA
-#include "turbo_transformers/core/cuda_device_context.h"
-#endif
 
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-static void SoftmaxBenmarkHelper(int batch_size, int seq_length,
-                                 int num_attention_heads,
-                                 const std::string& info, DLDeviceType dev,
-                                 int n_step) {
+static void SoftmaxBenchmarkHelper(int batch_size, int seq_length,
+                                   int num_attention_heads,
+                                   const std::string& info, DLDeviceType dev,
+                                   int n_step) {
   constexpr float scaler = 1.;
   auto g_bytes = batch_size * num_attention_heads * seq_length * seq_length *
                  sizeof(float) / 1e9;
@@ -59,8 +56,8 @@ TEST_CASE("softmax-cpu-benchmark") {
     for (auto seq_length : seq_length_list) {
       std::stringstream ss;
       ss << "CPU Softmax " << batch_size << ", " << seq_length << " ";
-      SoftmaxBenmarkHelper(batch_size, seq_length, num_attention_heads,
-                           ss.str(), kDLCPU, n_step);
+      SoftmaxBenchmarkHelper(batch_size, seq_length, num_attention_heads,
+                             ss.str(), kDLCPU, n_step);
     }
 }
 
@@ -78,8 +75,8 @@ TEST_CASE("softmax-gpu-benchmark") {
     for (auto seq_length : seq_length_list) {
       std::stringstream ss;
       ss << "GPU Softmax " << batch_size << ", " << seq_length << " ";
-      SoftmaxBenmarkHelper(batch_size, seq_length, num_attention_heads,
-                           ss.str(), kDLGPU, n_step);
+      SoftmaxBenchmarkHelper(batch_size, seq_length, num_attention_heads,
+                             ss.str(), kDLGPU, n_step);
     }
 }
 #endif
