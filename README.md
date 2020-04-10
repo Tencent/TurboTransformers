@@ -17,9 +17,9 @@ Transformer是近两年来NLP领域最重要的模型创新，在带来更高的
 
 
 ### CPU版本安装
+#### 本机构建（编译ONNX-runtime时间会很长）
 git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
 1. 本机构建docker镜像和容器
-本机构建（编译ONNX-runtime时间会很长）
 ```
 sh tools/build_docker_cpu.sh
 # optional: 构建编译环境时需要联网，腾讯内网需要设置代理
@@ -32,7 +32,29 @@ export https_proxy=http://devnet-proxy.oa.com:8080
 export no_proxy=git.code.oa.com
 ```
 
-2. 在docker内安装conda和pip包
+2. 在docker内进行安装
+方法1：我想单测和benchmark
+```
+cd /workspace
+# 安装前需要跑一个单测，这里必须下载单测需要的预训练模型，需要git lfs，sudo yum install git-lfs
+git lfs install
+git lfs pull
+sh tools/build_and_run_unittests.sh.sh $PWD -DWITH_GPU=OFF
+```
+方法2：我不想单测
+```
+cd /workspace
+# 安装前需要跑一个单测，这里必须下载单测需要的预训练模型，需要git lfs，sudo yum install git-lfs
+mkdir -p build && cd build
+cmake .. -DWITH_GPU=OFF
+pip install -r `find . -name *whl`
+```
+3. 在docker内运行benchmark (optional), 和pytorch, torch-JIT, onnxruntime比较
+```
+cd benchmark
+bash run_benchmark.sh
+```
+4. 在docker内安装conda和pip包（optional）
 
 ```
 sh tool/build_conda_package.sh
@@ -40,21 +62,9 @@ sh tool/build_conda_package.sh
 # 在本容器外其他环境使用turbo_transformers时只需要python -m pip install your_root_path/dist/*.tar.bz2
 ```
 
-3. 在docker内进行单测 (optional)
-
-```
-cd /workspace
-# 下载预训练模型，需要git lfs，sudo yum install git-lfs
-git lfs install
-git lfs pull
-sh tools/build_run_unittests.sh $PWD -DWITH_GPU=OFF
-```
-4. 在docker内运行benchmark (optional), 和pytorch, torch-JIT, onnxruntime比较
-
-```
-cd benchmark
-bash run_benchmark.sh
-```
+#### 使用腾讯云dockerhub镜像
+前提：具有ccr.ccs.tencentyun.com/mmspr/turbo_transformers:0.1.1-dev权限
+参考tools/docker/Dockerfile_tencentyun.template
 
 ### GPU版本安装
 git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
