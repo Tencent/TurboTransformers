@@ -78,39 +78,50 @@ TEST_CASE("blas-sscal") {
 }
 
 #ifdef TT_WITH_CUDA
-
 void check_cpu_gpu_res(bool isTransB) {
-  int64_t k, n;
-  std::vector<int64_t> test_list{5, 10, 15, 20};
-  for (auto m : test_list) {
-    k = 12 * 64, n = 12 * 64 * 3;
-    std::initializer_list<int64_t> input_shape{m, k};
-    std::initializer_list<int64_t> weight_shape{k, n};
-    std::initializer_list<int64_t> weight_shape_trans{n, k};
-    std::initializer_list<int64_t> output_shape{m, n};
-    using turbo_transformers::core::NewDLPackTensorT;
+  const std::vector<int64_t> m_list{5, 10, 15, 20};
+  const std::vector<int64_t> n_list{12 * 64, 12 * 64 * 4};
+  const std::vector<int64_t> k_list{12 * 64, 12 * 64 * 4};
+  ;
 
-    core::Tensor cpu_input_tensor(nullptr), gpu_input_tensor(nullptr);
-    std::tie(cpu_input_tensor, gpu_input_tensor) =
-        common::CreateAndFillRandomForCPUGPUTensors<float>(input_shape);
+  for (auto m : m_list) {
+    for (auto n : n_list) {
+      for (auto k : k_list) {
+        std::initializer_list<int64_t> input_shape{m, k};
+        std::initializer_list<int64_t> weight_shape{k, n};
+        std::initializer_list<int64_t> weight_shape_trans{n, k};
+        std::initializer_list<int64_t> output_shape{m, n};
+        using turbo_transformers::core::NewDLPackTensorT;
 
-    core::Tensor cpu_weight_tensor(nullptr), gpu_weight_tensor(nullptr);
-    std::tie(cpu_weight_tensor, gpu_weight_tensor) =
-        common::CreateAndFillRandomForCPUGPUTensors<float>(
-            isTransB ? weight_shape_trans : weight_shape);
+        core::Tensor cpu_input_tensor(nullptr), gpu_input_tensor(nullptr);
+        std::tie(cpu_input_tensor, gpu_input_tensor) =
+            common::CreateAndFillRandomForCPUGPUTensors<float>(input_shape);
 
-    core::Tensor cpu_output_tensor(nullptr), gpu_output_tensor(nullptr);
-    std::tie(cpu_output_tensor, gpu_output_tensor) =
-        common::CreateAndFillRandomForCPUGPUTensors<float>(output_shape);
+        core::Tensor cpu_weight_tensor(nullptr), gpu_weight_tensor(nullptr);
+        std::tie(cpu_weight_tensor, gpu_weight_tensor) =
+            common::CreateAndFillRandomForCPUGPUTensors<float>(
+                isTransB ? weight_shape_trans : weight_shape);
 
-    layers::kernels::MatMul(cpu_input_tensor, false, cpu_weight_tensor,
-                            isTransB, 1.0, &cpu_output_tensor, 0.0);
+        core::Tensor cpu_output_tensor(nullptr), gpu_output_tensor(nullptr);
+        std::tie(cpu_output_tensor, gpu_output_tensor) =
+            common::CreateAndFillRandomForCPUGPUTensors<float>(output_shape);
 
-    layers::kernels::MatMul(gpu_input_tensor, false, gpu_weight_tensor,
-                            isTransB, 1.0, &gpu_output_tensor, 0.0);
+        layers::kernels::MatMul(cpu_input_tensor, false, cpu_weight_tensor,
+                                isTransB, 1.0, &cpu_output_tensor, 0.0);
 
-    common::CheckResultOfCPUAndGPU<float>(cpu_output_tensor, gpu_output_tensor);
+        layers::kernels::MatMul(gpu_input_tensor, false, gpu_weight_tensor,
+                                isTransB, 1.0, &gpu_output_tensor, 0.0);
+
+        common::CheckResultOfCPUAndGPU<float>(cpu_output_tensor,
+                                              gpu_output_tensor);
+      }
+    }
   }
+}
+
+TEST_CASE("matmul-gpu-test") {
+  check_cpu_gpu_res(true);
+  check_cpu_gpu_res(false);
 }
 #endif
 

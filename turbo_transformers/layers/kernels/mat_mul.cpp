@@ -16,7 +16,9 @@
 
 #include "common.h"
 #ifdef TT_WITH_CUDA
+#include <cuda.h>
 #include "turbo_transformers/core/cuda_device_context.h"
+#include "turbo_transformers/core/cuda_enforce.cuh"
 #endif
 
 namespace turbo_transformers {
@@ -64,9 +66,31 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
 
     auto& gpu_ctx =
         ::turbo_transformers::core::CUDADeviceContext::GetInstance();
-    cublasSgemm(gpu_ctx.cublas_handle(), transB, transA, N, M, K_a, &alpha,
-                B.data<float>(), ldb, A.data<float>(), lda, &beta,
-                out->mutableData<float>(), ldc);
+
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 9010
+    if (gpu_ctx.compute_major() >= 5) {
+      auto cublas_algo = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+      TT_ENFORCE_CUDA_SUCCESS(
+          cublasSetMathMode(gpu_ctx.cublas_handle(), CUBLAS_TENSOR_OP_MATH));
+      TT_ENFORCE_CUDA_SUCCESS(cublasGemmEx(
+          gpu_ctx.cublas_handle(), transB, transA, N, M, K_a, &alpha,
+          B.data<float>(), CUDA_R_32F, ldb, A.data<float>(), CUDA_R_32F, lda,
+          &beta, out->mutableData<float>(), CUDA_R_32F, ldc, CUDA_R_32F,
+          cublas_algo));
+      TT_ENFORCE_CUDA_SUCCESS(
+          cublasSetMathMode(gpu_ctx.cublas_handle(), CUBLAS_DEFAULT_MATH));
+    } else {
+      TT_ENFORCE_CUDA_SUCCESS(cublasSgemmEx(
+          gpu_ctx.cublas_handle(), transB, transA, N, M, K_a, &alpha,
+          B.data<float>(), CUDA_R_32F, ldb, A.data<float>(), CUDA_R_32F, lda,
+          &beta, out->mutableData<float>(), CUDA_R_32F, ldc));
+    }
+#else
+    TT_ENFORCE_CUDA_SUCCESS(cublasSgemm(gpu_ctx.cublas_handle(), transB, transA,
+                                        N, M, K_a, &alpha, B.data<float>(), ldb,
+                                        A.data<float>(), lda, &beta,
+                                        out->mutableData<float>(), ldc));
+#endif
 #else
     TT_THROW("CUDA is not supported for MatMul");
 #endif
@@ -119,9 +143,9 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
 
   if (A.device_type() == kDLCPU && B.device_type() == kDLCPU &&
       C->device_type() == kDLCPU) {
-    std::unique_ptr<const float*[]> A_array(new const float*[a_batch_size]);
-    std::unique_ptr<const float*[]> B_array(new const float*[b_batch_size]);
-    std::unique_ptr<float*[]> C_array(new float*[c_batch_size]);
+    std::unique_ptr<const float* []> A_array(new const float*[a_batch_size]);
+    std::unique_ptr<const float* []> B_array(new const float*[b_batch_size]);
+    std::unique_ptr<float* []> C_array(new float*[c_batch_size]);
 
     auto* a_ptr = A.data<float>();
     auto* b_ptr = B.data<float>();

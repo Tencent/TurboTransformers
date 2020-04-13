@@ -59,15 +59,29 @@ static void MatmulBenchmarkHelper(DLDeviceType device_type, bool trans_weight,
     FillRandom<float>(output_tensor);
 
     std::stringstream ss;
-    ss << device_name << " " << trans_name << " MaytMul " << m << " " << k
-       << " " << n << " ";
+    ss << device_name << " " << trans_name << " MatMul " << m << ", " << k
+       << ", " << n << " ";
     auto g_flops = m * n * k * 2 / 1e9;
-    benchmark::TestFuncSpeed(
-        [&]() {
-          layers::kernels::MatMul(input_tensor, false, weight_tensor,
-                                  trans_weight, 1.0, &output_tensor, 0.0);
-        },
-        n_step, ss.str(), g_flops, device_type);
+
+    if (device_type == kDLGPU) {
+#ifdef TT_WITH_CUDA
+      auto flops = benchmark::TestFuncSpeed(
+          [&]() {
+            layers::kernels::MatMul(input_tensor, false, weight_tensor,
+                                    trans_weight, 1.0, &output_tensor, 0.0);
+          },
+          n_step, ss.str(), g_flops, device_type);
+
+      std::cout << ss.str() << " flops: " << flops << std::endl;
+#endif
+    } else {
+      benchmark::TestFuncSpeed(
+          [&]() {
+            layers::kernels::MatMul(input_tensor, false, weight_tensor,
+                                    trans_weight, 1.0, &output_tensor, 0.0);
+          },
+          n_step, ss.str(), g_flops, device_type);
+    }
   }
 }
 
@@ -81,27 +95,11 @@ TEST_CASE("matmal-cpu-benchmark") {
 }
 
 #ifdef TT_WITH_CUDA
-TEST_CASE("matmal-gpu-qkv-benchmark") {
-  std::cout << "=================================" << std::endl;
-  std::cout << "GPU QKV MatMul Benchmark" << std::endl;
-  int64_t k = 12 * 64, n = 12 * 64 * 3;
-  std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
-  std::cout << "weight no trans" << std::endl;
-  MatmulBenchmarkHelper(kDLGPU, false, {k, n}, m_list);
-  std::cout << "weight trans" << std::endl;
-  MatmulBenchmarkHelper(kDLGPU, true, {n, k}, m_list);
 
-  for (auto& m : m_list) m *= 20;
-  std::cout << "weight no trans" << std::endl;
-  MatmulBenchmarkHelper(kDLGPU, false, {k, n}, m_list);
-  std::cout << "weight trans" << std::endl;
-  MatmulBenchmarkHelper(kDLGPU, true, {n, k}, m_list);
-}
-
-TEST_CASE("matmal-gpu-inter-benchmark") {
+TEST_CASE("matmal-gpu-gemm7-benchmark") {
   std::cout << "=================================" << std::endl;
-  std::cout << "GPU Intermediate Layer Benchmark" << std::endl;
-  int64_t k = 12 * 64, n = 12 * 64;
+  std::cout << "GPU gemm7 Benchmark" << std::endl;
+  int64_t k = 12 * 64 * 4, n = 12 * 64;
   DLDeviceType device_type = kDLGPU;
   std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
   std::cout << "weight trans" << std::endl;
@@ -116,6 +114,44 @@ TEST_CASE("matmal-gpu-inter-benchmark") {
   std::cout << "weight no trans" << std::endl;
   MatmulBenchmarkHelper(device_type, false, {k, n}, m_list);
 }
+
+TEST_CASE("matmal-gpu-gemm6-benchmark") {
+  std::cout << "=================================" << std::endl;
+  std::cout << "GPU gemm6 Benchmark" << std::endl;
+  int64_t k = 12 * 64, n = 12 * 64 * 4;
+  DLDeviceType device_type = kDLGPU;
+  std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
+  std::cout << "weight trans" << std::endl;
+  MatmulBenchmarkHelper(device_type, true, {n, k}, m_list);
+  std::cout << "weight no trans" << std::endl;
+  MatmulBenchmarkHelper(device_type, false, {k, n}, m_list);
+
+  std::cout << "batch = 20" << std::endl;
+  for (auto& m : m_list) m *= 20;
+  std::cout << "weight trans" << std::endl;
+  MatmulBenchmarkHelper(device_type, true, {n, k}, m_list);
+  std::cout << "weight no trans" << std::endl;
+  MatmulBenchmarkHelper(device_type, false, {k, n}, m_list);
+}
+
+TEST_CASE("matmal-gpu-fused-gemm-benchmark") {
+  std::cout << "=================================" << std::endl;
+  std::cout << "GPU fused-gemm Benchmark" << std::endl;
+  int64_t k = 12 * 64, n = 12 * 64 * 3;
+  std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
+  std::cout << "weight trans" << std::endl;
+  MatmulBenchmarkHelper(kDLGPU, true, {n, k}, m_list);
+
+  std::cout << "weight no trans" << std::endl;
+  MatmulBenchmarkHelper(kDLGPU, false, {k, n}, m_list);
+
+  for (auto& m : m_list) m *= 20;
+  std::cout << "weight trans" << std::endl;
+  MatmulBenchmarkHelper(kDLGPU, true, {n, k}, m_list);
+  std::cout << "weight no trans" << std::endl;
+  MatmulBenchmarkHelper(kDLGPU, false, {k, n}, m_list);
+}
+
 #endif
 
 }  // namespace kernels

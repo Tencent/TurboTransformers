@@ -70,8 +70,8 @@ class CPUTimer : public Timer {
 };
 
 template <typename Func>
-void TestFuncSpeed(Func&& func, int step, const std::string& infor,
-                   double g_bytes, DLDeviceType dev) {
+float TestFuncSpeed(Func&& func, int step, const std::string& infor,
+                    double g_bytes, DLDeviceType dev) {
   func();
   std::unique_ptr<Timer> timer;
   if (dev == kDLCPU) {
@@ -92,8 +92,8 @@ void TestFuncSpeed(Func&& func, int step, const std::string& infor,
   }
   auto elapse = timer->ElapseSecond() / step;
 
-  std::cout << infor << " cost:" << elapse << " ms, Bandwidth "
-            << g_bytes / elapse << " GB/s" << std::endl;
+  auto ret = g_bytes / elapse;
+  return ret;
 }
 
 }  // namespace benchmark

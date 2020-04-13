@@ -65,7 +65,7 @@ TEST_CASE("softmax-cpu-benchmark") {
 TEST_CASE("softmax-gpu-benchmark") {
   constexpr int64_t num_attention_heads = 12;
 
-  constexpr int n_step = 50;
+  constexpr int n_step = 150;
 
   std::vector<int64_t> batch_size_list{1, 20};
   std::vector<int64_t> seq_length_list{10,  20,  40,  60,  80,

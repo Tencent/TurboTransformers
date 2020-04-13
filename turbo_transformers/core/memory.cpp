@@ -16,6 +16,9 @@
 
 #include <cstring>
 #include <vector>
+#ifdef TT_WITH_CUDA
+#include "turbo_transformers/core/cuda_enforce.cuh"
+#endif
 
 namespace turbo_transformers {
 namespace core {

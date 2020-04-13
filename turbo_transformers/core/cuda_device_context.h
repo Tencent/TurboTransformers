@@ -41,9 +41,12 @@ class CUDADeviceContext {
 
   cublasHandle_t cublas_handle() const;
 
+  int compute_major() const;
+
  private:
   cudaStream_t stream_;
   cublasHandle_t handle_;
+  cudaDeviceProp device_prop_;
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
 

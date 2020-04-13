@@ -88,7 +88,8 @@ def create_test(batch_size, seq_length):
             self.assertTrue(
                 torch.max(
                     torch.abs(torch_attention_result[0] -
-                              turbo_self_attention_result)) < 1e-4)
+                              turbo_self_attention_result)) < 1e-3
+                if use_cuda else 1e-4)
             with open(fname, "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {torch_qps}, {turbo_qps}\n"

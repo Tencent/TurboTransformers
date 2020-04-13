@@ -14,6 +14,7 @@
 
 #include "turbo_transformers/core/cuda_device_context.h"
 
+#include "turbo_transformers/core/cuda_enforce.cuh"
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/core/memory.h"
 
@@ -24,6 +25,7 @@ CUDADeviceContext::CUDADeviceContext() {
   cudaStreamCreate(&stream_);
   cublasCreate(&handle_);
   cublasSetStream(handle_, stream_);
+  cudaGetDeviceProperties(&device_prop_, 0);
 }
 
 void CUDADeviceContext::Wait() const {
@@ -35,6 +37,8 @@ void CUDADeviceContext::Wait() const {
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
 cublasHandle_t CUDADeviceContext::cublas_handle() const { return handle_; }
+
+int CUDADeviceContext::compute_major() const { return device_prop_.major; }
 
 CUDADeviceContext::~CUDADeviceContext() {
   Wait();

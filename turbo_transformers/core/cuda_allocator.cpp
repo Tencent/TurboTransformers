@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "turbo_transformers/core/cuda_allocator.h"
-
 #include <cuda_runtime.h>
 
 #include <cub/util_allocator.cuh>
