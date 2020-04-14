@@ -24,10 +24,13 @@ def main():
     for i, line in enumerate(sys.stdin):
         length = len(line.split(','))
         line = json.loads(line)
-        if line == 3:
-          task = f'n_threads={line["n_threads"]},batch_size={line["batch_size"]},seq_len={line["seq_len"]}'
+        if length == 7:
+            if "thread_num" in line:
+                task = f'{line["thread_num"]},{line["batch_size"]},{line["seq_len"]}'
+            elif "n_threads" in line:
+                task = f'{line["n_threads"]},{line["batch_size"]},{line["seq_len"]}'
         else:
-          task = f'batch_size={line["batch_size"]},seq_len={line["seq_len"]}'
+            task = f'{line["batch_size"]},{line["seq_len"]}'
         framework = line["framework"]
         qps = line["QPS"]
         if task not in results:
