@@ -33,10 +33,10 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
                 "BertOutput: The input_tensor and hidden_states should have "
                 "the same device type and device id.");
   output_tensor->Reshape<float>(
-      {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(0)},
+      {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(1)},
       hidden_states.device_type(), hidden_states.device_id());
-  kernels::MatMul(hidden_states, false, dense_weight_, true, 1.0, output_tensor,
-                  0.0);
+  kernels::MatMul(hidden_states, false, dense_weight_, false, 1.0,
+                  output_tensor, 0.0);
   kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
                                    layer_norm_weight_, layer_norm_bias_,
                                    output_tensor);

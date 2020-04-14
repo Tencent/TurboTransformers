@@ -17,6 +17,9 @@ import sys
 import numpy
 import torch
 
+# Attention: weight.dense of QKV, intermediate, output should be stored as (:, hidden_dim)
+# While pytorch store them as (hidden_dim, :)
+
 
 def main():
     if len(sys.argv) != 3:
@@ -40,11 +43,14 @@ def main():
     numpy_dict = {}
     for k in arrays.keys():
         if k.endswith(q_weight_key):
-            v = torch.cat([
-                arrays[k], arrays[k[:-len(q_weight_key)] + k_weight_key],
-                arrays[k[:-len(q_weight_key)] + v_weight_key]
-            ], 0).numpy()
-            numpy_dict[k[:-len(q_weight_key)] + "qkv.weight"] = v
+            v = torch.clone(
+                torch.t(
+                    torch.cat([
+                        arrays[k],
+                        arrays[k[:-len(q_weight_key)] + k_weight_key],
+                        arrays[k[:-len(q_weight_key)] + v_weight_key]
+                    ], 0)))
+            numpy_dict[k[:-len(q_weight_key)] + "qkv.weight"] = v.numpy()
         elif k.endswith(q_bias_key):
             v = torch.cat([
                 arrays[k], arrays[k[:-len(q_bias_key)] + k_bias_key],
@@ -54,6 +60,10 @@ def main():
         elif any((k.endswith(suffix) for suffix in (k_weight_key, v_weight_key,
                                                     k_bias_key, v_bias_key))):
             continue
+        elif (not k.endswith("attention.output.dense.weight")
+              and (k.endswith("output.dense.weight")
+                   or k.endswith("intermediate.dense.weight"))):
+            numpy_dict[k] = torch.clone(torch.t(arrays[k])).numpy()
         else:
             numpy_dict[k] = arrays[k].numpy()
     del arrays

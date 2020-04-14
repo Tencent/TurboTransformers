@@ -58,6 +58,10 @@ def _to_param_dict(torch_module: torch.nn.Module):
     }
 
 
+def _to_param_dict_naive(torch_module: torch.nn.Module):
+    return {k: v for k, v in torch_module.named_parameters()}
+
+
 def _create_empty_if_none(output):
     return output if output is not None else cxx.Tensor.create_empty()
 
@@ -104,9 +108,11 @@ class BertIntermediate(cxx.BertIntermediate):
 
     @staticmethod
     def from_torch(intermediate: TorchBertIntermediate):
-        intermediate_params = _to_param_dict(intermediate)
-        return BertIntermediate(intermediate_params['dense.weight'],
-                                intermediate_params['dense.bias'])
+        intermediate_params = _to_param_dict_naive(intermediate)
+        weight = torch.clone(torch.t(intermediate_params["dense.weight"]))
+        return BertIntermediate(
+            convert2tt_tensor(weight),
+            convert2tt_tensor(intermediate_params['dense.bias']))
 
 
 class BertOutput(cxx.BertOutput):
@@ -124,9 +130,12 @@ class BertOutput(cxx.BertOutput):
 
     @staticmethod
     def from_torch(output: TorchBertOutput):
-        params = _to_param_dict(output)
-        return BertOutput(params["dense.weight"], params["dense.bias"],
-                          params["LayerNorm.weight"], params["LayerNorm.bias"])
+        params = _to_param_dict_naive(output)
+        weight = convert2tt_tensor(torch.clone(torch.t(
+            params["dense.weight"])))
+        return BertOutput(weight, convert2tt_tensor(params["dense.bias"]),
+                          convert2tt_tensor(params["LayerNorm.weight"]),
+                          convert2tt_tensor(params["LayerNorm.bias"]))
 
 
 class BertAttention(cxx.BertAttention):
@@ -148,9 +157,11 @@ class BertAttention(cxx.BertAttention):
 
         with torch.no_grad():
             # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
-            qkv_weight = torch.cat(
-                (params['self.query.weight'], params['self.key.weight'],
-                 params['self.value.weight']), 0)
+            qkv_weight = torch.clone(
+                torch.t(
+                    torch.cat((params['self.query.weight'],
+                               params['self.key.weight'],
+                               params['self.value.weight']), 0)))
             qkv_bias = torch.cat(
                 (params['self.query.bias'], params['self.key.bias'],
                  params['self.value.bias']), 0)

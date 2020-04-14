@@ -53,7 +53,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   core::Tensor& temp_qkv = temp_qkv_tmp.GetTensor(input_tensor.device_ctx());
   temp_qkv.Reshape<float>({3, batch_size, seq_length, hidden_size},
                           input_tensor.device_type(), input_tensor.device_id());
-  kernels::MatMul(input_tensor, false, qkv_weight_, true, 1.0, &temp_qkv, 0.0);
+  kernels::MatMul(input_tensor, false, qkv_weight_, false, 1.0, &temp_qkv, 0.0);
 
   // 2. qkv = transpose(temp_qkv + bias)
   // Since `SplitAddBiasTransposeForScore` does not support inplace,

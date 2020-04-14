@@ -66,6 +66,7 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
     import torch
     import transformers
     import contexttimer
+    import benchmark_helper
     if not torch.cuda.is_available():
         print("cuda is not available for torch")
         return
@@ -93,7 +94,7 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
 
 
 def main():
-
+    import benchmark_helper
     args = docopt.docopt(__doc__)
     kwargs = {
         'model': args['<model>'],
