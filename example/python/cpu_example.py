@@ -21,7 +21,7 @@ import os
 turbo_transformers.set_num_threads(4)
 # load model
 model_id = os.path.join(os.path.dirname(__file__),
-                        '../turbo_transformers/python/tests/test-model')
+                        '../../turbo_transformers/python/tests/test-model')
 model = transformers.BertModel.from_pretrained(model_id)
 
 model.eval()

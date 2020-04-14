@@ -24,7 +24,7 @@ torch.set_grad_enabled(False)
 test_device = torch.device('cuda:0')
 # load model from file, adapted to offline enviroment
 model_id = os.path.join(os.path.dirname(__file__),
-                        '../turbo_transformers/python/tests/test-model')
+                        '../../turbo_transformers/python/tests/test-model')
 model_torch = transformers.BertModel.from_pretrained(model_id)
 model_torch.eval()
 model_torch.to(test_device)
