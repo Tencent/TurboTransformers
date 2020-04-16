@@ -92,8 +92,7 @@ class BertEmbeddings(cxx.BERTEmbedding):
                               params['position_embeddings.weight'],
                               params['token_type_embeddings.weight'],
                               params['LayerNorm.weight'],
-                              params['LayerNorm.bias'],
-                              bert_embedding.dropout.p)
+                              params['LayerNorm.bias'])
 
 
 class BertIntermediate(cxx.BertIntermediate):
