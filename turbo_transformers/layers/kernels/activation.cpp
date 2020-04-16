@@ -74,8 +74,8 @@ void AddBiasAct(const core::Tensor &bias_tensor, core::Tensor *out_tensor) {
   auto *out = out_tensor->mutableData<T>();
   auto *bias = bias_tensor.data<T>();
 
-  int64_t m = out_tensor->rows();
-  int64_t n = out_tensor->cols();
+  int64_t n = out_tensor->shape(-1);
+  int64_t m = out_tensor->numel() / n;
 
   if (out_tensor->device_type() == kDLCPU &&
       bias_tensor.device_type() == kDLCPU) {

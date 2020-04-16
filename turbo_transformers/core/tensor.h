@@ -134,6 +134,9 @@ class Tensor {
 
   const int64_t &shape(int pos) const {
     auto &dl_tensor = to_dl_tensor();
+    if (pos < 0) {
+      pos = dl_tensor.ndim + pos;
+    }
     TT_ENFORCE_LT(pos, dl_tensor.ndim,
                   "The index(%d) is out of the range[0...%d]", pos,
                   dl_tensor.ndim - 1);
@@ -144,19 +147,6 @@ class Tensor {
     auto &dl_tensor = to_dl_tensor();
     return std::accumulate(dl_tensor.shape, dl_tensor.shape + dl_tensor.ndim, 1,
                            std::multiplies<int64_t>());
-  }
-
-  int64_t rows() const {
-    auto &dl_tensor = to_dl_tensor();
-    TT_ENFORCE_GE(dl_tensor.ndim, 2, "n_dims() >= 2");
-    return std::accumulate(dl_tensor.shape,
-                           dl_tensor.shape + dl_tensor.ndim - 1, 1,
-                           std::multiplies<int64_t>());
-  }
-  int64_t cols() const {
-    auto &dl_tensor = to_dl_tensor();
-    TT_ENFORCE_GE(dl_tensor.ndim, 2, "n_dims() >= 2");
-    return dl_tensor.shape[dl_tensor.ndim - 1];
   }
 
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
@@ -341,24 +331,5 @@ class Tensor {
 
   details::TensorPayload tensor_;
 };
-
-struct TempTensor {
-  TempTensor() : cpu_tensor(nullptr), gpu_tensor(nullptr) {}
-
-  core::Tensor &GetTensor(DLContext context) {
-    if (context.device_type == kDLCPU) {
-      return cpu_tensor;
-    } else if (context.device_type == kDLGPU) {
-      return gpu_tensor;
-    } else {
-      TT_THROW("This device is not support.");
-    }
-  }
-
- private:
-  core::Tensor cpu_tensor;
-  core::Tensor gpu_tensor;
-};
-
 }  // namespace core
 }  // namespace turbo_transformers

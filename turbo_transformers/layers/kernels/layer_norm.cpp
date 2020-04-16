@@ -113,8 +113,8 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
   const T* gamma = gamma_tensor.data<T>();
   const T* beta = beta_tensor.data<T>();
 
-  int64_t m = input_tensor.rows();
-  int64_t n = input_tensor.cols();
+  int64_t n = input_tensor.shape(-1);
+  int64_t m = input_tensor.numel() / n;
   // TODO(florianzhao): Check the dim of bias_tensor, gamma_tensor, beta_tensor,
   // out_tensor
   if (input_tensor.device_type() == kDLCPU) {

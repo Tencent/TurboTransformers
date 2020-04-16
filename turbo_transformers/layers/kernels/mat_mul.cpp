@@ -17,6 +17,7 @@
 #include "common.h"
 #ifdef TT_WITH_CUDA
 #include <cuda.h>
+
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/core/cuda_enforce.cuh"
 #endif
@@ -26,10 +27,10 @@ namespace layers {
 namespace kernels {
 void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
             bool b_trans, float alpha, core::Tensor* out, float beta) {
-  BlasInt a_rows = A.rows();
-  BlasInt a_cols = A.cols();
-  BlasInt b_rows = B.rows();
-  BlasInt b_cols = B.cols();
+  BlasInt a_cols = A.shape(-1);
+  BlasInt a_rows = A.numel() / a_cols;
+  BlasInt b_cols = B.shape(-1);
+  BlasInt b_rows = B.numel() / b_cols;
 
   BlasInt M = a_trans ? a_cols : a_rows;
   BlasInt N = b_trans ? b_rows : b_cols;
@@ -143,9 +144,9 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
 
   if (A.device_type() == kDLCPU && B.device_type() == kDLCPU &&
       C->device_type() == kDLCPU) {
-    std::unique_ptr<const float* []> A_array(new const float*[a_batch_size]);
-    std::unique_ptr<const float* []> B_array(new const float*[b_batch_size]);
-    std::unique_ptr<float* []> C_array(new float*[c_batch_size]);
+    std::unique_ptr<const float*[]> A_array(new const float*[a_batch_size]);
+    std::unique_ptr<const float*[]> B_array(new const float*[b_batch_size]);
+    std::unique_ptr<float*[]> C_array(new float*[c_batch_size]);
 
     auto* a_ptr = A.data<float>();
     auto* b_ptr = B.data<float>();

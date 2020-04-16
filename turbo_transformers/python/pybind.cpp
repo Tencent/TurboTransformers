@@ -91,12 +91,12 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       .def(py::init(
           [](core::Tensor &word_embeddings, core::Tensor &position_embeddings,
              core::Tensor &token_type_embeddings,
-             core::Tensor &layer_norm_weights, core::Tensor &layer_norm_bias,
-             float dropout_rate) -> layers::BERTEmbedding * {
+             core::Tensor &layer_norm_weights,
+             core::Tensor &layer_norm_bias) -> layers::BERTEmbedding * {
             return new layers::BERTEmbedding(
                 std::move(word_embeddings), std::move(position_embeddings),
                 std::move(token_type_embeddings), std::move(layer_norm_weights),
-                std::move(layer_norm_bias), dropout_rate);
+                std::move(layer_norm_bias));
           }))
       .def("__call__", &layers::BERTEmbedding::operator());
 
