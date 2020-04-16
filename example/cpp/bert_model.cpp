@@ -38,7 +38,7 @@ static std::unique_ptr<layers::BERTEmbedding> LoadEmbedding(NPZMapView npz,
   return std::unique_ptr<layers::BERTEmbedding>(new layers::BERTEmbedding(
       params["word_embeddings.weight"], params["position_embeddings.weight"],
       params["token_type_embeddings.weight"], params["LayerNorm.weight"],
-      params["LayerNorm.bias"], 0));
+      params["LayerNorm.bias"]));
 }
 
 static std::unique_ptr<layers::BertPooler> LoadPooler(NPZMapView npz,
