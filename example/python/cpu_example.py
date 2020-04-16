@@ -19,10 +19,15 @@ import os
 
 # use 4 threads for infernec
 turbo_transformers.set_num_threads(4)
-# load model
-model_id = os.path.join(os.path.dirname(__file__),
-                        '../../turbo_transformers/python/tests/test-model')
-model = transformers.BertModel.from_pretrained(model_id)
+# load model from torch model
+# model_id = os.path.join(os.path.dirname(__file__),
+#                         '../../turbo_transformers/python/tests/test-model')
+# model = transformers.BertModel.from_pretrained(model_id)
+
+# load model from npz (recommend)
+cfg = transformers.BertConfig()
+
+model = turbo_transformers.BertModel.from_npz('../cpp/models/bert.npz', cfg)
 
 model.eval()
 cfg = model.config

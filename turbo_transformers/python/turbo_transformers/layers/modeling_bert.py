@@ -32,6 +32,7 @@ from transformers.modeling_bert import BertModel as TorchBertModel
 from transformers.modeling_bert import BertPooler as TorchBertPooler
 
 import enum
+import numpy as np
 
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
@@ -43,6 +44,8 @@ __all__ = [
 def _try_convert(t):
     if isinstance(t, torch.Tensor):
         return convert2tt_tensor(t)
+    elif isinstance(t, np.ndarray):
+        return convert2tt_tensor(torch.from_numpy(t))
     else:
         return t
 
@@ -87,12 +90,21 @@ class BertEmbeddings(cxx.BERTEmbedding):
     @staticmethod
     def from_torch(bert_embedding: TorchBertEmbeddings) -> 'BertEmbeddings':
         params = _to_param_dict(bert_embedding)
-
         return BertEmbeddings(params['word_embeddings.weight'],
                               params['position_embeddings.weight'],
                               params['token_type_embeddings.weight'],
                               params['LayerNorm.weight'],
                               params['LayerNorm.bias'])
+
+    @staticmethod
+    def from_npz(file_name: str):
+        f = np.load(file_name)
+        return BertEmbeddings(
+            _try_convert(f['embeddings.word_embeddings.weight']),
+            _try_convert(f['embeddings.position_embeddings.weight']),
+            _try_convert(f['embeddings.token_type_embeddings.weight']),
+            _try_convert(f['embeddings.LayerNorm.weight']),
+            _try_convert(f['embeddings.LayerNorm.bias']), 0.1)
 
 
 class BertIntermediate(cxx.BertIntermediate):
@@ -112,6 +124,15 @@ class BertIntermediate(cxx.BertIntermediate):
         return BertIntermediate(
             convert2tt_tensor(weight),
             convert2tt_tensor(intermediate_params['dense.bias']))
+
+    @staticmethod
+    def from_npz(file_name: str, layer_num: int):
+        f = np.load(file_name)
+        return BertIntermediate(
+            _try_convert(
+                f[f'encoder.layer.{layer_num}.intermediate.dense.weight']),
+            _try_convert(
+                f[f'encoder.layer.{layer_num}.intermediate.dense.bias']))
 
 
 class BertOutput(cxx.BertOutput):
@@ -135,6 +156,17 @@ class BertOutput(cxx.BertOutput):
         return BertOutput(weight, convert2tt_tensor(params["dense.bias"]),
                           convert2tt_tensor(params["LayerNorm.weight"]),
                           convert2tt_tensor(params["LayerNorm.bias"]))
+
+    @staticmethod
+    def from_npz(file_name: str, layer_num: int):
+        f = np.load(file_name)
+        return BertOutput(
+            _try_convert(f[f'encoder.layer.{layer_num}.output.dense.weight']),
+            _try_convert(f[f'encoder.layer.{layer_num}.output.dense.bias']),
+            _try_convert(
+                f[f'encoder.layer.{layer_num}.output.LayerNorm.weight']),
+            _try_convert(
+                f[f'encoder.layer.{layer_num}.output.LayerNorm.bias']))
 
 
 class BertAttention(cxx.BertAttention):
@@ -175,6 +207,23 @@ class BertAttention(cxx.BertAttention):
 
             return att
 
+    @staticmethod
+    def from_npz(file_name: str, layer_num: int, num_attention_heads: int):
+        f = np.load(file_name)
+        return BertAttention(
+            _try_convert(f[f'encoder.layer.{layer_num}.attention.qkv.weight']),
+            _try_convert(f[f'encoder.layer.{layer_num}.attention.qkv.bias']),
+            _try_convert(
+                f[f'encoder.layer.{layer_num}.attention.output.dense.weight']),
+            _try_convert(
+                f[f'encoder.layer.{layer_num}.attention.output.dense.bias']),
+            _try_convert(f[
+                f'encoder.layer.{layer_num}.attention.output.LayerNorm.weight']
+                         ),
+            _try_convert(
+                f[f'encoder.layer.{layer_num}.attention.output.LayerNorm.bias']
+            ), num_attention_heads)
+
 
 class BertLayer:
     def __init__(self, attention: BertAttention,
@@ -209,6 +258,14 @@ class BertLayer:
         return BertLayer(BertAttention.from_torch(layer.attention),
                          BertIntermediate.from_torch(layer.intermediate),
                          BertOutput.from_torch(layer.output))
+
+    @staticmethod
+    def from_npz(file_name: str, layer_num: int, num_attention_heads: int):
+        f = np.load(file_name)
+        return BertLayer(
+            BertAttention.from_npz(file_name, layer_num, num_attention_heads),
+            BertIntermediate.from_npz(file_name, layer_num),
+            BertOutput.from_npz(file_name, layer_num))
 
 
 class BertEncoder:
@@ -246,6 +303,14 @@ class BertEncoder:
         layer = [
             BertLayer.from_torch(bert_layer) for bert_layer in encoder.layer
         ]
+        return BertEncoder(layer)
+
+    @staticmethod
+    def from_npz(file_name: str, num_hidden_layers: int,
+                 num_attention_heads: int):
+        layer = []
+        for i in range(num_hidden_layers):
+            layer.append(BertLayer.from_npz(file_name, i, num_attention_heads))
         return BertEncoder(layer)
 
 
@@ -338,6 +403,14 @@ class BertModel:
         model._torch_model = torch_model  # prevent destroy torch model.
         return model
 
+    @staticmethod
+    def from_npz(file_name: str, config,
+                 device: Optional[torch.device] = None):
+        embeddings = BertEmbeddings.from_npz(file_name)
+        encoder = BertEncoder.from_npz(file_name, config.num_hidden_layers,
+                                       config.num_attention_heads)
+        return BertModel(embeddings, encoder)
+
 
 class BertPooler(cxx.BertPooler):
     def __call__(self,
@@ -354,6 +427,12 @@ class BertPooler(cxx.BertPooler):
         pooler_params = _to_param_dict(pooler)
         return BertPooler(pooler_params['dense.weight'],
                           pooler_params['dense.bias'])
+
+    @staticmethod
+    def from_npz(file_name: str, device: Optional[torch.device] = None):
+        f = np.load(file_name)
+        return BertPooler(_try_convert(f['pooler.dense.weight']),
+                          _try_convert(f['pooler.dense.bias']))
 
 
 class BertModelWithPooler:
@@ -403,3 +482,10 @@ class BertModelWithPooler:
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model
+
+    @staticmethod
+    def from_npz(file_name: str, config,
+                 device: Optional[torch.device] = None):
+        model = BertModel.from_npz(file_name, config)
+        pooler = BertPooler.from_npz(file_name)
+        return BertModelWithPooler(model, pooler)
