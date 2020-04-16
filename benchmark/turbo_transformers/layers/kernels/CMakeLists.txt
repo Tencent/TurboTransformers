@@ -12,3 +12,6 @@ target_link_libraries(layernorm_benchmark benchmark_helper)
 
 add_executable(softmax_benchmark softmax_benchmark.cpp)
 target_link_libraries(softmax_benchmark benchmark_helper)
+
+add_executable(transpose_benchmark transpose_benchmark.cpp)
+target_link_libraries(transpose_benchmark benchmark_helper)
