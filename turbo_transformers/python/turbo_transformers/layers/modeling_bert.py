@@ -197,9 +197,10 @@ class BertAttention(cxx.BertAttention):
                 (params['self.query.bias'], params['self.key.bias'],
                  params['self.value.bias']), 0)
 
+            output_weight = torch.clone(torch.t(params['output.dense.weight']))
             att = BertAttention(
                 convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
-                convert2tt_tensor(params['output.dense.weight']),
+                convert2tt_tensor(output_weight),
                 convert2tt_tensor(params['output.dense.bias']),
                 convert2tt_tensor(params['output.LayerNorm.weight']),
                 convert2tt_tensor(params['output.LayerNorm.bias']),
@@ -424,9 +425,10 @@ class BertPooler(cxx.BertPooler):
 
     @staticmethod
     def from_torch(pooler: TorchBertPooler):
-        pooler_params = _to_param_dict(pooler)
-        return BertPooler(pooler_params['dense.weight'],
-                          pooler_params['dense.bias'])
+        pooler_params = _to_param_dict_naive(pooler)
+        weight = torch.clone(torch.t(pooler_params['dense.weight']))
+        return BertPooler(convert2tt_tensor(weight),
+                          convert2tt_tensor(pooler_params['dense.bias']))
 
     @staticmethod
     def from_npz(file_name: str, device: Optional[torch.device] = None):

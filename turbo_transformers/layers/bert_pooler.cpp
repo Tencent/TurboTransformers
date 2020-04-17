@@ -31,7 +31,7 @@ void BertPooler::operator()(const core::Tensor& input_tensor,
                                 input_tensor.device_type(),
                                 input_tensor.device_id());
 
-  kernels::MatMul(input_tensor, false, dense_weight_, true, 1.0, output_tensor,
+  kernels::MatMul(input_tensor, false, dense_weight_, false, 1.0, output_tensor,
                   0.0);
   kernels::AddBiasAct<float, kernels::ActivationType::Tanh>(dense_bias_,
                                                             output_tensor);

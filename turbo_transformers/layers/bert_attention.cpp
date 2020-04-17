@@ -39,7 +39,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   TT_ENFORCE_EQ(input_tensor.n_dim(), 3,
                 "The input ids should be a matrix with shape [BatchSize, "
                 "SeqLen, HiddenSize].");
-
+  EnforceShapeAndType();
   auto batch_size = input_tensor.shape(0);
   auto seq_length = input_tensor.shape(1);
   auto hidden_size = input_tensor.shape(2);
@@ -105,7 +105,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   kernels::TransposeForScore(&self_attr_out, context_layer);
 
   // 7. output = LayerNorm(MatMul(self_att_out) + Bias)
-  kernels::MatMul(self_attr_out, false, dense_weight_, true, 1.0, output, 0.0);
+  kernels::MatMul(self_attr_out, false, dense_weight_, false, 1.0, output, 0.0);
 
   kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
                                    layer_norm_weight_,  // gemma
@@ -113,8 +113,17 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
 }
 
 void BertAttention::EnforceShapeAndType() const {
-  if (loguru::current_verbosity_cutoff() > 3) {
+  if (loguru::current_verbosity_cutoff() >= 3) {
     std::ostringstream os;
+    os << ">>>>>>>>>>>> qkv_weight_ <<<<<<<<<<<<" << std::endl;
+    qkv_weight_.Print<float>(os);
+    os << ">>>>>>>>>>>> qkv_bias_ <<<<<<<<<<<<" << std::endl;
+    qkv_bias_.Print<float>(os);
+    os << ">>>>>>>>>>>> dense_weight_ <<<<<<<<<<<<" << std::endl;
+    dense_weight_.Print<float>(os);
+    os << ">>>>>>>>>>>> dense_bias_ <<<<<<<<<<<<" << std::endl;
+    dense_bias_.Print<float>(os);
+    os << ">>>>>>>>>>>> layer_norm_weights <<<<<<<<<<<<" << std::endl;
     layer_norm_weight_.Print<float>(os);
     os << ">>>>>>>>>>>> layer_norm_bias <<<<<<<<<<<<" << std::endl;
     layer_norm_bias_.Print<float>(os);
