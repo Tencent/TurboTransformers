@@ -24,9 +24,12 @@
 namespace turbo_transformers {
 namespace layers {
 
+static std::mutex mutex_;
+
 void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
                                core::Tensor* output) const {
+  std::lock_guard<std::mutex> g(mutex_);
   TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
                     input_tensor.device_ctx(), attention_mask.device_ctx()),
                 true,
@@ -49,47 +52,52 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
                          input_tensor.device_type(), input_tensor.device_id());
 
   // 1. temp_qkv = MatMul(input)
-  core::Tensor temp_qkv(nullptr);
+  static core::TempTensor temp_qkv_tmp;
+  core::Tensor& temp_qkv = temp_qkv_tmp.GetTensor(input_tensor.device_ctx());
   temp_qkv.Reshape<float>({3, batch_size, seq_length, hidden_size},
                           input_tensor.device_type(), input_tensor.device_id());
+
   kernels::MatMul(input_tensor, false, qkv_weight_, false, 1.0, &temp_qkv, 0.0);
 
   // 2. qkv = transpose(temp_qkv + bias)
   // Since `SplitAddBiasTransposeForScore` does not support inplace,
   // qkv and temp_qkv cannot be same tensor
-  core::Tensor qkv(nullptr);
+  static core::TempTensor qkv_tensor_tmp;
+  core::Tensor& qkv = qkv_tensor_tmp.GetTensor(input_tensor.device_ctx());
   qkv.Reshape<float>(
       {3, batch_size, num_attention_heads_, seq_length, size_per_head},
       input_tensor.device_type(), input_tensor.device_id());
 
   kernels::SplitAddBiasTransposeForScore(&qkv, temp_qkv, qkv_bias_);
-
   // 3. q = qkv[0]; k = qkv[1]; v = qkv[2];
   auto q = qkv[0];
   auto k = qkv[1];
   auto v = qkv[2];
 
   // 4. att_score = softmax((q * k^T)*1/sqrt(size_per_head) + att_mask)
-  core::Tensor att_score(nullptr);
+  static core::TempTensor att_score_tmp;
+  core::Tensor& att_score = att_score_tmp.GetTensor(input_tensor.device_ctx());
   att_score.Reshape<float>(
       {batch_size, num_attention_heads_, seq_length, seq_length},
       input_tensor.device_type(), input_tensor.device_id());
-
   kernels::BatchMatMul(q, false, k, true, 1.0, &att_score, 0.0);
 
   kernels::ApplyMaskAndSoftmax(
       &att_score, attention_mask,
       1 / std::sqrt(static_cast<float>(size_per_head)));
-
   // 5. ctx = v * att_score
-  core::Tensor context_layer(nullptr);
+  static core::TempTensor context_layer_tmpr;
+  core::Tensor& context_layer =
+      context_layer_tmpr.GetTensor(input_tensor.device_ctx());
   context_layer.Reshape<float>(
       {batch_size, num_attention_heads_, seq_length, size_per_head},
       input_tensor.device_type(), input_tensor.device_id());
   kernels::BatchMatMul(att_score, false, v, false, 1.0, &context_layer, 0.0);
 
   // 6. self_att_out = transpose(ctx)
-  core::Tensor self_attr_out(nullptr);
+  static core::TempTensor self_attr_out_tmp;
+  core::Tensor& self_attr_out =
+      self_attr_out_tmp.GetTensor(input_tensor.device_ctx());
   self_attr_out.Reshape<float>(
       {batch_size, seq_length, num_attention_heads_ * size_per_head},
       input_tensor.device_type(), input_tensor.device_id());

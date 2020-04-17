@@ -331,5 +331,23 @@ class Tensor {
 
   details::TensorPayload tensor_;
 };
+
+struct TempTensor {
+  TempTensor() : cpu_tensor(nullptr), gpu_tensor(nullptr) {}
+
+  core::Tensor &GetTensor(DLContext context) {
+    if (context.device_type == kDLCPU) {
+      return cpu_tensor;
+    } else if (context.device_type == kDLGPU) {
+      return gpu_tensor;
+    } else {
+      TT_THROW("This device is not support.");
+    }
+  }
+
+ private:
+  core::Tensor cpu_tensor;
+  core::Tensor gpu_tensor;
+};
 }  // namespace core
 }  // namespace turbo_transformers

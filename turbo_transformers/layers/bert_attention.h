@@ -14,6 +14,8 @@
 
 #pragma once
 #include <memory>
+#include <mutex>
+
 #include <utility>
 #include "turbo_transformers/core/tensor.h"
 
