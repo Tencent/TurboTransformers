@@ -1,8 +1,15 @@
 ### turbo_transformers: 面向CPU/GPU高效易用的Transformer推理引擎（曾用名fast-transformers）
 
-***make transformers serving fast easily by adding turbo to your inference engine!***
+![logo](./images/logo.jpeg)
 
-Transformer是近两年来NLP领域最重要的模型创新，在带来更高的模型精度的同时也引入了更多的计算量，高效部署Transformer线上服务面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为turbo_transformers的面向Intel多核CPU和NVIDIA GPU硬件平台的Transformer实现。turbo_transformers充发挥硬件的各层级计算能力，并支持变长输入序列处理，避免了补零的额外计算。turbo_transformers在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn/onnxruntime-gpu, torch JIT, NVIDIA faster transformers）的性能表现，详细benchmark结果见下文，它对常用的短序列的处理速度提升更为显著。turbo_transformers CPU版本已经应用于多个线上服务服务场景，WXG的FAQ的BERT服务获得1.88x加速，CSIG的在公有云情感分析服务两层BERT encoder获得2.11x加速。
+**make transformers serving fast by adding a turbo to your inference engine!**
+
+Transformer是近年来NLP领域最重要的模型创新，带来更高的模型精度的同时也引入了更多的计算量，线上Transformer服务的高效部署面临着巨大挑战。面对丰富的Transformer的线上服务场景，微信模式识别中心开源了名为TurboTransformers的Transformer推理加速引擎。Turbo具有如下特性。
+1. 优异的CPU/GPU性能表现。面向Intel多核CPU和NVIDIA GPU硬件平台，TurboTransformers可以充发挥硬件的各层级计算能力。在多种CPU和GPU硬件上获得了超过pytorch/tensorflow和目前主流优化引擎（如onnxruntime-mkldnn/onnxruntime-gpu, torch JIT, NVIDIA faster transformers）的性能表现。详细benchmark结果见下文。
+2. 为NLP推理任务特点量身定制。和CV任务不同，NLP推理任务输入尺寸多个维度会存在变化。传统做法是补零或者截断成固定长度，这样引入了额外补零计算开销。另外有些框架如onnxruntime、tensorRT、torchlib需要预先对计算图根据输入尺寸进行预处理，这对尺寸变化的NLP任务并不适用。TurboTransformers可以支持变长输入序列处理，且不需要预处理过程。
+3. 更简单的使用方式。TurboTransformers支持python和C++接口进行调用。它可以作为pytorch的加速插件，在Transformer任务上，通过加入几行python代码获得的端对端加速效果。
+
+TurboTransformers的已经应用腾讯内部于多个线上BERT服务服务场景。比如，微信的FAQ的服务获得1.88x加速，公有云情感分析服务获得2.11x加速，QQ推荐服务获得13.6x加速。
 
 下表是本工作和相关工作的对比
 
@@ -124,43 +131,38 @@ C++载入npz格式的模型文件，pytorch saved模型和npz转换的脚本在.
 
 在61xx上，四种Transformer实现性能对比结果如下面两张图所示。可以观察到在线程数为1时，四种实现的差别并不大。随着线程数增多，turbo_transformers的性能优势逐步增大，当线程为8时加速效果最为明显。另外，随着seq_length长度增长，turbo_transformers的加速效果减弱，原因是此时GEMM运算时间占比增大，核心融合带来增益减少。
 
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350217_86_w3088_h1026.png">
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350234_3_w3104_h1026.png" alt="61xx性能2">
+<img width="900" height="300" src="./images/61xx_perf_thd48_0415.jpg" alt="61xx性能">
+<img width="900" height="300" src="./images/61xx_speedup_thd48_0415.jpg" alt="61xx加速">
 
 * Intel Xeon 6133
 
 相比61xx型号，Intel Xeon 6133向量化长度更长为512 bit，并且它拥有一个30 MB核间共享L3 cache。如下两张图展示了6133的性能表现。多线程的大部分case，turbo_transformers结果优于其他实现。比较特殊的case是序列长度为10和20的情况。造成这种现象是由于MKL AVX512 GEMM例程的缘故，在Intel 6133 CPU上，我们发现随着seq_length增加，GEMM运算的延迟会出现一个跳变的现象。
 
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350279_35_w3092_h1028.png" alt="6133性能1">
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350292_90_w3104_h1012.png" alt="6133性能2">
-
-
-* intel i9-9800 CPU
-
-如下两张图展示了intel i9上的性能表现。再线程数大于1时，turbo_transformers的性能优于其他实现。
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350313_80_w3090_h1020.png" alt="6133性能1">
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584350326_14_w3088_h1030.png" alt="6133性能2">
+<img width="900" height="300" src="./images/6133_perf_thd48_0415.jpg" alt="6133性能">
+<img width="900" height="300" src="./images/6133_speedup_thd48_0415.jpg" alt="6133加速">
 
 ### GPU测试效果
 我们在三种GPU硬件平台测试了turbo_transformers的性能表现。
 我们选择[pytorch](https://github.com/huggingface "pytorch")，[NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer")，[onnxruntime-gpu](https://github.com/microsoft/onnxruntime "onnxrt-gpu")实现作为对比。性能测试结果为迭代150次的均值。
 
+* RTX 2060
+<img width="900" height="300" src="./images/2060-perf.jpg" alt="2060性能">
+<img width="900" height="300" src="./images/2060-speedup.jpg" alt="2060加速">
 
 * Tesla V100
 
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351870_55_w3094_h1016.png" alt="V100性能">
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351683_62_w3086_h1030.png" alt="V100加速">
+<img width="900" height="300" src="./images/v100-perf.jpg" alt="V100性能">
+<img width="900" height="300" src="./images/V100-speedup.jpg" alt="V100加速">
 
 * Tesla P40
 
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351888_63_w3082_h1016.png" alt="P40性能">
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351721_73_w3082_h1012.png" alt="P40加速">
-
+<img width="900" height="300" src="./images/p40-perf.jpg" alt="P40性能">
+<img width="900" height="300" src="./images/p40-speedup.jpg" alt="P40加速">
 
 * Tesla M40
 
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351914_10_w3096_h1030.png" alt="M40性能短序列">
-<img width="900" height="300" src="http://km.oa.com/files/photos/captures/202003/1584351928_90_w3098_h1018.png" alt="M40加速短序列">
+<img width="900" height="300" src="./images/M40-perf-0302.jpg" alt="M40性能">
+<img width="900" height="300" src="./images/M40-speedup-0302.jpg" alt="M40加速">
 
 ## 技术文档
 2020.03.16之前我们的项目曾以fast-transformers发布。
