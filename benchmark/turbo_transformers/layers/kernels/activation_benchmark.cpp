@@ -20,8 +20,7 @@
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
 #include <string>
-#include "catch2/catch.hpp"
-#include "turbo_transformers/core/enforce.h"
+
 #include "turbo_transformers/layers/kernels/common.h"
 
 namespace turbo_transformers {

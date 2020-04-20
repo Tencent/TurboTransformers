@@ -14,6 +14,7 @@
 #pragma once
 #include <chrono>
 #include <string>
+
 #include "loguru.hpp"
 #include "turbo_transformers/layers/kernels/common.h"
 #ifdef TT_WITH_CUDA
@@ -36,7 +37,7 @@ class GPUTimer : public Timer {
     cudaEventRecord(start_event_, stream_);
   }
 
-  double ElapseSecond() {
+  double ElapseSecond() override {
     cudaEventRecord(stop_event_, stream_);
     cudaEventSynchronize(stop_event_);
     float elapse;
@@ -56,7 +57,7 @@ class CPUTimer : public Timer {
 
   void Reset() { start_ = std::chrono::system_clock::now(); }
 
-  double ElapseSecond() {
+  double ElapseSecond() override {
     auto end = std::chrono::system_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start_);
