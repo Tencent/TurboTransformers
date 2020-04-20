@@ -19,7 +19,7 @@ set -xe
 VERSION=$(cat ../CMakeLists.txt | grep turbo_transformers_VERSION | \
     sed 's#set(turbo_transformers_VERSION ##g' | sed 's#)##g')
 
-BUILD_TYPE=dev
+BUILD_TYPE=release
 
 docker build ${EXTRA_ARGS} \
   -t ccr.ccs.tencentyun.com/mmspr/turbo_transformers:${VERSION}-${BUILD_TYPE} -f ./docker/Dockerfile_${BUILD_TYPE}.cpu .
