@@ -24,7 +24,7 @@ TurboTransformers的已经应用腾讯内部于多个线上BERT服务服务场�
 
 
 ### CPU版本安装
-#### 本机构建（编译ONNX-runtime时间会很长）
+#### 本机构建
 git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
 1. 本机构建docker镜像和容器
 ```
@@ -33,10 +33,12 @@ sh tools/build_docker_cpu.sh
 export EXTRA_ARGS="--build-arg http_proxy=http://devnet-proxy.oa.com:8080 --build-arg https_proxy=http://devnet-proxy.oa.com:8080"
 docker run -it --rm -v your/path/turbo_transformers:/workspace --name=your_container_name REPOSITORY:TAG /bin/bash
 cd /workspace
-# optional:在编译环境内安装是也需要联网，腾讯内网请设置代理
+# optional: 在编译环境内安装是也需要联网，腾讯内网请设置代理
 export http_proxy=http://devnet-proxy.oa.com:8080
 export https_proxy=http://devnet-proxy.oa.com:8080
 export no_proxy=git.code.oa.com
+# optional: benchmark时如果想比较onnxrt-mkldnn的结果需要设置BUILD_TYPE=dev将onnxruntime编入docker镜像，如下
+env BUILD_TYPE=dev sh tools/build_docker_cpu.sh
 ```
 
 2. 在docker内进行安装
@@ -79,13 +81,13 @@ git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
 ```
 # 可以在脚本中修改环境变量指定cuda版本和操作系统版本
 sh tools/build_docker_gpu.sh $PWD
-docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=your_container_name REPOSITORY:TAG
-# for example: docker run --net=host --rm -it -v $PWD:/myspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/turbo_transformers:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
+docker run --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=your_container_name REPOSITORY:TAG
+# for example: docker run --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/turbo_transformers:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
 ```
 
 2. 在docker内安装pip包并单测
 ```
-cd /myspace
+cd /workspace
 # 下载预训练模型，需要git lfs，sudo yum install git-lfs
 git lfs install
 git lfs pull
@@ -106,22 +108,23 @@ cd benchmark
 bash gpu_run_benchmark.sh
 ```
 
-
 ### 使用方法
 turbo_transformers提供了简单的C++/python调用接口，我们希望尽最大努力适配多样的上线环境，减轻使用者的开发难度。
+
+使用turbo的第一步是加载预训练好的模型，我们提供了载入[huggingface/transformers](https://github.com/huggingface)的pytorch和tensorflow预训练模型方式。
+具体转换方式是使用tools的对应脚本，将预训练模型转换成npz格式的文件，turbo使用C++或者python接口载入npz格式模型。
+特别的，我们考虑大部分预训练模型是pytorch格式的并使用python调用，我们针对pytorch saved模型提供了一个python方式直接调用的捷径。
+<img width="700" height="110" src="./images/pretrainmodelload.jpg" alt="加载预训练模型">
 #### python接口
-提供兼容[huggingface/transformerspytorch](https://github.com/huggingface "pytorch")模型载入方式和python saved模型的载入方式。
-tensorflow模型可以转化为pytorch saved模型载入，我们尚未提供示例，读者可自行探索。
-我们提供了bert seqence classification的书写方式示例。
-参考[./example/python](https://git.code.oa.com/PRC_alg/fast_transformers/tree/develop/example/python "python")的例子。
+参考[./example/python](./example/python "python")的例子。
+由于使用BERT之后还需要针对任务定制的后处理过程，我们提供了一个bert seqence classification的书写方式示例。
 在工蜂上我们还内部开源了一套可以使用turbo的python severing框架[bertserving](https://git.code.oa.com/PRC_alg/bert-serving/tree/develop "bertserving")供使用者参考，它通过asyncio方式异步响应BERT推理的http请求。
 #### C++接口
-参考[./example/cpp](https://git.code.oa.com/PRC_alg/fast_transformers/tree/develop/example/cpp "C++")的例子。
-C++载入npz格式的模型文件，pytorch saved模型和npz转换的脚本在./tools/convert_huggingface_bert_to_npz.py
+参考[./example/cpp](./example/cpp "C++")的例子。
 我们的例子提供了GPU和两种CPU多线程的调用方式。一种是串行响应BERT计算请求，每次BERT计算使用多线程（omp）方式计算，另一种是多线程并行的响应BERT计算请求，每次BERT计算使用单线程方式的方式。
-用户使用时候可以通过add_subdirectory方式连接turbo-transformers，这里提供了一个例子[cmake-usage]("https://git.code.oa.com/jiaruifang/turbo-transformers-cpp" "cmake-usage")。
-## 性能
+用户使用时候可以通过add_subdirectory方式链接turbo-transformers。
 
+## 性能
 ### CPU测试效果
 我们在三种CPU硬件平台测试了turbo_transformers的性能表现。
 我们选择[pytorch](https://github.com/huggingface "pytorch")，[pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit")和[onnxruntime-mkldnn]( https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn")实现作为对比。性能测试结果为迭代150次的均值。为了避免多次测试时，上次迭代的数据在cache中缓存的现象，每次测试采用随机数据，并在计算后刷新的cache数据。

@@ -15,6 +15,7 @@
 
 set -e
 FRAMEWORKS=("turbo-transformers" "torch")
+# pip install onnxruntime-gpu before benchmarking onnxrt
 # FRAMEWORKS=("onnxruntime")
 SEQ_LEN=(10 20 40 60 80 100 200 300 400 500)
 BATCH_SIZE=(1 20)
@@ -32,8 +33,8 @@ do
   done
 done
 
-USE_NVPROF=NO
-if [ $USE_NVPROF == "YES"]; then
+USE_NVPROF="NO"
+if [ $USE_NVPROF == "YES" ]; then
 N=150
 for batch_size in ${BATCH_SIZE[*]}
 do
