@@ -98,10 +98,12 @@ def create_test(batch_size, seq_length):
                 f"{device} TurboTransform QPS, {turbo_qps}, time, {turbo_time}"
             )
 
+            # Tensor core will introduce more errors
+            tolerate_error = 1e-2 if use_cuda else 1e-3
             self.assertTrue(
                 torch.max(
                     torch.abs(torch_bert_layer_result[0] -
-                              turbo_bert_layer_result)) < 1e-3)
+                              turbo_bert_layer_result)) < tolerate_error)
             with open(fname, "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {torch_qps}, {turbo_qps}\n"
