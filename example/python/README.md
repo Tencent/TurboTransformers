@@ -1,6 +1,6 @@
-
 ###  使用turbo_transformers编写加速代码
-因为turbo_transformer关于bert加速的C++部分改写只做到pooler层，后续需要用户根据自己的需求来定制后处理部分。
+[English Version](./README_en.md)
+因为turbo-transformer关于bert加速的C++部分改写只做到pooler层，后续需要用户根据自己的需求来定制后处理部分。
 
 以下是使用turbo_transformers加速NLP任务的步骤
 
