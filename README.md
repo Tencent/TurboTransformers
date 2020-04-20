@@ -123,7 +123,6 @@ turbo_transformers提供了简单的C++/python调用接口，我们希望尽最�
 参考[./example/cpp](./example/cpp "C++")的例子。
 我们的例子提供了GPU和两种CPU多线程的调用方式。一种是串行响应BERT计算请求，每次BERT计算使用多线程（omp）方式计算，另一种是多线程并行的响应BERT计算请求，每次BERT计算使用单线程方式的方式。
 用户使用时候可以通过add_subdirectory方式链接turbo-transformers。
-
 ## 性能
 ### CPU测试效果
 我们在三种CPU硬件平台测试了TurboTransformers的性能表现。
