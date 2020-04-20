@@ -40,17 +40,20 @@ static __global__ void split_add_bias_transpose_for_score(
   int weight_id = bid % (weight_num * head_num) / head_num;
   int head_id = bid % head_num;
 
+  int head_num_size_per_head = head_num * size_per_head;
+  int weight_id_head_num_size_per_head = weight_id * head_num_size_per_head;
+  int head_id_size_per_head = head_id * size_per_head;
   while (idx < size_per_head) {
-    float bias_val = bias_data[weight_id * head_num * size_per_head +
-                               head_id * size_per_head + idx];
-    output_data[weight_id * batch_size * head_num * seq_len * size_per_head +
-                batch_id * seq_len * head_num * size_per_head +
+    float bias_val = bias_data[weight_id_head_num_size_per_head +
+                               head_id_size_per_head + idx];
+    output_data[weight_id * batch_size * seq_len * head_num_size_per_head +
+                batch_id * seq_len * head_num_size_per_head +
                 head_id * seq_len * size_per_head + seq_id * size_per_head +
                 idx] =
-        input_data[batch_id * seq_len * weight_num * head_num * size_per_head +
-                   seq_id * weight_num * head_num * size_per_head +
-                   weight_id * head_num * size_per_head +
-                   head_id * size_per_head + idx] +
+        input_data[batch_id * seq_len * weight_num * head_num_size_per_head +
+                   seq_id * weight_num * head_num_size_per_head +
+                   weight_id_head_num_size_per_head + head_id_size_per_head +
+                   idx] +
         bias_val;
     idx += blockDim.x;
   }

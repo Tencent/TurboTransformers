@@ -35,8 +35,6 @@ TEST_CASE("splitaddtranspose-gpu-test") {
     for (auto num_attention_heads : num_attention_heads_list)
       for (auto batch_size : batch_size_list)
         for (auto seq_length : seq_length_list) {
-          std::cout << num_attention_heads << ", " << batch_size << " ,"
-                    << seq_length << std::endl;
           core::Tensor input_tensor_cpu(nullptr), input_tensor_gpu(nullptr);
           std::tie(input_tensor_cpu, input_tensor_gpu) =
               common::CreateAndFillRandomForCPUGPUTensors<float>(
@@ -77,8 +75,6 @@ TEST_CASE("transpose-gpu-test") {
   for (auto num_attention_heads : num_attention_heads_list)
     for (auto batch_size : batch_size_list)
       for (auto seq_length : seq_length_list) {
-        std::cout << num_attention_heads << ", " << batch_size << " ,"
-                  << seq_length << std::endl;
         core::Tensor input_tensor_cpu(nullptr), input_tensor_gpu(nullptr);
         std::tie(input_tensor_cpu, input_tensor_gpu) =
             common::CreateAndFillRandomForCPUGPUTensors<float>(
