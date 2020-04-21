@@ -65,7 +65,7 @@ sh tool/build_conda_package.sh
 参考tools/docker/Dockerfile_tencentyun.template
 
 ### GPU版本安装
-git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
+git clone https://github.com/Tencent/TurboTransformers --recursive
 1. 本机构建docker镜像和容器
 ```
 # 可以在脚本中修改环境变量指定cuda版本和操作系统版本

@@ -23,7 +23,7 @@ The following table is a comparison of TurboTransformers and related work.
 
 
 ### Installation on CPU
-git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
+git clone https://github.com/Tencent/TurboTransformers --recursive
 1. build docker images and containers on your machine.
 ```
 sh tools/build_docker_cpu.sh
@@ -58,7 +58,7 @@ sh tool/build_conda_package.sh
 # When using turbo_transformers in other environments outside this container : python -m pip install your_root_path / dist / *. Tar.bz2
 ```
 ### Installation on GPU
-git clone https://git.code.oa.com/PRC_alg/fast_transformers --recursive
+git clone https://github.com/Tencent/TurboTransformers --recursive
 1. build docker images and containers on your machine.
 ```
 # You can modify the environment variables in the script to specify the cuda version and operating system version
@@ -82,7 +82,7 @@ bash gpu_run_benchmark.sh
 ### Usage
 turbo_transformers provides C ++ / python API interfaces. we hope to do our best to adapt to a variety of online environments to reduce the difficulty of development for users.
 
-The first step in using turbo is to load a pre-trained model. We provide a way to load pytorch and tensorflow pre-trained models in [huggingface / transformers] (https://github.com/huggingface).
+The first step in using turbo is to load a pre-trained model. We provide a way to load pytorch and tensorflow pre-trained models in [huggingface/transformers](https://github.com/huggingface).
 The specific conversion method is to use the corresponding script in ./tools to convert the pre-trained model into an npz format file, and turbo uses the C ++ or python interface to load the npz format model.
 In particular, we consider that most of the pre-trained models are in pytorch format and used with python. We provide a shortcut for calling directly in python for the pytorch saved model.
 <img width="700" height="150" src="./images/pretrainmodelload.jpg" alt="加载预训练模型">
@@ -97,7 +97,7 @@ Users can link turbo-transformers to your code through add_subdirectory.
 ## Performance
 ### CPU
 We tested the performance of TurboTransformers on three CPU hardware platforms.
-We choose [pytorch](https://github.com/huggingface "pytorch"), [pytorch-jit] (https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit" ) and [onnxruntime-mkldnn] (https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn") and TensorRT implementation as a comparison. The performance test result is the average of 150 iterations. In order to avoid the phenomenon that the data of the last iteration is cached in the cache during multiple tests, each test uses random data and refreshes the cache data after calculation.
+We choose [pytorch](https://github.com/huggingface "pytorch"), [pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit" ) and [onnxruntime-mkldnn](https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn") and TensorRT implementation as a comparison. The performance test result is the average of 150 iterations. In order to avoid the phenomenon that the data of the last iteration is cached in the cache during multiple tests, each test uses random data and refreshes the cache data after calculation.
 * Intel Xeon 61xx
 
 <img width="900" height="300" src="./images/61xx_perf_thd48_0415.jpg" alt="61xx性能">
@@ -111,7 +111,7 @@ Compared to the 61xx model, Intel Xeon 6133 has a longer vectorized length of 51
 
 ### GPU
 We tested the performance of turbo_transformers on four GPU hardware platforms.
-We choose [pytorch](https://github.com/huggingface "pytorch"), [NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer"), [onnxruntime-gpu] (https://github.com/microsoft/onnxruntime "onnxrt-gpu") and [TensorRT](https://github.com/NVIDIA/TensorRT/tree/release/6.0/demo/BERT) implementation as a comparison. The performance test result is the average of 150 iterations.
+We choose [pytorch](https://github.com/huggingface "pytorch"), [NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer"), [onnxruntime-gpu](https://github.com/microsoft/onnxruntime "onnxrt-gpu") and [TensorRT](https://github.com/NVIDIA/TensorRT/tree/release/6.0/demo/BERT) implementation as a comparison. The performance test result is the average of 150 iterations.
 
 * RTX 2060
 <img width="900" height="300" src="./images/2060-perf.jpg" alt="2060性能">
