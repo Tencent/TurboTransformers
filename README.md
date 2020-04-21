@@ -23,7 +23,9 @@ The following table is a comparison of TurboTransformers and related work.
 
 
 ### Installation on CPU
+```
 git clone https://github.com/Tencent/TurboTransformers --recursive
+```
 1. build docker images and containers on your machine.
 ```
 sh tools/build_docker_cpu.sh
@@ -58,7 +60,9 @@ sh tool/build_conda_package.sh
 # When using turbo_transformers in other environments outside this container : python -m pip install your_root_path / dist / *. Tar.bz2
 ```
 ### Installation on GPU
+```
 git clone https://github.com/Tencent/TurboTransformers --recursive
+```
 1. build docker images and containers on your machine.
 ```
 # You can modify the environment variables in the script to specify the cuda version and operating system version
