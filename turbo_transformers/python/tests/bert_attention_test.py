@@ -29,10 +29,7 @@ import turbo_transformers
 import unittest
 import sys
 import torch
-import torch.jit
-import torch.onnx
 from transformers.modeling_bert import BertConfig, BertAttention
-from transformers import BertTokenizer
 import os
 
 sys.path.append(os.path.dirname(__file__))
@@ -50,12 +47,8 @@ def create_test(batch_size, seq_length):
                 torch.set_num_threads(1)
 
             torch.set_grad_enabled(False)
-            tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-            # Get Torch attention
-            cfg = BertConfig(
-                vocab_size_or_config_json_file=tokenizer.vocab_size,
-                attention_probs_dropout_prob=0.0,
-                hidden_dropout_prob=0.0)
+            cfg = BertConfig(attention_probs_dropout_prob=0.0,
+                             hidden_dropout_prob=0.0)
             torch_attention = BertAttention(cfg)
             torch_attention.eval()
             if use_cuda:

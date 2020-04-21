@@ -26,8 +26,7 @@
 
 import unittest
 import torch
-from transformers import BertTokenizer
-from transformers.modeling_bert import BertModel
+from transformers.modeling_bert import BertModel, BertConfig
 import numpy
 import turbo_transformers
 import sys
@@ -39,45 +38,45 @@ import test_helper
 
 class TestBertModel(unittest.TestCase):
     def init_data(self, use_cuda) -> None:
-        model_id = "bert-base-uncased"
         torch.set_grad_enabled(False)
         torch.set_num_threads(1)
         self.test_device = torch.device('cuda:0') if use_cuda else \
             torch.device('cpu:0')
 
-        self.tokenizer = BertTokenizer.from_pretrained(model_id)
-        self.torch_model = BertModel.from_pretrained(model_id)
+        self.cfg = BertConfig()
+        self.torch_model = BertModel(self.cfg)
         self.torch_model.eval()
 
         if torch.cuda.is_available():
             self.torch_model.to(self.test_device)
 
-        self.turbo_model = turbo_transformers.BertModel.from_pretrained(
-            model_id, self.test_device)
+        self.turbo_model = turbo_transformers.BertModel.from_torch(
+            self.torch_model, self.test_device)
 
-        self.turbo_pooler_model = turbo_transformers.BertModelWithPooler.from_pretrained(
-            model_id, self.test_device)
+        self.turbo_pooler_model = turbo_transformers.BertModelWithPooler.from_torch(
+            self.torch_model, self.test_device)
 
     def check_torch_and_turbo(self, use_cuda, use_pooler):
         self.init_data(use_cuda)
         num_iter = 2
-        device = "GPU" if use_cuda else "CPU"
-        input_ids = self.tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求?')
-        input_ids = torch.tensor([input_ids],
-                                 dtype=torch.long,
-                                 device=self.test_device)
+        device_name = "GPU" if use_cuda else "CPU"
+        input_ids = torch.randint(low=0,
+                                  high=self.cfg.vocab_size - 1,
+                                  size=(2, 32),
+                                  dtype=torch.long,
+                                  device=self.test_device)
 
         torch_model = lambda: self.torch_model(input_ids)
         torch_result, torch_qps, torch_time = \
             test_helper.run_model(torch_model, use_cuda, num_iter)
-        print(f'BertModel Plain PyTorch({device}) QPS {torch_qps}')
+        print(f'BertModel Plain PyTorch({device_name}) QPS {torch_qps}')
 
         turbo_model = (
             lambda: self.turbo_pooler_model(input_ids)) if use_pooler else (
                 lambda: self.turbo_model(input_ids))
         turbo_result, turbo_qps, turbo_time = \
             test_helper.run_model(turbo_model, use_cuda, num_iter)
-        print(f'BertModel TurboTransformer({device}) QPS {turbo_qps}')
+        print(f'BertModel TurboTransformer({device_name}) QPS {turbo_qps}')
 
         torch_result_final = (torch_result[1]).cpu().numpy(
         ) if use_pooler else torch_result[0][:, 0].cpu().numpy()

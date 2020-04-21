@@ -48,8 +48,7 @@ def create_test(batch_size):
 
             torch.set_grad_enabled(False)
             self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-            self.cfg = BertConfig(
-                vocab_size_or_config_json_file=self.tokenizer.vocab_size)
+            self.cfg = BertConfig()
 
             self.torch_pooler = BertPooler(self.cfg)
             if torch.cuda.is_available():

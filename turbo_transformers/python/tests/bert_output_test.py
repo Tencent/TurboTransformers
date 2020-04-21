@@ -29,8 +29,6 @@ import turbo_transformers
 import unittest
 import io
 import torch
-import torch.jit
-from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertOutput
 import sys
 import os
@@ -48,9 +46,7 @@ def create_shape_test(batch_size: int, seq_length: int):
                 torch.set_num_threads(1)
 
             torch.set_grad_enabled(False)
-            self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-            self.cfg = BertConfig(
-                vocab_size_or_config_json_file=self.tokenizer.vocab_size)
+            self.cfg = BertConfig()
             self.intermediate_size = self.cfg.intermediate_size  # 3072;
             self.hidden_size = self.cfg.hidden_size  # 768
             self.torch_bertout = BertOutput(self.cfg)

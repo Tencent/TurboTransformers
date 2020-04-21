@@ -29,7 +29,6 @@ import unittest
 import sys
 import torch
 import turbo_transformers
-from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertIntermediate
 import numpy
 import os
@@ -47,9 +46,7 @@ def create_test(batch_size, seq_length):
                 torch.set_num_threads(1)
 
             torch.set_grad_enabled(False)
-            self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-            self.cfg = BertConfig(
-                vocab_size_or_config_json_file=self.tokenizer.vocab_size)
+            self.cfg = BertConfig()
 
             self.torch_intermediate = BertIntermediate(self.cfg)
             if torch.cuda.is_available():
