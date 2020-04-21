@@ -29,8 +29,6 @@ import turbo_transformers
 import unittest
 import sys
 import torch
-import torch.jit
-from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertEncoder
 import os
 
@@ -46,9 +44,7 @@ class TestBertEncoder(unittest.TestCase):
             torch.set_num_threads(1)
 
         torch.set_grad_enabled(False)
-        self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-        self.cfg = BertConfig(
-            vocab_size_or_config_json_file=self.tokenizer.vocab_size)
+        self.cfg = BertConfig()
 
         self.torch_encoder_layer = BertEncoder(self.cfg)
         self.torch_encoder_layer.eval()

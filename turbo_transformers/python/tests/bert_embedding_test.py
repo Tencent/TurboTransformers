@@ -28,8 +28,6 @@ import turbo_transformers
 import unittest
 import sys
 import torch
-import torch.jit
-from transformers import BertTokenizer
 from transformers.modeling_bert import BertEmbeddings, BertConfig
 import os
 
@@ -44,9 +42,7 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
                 torch.device('cpu:0')
 
             torch.set_grad_enabled(False)
-            self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-            cfg = BertConfig(
-                vocab_size_or_config_json_file=self.tokenizer.vocab_size)
+            cfg = BertConfig()
             self.torch_embedding = BertEmbeddings(cfg)
 
             self.torch_embedding.eval()
@@ -58,7 +54,7 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
                 self.torch_embedding)
 
             input_ids = torch.randint(low=0,
-                                      high=self.tokenizer.vocab_size - 1,
+                                      high=cfg.vocab_size - 1,
                                       size=(batch_size, seq_length),
                                       dtype=torch.long,
                                       device=test_device)

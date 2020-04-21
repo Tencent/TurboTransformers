@@ -29,9 +29,6 @@ import turbo_transformers
 import unittest
 
 import torch
-import torch.jit
-import torch.onnx
-from transformers import BertTokenizer
 from transformers.modeling_bert import BertConfig, BertLayer
 import sys
 import os
@@ -51,11 +48,8 @@ def create_test(batch_size, seq_length):
                 torch.set_num_threads(1)
 
             torch.set_grad_enabled(False)
-            self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-            self.cfg = BertConfig(
-                vocab_size_or_config_json_file=self.tokenizer.vocab_size,
-                attention_probs_dropout_prob=0.0,
-                hidden_dropout_prob=0.0)
+            self.cfg = BertConfig(attention_probs_dropout_prob=0.0,
+                                  hidden_dropout_prob=0.0)
 
             self.torch_bert_layer = BertLayer(self.cfg)
             self.torch_bert_layer.eval()
