@@ -1,0 +1,21 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Build Turbo Compilation Env
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - name: Build the Docker image
+      run: docker build -t turbo_transformers:ci -f Dockerfile_ci .
+    - name: run unitest
+      uses: ./
+      id: run-cpu-unitest
