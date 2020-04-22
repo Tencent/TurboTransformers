@@ -16,7 +16,7 @@ jobs:
         fetch-depth: 1
         submodules: true
     - name: Build the Docker image
-      run: docker build -t turbo_transformers:ci -f Dockerfile_ci .
+      run: docker build -t turbo_transformers:ci -f Dockerfile_ci.cpu .
     - name: run unitest
       uses: ./
       id: run-cpu-unitest
