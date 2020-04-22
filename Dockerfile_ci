@@ -15,4 +15,4 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
 
 ADD ./ /workspace/
 CMD ["bash", "/workspace/tools/build_and_run_unittests.sh", "/workspace", "-DWITH_GPU=OFF"]
-CMD ["bash", "/workspace/tools/compile.sh", "/workspace", "-DWITH_GPU=ON", "/tmp/build_gpu"]
+CMD ["bash", "/tools/compile.sh", "/workspace", "-DWITH_GPU=ON"]
