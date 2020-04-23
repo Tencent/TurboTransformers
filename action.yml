@@ -1,7 +1,16 @@
 name: run-unitest
 description: 'compile cpu and run unitests'
+inputs:
+  use-gpu:
+          description: '-DWITH_GPU=ON or -DWITH_GPU=OFF'
+          required: true
+          default: '-DWITH_GPU=OFF'
+  use-test:
+          description: 'run unitest or not'
+          required: false
 runs:
   using: 'docker'
   image: 'turbo_transformers:ci'
   args:
-        - '-DWITH_GPU=OFF'
+        - ${inputs.use-gpu}
+        - ${inputs.use-test}

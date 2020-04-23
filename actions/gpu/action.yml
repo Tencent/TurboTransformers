@@ -1,7 +1,0 @@
-name: run-gpu-compile
-description: 'compile gpu'
-runs:
-  using: 'docker'
-  image: 'turbo_transformers:ci'
-  args:
-        - '-DWITH_GPU=ON False'
