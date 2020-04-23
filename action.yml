@@ -4,6 +4,9 @@ runs:
   using: 'docker'
   image: 'turbo_transformers:ci'
   args: "-DWITH_GPU=OFF"
+
+name: run-gpu-unitest
+description: 'compile gpu and run unitests'
 runs:
   using: 'docker'
   image: 'turbo_transformers:ci'

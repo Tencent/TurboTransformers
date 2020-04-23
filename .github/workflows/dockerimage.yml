@@ -20,3 +20,6 @@ jobs:
     - name: run cpu unitest
       uses: ./
       id: run-unitest
+    - name: run gpu unitest
+      uses: ./
+      id: run-gpu-unitest
