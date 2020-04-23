@@ -8,11 +8,10 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     bash Miniconda3-latest-Linux-x86_64.sh -p /opt/miniconda3 -b && \
     rm Miniconda3-latest-Linux-x86_64.sh && \
     conda update -y conda && \
-    conda install pytorch=1.1.0 torchvision==0.3.0 cudatoolkit=10.0 -c pytorch && \
+    conda install pytorch=1.1.0 torchvision==0.3.0 cudatoolkit=10.0 && \
     conda install curl conda-verify conda-build mkl-include cmake -c anaconda && \
     conda install git git-lfs docopt -c conda-forge  && \
     conda clean -afy
 
 ADD ./ /workspace/
-CMD ["bash", "/workspace/tools/build_and_run_unittests.sh", "/workspace", "-DWITH_GPU=OFF"]
-CMD ["bash", "/workspace/tools/compile.sh", "/workspace", "-DWITH_GPU=ON", "/tmp/build_gpu"]
+ENTRYPOINT ["bash", "/workspace/tools/ci_check.sh", "/workspace"]

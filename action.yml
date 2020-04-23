@@ -1,5 +1,7 @@
-name: run-cpu-unitest
-description: 'run unitests'
+name: run-unitest
+description: 'compile cpu and run unitests'
 runs:
   using: 'docker'
   image: 'turbo_transformers:ci'
+  args:
+        - '/workspace'
