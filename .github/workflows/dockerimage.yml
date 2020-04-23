@@ -20,6 +20,3 @@ jobs:
     - name: gpu compile
       uses: ./
       id: run-unitest
-      with:
-              use-gpu: '-DWITH_GPU=ON'
-              use-test: 'False'

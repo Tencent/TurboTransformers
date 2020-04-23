@@ -14,4 +14,4 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     conda clean -afy
 
 ADD ./ /workspace/
-ENTRYPOINT ["bash", "/workspace/tools/build_and_run_unittests.sh", "/workspace"]
+ENTRYPOINT ["bash", "/workspace/tools/ci_check.sh", "/workspace"]
