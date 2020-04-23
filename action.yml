@@ -13,4 +13,5 @@ runs:
   image: 'turbo_transformers:ci'
   args:
         - ${inputs.use-gpu}
+        - '/workspace'
         - ${inputs.use-test}
