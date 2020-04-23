@@ -17,6 +17,9 @@ jobs:
         submodules: true
     - name: Build the Docker image
       run: docker build -t turbo_transformers:ci -f Dockerfile_ci .
-    - name: run unitest
+    - name: run cpu unitest
       uses: ./
       id: run-cpu-unitest
+    - name: compile gpu
+      uses: ./
+      id: compile-gpu

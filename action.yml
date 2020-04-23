@@ -1,5 +1,10 @@
 name: run-cpu-unitest
-description: 'run unitests'
+description: 'compile cpu and run unitests'
 runs:
   using: 'docker'
   image: 'turbo_transformers:ci'
+  args: "-DWITH_GPU=OFF"
+runs:
+  using: 'docker'
+  image: 'turbo_transformers:ci'
+  args: "-DWITH_GPU=ON False"
