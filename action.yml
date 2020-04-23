@@ -1,4 +1,4 @@
-name: run-cpu-unitest
+name: run-unitest
 description: 'compile cpu and run unitests'
 runs:
   using: 'docker'
