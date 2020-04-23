@@ -21,7 +21,7 @@ fi
 
 SRC_ROOT=$1
 WITH_GPU=$2
-BUILD_PATH=/tmp/build_cpu
+BUILD_PATH=/tmp/build
 bash ${SRC_ROOT}/tools/compile.sh ${SRC_ROOT} ${WITH_GPU} ${BUILD_PATH}
 python3 -m pip install -r ${SRC_ROOT}/requirements.txt
 cd ${BUILD_PATH}
