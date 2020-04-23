@@ -136,3 +136,6 @@ We choose [pytorch](https://github.com/huggingface "pytorch"), [NVIDIA Faster Tr
 
 <img width="900" height="300" src="./images/M40-perf-0302.jpg" alt="M40性能">
 <img width="900" height="300" src="./images/M40-speedup-0302.jpg" alt="M40加速">
+
+## TODO
+Currently (April 2020), we only support a interface of the BERT encoder model using FP32. In the near futuer, we will add support for other models (GPT2, decoders, etc.) and low-precision floating point (CPU int8, GPU FP16).
