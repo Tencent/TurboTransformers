@@ -12,6 +12,6 @@ runs:
   using: 'docker'
   image: 'turbo_transformers:ci'
   args:
-        - ${inputs.use-gpu}
+        - ${{inputs.use-gpu}}
         - '/workspace'
-        - ${inputs.use-test}
+        - ${{inputs.use-test}}
