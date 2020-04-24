@@ -99,6 +99,9 @@ Refer to [./example/cpp](./example/cpp "C ++") for an example.
 Our example provides the GPU and two CPU multi-thread calling methods. One is to do one BERT inference using multiple threads; the other is to do multiple BERT inference, each of which using one thread.
 Users can link turbo-transformers to your code through add_subdirectory.
 
+*Attention*
+The results of Turbo Transformers will be different from the results of PyTorch after 2 digits behind the decimal point, because the fused kernel cannot guarantee the same floating-point precision, especially for GeLU fuction.
+
 ## Performance
 ### CPU
 We tested the performance of TurboTransformers on three CPU hardware platforms.

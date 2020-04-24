@@ -20,6 +20,10 @@ bash ${SRC_ROOT}/tools/compile.sh ${SRC_ROOT} -DWITH_GPU=OFF ${BUILD_PATH}
 python3 -m pip install -r ${SRC_ROOT}/requirements.txt
 cd ${BUILD_PATH}
 ctest --output-on-failure
+# test npz model loader
+python ./convert_huggingface_bert_pytorch_to_npz.py bert-base-uncased bert_torch.npz
+python ./convert_huggingface_bert_tf_to_npz.py bert-base-uncased bert_torch.npz
+python ../example/python/cpu_example.py bert_torch.npz
 
 BUILD_PATH=/tmp/build_gpu
 bash ${SRC_ROOT}/tools/compile.sh ${SRC_ROOT} -DWITH_GPU=ON $BUILD_PATH

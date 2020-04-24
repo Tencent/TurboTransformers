@@ -59,8 +59,9 @@ def trans_layer_name_tf2turbo(dic, name):
 
 def main():
     if len(sys.argv) != 3:
-        print("Usage: \n"
-              "    convert_huggingface_tfbert_to_npz model_name output_file")
+        print(
+            "Usage: \n"
+            "    convert_huggingface_bert_tf_to_npz.py model_name output_file")
         exit(0)
     model = TFBertModel.from_pretrained(sys.argv[1])
     cfg = model.config
