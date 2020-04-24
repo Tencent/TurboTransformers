@@ -45,7 +45,7 @@ model_torch.to(test_device)
 # 2. load model from pytorch model
 model_tt = turbo_transformers.BertModel.from_torch(model_torch, test_device)
 # 3. load from npz file
-model_tt = turbo_transformers.BertModel.from_npz(model_torch, cfg, test_device)
+# model_tt = turbo_transformers.BertModel.from_npz(model_torch, cfg, test_device)
 
 batch_size, seq_len = 10, 40
 tokenizer = BertTokenizer.from_pretrained(model_id)
