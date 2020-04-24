@@ -21,7 +21,7 @@ python3 -m pip install -r ${SRC_ROOT}/requirements.txt
 cd ${BUILD_PATH}
 ctest --output-on-failure
 # test npz model loader
-python ${SRC_ROOT}/ttols/convert_huggingface_bert_pytorch_to_npz.py bert-base-uncased bert_torch.npz
+python ${SRC_ROOT}/tools/convert_huggingface_bert_pytorch_to_npz.py bert-base-uncased bert_torch.npz
 python ${SRC_ROOT}/tools/example/python/cpu_example.py bert_torch.npz
 rm bert_torch.npz
 python ${SRC_ROOT}/tools/convert_huggingface_bert_tf_to_npz.py bert-base-uncased bert_tf.npz
