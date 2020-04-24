@@ -17,15 +17,15 @@
 #include <thread>
 #include <vector>
 
+#include <iostream>
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/config.h"
 #include "turbo_transformers/core/macros.h"
 
 namespace turbo_transformers {
 namespace loaders {
-
 bool CheckCppBert(bool use_cuda, bool only_input) {
-  BertModel model("models/bert.npz",
+  BertModel model(model_file_path,
                   use_cuda ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU, 12,
                   12);
   std::vector<std::vector<int64_t>> position_ids{{1, 0, 0, 0}, {1, 1, 1, 0}};
@@ -43,6 +43,7 @@ bool CheckCppBert(bool use_cuda, bool only_input) {
     REQUIRE(!std::isinf(vec.data()[i]));
   }
   if (only_input) {
+    std::cerr << vec.data()[0] << std::endl;
     REQUIRE(fabs(vec.data()[0] - -0.9791) < 1e-3);
     REQUIRE(fabs(vec.data()[1] - 0.8283) < 1e-3);
     REQUIRE(fabs(vec.data()[768] - 0.3837) < 1e-3);
@@ -76,6 +77,7 @@ bool CheckCppBertWithPooler(bool use_cuda, bool only_input) {
     REQUIRE(!std::isinf(vec.data()[i]));
   }
   if (only_input) {
+    std::cerr << vec.data()[0] << std::endl;
     REQUIRE(fabs(vec.data()[0] - 0.9671) < 1e-3);
     REQUIRE(fabs(vec.data()[1] - 0.9860) < 1e-3);
     REQUIRE(fabs(vec.data()[768] - 0.9757) < 1e-3);
@@ -119,7 +121,7 @@ static std::vector<float> CallBackFunction(
 
 static bool test_multiple_threads(bool only_input, int n_threads) {
   std::shared_ptr<BertModel> model_ptr = std::make_shared<BertModel>(
-      "models/bert.npz", DLDeviceType::kDLCPU, 12, 12);
+      model_file_path, DLDeviceType::kDLCPU, 12, 12);
   std::vector<std::vector<int64_t>> input_ids{{12166, 10699, 16752, 4454},
                                               {5342, 16471, 817, 16022}};
   std::vector<std::vector<int64_t>> position_ids{{1, 0, 0, 0}, {1, 1, 1, 0}};

@@ -39,7 +39,7 @@ model_id = "bert-base-uncased"
 model_torch = transformers.BertModel.from_pretrained(model_id)
 model_torch.eval()
 model_torch.to(test_device)
-# the following two ways are the same
+# there are three methods to load pretrained model.
 # 1. load model from checkpoint in file
 # model_tt = turbo_transformers.BertModel.from_pretrained(model_id, test_device)
 # 2. load model from pytorch model
