@@ -53,17 +53,19 @@ torch_res = model(
     input_ids, position_ids=position_ids, token_type_ids=segment_ids
 )  # sequence_output, pooled_output, (hidden_states), (attentions)
 print(torch_res[0][:, 0, :])
-print(torch_res[1])
+print(torch_res[1])  #pooled_output
 
 # there are two methods to load pretrained model.
 # 1, from a torch model, which has loaded a pretrained model
-tt_model = turbo_transformers.BertModelWithPooler.from_torch(model)
+# tt_model = turbo_transformers.BertModelWithPooler.from_torch(model)
 # 2. directly load from checkpoint (torch saved model)
-# model = turbo_transformers.BertModel.from_pretrained(model_id)
+# tt_model = turbo_transformers.BertModelWithPooler.from_pretrained(model_id)
 # 3. load model from npz
-# model = turbo_transformers.BertModel.from_npz('../cpp/models/bert.npz', cfg)
+tt_model = turbo_transformers.BertModelWithPooler.from_npz(
+    '../cpp/models/bert.npz', cfg)
 
 res = tt_model(input_ids,
                position_ids=position_ids,
-               token_type_ids=segment_ids)
-print(res[0])
+               token_type_ids=segment_ids)  #pooled_output, sequence_output
+print(res[1])
+print(res[0])  #pooled_output

@@ -22,8 +22,10 @@ import torch
 
 def main():
     if len(sys.argv) != 3:
-        print("Usage: \n"
-              "    convert_huggingface_bert_to_npz model_name output_file")
+        print(
+            "Usage: \n"
+            "    convert_huggingface_bert_to_npz model_name (bert-base-uncased) output_file"
+        )
         exit(0)
     torch.set_grad_enabled(False)
 
@@ -59,9 +61,10 @@ def main():
         elif any((k.endswith(suffix) for suffix in (k_weight_key, v_weight_key,
                                                     k_bias_key, v_bias_key))):
             continue
-        elif (not k.endswith("attention.output.dense.weight")
-              and (k.endswith("output.dense.weight")
-                   or k.endswith("intermediate.dense.weight"))):
+        elif (k.endswith("attention.output.dense.weight")
+              or k.endswith("pooler.dense.weight")
+              or (k.endswith("output.dense.weight")
+                  or k.endswith("intermediate.dense.weight"))):
             numpy_dict[k] = torch.clone(torch.t(arrays[k])).numpy()
         else:
             numpy_dict[k] = arrays[k].numpy()
