@@ -103,7 +103,7 @@ class BertEmbeddings(cxx.BERTEmbedding):
             _try_convert(f['embeddings.position_embeddings.weight']),
             _try_convert(f['embeddings.token_type_embeddings.weight']),
             _try_convert(f['embeddings.LayerNorm.weight']),
-            _try_convert(f['embeddings.LayerNorm.bias']), 0.1)
+            _try_convert(f['embeddings.LayerNorm.bias']))
 
 
 class BertIntermediate(cxx.BertIntermediate):
