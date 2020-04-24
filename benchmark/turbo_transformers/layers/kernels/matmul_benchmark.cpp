@@ -74,23 +74,15 @@ static void MatmulBenchmarkHelper(DLDeviceType device_type, bool trans_weight,
       std::cout << ss.str() << " flops: " << flops << std::endl;
 #endif
     } else {
-      benchmark::TestFuncSpeed(
+      auto flops = benchmark::TestFuncSpeed(
           [&]() {
             layers::kernels::MatMul(input_tensor, false, weight_tensor,
                                     trans_weight, 1.0, &output_tensor, 0.0);
           },
           n_step, ss.str(), g_flops, device_type);
+      std::cout << ss.str() << " flops: " << flops << std::endl;
     }
   }
-}
-
-TEST_CASE("matmal-cpu-benchmark") {
-  std::cout << "=================================" << std::endl;
-  std::cout << "CPU QKV MatMul Benchmark" << std::endl;
-  int64_t k = 12 * 64, n = 12 * 64 * 3;
-  std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
-  MatmulBenchmarkHelper(kDLCPU, false, {k, n}, m_list);
-  std::cout << std::endl;
 }
 
 #ifdef TT_WITH_CUDA
@@ -152,6 +144,65 @@ TEST_CASE("matmal-gpu-fused-gemm-benchmark") {
 }
 
 #endif
+
+TEST_CASE("matmal-cpu-sqr-benchmark") {
+  DLDeviceType device_type = kDLCPU;
+  std::vector<int64_t> rows{1, 100, 1000};
+  std::vector<int64_t> depths{1, 100, 1000};
+  std::vector<int64_t> cols{1, 100, 1000};
+
+  std::vector<std::tuple<int64_t, int64_t, int64_t>> benchmark_gemms;
+  benchmark_gemms.emplace_back(10, 10, 10);
+  benchmark_gemms.emplace_back(20, 20, 20);
+  benchmark_gemms.emplace_back(30, 30, 30);
+  benchmark_gemms.emplace_back(40, 40, 40);
+  benchmark_gemms.emplace_back(50, 50, 50);
+  benchmark_gemms.emplace_back(60, 60, 60);
+  benchmark_gemms.emplace_back(64, 256, 147);
+  benchmark_gemms.emplace_back(100, 100, 1);
+  benchmark_gemms.emplace_back(100, 100, 100);
+  benchmark_gemms.emplace_back(100, 1000, 100);
+  benchmark_gemms.emplace_back(1000, 1000, 1);
+  benchmark_gemms.emplace_back(1000, 1000, 10);
+  benchmark_gemms.emplace_back(1000, 1000, 100);
+  benchmark_gemms.emplace_back(1000, 1000, 1000);
+
+  benchmark_gemms.emplace_back(10, 12 * 64, 12 * 64 * 4);
+  benchmark_gemms.emplace_back(20, 12 * 64, 12 * 64 * 4);
+  benchmark_gemms.emplace_back(40, 12 * 64, 12 * 64 * 4);
+  benchmark_gemms.emplace_back(80, 12 * 64, 12 * 64 * 4);
+  benchmark_gemms.emplace_back(100, 12 * 64, 12 * 64 * 4);
+  benchmark_gemms.emplace_back(200, 12 * 64, 12 * 64 * 4);
+  benchmark_gemms.emplace_back(300, 12 * 64, 12 * 64 * 4);
+
+  benchmark_gemms.emplace_back(10, 12 * 64 * 4, 12 * 64);
+  benchmark_gemms.emplace_back(20, 12 * 64 * 4, 12 * 64);
+  benchmark_gemms.emplace_back(40, 12 * 64 * 4, 12 * 64);
+  benchmark_gemms.emplace_back(80, 12 * 64 * 4, 12 * 64);
+  benchmark_gemms.emplace_back(100, 12 * 64 * 4, 12 * 64);
+  benchmark_gemms.emplace_back(200, 12 * 64 * 4, 12 * 64);
+  benchmark_gemms.emplace_back(300, 12 * 64 * 4, 12 * 64);
+
+  for (size_t i = 0; i < benchmark_gemms.size(); ++i) {
+    auto benchmark_gemm = benchmark_gemms[i];
+    int64_t depth, col, row;
+    std::tie(row, depth, col) = benchmark_gemm;
+    // std::cout << "weight trans" << std::endl;
+    MatmulBenchmarkHelper(device_type, true, {depth, col}, {row});
+    // std::cout << "weight no trans" << std::endl;
+    // MatmulBenchmarkHelper(device_type, false, {col, depth}, {row});
+  }
+}
+/*
+TEST_CASE("matmal-cpu-benchmark") {
+  std::cout << "=================================" << std::endl;
+  std::cout << "CPU QKV MatMul Benchmark" << std::endl;
+  int64_t k = 12 * 64, n = 12 * 64 * 3;
+  std::vector<int64_t> m_list{10, 20, 40, 60, 80, 100, 120};
+  MatmulBenchmarkHelper(kDLCPU, false, {k, n}, m_list);
+  std::cout << std::endl;
+}
+*/
 
 }  // namespace kernels
 }  // namespace layers
