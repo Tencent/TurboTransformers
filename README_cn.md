@@ -59,7 +59,7 @@ bash run_benchmark.sh
 ```
 sh tool/build_conda_package.sh
 # conda包会在 /workspace/dist/*.tar.bz2中
-# 在本容器外其他环境使用turbo_transformers时只需要python -m pip install your_root_path/dist/*.tar.bz2
+# 在本容器外其他环境使用turbo_transformers时只需要 conda install your_root_path/dist/*.tar.bz2
 ```
 
 #### 使用腾讯云dockerhub镜像

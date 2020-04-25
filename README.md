@@ -58,7 +58,7 @@ bash run_benchmark.sh
 ```
 sh tool/build_conda_package.sh
 # The conda package will be in /workspace/dist/*.tar.bz2
-# When using turbo_transformers in other environments outside this container : python -m pip install your_root_path / dist / *. Tar.bz2
+# When using turbo_transformers in other environments outside this container: conda install your_root_path/dist/*.tar.bz2
 ```
 ### Installation on GPU
 ```
