@@ -382,7 +382,7 @@ class BertModel:
         output = self.seq_pool(input_tensor=hidden_cache,
                                return_type=return_type,
                                output_tensor=output)
-        return output
+        return output, convert_returns_as_type(output, return_type)
 
     @staticmethod
     def from_torch(model: TorchBertModel,
@@ -450,7 +450,7 @@ class BertModelWithPooler:
                  hidden_cache: Optional[AnyTensor] = None,
                  pooler_output: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None):
-        encoder_output = self.bertmodel(
+        encoder_output, hidden_cache = self.bertmodel(
             inputs,
             attention_masks,
             token_type_ids,
@@ -461,7 +461,7 @@ class BertModelWithPooler:
             return_type=ReturnType.turbo_transformers)
         pooler_output = self.pooler(encoder_output, return_type, pooler_output)
         return pooler_output, convert_returns_as_type(encoder_output,
-                                                      return_type)
+                                                      return_type), convert_returns_as_type(hidden_cache)
 
     @staticmethod
     def from_torch(model: TorchBertModel,
