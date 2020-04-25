@@ -81,8 +81,7 @@ class TestBertModel(unittest.TestCase):
         torch_result_final = (torch_result[1]).cpu().numpy(
         ) if use_pooler else torch_result[0][:, 0].cpu().numpy()
 
-        turbo_result_final = turbo_result[0].cpu().numpy(
-        ) if use_pooler else turbo_result.cpu().numpy()
+        turbo_result_final = turbo_result[0].cpu().numpy()
 
         #TODO(jiaruifang, v_cshi) check why pooler introduce more difference
         if use_pooler:

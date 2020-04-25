@@ -76,7 +76,7 @@ def create_shape_test(batch_size: int, seq_length: int):
                                                      self.attention_output)
             torch_result, torch_qps, torch_time = \
                 test_helper.run_model(torch_model, use_cuda, num_iter)
-            print(f'BertModel Plain PyTorch({device}) QPS {torch_qps}',
+            print(f'Bert Output Plain PyTorch({device}) QPS {torch_qps}',
                   file=sio)
 
             turbo_model = lambda: self.turbo_bertout(self.intermediate_output,
@@ -84,7 +84,7 @@ def create_shape_test(batch_size: int, seq_length: int):
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
             print(
-                f'BertModel Plain TurboTransformer({device}) QPS {turbo_qps}',
+                f'Bert Output Plain TurboTransformer({device}) QPS {turbo_qps}',
                 file=sio)
 
             # cuda version precision is lower due to tensor-core
