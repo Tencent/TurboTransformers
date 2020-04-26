@@ -14,8 +14,8 @@
 
 cd $(dirname $0)/
 set -xe
-VERSION=$(cat ../CMakeLists.txt | grep turbo_transformers_VERSION | \
-    sed 's#set(turbo_transformers_VERSION ##g' | sed 's#)##g')
+VERSION=$(cat ../CMakeLists.txt | grep TURBO_TRANSFORMERS_VERSION | \
+    sed 's#set(TURBO_TRANSFORMERS_VERSION ##g' | sed 's#)##g')
 
 CUDA_VERSION=10.0
 DOCKER_BASE=${CUDA_VERSION}-cudnn7-devel-ubuntu18.04

@@ -9,15 +9,16 @@ Transformer is the most critical alogrithm innovation in the NLP field in recent
 2. Tailored to the characteristics of NLP inference tasks. Unlike the CV task, the input dimensions of the NLP inference task always change. The traditional approach is zero padding or truncation to a fixed length, which introduces additional zero padding computational overhead. Besides, some frameworks such as onnxruntime, tensorRT, and torchlib need to preprocess the calculation graph according to the input size in advance, which is not suitable for NLP tasks with varying sizes. TurboTransformers can support variable-length input sequence processing without preprocessing.
 3. A simpler method of use. TurboTransformers supports python and C ++ interface for calling. It can be used as an acceleration plug-in for pytorch. In the Transformer task, the end-to-end acceleration effect obtained by adding a few lines of python code.
 
-TurboTransformers has been applied to multiple online BERT service scenarios within Tencent. For example, It brings 1.88x acceleration to the WeChat FAQ service, 2.11x acceleration to the public cloud sentiment analysis service, and 13.6x acceleration to the QQ recommendation system.
+TurboTransformers has been applied to multiple online BERT service scenarios in Tencent. For example, It brings 1.88x acceleration to the WeChat FAQ service, 2.11x acceleration to the public cloud sentiment analysis service, and 13.6x acceleration to the QQ recommendation system.
 
 The following table is a comparison of TurboTransformers and related work.
 
 | Related Works  |  Performance | Need Preprocess  |  Variable Length  | Usage |
 |------------------|---|---|---|---|
 | pytorch JIT (CPU) |  Fast |  Yes  | No  | Hard   |
+| TensorRT (GPU) | Fast | Yes  | No  | Hard  |
 | tf-Faster Transformers (GPU) | Fast  | Yes  | No  | Hard  |
-| ONNX-runtime(CPU/GPU) | Fast/Fast | Yes  | No  | Easy  |
+| ONNX-runtime (CPU/GPU) | Fast/Fast | Yes  | No  | Easy  |
 | tensorflow-1.x (CPU/GPU) | Slow/Medium | Yes | No | Easy |
 | pytorch (CPU/GPU) | Medium/Medium | No | Yes | Easy |
 | **turbo-transformers (CPU/GPU)** | **Fastest/Fastest** | **No** | **Yes** | **Easy** |
@@ -58,7 +59,7 @@ bash run_benchmark.sh
 ```
 sh tool/build_conda_package.sh
 # The conda package will be in /workspace/dist/*.tar.bz2
-# When using turbo_transformers in other environments outside this container : python -m pip install your_root_path / dist / *. Tar.bz2
+# When using turbo_transformers in other environments outside this container: conda install your_root_path/dist/*.tar.bz2
 ```
 ### Installation on GPU
 ```
@@ -99,6 +100,9 @@ Refer to [./example/cpp](./example/cpp "C ++") for an example.
 Our example provides the GPU and two CPU multi-thread calling methods. One is to do one BERT inference using multiple threads; the other is to do multiple BERT inference, each of which using one thread.
 Users can link turbo-transformers to your code through add_subdirectory.
 
+*Attention*
+The results of Turbo Transformers will be different from the results of PyTorch after 2 digits behind the decimal point, because the fused kernel cannot guarantee the same floating-point precision, especially for GeLU fuction.
+
 ## Performance
 ### CPU
 We tested the performance of TurboTransformers on three CPU hardware platforms.
@@ -136,3 +140,6 @@ We choose [pytorch](https://github.com/huggingface "pytorch"), [NVIDIA Faster Tr
 
 <img width="900" height="300" src="./images/M40-perf-0302.jpg" alt="M40性能">
 <img width="900" height="300" src="./images/M40-speedup-0302.jpg" alt="M40加速">
+
+## TODO
+Currently (April 2020), we only support a interface of the BERT encoder model using FP32. In the near futuer, we will add support for other models (GPT2, decoders, etc.) and low-precision floating point (CPU int8, GPU FP16).

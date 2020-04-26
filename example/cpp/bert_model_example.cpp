@@ -17,14 +17,15 @@
 #include <cmath>
 #include <future>
 #include <iostream>
+#include <string>
 #include <thread>
 
 #include "turbo_transformers/core/config.h"
 
-static bool test(bool use_cuda = false) {
+static bool test(const std::string &model_path, bool use_cuda = false) {
   // construct a bert model using n_layers and n_heads,
   // the hidden_size can be infered from the parameters
-  BertModel model("models/bert.npz",
+  BertModel model(model_path,
                   use_cuda ? DLDeviceType::kDLGPU : DLDeviceType::kDLCPU,
                   12, /* n_layers */
                   12 /* *n_heads */);
@@ -33,11 +34,11 @@ static bool test(bool use_cuda = false) {
   auto vec = model({{12166, 10699, 16752, 4454}, {5342, 16471, 817, 16022}},
                    position_ids, segment_ids, PoolType::kFirst,
                    true /* use a pooler after the encoder output */);
-
-  assert(fabs(vec.data()[0] - 0.9151) < 1e-3);
-  assert(fabs(vec.data()[1] - 0.5919) < 1e-3);
-  assert(fabs(vec.data()[768] - 0.9802) < 1e-3);
-  assert(fabs(vec.data()[768 + 1] - 0.9321) < 1e-3);
+  // bert-base-uncased (2020.04.23 version), you may need to change it to
+  assert(fabs(vec.data()[0] - -0.5503) < 1e-3);
+  assert(fabs(vec.data()[1] - 0.1295) < 1e-3);
+  assert(fabs(vec.data()[768] - -0.5545) < 1e-3);
+  assert(fabs(vec.data()[768 + 1] - -0.1182) < 1e-3);
 
   return true;
 }
@@ -52,9 +53,10 @@ static std::vector<float> CallBackFunction(
                            use_pooler);
 }
 
-bool test_multiple_threads(bool only_input, int n_threads) {
-  std::shared_ptr<BertModel> model_ptr = std::make_shared<BertModel>(
-      "models/bert.npz", DLDeviceType::kDLCPU, 12, 12);
+bool test_multiple_threads(const std::string &model_path, bool only_input,
+                           int n_threads) {
+  std::shared_ptr<BertModel> model_ptr =
+      std::make_shared<BertModel>(model_path, DLDeviceType::kDLCPU, 12, 12);
   std::vector<std::vector<int64_t>> input_ids{{12166, 10699, 16752, 4454},
                                               {5342, 16471, 817, 16022}};
   std::vector<std::vector<int64_t>> position_ids{{1, 0, 0, 0}, {1, 1, 1, 0}};
@@ -88,16 +90,19 @@ bool test_multiple_threads(bool only_input, int n_threads) {
       assert(!std::isnan(vec.data()[i]));
       assert(!std::isinf(vec.data()[i]));
     }
+    // Attention, the hard code value is based on huggingface/transformers
+    // bert-base-uncased (2020.04.23 version), you may need to change it to
+    // real-time values.
     if (only_input) {
-      assert(fabs(vec.data()[0] - 0.9671) < 1e-3);
-      assert(fabs(vec.data()[1] - 0.9860) < 1e-3);
-      assert(fabs(vec.data()[768] - 0.9757) < 1e-3);
-      assert(fabs(vec.data()[768 + 1] - 0.9794) < 1e-3);
+      assert(fabs(vec.data()[0] - -0.1901) < 1e-3);
+      assert(fabs(vec.data()[1] - 0.0193) < 1e-3);
+      assert(fabs(vec.data()[768] - 0.3060) < 1e-3);
+      assert(fabs(vec.data()[768 + 1] - 0.1162) < 1e-3);
     } else {
-      assert(fabs(vec.data()[0] - 0.9151) < 1e-3);
-      assert(fabs(vec.data()[1] - 0.5919) < 1e-3);
-      assert(fabs(vec.data()[768] - 0.9802) < 1e-3);
-      assert(fabs(vec.data()[768 + 1] - 0.9321) < 1e-3);
+      assert(fabs(vec.data()[0] - -0.5503) < 1e-3);
+      assert(fabs(vec.data()[1] - 0.1295) < 1e-3);
+      assert(fabs(vec.data()[768] - -0.5545) < 1e-3);
+      assert(fabs(vec.data()[768 + 1] - -0.1182) < 1e-3);
     }
   }
 
@@ -107,15 +112,28 @@ bool test_multiple_threads(bool only_input, int n_threads) {
   return true;
 }
 
-int main() {
-  std::cout << "run bert on GPU, device id is 0" << std::endl;
-  test(true);
+using namespace turbo_transformers;
+
+int main(int argc, char *argv[]) {
+  if (argc != 2) {
+    std::cerr << "./bert_example npz_model_path" << std::endl;
+    return -1;
+  }
+  const std::string model_path = static_cast<std::string>(argv[1]);
+
+  if (core::IsCompiledWithCUDA()) {
+    std::cout << "run bert on GPU, device id is 0" << std::endl;
+    test(model_path, true /*use cuda*/);
+  }
   std::cout << "run bert on CPU, use 4 threads to do bert inference"
             << std::endl;
   turbo_transformers::core::SetNumThreads(4);
-  test(false);
-  std::cout << "10 threads do 10 independent bert inferences." << std::endl;
+  test(model_path, false /*not use cuda*/);
   turbo_transformers::core::SetNumThreads(1);
-  test_multiple_threads(false, 10);
-  test_multiple_threads(true, 10);
+  if (core::IsCompiledWithCUDA()) {
+    std::cout << "10 threads do 10 independent bert inferences." << std::endl;
+    test_multiple_threads(model_path, true /*use cuda*/, 10);
+  }
+  test_multiple_threads(model_path, false /*not use cuda*/, 10);
+  return 0;
 }
