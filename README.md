@@ -100,9 +100,6 @@ Refer to [./example/cpp](./example/cpp "C ++") for an example.
 Our example provides the GPU and two CPU multi-thread calling methods. One is to do one BERT inference using multiple threads; the other is to do multiple BERT inference, each of which using one thread.
 Users can link turbo-transformers to your code through add_subdirectory.
 
-*Attention*
-The results of Turbo Transformers will be different from the results of PyTorch after 2 digits behind the decimal point, because the fused kernel cannot guarantee the same floating-point precision, especially for GeLU fuction.
-
 ## Performance
 ### CPU
 We tested the performance of TurboTransformers on three CPU hardware platforms.
@@ -143,3 +140,16 @@ We choose [pytorch](https://github.com/huggingface "pytorch"), [NVIDIA Faster Tr
 
 ## TODO
 Currently (April 2020), we only support a interface of the BERT encoder model using FP32. In the near futuer, we will add support for other models (GPT2, decoders, etc.) and low-precision floating point (CPU int8, GPU FP16).
+
+## Lisence
+BSD 3-Clause License
+
+## Known Issues
+1. The results of Turbo Transformers may be different from the results of PyTorch after 2 digits behind the decimal point.
+The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
+
+2. Member function of `from_torch` in `BertModelWithPooler` and `BertModelWithPooler` does not support torch version == 1.5.0 on AuthenticAMD CPU.
+In our opinion, the tensor transpose API of PyTorch is not stable.
+```
+weight = torch.clone(torch.t(pooler_params['dense.weight']))
+```
