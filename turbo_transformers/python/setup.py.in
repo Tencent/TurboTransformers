@@ -5,7 +5,7 @@ with open("stub.c", "w") as f:
 
 
 setup(name='turbo-transformers',
-      version='0.0.1',
+      version='@TURBO_TRANSFORMERS_VERSION@',
       description='turbo_transformers',
       packages=[
           'turbo_transformers',

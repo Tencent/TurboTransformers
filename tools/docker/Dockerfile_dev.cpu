@@ -21,7 +21,7 @@ COPY --from=PProfBuilder /go/bin/pprof /bin/pprof
 # Try to install deps by anaconda
 # NOTE:  1. MKL is installed with pytorch.
 #           turbo-transformers will use the same MKL from PyTorch
-RUN /opt/conda/bin/conda install pytorch cpuonly -c pytorch && \
+RUN /opt/conda/bin/conda install pytorch==1.4.0  cpuonly -c pytorch && \
     /opt/conda/bin/conda install curl conda-verify conda-build mkl-include cmake -c anaconda &&  \
     /opt/conda/bin/conda install make cmake git graphviz gperftools git-lfs docopt -c conda-forge && \
     /opt/conda/bin/conda clean -afy

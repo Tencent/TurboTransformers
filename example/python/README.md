@@ -5,16 +5,23 @@ Modify the corresponding parts in the cpu(gpu)_example.py
 ```
 model_id = "bert-base-uncased"
 ```
-2. I want to use a PyTorch saved model.
+2. I want to use a PyTorch saved model
+
+We can load a model from the directory of pre-trained model.
 ```
 model_id = "your_saved_model" directory
 ```
+
 3. I want to use a Tensorflow checkpoint model
+
+```
 cd /workspace
-python tools/convert_huggingface_bert_pytorch_to_npz.py bert-based-uncased bert_torch.npz
+python tools/convert_huggingface_bert_tf_to_npz.py bert-based-uncased /workspace/bert_tf.npz
+```
+update the corresponding line in cpu(gpu)_example.py
 ```
 tt_model = turbo_transformers.BertModelWithPooler.from_npz(
-    '/workspace/bert_torch.npz', cfg)
+    '/workspace/bert_tf.npz', cfg)
 ```
 ### run examples
 ```
