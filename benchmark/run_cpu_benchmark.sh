@@ -14,7 +14,7 @@
 
 set -e
 NUM_THREADS=(4 8)
-FRAMEWORKS=("torch" "torch_jit" "turbo-transformers" "onnxruntime-mkldnn")
+FRAMEWORKS=("torch" "torch_jit" "turbo-transformers" "onnxruntime-cpu")
 SEQ_LEN=(10 20 40 60 80 100 120 200 300 400 500)
 BATCH_SIZE=(1 2)
 N=150
