@@ -148,8 +148,8 @@ BSD 3-Clause License
 1. The results of Turbo Transformers may be different from the results of PyTorch after 2 digits behind the decimal point.
 The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
 
-2. Member function of `from_torch` in `BertModelWithPooler` and `BertModelWithPooler` does not support torch version == 1.5.0 on AuthenticAMD CPU.
-In our opinion, the tensor transpose API of PyTorch is not stable.
+2. On AuthenticAMD CPU, member function `from_torch` of class `BertModelWithPooler` and `BertModel` does not support PyTorch version as 1.5.0.
+In our opinion, the tensor transpose API of PyTorch is not stable. We use the following way to transpose weight matrices.
 ```
 weight = torch.clone(torch.t(pooler_params['dense.weight']))
 ```
