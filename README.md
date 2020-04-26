@@ -61,7 +61,7 @@ sh tool/build_conda_package.sh
 # The conda package will be in /workspace/dist/*.tar.bz2
 # When using turbo_transformers in other environments outside this container: conda install your_root_path/dist/*.tar.bz2
 ```
-t -
+
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
 *docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev*
 ### Installation on GPU
