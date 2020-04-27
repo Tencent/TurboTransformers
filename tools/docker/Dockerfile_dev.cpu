@@ -3,11 +3,11 @@ FROM continuumio/miniconda3 as OnnxRTBuilder
 RUN apt-get update && apt-get install -y build-essential
 RUN /opt/conda/bin/conda install mklml cmake curl git numpy -c anaconda
 RUN mkdir /src && cd /src/ && git clone -v https://github.com/microsoft/onnxruntime.git &&\
-    cd onnxruntime && git checkout v1.0.0 && git submodule update --init --recursive
+    cd onnxruntime && git checkout v1.2.0 && git submodule update --init --recursive
 
 RUN cd /src/onnxruntime &&\
     mkdir -p /src/onnxruntime/build/Linux/Release &&\
-    ./build.sh --config=Release --update --build --build_wheel --use_mkldnn --use_mklml --parallel
+    ./build.sh --config=Release --update --build --build_wheel --use_mklml --parallel
 
 # Build pprof for profile
 FROM golang:1.13.4-stretch as PProfBuilder
@@ -21,7 +21,7 @@ COPY --from=PProfBuilder /go/bin/pprof /bin/pprof
 # Try to install deps by anaconda
 # NOTE:  1. MKL is installed with pytorch.
 #           turbo-transformers will use the same MKL from PyTorch
-RUN /opt/conda/bin/conda install pytorch cpuonly -c pytorch && \
+RUN /opt/conda/bin/conda install pytorch==1.4.0  cpuonly -c pytorch && \
     /opt/conda/bin/conda install curl conda-verify conda-build mkl-include cmake -c anaconda &&  \
     /opt/conda/bin/conda install make cmake git graphviz gperftools git-lfs docopt -c conda-forge && \
     /opt/conda/bin/conda clean -afy

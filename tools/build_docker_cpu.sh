@@ -15,8 +15,8 @@
 cd $(dirname $0)
 set -xe
 
-VERSION=$(cat ../CMakeLists.txt | grep turbo_transformers_VERSION | \
-    sed 's#set(turbo_transformers_VERSION ##g' | sed 's#)##g')
+VERSION=$(cat ../CMakeLists.txt | grep TURBO_TRANSFORMERS_VERSION | \
+    sed 's#set(TURBO_TRANSFORMERS_VERSION ##g' | sed 's#)##g')
 
 if [ -z $BUILD_TYPE ]; then
   BUILD_TYPE=release
