@@ -63,6 +63,7 @@ sh tool/build_conda_package.sh
 ```
 
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
+
 *docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev*
 ### Installation on GPU
 ```
