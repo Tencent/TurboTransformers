@@ -27,6 +27,7 @@ class MultiHeadedAttention {
                        core::Tensor v_weight, core::Tensor v_bias,
                        core::Tensor q_weight, core::Tensor q_bias,
                        core::Tensor dense_weight, core::Tensor dense_bias,
+                       core::Tensor qkv_weight, core::Tensor qkv_bias,
                        int64_t num_attention_heads)
       : k_weight_(std::move(k_weight)),  //(768, 768)
         k_bias_(std::move(k_bias)),
@@ -36,6 +37,8 @@ class MultiHeadedAttention {
         q_bias_(std::move(q_bias)),
         dense_weight_(std::move(dense_weight)),
         dense_bias_(std::move(dense_bias)),
+        qkv_weight_(std::move(qkv_weight)),
+        qkv_bias_(std::move(qkv_bias)),
         num_attention_heads_(num_attention_heads) {
     EnforceShapeAndType();
   }
@@ -45,17 +48,21 @@ class MultiHeadedAttention {
                   const core::Tensor& value_tensor,
                   const core::Tensor& query_tensor,
                   const core::Tensor& attention_mask,
-                  core::Tensor* output) const;
+                  const std::string& attn_type, core::Tensor* output) const;
 
  private:
   core::Tensor k_weight_;
   core::Tensor k_bias_;
-  core::Tensor q_weight_;
-  core::Tensor q_bias_;
   core::Tensor v_weight_;
   core::Tensor v_bias_;
+  core::Tensor q_weight_;
+  core::Tensor q_bias_;
   core::Tensor dense_weight_;
   core::Tensor dense_bias_;
+
+  core::Tensor qkv_weight_;  // store fused qkv weight/bias for "self" type
+                             // attention computation.
+  core::Tensor qkv_bias_;
   int64_t num_attention_heads_;
 };
 

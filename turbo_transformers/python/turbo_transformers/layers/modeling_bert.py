@@ -189,7 +189,7 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         output = _create_empty_if_none(output)
         super(MultiHeadedAttention,
               self).__call__(key_tensor, value_tensor, query_tensor,
-                             mask_tensor, output)
+                             mask_tensor, attn_type, output)
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
@@ -204,6 +204,15 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         # final_linear.weight
         # final_linear.bias
 
+        # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
+        qkv_weight = torch.clone(
+            torch.t(
+                torch.cat((params['linear_query.weight'],
+                           params['linear_keys.weight'],
+                           params['linear_values.weight']), 0)))
+        qkv_bias = torch.cat(
+            (params['linear_query.bias'], params['linear_keys.bias'],
+             params['linear_query.bias']), 0)
         with torch.no_grad():
             att = MultiHeadedAttention(
                 convert2tt_tensor(
@@ -218,6 +227,7 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                 convert2tt_tensor(
                     torch.clone(torch.t(params['final_linear.weight']))),
                 convert2tt_tensor(params['final_linear.bias']),
+                convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
                 multi_headed_attn.head_count)
             return att
 
@@ -238,7 +248,6 @@ class BertAttention(cxx.BertAttention):
     @staticmethod
     def from_torch(attention: TorchBertAttention):
         params = {k: v for k, v in attention.named_parameters()}
-
         with torch.no_grad():
             # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
             qkv_weight = torch.clone(

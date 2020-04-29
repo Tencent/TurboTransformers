@@ -26,7 +26,7 @@ import test_helper
 fname = "tt_multi_headed_attention.txt"
 
 
-def create_test(batch_size, key_seq_len, query_seq_len):
+def create_test(batch_size, key_seq_len, query_seq_len, attn_type):
     class TestMultiHeadedAttention(unittest.TestCase):
         def init_data(self, use_cuda):
             self.test_device = torch.device('cuda:0') if use_cuda else \
@@ -35,7 +35,7 @@ def create_test(batch_size, key_seq_len, query_seq_len):
                 torch.set_num_threads(1)
 
             torch.set_grad_enabled(False)
-
+            self.attn_type = attn_type
             head_count = 12
             model_dim = 768  #model_dim should % head_count = 0
 
@@ -77,11 +77,11 @@ def create_test(batch_size, key_seq_len, query_seq_len):
                 self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
             onmt_model = lambda: onmt_multi_headed_attention(
-                K, V, Q, attention_mask, attn_type="context")
+                K, V, Q, attention_mask, attn_type=self.attn_type)
             onmt_multi_headed_attention_result, torch_qps, torch_time_consume = \
                 test_helper.run_model(onmt_model, use_cuda, num_iter) # return output, attns
             print(
-                f"ONMT Multi Headed Attention \"({batch_size},{key_seq_len:03},{query_seq_len:03})\" ",
+                f"ONMT Multi Headed Attention \"({self.attn_type}, {batch_size},{key_seq_len:03},{query_seq_len:03})\" ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
             attention_mask = torch.ones(
@@ -91,23 +91,25 @@ def create_test(batch_size, key_seq_len, query_seq_len):
 
             turbo_attention_mask = (1.0 - attention_mask) * -1e18
             turob_model = lambda: turbo_multi_headed_attention(
-                K, V, Q, turbo_attention_mask)
+                K, V, Q, turbo_attention_mask, attn_type=self.attn_type)
             turbo_self_attention_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turob_model, use_cuda,
                                       num_iter)
             print(
-                f"Turbo Multi Headed Attention  \"({batch_size},{key_seq_len:03},{query_seq_len:03})\" ",
+                f"Turbo Multi Headed Attention  \"({self.attn_type}, {batch_size},{key_seq_len:03},{query_seq_len:03})\" ",
                 f" {device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}"
             )
 
+            print(onmt_multi_headed_attention_result[0])
+            print(turbo_self_attention_result)
             self.assertTrue(
                 torch.max(
                     torch.abs(onmt_multi_headed_attention_result[0] -
-                              turbo_self_attention_result)) < 1e-3
-                if use_cuda else 1e-4)
+                              turbo_self_attention_result)) < (
+                                  1e-3 if use_cuda else 1e-4))
             with open(fname, "a") as fh:
                 fh.write(
-                    f"\"({batch_size},{key_seq_len:03},{query_seq_len:03})\", {torch_qps}, {turbo_qps}\n"
+                    f"\"({self.attn_type},{batch_size},{key_seq_len:03},{query_seq_len:03})\", {torch_qps}, {turbo_qps}\n"
                 )
 
         def test_multi_headed_attention(self):
@@ -122,10 +124,15 @@ def create_test(batch_size, key_seq_len, query_seq_len):
 
 with open(fname, "w") as fh:
     fh.write(", torch, turbo_transformers\n")
-for batch_size in [1, 2]:
-    for key_seq_len in [10, 16, 20, 30]:
-        for query_seq_len in [10, 16, 20, 30]:
-            create_test(batch_size, key_seq_len, query_seq_len)
+
+for attn_type in {"context"}:
+    # for batch_size in [1, 2]:
+    #     for key_seq_len in [10, 16, 20, 30]:
+    #         for query_seq_len in [10, 16, 20, 30]:
+    for batch_size in [2]:
+        for key_seq_len in [10]:
+            for query_seq_len in [16]:
+                create_test(batch_size, key_seq_len, query_seq_len, attn_type)
 
 if __name__ == '__main__':
     unittest.main()

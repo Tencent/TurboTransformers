@@ -30,6 +30,7 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
                                       const core::Tensor& value_tensor,
                                       const core::Tensor& query_tensor,
                                       const core::Tensor& attention_mask,
+                                      const std::string& attn_type,
                                       core::Tensor* output) const {
   std::lock_guard<std::mutex> g(mutex_);
   TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
@@ -39,86 +40,120 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
                 "device type and device id.");
 
   TT_ENFORCE_EQ(key_tensor.n_dim(), 3,
-                "The key_tensor should be a matrix with shape [BatchSize, "
-                "Key_Seq_Len, HiddenSize].");
+                "The key_tensor should be a matrix with shape [batch_size, "
+                "key_seq_len, hidden_size].");
   TT_ENFORCE_EQ(value_tensor.n_dim(), 3,
-                "The value_tensor should be a matrix with shape [BatchSize, "
-                "Value_Seq_Len, HiddenSize].");
+                "The value_tensor should be a matrix with shape [batch_size, "
+                "key_seq_len, hidden_size].");
   TT_ENFORCE_EQ(query_tensor.n_dim(), 3,
-                "The query_tensors should be a matrix with shape [BatchSize, "
-                "Query_Seq_Len, HiddenSize].");
+                "The query_tensors should be a matrix with shape [batch_size, "
+                "query_seq_len, hidden_size].");
   TT_ENFORCE_EQ(
       key_tensor.shape(0), value_tensor.shape(0),
       "The key_tensor and value_tensor should have the same hidden_size");
 
   EnforceShapeAndType();
   auto batch_size = query_tensor.shape(0);
-  auto query_seq_length = query_tensor.shape(1);
-  auto key_seq_length = key_tensor.shape(1);
+  auto query_seq_length =
+      query_tensor.shape(1);  // query_seq_length = from_seq_Len
+  int64_t key_seq_length;
+  if (attn_type == "context") {
+    key_seq_length = key_tensor.shape(1);
+  } else if (attn_type == "self") {
+    key_seq_length = query_seq_length;
+  }
   auto hidden_size = query_tensor.shape(2);
   auto size_per_head = hidden_size / num_attention_heads_;
+  auto query_device_type = query_tensor.device_type();
+  auto query_device_id = query_tensor.device_id();
 
-  output->Reshape<float>({batch_size, key_seq_length, hidden_size},
-                         query_tensor.device_type(), query_tensor.device_id());
+  output->Reshape<float>({batch_size, query_seq_length, hidden_size},
+                         query_device_type, query_device_id);
 
   // 1. q = MatMul(query_tensor), k = MatMul(key_tensor), v =
   // MatMul(value_tensor)
-  static core::TempTensor temp_q_tmp;
-  core::Tensor& temp_q = temp_q_tmp.GetTensor(query_tensor.device_ctx());
-  temp_q.Reshape<float>({batch_size, query_seq_length, hidden_size},
-                        query_tensor.device_type(), query_tensor.device_id());
-
-  static core::TempTensor temp_v_tmp;
-  core::Tensor& temp_v = temp_v_tmp.GetTensor(value_tensor.device_ctx());
-  temp_v.Reshape<float>({batch_size, key_seq_length, hidden_size},
-                        value_tensor.device_type(), value_tensor.device_id());
-
-  static core::TempTensor temp_k_tmp;
-  core::Tensor& temp_k = temp_k_tmp.GetTensor(key_tensor.device_ctx());
-  temp_k.Reshape<float>({batch_size, key_seq_length, hidden_size},
-                        key_tensor.device_type(), key_tensor.device_id());
-
-  kernels::MatMul(query_tensor, false, q_weight_, false, 1.0, &temp_q,
-                  0.0);  //(B, seq, head*hiddden)
-  kernels::MatMul(key_tensor, false, k_weight_, false, 1.0, &temp_k, 0.0);
-  kernels::MatMul(value_tensor, false, v_weight_, false, 1.0, &temp_v, 0.0);
-  temp_q.Reshape<float>(
-      {batch_size, query_seq_length, num_attention_heads_, size_per_head},
-      key_tensor.device_type(), key_tensor.device_id());
-  temp_k.Reshape<float>(
-      {batch_size, key_seq_length, num_attention_heads_, size_per_head},
-      key_tensor.device_type(), key_tensor.device_id());
-  temp_v.Reshape<float>(
-      {batch_size, key_seq_length, num_attention_heads_, size_per_head},
-      key_tensor.device_type(), key_tensor.device_id());
-  // 2. qkv = transpose(temp_key + bias)
-  // Since `SplitAddBiasTransposeForScore` does not support inplace,
-  // qkv and temp_qkv cannot be same tensor
-  static core::TempTensor q_tensor_tmp, k_tensor_tmp, v_tensor_tmp;
-  core::Tensor& q = q_tensor_tmp.GetTensor(query_tensor.device_ctx());
-  core::Tensor& k = k_tensor_tmp.GetTensor(key_tensor.device_ctx());
-  core::Tensor& v = v_tensor_tmp.GetTensor(value_tensor.device_ctx());
-  q.Reshape<float>(
-      {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-      query_tensor.device_type(), query_tensor.device_id());
-  k.Reshape<float>(
-      {batch_size, num_attention_heads_, key_seq_length, size_per_head},
-      key_tensor.device_type(), key_tensor.device_id());
-  v.Reshape<float>(
-      {batch_size, num_attention_heads_, key_seq_length, size_per_head},
-      value_tensor.device_type(), value_tensor.device_id());
-  kernels::AddBiasTransposeForScore(temp_q, q_bias_, &q);
-  kernels::AddBiasTransposeForScore(temp_k, k_bias_, &k);
-  kernels::AddBiasTransposeForScore(temp_v, v_bias_, &v);
-
+  core::Tensor *q_ptr{nullptr}, *k_ptr{nullptr}, *v_ptr{nullptr};
   // 4. attn = self.softmax(scores).to(query.dtype)
+
+  if (attn_type == "context") {
+    static core::TempTensor q_out1_temp, v_out1_temp,
+        k_out1_temp;  // intermediate results after matmul
+    static core::TempTensor q_out2_temp, v_out2_temp,
+        k_out2_temp;  // intermediate results after add bias and transpose
+    core::Tensor& q_out1 = q_out1_temp.GetTensor(query_tensor.device_ctx());
+    core::Tensor& v_out1 = v_out1_temp.GetTensor(value_tensor.device_ctx());
+    core::Tensor& k_out1 = k_out1_temp.GetTensor(key_tensor.device_ctx());
+    core::Tensor& q_out2 = q_out2_temp.GetTensor(query_tensor.device_ctx());
+    core::Tensor& v_out2 = v_out2_temp.GetTensor(value_tensor.device_ctx());
+    core::Tensor& k_out2 = k_out2_temp.GetTensor(key_tensor.device_ctx());
+
+    q_out1.Reshape<float>({batch_size, query_seq_length, hidden_size},
+                          query_device_type, query_device_id);
+    v_out1.Reshape<float>({batch_size, key_seq_length, hidden_size},
+                          query_device_type, query_device_id);
+    k_out1.Reshape<float>({batch_size, key_seq_length, hidden_size},
+                          query_device_type, query_device_id);
+
+    kernels::MatMul(query_tensor, false, q_weight_, false, 1.0, &q_out1, 0.0);
+    kernels::MatMul(key_tensor, false, k_weight_, false, 1.0, &v_out1, 0.0);
+    kernels::MatMul(value_tensor, false, v_weight_, false, 1.0, &k_out1, 0.0);
+
+    q_out1.Reshape<float>(
+        {batch_size, query_seq_length, num_attention_heads_, size_per_head},
+        query_device_type, query_device_id);
+    v_out1.Reshape<float>(
+        {batch_size, key_seq_length, num_attention_heads_, size_per_head},
+        query_device_type, query_device_id);
+    k_out1.Reshape<float>(
+        {batch_size, key_seq_length, num_attention_heads_, size_per_head},
+        query_device_type, query_device_id);
+
+    q_out2.Reshape<float>(
+        {batch_size, num_attention_heads_, query_seq_length, size_per_head},
+        query_device_type, query_device_id);
+    v_out2.Reshape<float>(
+        {batch_size, num_attention_heads_, key_seq_length, size_per_head},
+        query_device_type, query_device_id);
+    k_out2.Reshape<float>(
+        {batch_size, num_attention_heads_, key_seq_length, size_per_head},
+        query_device_type, query_device_id);
+
+    kernels::AddBiasTransposeForScore(q_out1, q_bias_, &q_out2);
+    kernels::AddBiasTransposeForScore(v_out1, k_bias_, &v_out2);
+    kernels::AddBiasTransposeForScore(k_out1, v_bias_, &k_out2);
+    q_ptr = &q_out2;  // point to static memory space
+    v_ptr = &v_out2;
+    k_ptr = &k_out2;
+  } else if (attn_type == "self") {
+    static core::TempTensor qkv_out1_temp, qkv_out2_temp;
+    core::Tensor& qkv_out1 = qkv_out1_temp.GetTensor(query_tensor.device_ctx());
+    qkv_out1.Reshape<float>({3, batch_size, query_seq_length, hidden_size},
+                            query_device_type, query_device_id);
+
+    kernels::MatMul(query_tensor, false, qkv_weight_, false, 1.0, &qkv_out1,
+                    0.0);
+
+    core::Tensor& qkv_out2 = qkv_out2_temp.GetTensor(query_tensor.device_ctx());
+    qkv_out2.Reshape<float>(
+        {3, batch_size, num_attention_heads_, query_seq_length, size_per_head},
+        query_device_type, query_device_id);
+
+    kernels::SplitAddBiasTransposeForScore(&qkv_out2, qkv_out1, qkv_bias_);
+    q_ptr =
+        new core::Tensor(qkv_out2[0]);  // copy temporary tensor to heap space.
+    k_ptr = new core::Tensor(qkv_out2[1]);
+    v_ptr = new core::Tensor(qkv_out2[2]);
+    qkv_out2[0].Print<float>(std::cerr);
+  } else {
+    TT_THROW("%s is not support in MultiHeadedAttention\n", attn_type);
+  }
+
   static core::TempTensor att_score_tmp;
   core::Tensor& att_score = att_score_tmp.GetTensor(query_tensor.device_ctx());
   att_score.Reshape<float>({batch_size, num_attention_heads_, query_seq_length,
                             key_seq_length},  // query_seq_length = from_seq_Len
-                           query_tensor.device_type(),
-                           query_tensor.device_id());
-  kernels::BatchMatMul(q, false, k, true, 1.0, &att_score, 0.0);
+                           query_device_type, query_device_id);
+  kernels::BatchMatMul(*q_ptr, false, *k_ptr, true, 1.0, &att_score, 0.0);
 
   kernels::ApplyMaskAndSoftmax(
       &att_score, attention_mask,
@@ -130,16 +165,18 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
       context_layer_tmpr.GetTensor(query_tensor.device_ctx());
   context_layer.Reshape<float>(
       {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-      query_tensor.device_type(), query_tensor.device_id());
-  kernels::BatchMatMul(att_score, false, v, false, 1.0, &context_layer, 0.0);
+      query_device_type, query_device_id);
+  kernels::BatchMatMul(att_score, false, *v_ptr, false, 1.0, &context_layer,
+                       0.0);
 
   // context = unshape(context_original)
   static core::TempTensor self_attr_out_tmp;
   core::Tensor& self_attr_out =
       self_attr_out_tmp.GetTensor(query_tensor.device_ctx());
+
   self_attr_out.Reshape<float>(
-      {batch_size, key_seq_length, num_attention_heads_ * size_per_head},
-      query_tensor.device_type(), query_tensor.device_id());
+      {batch_size, query_seq_length, num_attention_heads_ * size_per_head},
+      query_device_type, query_device_id);
 
   kernels::TransposeForScore(&self_attr_out, context_layer);
 
