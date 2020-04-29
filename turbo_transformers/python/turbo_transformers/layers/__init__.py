@@ -12,20 +12,12 @@
 # See the AUTHORS file for names of contributors.
 
 from .modeling_bert import BertEmbeddings, BertIntermediate, BertOutput, BertAttention, BertLayer, SequencePool, \
-    BertEncoder, BertModel, PoolingType, BertPooler, BertModelWithPooler
+    BertEncoder, BertModel, PoolingType, BertPooler, BertModelWithPooler, MultiHeadedAttention
 from .return_type import ReturnType
 
 __all__ = [
-    'BertEmbeddings',
-    'BertIntermediate',
-    'BertOutput',
-    'BertAttention',
-    'BertLayer',
-    'BertEncoder',
-    'BertModel',
-    'ReturnType',
-    'BertPooler',
-    'SequencePool',
-    'PoolingType',
-    'BertModelWithPooler',
+    'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
+    'BertLayer', 'BertEncoder', 'BertModel', 'ReturnType', 'BertPooler',
+    'SequencePool', 'PoolingType', 'BertModelWithPooler',
+    'MultiHeadedAttention'
 ]

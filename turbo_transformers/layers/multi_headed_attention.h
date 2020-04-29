@@ -1,0 +1,63 @@
+// Copyright (C) 2020 THL A29 Limited, a Tencent company.
+// All rights reserved.
+// Licensed under the BSD 3-Clause License (the "License"); you may
+// not use this file except in compliance with the License. You may
+// obtain a copy of the License at
+// https://opensource.org/licenses/BSD-3-Clause
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" basis,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
+// See the AUTHORS file for names of contributors.
+
+#pragma once
+#include <memory>
+#include <mutex>
+
+#include <utility>
+#include "turbo_transformers/core/tensor.h"
+
+namespace turbo_transformers {
+namespace layers {
+
+class MultiHeadedAttention {
+ public:
+  MultiHeadedAttention(core::Tensor k_weight, core::Tensor k_bias,
+                       core::Tensor v_weight, core::Tensor v_bias,
+                       core::Tensor q_weight, core::Tensor q_bias,
+                       core::Tensor dense_weight, core::Tensor dense_bias,
+                       int64_t num_attention_heads)
+      : k_weight_(std::move(k_weight)),  //(768, 768)
+        k_bias_(std::move(k_bias)),
+        v_weight_(std::move(v_weight)),  //(768, 768)
+        v_bias_(std::move(v_bias)),
+        q_weight_(std::move(q_weight)),  //(768, 768)
+        q_bias_(std::move(q_bias)),
+        dense_weight_(std::move(dense_weight)),
+        dense_bias_(std::move(dense_bias)),
+        num_attention_heads_(num_attention_heads) {
+    EnforceShapeAndType();
+  }
+  void EnforceShapeAndType() const;
+
+  void operator()(const core::Tensor& key_tensor,
+                  const core::Tensor& value_tensor,
+                  const core::Tensor& query_tensor,
+                  const core::Tensor& attention_mask,
+                  core::Tensor* output) const;
+
+ private:
+  core::Tensor k_weight_;
+  core::Tensor k_bias_;
+  core::Tensor q_weight_;
+  core::Tensor q_bias_;
+  core::Tensor v_weight_;
+  core::Tensor v_bias_;
+  core::Tensor dense_weight_;
+  core::Tensor dense_bias_;
+  int64_t num_attention_heads_;
+};
+
+}  // namespace layers
+}  // namespace turbo_transformers

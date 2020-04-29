@@ -16,6 +16,7 @@ add_subdirectory(kernels)
 add_library(tt_layers OBJECT
         bert_embedding.cpp
         bert_attention.cpp
+        multi_headed_attention.cpp
         bert_intermediate.cpp
         bert_output.cpp
         sequence_pool.cpp

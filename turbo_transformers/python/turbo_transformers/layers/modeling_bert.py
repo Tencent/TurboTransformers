@@ -30,13 +30,15 @@ from transformers.modeling_bert import BertEncoder as TorchBertEncoder
 from transformers.modeling_bert import BertModel as TorchBertModel
 from transformers.modeling_bert import BertPooler as TorchBertPooler
 
+from onmt.modules.multi_headed_attn import MultiHeadedAttention as OnmtMultiHeadedAttention
+
 import enum
 import numpy as np
 
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
     'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType',
-    'BertPooler', 'BertModelWithPooler'
+    'BertPooler', 'BertModelWithPooler', 'MultiHeadedAttention'
 ]
 
 
@@ -166,6 +168,58 @@ class BertOutput(cxx.BertOutput):
                 f[f'encoder.layer.{layer_num}.output.LayerNorm.weight']),
             _try_convert(
                 f[f'encoder.layer.{layer_num}.output.LayerNorm.bias']))
+
+
+class MultiHeadedAttention(cxx.MultiHeadedAttention):
+    def __call__(self,
+                 key_tensor: AnyTensor,
+                 value_tensor: AnyTensor,
+                 query_tensor: AnyTensor,
+                 mask_tensor: Optional[AnyTensor] = None,
+                 layer_cache: Optional[AnyTensor] = None,
+                 attn_type: str = None,
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None):
+        key_tensor = _try_convert(key_tensor)
+        value_tensor = _try_convert(value_tensor)
+        query_tensor = _try_convert(query_tensor)
+        mask_tensor = _try_convert(mask_tensor)
+        # assert layer_cache == None
+        # assert attn_type == "context"
+        output = _create_empty_if_none(output)
+        super(MultiHeadedAttention,
+              self).__call__(key_tensor, value_tensor, query_tensor,
+                             mask_tensor, output)
+        return convert_returns_as_type(output, return_type)
+
+    @staticmethod
+    def from_onmt(multi_headed_attn: OnmtMultiHeadedAttention):
+        params = {k: v for k, v in multi_headed_attn.named_parameters()}
+        # linear_keys.weight
+        # linear_keys.bias
+        # linear_values.weight
+        # linear_values.bias
+        # linear_query.weight
+        # linear_query.bias
+        # final_linear.weight
+        # final_linear.bias
+
+        with torch.no_grad():
+            att = MultiHeadedAttention(
+                convert2tt_tensor(
+                    torch.clone(torch.t(params['linear_keys.weight']))),
+                convert2tt_tensor(params['linear_keys.bias']),
+                convert2tt_tensor(
+                    torch.clone(torch.t(params['linear_values.weight']))),
+                convert2tt_tensor(params['linear_values.bias']),
+                convert2tt_tensor(
+                    torch.clone(torch.t(params['linear_query.weight']))),
+                convert2tt_tensor(params['linear_query.bias']),
+                convert2tt_tensor(
+                    torch.clone(torch.t(params['final_linear.weight']))),
+                convert2tt_tensor(params['final_linear.bias']),
+                multi_headed_attn.head_count)
+            return att
 
 
 class BertAttention(cxx.BertAttention):
