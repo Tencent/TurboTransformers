@@ -5,10 +5,12 @@ on:
     branches:
         - master
         - develop
+        - feature/decoder
   pull_request:
     branches:
         - master
         - develop
+        - feature/decoder
 
 jobs:
   build:
