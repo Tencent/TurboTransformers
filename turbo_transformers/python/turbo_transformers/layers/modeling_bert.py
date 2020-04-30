@@ -212,7 +212,7 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                            params['linear_values.weight']), 0)))
         qkv_bias = torch.cat(
             (params['linear_query.bias'], params['linear_keys.bias'],
-             params['linear_query.bias']), 0)
+             params['linear_values.bias']), 0)
         with torch.no_grad():
             att = MultiHeadedAttention(
                 convert2tt_tensor(

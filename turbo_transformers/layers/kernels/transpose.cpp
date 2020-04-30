@@ -27,22 +27,22 @@ namespace layers {
 namespace kernels {
 
 // tranpose(2,3)
+// input (B x seq_len x head_num * hidden_size)
+// bias (head * hidden_size)
 static void AddBiasTransposeForScoreImpl(const float* input, const float* bias,
-                                         int64_t batch_size, int64_t seq_length,
-                                         int64_t num_attention_heads,
-                                         int64_t width, float* output) {
+                                         int64_t dim0, int64_t dim1,
+                                         int64_t dim2, int64_t width,
+                                         float* output) {
 #pragma omp parallel for
-  for (int64_t idx = 0; idx < batch_size * seq_length; ++idx) {
-    int64_t batch_idx = idx / seq_length;
-    int64_t seq_idx = idx % seq_length;
-    for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
-      const float* bias_ptr = bias + head_idx * seq_length;
-      auto* src = input +
-                  batch_idx * (seq_length * num_attention_heads * width) +
-                  seq_idx * width + head_idx * seq_length * width;
-      auto* dst = output +
-                  batch_idx * (seq_length * num_attention_heads * width) +
-                  seq_idx * num_attention_heads * width + head_idx * width;
+  for (int64_t idx = 0; idx < dim0 * dim1; ++idx) {
+    int64_t dim0_idx = idx / dim1;
+    int64_t dim1_idx = idx % dim1;
+    for (int64_t dim2_idx = 0; dim2_idx < dim2; ++dim2_idx) {
+      const float* bias_ptr = bias + dim2_idx * width;
+      auto* src = input + dim0_idx * (dim1 * dim2 * width) +
+                  dim1_idx * dim2 * width + dim2_idx * width;
+      auto* dst = output + dim0_idx * (dim1 * dim2 * width) +
+                  dim2_idx * dim1 * width + dim1_idx * width;
 #pragma omp simd
       for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
         dst[width_idx] = src[width_idx] + bias_ptr[width_idx];
@@ -99,10 +99,13 @@ void TransposeForScore(core::Tensor* output, const core::Tensor& input) {
 void AddBiasTransposeForScore(const core::Tensor& input,
                               const core::Tensor& bias, core::Tensor* output) {
   if (input.device_type() == kDLCPU && output->device_type() == kDLCPU) {
+    TT_ENFORCE_EQ(input.n_dim(), 4, "input should be a 4-D tensor");
+    TT_ENFORCE_EQ(bias.numel(), input.shape(2) * input.shape(3),
+                  "bias shape %d should be %d x %d", bias.n_dim(),
+                  input.shape(2), input.shape(3));
     AddBiasTransposeForScoreImpl(input.data<float>(), bias.data<float>(),
-                                 output->shape(0), output->shape(1),
-                                 input.shape(1), input.shape(3),
-                                 output->mutableData<float>());
+                                 input.shape(0), input.shape(1), input.shape(2),
+                                 input.shape(3), output->mutableData<float>());
   } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
     TT_THROW("AddBiasTransposeForScore is currently not implemented!");
@@ -118,9 +121,9 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
   TT_ENFORCE_EQ(output_tensor->n_dim(), 5,
                 "output_tensor should be (weight_num, batch_size, seq_length, "
                 "num_attention_heads, size_per_head)");
-  TT_ENFORCE_EQ(output_tensor->shape(0), 3,
-                "output_tensor should be (3, batch_size, seq_length, "
-                "num_attention_heads, size_per_head)");
+  TT_ENFORCE_EQ(bias_tensor.n_dim(), 1,
+                "output_tensor should be (weight_num * num_attention_heads, "
+                "size_per_head)");
 
   auto batch_size = output_tensor->shape(1);
   auto seq_length = output_tensor->shape(3);

@@ -32,20 +32,14 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
   for (int64_t i = 0; i < M; ++i) {
     auto* qk_buf_ptr = qk_buf + i * N;
     const float* attr_mask_ptr = nullptr;
-    if (attr_mask != nullptr) {
-      auto attr_mask_offset = i / (head_num * from_seq_len) * to_seq_len;
-      attr_mask_ptr = attr_mask + attr_mask_offset;
-    }
+    auto attr_mask_offset = i / (head_num * from_seq_len) * to_seq_len;
+    attr_mask_ptr = attr_mask + attr_mask_offset;
     // max-trick
 #pragma omp simd
     for (int64_t j = 0; j < N; ++j) {
       auto qk_val = qk_buf_ptr[j];
-      if (attr_mask != nullptr) {
-        auto mask_val = attr_mask_ptr[j];
-        qk_val = qk_val * scale + mask_val;
-      } else {
-        qk_val = qk_val * scale;
-      }
+      auto mask_val = attr_mask_ptr[j];
+      qk_val = qk_val * scale + mask_val;
       qk_buf_ptr[j] = qk_val;
     }
     float max_val = std::numeric_limits<float>::lowest();
