@@ -12,7 +12,8 @@
 # See the AUTHORS file for names of contributors.
 
 from .modeling_bert import BertEmbeddings, BertIntermediate, BertOutput, BertAttention, BertLayer, SequencePool, \
-    BertEncoder, BertModel, PoolingType, BertPooler, BertModelWithPooler, MultiHeadedAttention
+    BertEncoder, BertModel, PoolingType, BertPooler, BertModelWithPooler
+from .modeling_decoder import MultiHeadedAttention
 from .return_type import ReturnType
 
 __all__ = [
