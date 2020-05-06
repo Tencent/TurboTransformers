@@ -88,7 +88,7 @@ model_id = os.path.join(
     'test-seq-classification-model')  # the model of huggingface's path
 tokenizer = BertTokenizer.from_pretrained(
     model_id)  # the initialization of tokenizer
-turbo_model = turbo_transformers.BertForSequenceClassification.from_pretrained(
+turbo_model = BertForSequenceClassification.from_pretrained(
     model_id,
     torch.device('cpu:0'))  # the initialization of the acceleration model
 
