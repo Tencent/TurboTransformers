@@ -9,10 +9,7 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     rm Miniconda3-latest-Linux-x86_64.sh && \
     conda update -y conda && \
     conda install pytorch==1.4.0 cudatoolkit=10.0 && \
-<<<<<<< HEAD
     pip install OpenNMT-py==1.1.1 && \
-=======
->>>>>>> origin
     conda install curl conda-verify conda-build mkl-include cmake -c anaconda && \
     conda install git git-lfs docopt -c conda-forge  && \
     conda clean -afy
