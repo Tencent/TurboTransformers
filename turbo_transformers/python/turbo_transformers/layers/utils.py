@@ -14,6 +14,8 @@
 import torch
 import torch.utils.dlpack as dlpack
 from typing import Union
+import numpy as np
+
 try:
     # `turbo_transformers_cxxd` is the name on debug mode
     import turbo_transformers.turbo_transformers_cxxd as cxx
