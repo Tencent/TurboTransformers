@@ -89,7 +89,13 @@ def generate_onnx_model(model: str, filename: str, seq_len: int,
                               dtype=torch.long,
                               device=test_device)
     with open(filename, 'wb') as outf:
-        torch.onnx.export(model=model, args=(input_ids, ), f=outf)
+        torch.onnx.export(model=model,
+                          args=(input_ids, ),
+                          f=outf,
+                          input_names=['input'],
+                          output_names=['output'])
+        # dynamic_axes = {'input':[0, 1], 'output':[0, 1]})
+        # If not intended to make onnxruntime support variable batch size and sequence length, you can unset the parameter `dynamic_axes`.
         outf.flush()
     return cfg.vocab_size
 
@@ -130,7 +136,18 @@ def onnxruntime_benchmark_creator(backend: str):
                                          high=vocab_size - 1,
                                          size=(batch_size, seq_len),
                                          dtype=numpy.int64)
-        model.run(inputs=[input_ids])
+
+        # a torch model to check correctness
+        import transformers
+        import torch
+        torch.set_grad_enabled(False)
+        torch_model = transformers.BertModel.from_pretrained(
+            "bert-base-uncased")
+        torch_model.eval()
+        torch_res = torch_model(torch.tensor(input_ids))
+        onnx_res = model.run(inputs=[input_ids])
+        assert (numpy.max(numpy.abs(torch_res[0].cpu().numpy() - onnx_res[0]))
+                < 0.01)
 
         with contexttimer.Timer() as t:
             for _ in range(n):
