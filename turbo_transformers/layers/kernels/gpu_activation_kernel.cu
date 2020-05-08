@@ -86,6 +86,10 @@ template void GPUAddBiasActKernel<float, ActivationType::Tanh>(
     const float* bias_data, int64_t batch_size, int64_t feature_dim,
     cudaStream_t stream, float* out_data);
 
+template void GPUAddBiasActKernel<float, ActivationType::Relu>(
+    const float* bias_data, int64_t batch_size, int64_t feature_dim,
+    cudaStream_t stream, float* out_data);
+
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers
