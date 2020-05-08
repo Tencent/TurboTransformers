@@ -213,7 +213,7 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
   if (false == post_add) {
     kernels::AddBias(dense_bias_, output);
   } else {
-    kernels::AddInputBias(*output, key_tensor, dense_bias_, output);
+    kernels::AddInputBias(*output, query_tensor, dense_bias_, output);
   }
 }
 
