@@ -75,14 +75,13 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
             info = f"\"({pre_layernorm}, {attn_type}, {batch_size}, {key_seq_len:03}, {query_seq_len:03})\""
             attention_mask = torch.zeros(
                 (batch_size, 1, key_seq_len if (attn_type == "context") else
-                 query_seq_len),  #TODO mask shape
+                 query_seq_len),  #TODO mask shape is diff for context and self
                 dtype=torch.bool,
                 device=self.test_device)
-
             onmt_model = lambda: onmt_multi_headed_attention(
-                torch_layernorm(K) if pre_layernorm else K,  #torch_layernorm
+                K,
                 V,
-                Q,
+                torch.clone(torch_layernorm(Q)) if pre_layernorm else Q,
                 attention_mask,
                 layer_cache={
                     "memory_keys": None,
@@ -98,7 +97,8 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
             attention_mask = torch.ones(
-                (batch_size, self.head_count, query_seq_len, key_seq_len),
+                (batch_size, 1, key_seq_len if (attn_type == "context") else
+                 query_seq_len),  #TODO mask shape is diff for context and self
                 dtype=torch.float32,
                 device=self.test_device)
 
@@ -118,6 +118,9 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 f"Turbo Multi Headed Attention {info}",
                 f" {device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}"
             )
+
+            # print(onmt_multi_headed_attention_result[0])
+            # print(turbo_self_attention_result)
 
             self.assertTrue(
                 torch.max(
@@ -140,7 +143,7 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
 with open(fname, "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 
-for pre_layernorm in [False]:
+for pre_layernorm in [False, True]:
     for attn_type in ["self", "context"]:
         for batch_size in [1, 2]:
             for key_seq_len in [10, 16, 20, 30]:

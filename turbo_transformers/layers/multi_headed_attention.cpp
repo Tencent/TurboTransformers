@@ -99,13 +99,13 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
     k_out1.Reshape<float>({batch_size, key_seq_length, hidden_size}, devtype,
                           devid);
 
-    if (true == pre_layernorm) {
+    if (pre_layernorm) {
       q_out2.Reshape<float>({batch_size, query_seq_length, hidden_size},
                             devtype, devid);
       core::Copy<float>(query_tensor, q_out2);
       kernels::LayerNorm<float>(
-          layernorm_gamma_, layernorm_beta_,
-          &q_out2);  // q_out2 here is used as layernormed_query
+          layernorm_gamma_, layernorm_beta_, &q_out2,
+          1e-6);  // q_out2 here is used as layernormed_query
       kernels::MatMul(q_out2, false, q_weight_, false, 1.0, &q_out1, 0.0);
     } else {
       kernels::MatMul(query_tensor, false, q_weight_, false, 1.0, &q_out1, 0.0);
@@ -144,15 +144,13 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
     qkv_out1.Reshape<float>({3, batch_size, query_seq_length, hidden_size},
                             devtype, devid);
 
-    if (true == pre_layernorm) {
+    if (pre_layernorm) {
       core::Tensor layernormed_query(nullptr);
       layernormed_query.Reshape<float>(
           {batch_size, query_seq_length, hidden_size}, devtype, devid);
       core::Copy<float>(query_tensor, layernormed_query);
-      kernels::LayerNorm<float>(
-          layernorm_gamma_, layernorm_beta_,
-          &layernormed_query);  // qkv_out2_temp here is used as
-                                // layernormed_query
+      kernels::LayerNorm<float>(layernorm_gamma_, layernorm_beta_,
+                                &layernormed_query, 1e-6);
       kernels::MatMul(layernormed_query, false, qkv_weight_, false, 1.0,
                       &qkv_out1, 0.0);
     } else {
