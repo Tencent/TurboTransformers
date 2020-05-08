@@ -39,6 +39,32 @@ class MultiHeadedAttention {
         dense_bias_(std::move(dense_bias)),
         qkv_weight_(std::move(qkv_weight)),
         qkv_bias_(std::move(qkv_bias)),
+        layernorm_gamma_(nullptr),
+        layernorm_beta_(nullptr),
+        num_attention_heads_(num_attention_heads) {
+    EnforceShapeAndType();
+  }
+
+  MultiHeadedAttention(core::Tensor k_weight, core::Tensor k_bias,
+                       core::Tensor v_weight, core::Tensor v_bias,
+                       core::Tensor q_weight, core::Tensor q_bias,
+                       core::Tensor dense_weight, core::Tensor dense_bias,
+                       core::Tensor qkv_weight, core::Tensor qkv_bias,
+                       core::Tensor layernorm_gamma,
+                       core::Tensor layernorm_beta,
+                       int64_t num_attention_heads)
+      : k_weight_(std::move(k_weight)),  //(768, 768)
+        k_bias_(std::move(k_bias)),
+        v_weight_(std::move(v_weight)),  //(768, 768)
+        v_bias_(std::move(v_bias)),
+        q_weight_(std::move(q_weight)),  //(768, 768)
+        q_bias_(std::move(q_bias)),
+        dense_weight_(std::move(dense_weight)),
+        dense_bias_(std::move(dense_bias)),
+        qkv_weight_(std::move(qkv_weight)),
+        qkv_bias_(std::move(qkv_bias)),
+        layernorm_gamma_(std::move(layernorm_gamma)),
+        layernorm_beta_(std::move(layernorm_beta)),
         num_attention_heads_(num_attention_heads) {
     EnforceShapeAndType();
   }
@@ -48,7 +74,8 @@ class MultiHeadedAttention {
                   const core::Tensor& value_tensor,
                   const core::Tensor& query_tensor,
                   const core::Tensor& attention_mask,
-                  const std::string& attn_type, core::Tensor* output) const;
+                  const std::string& attn_type, core::Tensor* output,
+                  bool pre_layernorm = false, bool post_add = false) const;
 
  private:
   core::Tensor k_weight_;
@@ -63,6 +90,10 @@ class MultiHeadedAttention {
   core::Tensor qkv_weight_;  // store fused qkv weight/bias for "self" type
                              // attention computation.
   core::Tensor qkv_bias_;
+
+  core::Tensor layernorm_gamma_;
+  core::Tensor layernorm_beta_;
+
   int64_t num_attention_heads_;
 };
 

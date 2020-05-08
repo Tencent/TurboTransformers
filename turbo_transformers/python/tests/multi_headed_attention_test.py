@@ -26,7 +26,8 @@ import test_helper
 fname = "tt_multi_headed_attention.txt"
 
 
-def create_test(batch_size, key_seq_len, query_seq_len, attn_type):
+def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
+                pre_layernorm):
     class TestMultiHeadedAttention(unittest.TestCase):
         def init_data(self, use_cuda):
             self.test_device = torch.device('cuda:0') if use_cuda else \
@@ -35,7 +36,6 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type):
                 torch.set_num_threads(1)
 
             torch.set_grad_enabled(False)
-            self.attn_type = attn_type
             self.head_count = 12
             self.model_dim = 768  #self.model_dim should % self.head_count = 0
 
@@ -44,6 +44,8 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type):
             onmt_multi_headed_attention.eval()
             if use_cuda:
                 onmt_multi_headed_attention.to(self.test_device)
+
+            torch_layernorm = torch.nn.LayerNorm(self.model_dim, eps=1e-6)
 
             K = torch.rand(
                 size=(
@@ -63,32 +65,36 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type):
                 dtype=torch.float32,
                 device=self.test_device)
             turbo_multi_headed_attention = turbo_transformers.MultiHeadedAttention.from_onmt(
-                onmt_multi_headed_attention)
-            return onmt_multi_headed_attention, turbo_multi_headed_attention, Q, K, V
+                onmt_multi_headed_attention, torch_layernorm)
+            return onmt_multi_headed_attention, torch_layernorm, turbo_multi_headed_attention, Q, K, V
 
         def check_torch_and_turbo(self, use_cuda, num_iter=1):
-            onmt_multi_headed_attention, turbo_multi_headed_attention, Q, K, V = \
+            onmt_multi_headed_attention, torch_layernorm, turbo_multi_headed_attention, Q, K, V = \
                 self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
-
-            attention_mask = torch.zeros((batch_size, 1, query_seq_len),
-                                         dtype=torch.bool,
-                                         device=self.test_device)
+            info = f"\"({pre_layernorm}, {attn_type}, {batch_size}, {key_seq_len:03}, {query_seq_len:03})\""
+            attention_mask = torch.zeros(
+                (batch_size, 1, key_seq_len if (attn_type == "context") else
+                 query_seq_len),  #TODO mask shape
+                dtype=torch.bool,
+                device=self.test_device)
 
             onmt_model = lambda: onmt_multi_headed_attention(
-                K,
+                torch_layernorm(K) if pre_layernorm else K,  #torch_layernorm
                 V,
                 Q,
                 attention_mask,
                 layer_cache={
-                    "self_keys": None,
-                    "self_values": None
+                    "memory_keys": None,
+                    "memory_values": None,
+                    "self_values": None,
+                    "self_keys": None
                 },
-                attn_type=self.attn_type)
+                attn_type=attn_type)
             onmt_multi_headed_attention_result, torch_qps, torch_time_consume = \
                 test_helper.run_model(onmt_model, use_cuda, num_iter) # return output, attns
             print(
-                f"ONMT Multi Headed Attention \"({self.attn_type}, {batch_size},{key_seq_len:03},{query_seq_len:03})\" ",
+                f"ONMT Multi Headed Attention {info} ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
             attention_mask = torch.ones(
@@ -103,12 +109,13 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type):
                 Q,
                 turbo_attention_mask,
                 layer_cache=None,
-                attn_type=self.attn_type)
+                attn_type=attn_type,
+                pre_layernorm=pre_layernorm)
             turbo_self_attention_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turob_model, use_cuda,
                                       num_iter)
             print(
-                f"Turbo Multi Headed Attention  \"({self.attn_type}, {batch_size},{key_seq_len:03},{query_seq_len:03})\" ",
+                f"Turbo Multi Headed Attention {info}",
                 f" {device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}"
             )
 
@@ -118,9 +125,7 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type):
                               turbo_self_attention_result)) < (
                                   1e-3 if use_cuda else 1e-4))
             with open(fname, "a") as fh:
-                fh.write(
-                    f"\"({self.attn_type},{batch_size},{key_seq_len:03},{query_seq_len:03})\", {torch_qps}, {turbo_qps}\n"
-                )
+                fh.write(f", {info} {torch_qps}, {turbo_qps}\n")
 
         def test_multi_headed_attention(self):
             self.check_torch_and_turbo(use_cuda=False)
@@ -129,17 +134,20 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type):
                 self.check_torch_and_turbo(use_cuda=True)
 
     globals(
-    )[f"TestBertAtt{batch_size}_{key_seq_len:3}_{query_seq_len:3}"] = TestMultiHeadedAttention
+    )[f"TestMultiHeadedAttention{batch_size}_{key_seq_len:3}_{query_seq_len:3}_{attn_type}_{pre_layernorm}"] = TestMultiHeadedAttention
 
 
 with open(fname, "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 
-for attn_type in {"self"}:
-    for batch_size in [1, 2]:
-        for key_seq_len in [10, 16, 20, 30]:
-            for query_seq_len in [10, 16, 20, 30]:
-                create_test(batch_size, key_seq_len, query_seq_len, attn_type)
+for pre_layernorm in [False]:
+    for attn_type in ["self", "context"]:
+        for batch_size in [1, 2]:
+            for key_seq_len in [10, 16, 20, 30]:
+                for query_seq_len in [10, 16, 20, 30]:
+                    print(attn_type)
+                    create_test(batch_size, key_seq_len, query_seq_len,
+                                attn_type, pre_layernorm)
 
 if __name__ == '__main__':
     unittest.main()

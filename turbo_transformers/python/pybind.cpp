@@ -130,6 +130,23 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
                 std::move(qkv_weight), std::move(qkv_bias),
                 num_attention_heads);
           }))
+      .def(py::init(
+          [](core::Tensor &key_weight, core::Tensor &key_bias,
+             core::Tensor &value_weight, core::Tensor &value_bias,
+             core::Tensor &query_weight, core::Tensor &query_bias,
+             core::Tensor &dense_weight, core::Tensor &dense_bias,
+             core::Tensor &qkv_weight, core::Tensor &qkv_bias,
+             core::Tensor &layernorm_gamma, core::Tensor &layernorm_beta,
+             int num_attention_heads) -> layers::MultiHeadedAttention * {
+            return new layers::MultiHeadedAttention(
+                std::move(key_weight), std::move(key_bias),
+                std::move(value_weight), std::move(value_bias),
+                std::move(query_weight), std::move(query_bias),
+                std::move(dense_weight), std::move(dense_bias),
+                std::move(qkv_weight), std::move(qkv_bias),
+                std::move(layernorm_gamma), std::move(layernorm_beta),
+                num_attention_heads);
+          }))
       .def("__call__", &layers::MultiHeadedAttention::operator());
 
   py::class_<layers::BertIntermediate>(m, "BertIntermediate")

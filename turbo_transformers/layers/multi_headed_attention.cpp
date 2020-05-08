@@ -32,7 +32,8 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
                                       const core::Tensor& query_tensor,
                                       const core::Tensor& attention_mask,
                                       const std::string& attn_type,
-                                      core::Tensor* output) const {
+                                      core::Tensor* output, bool pre_layernorm,
+                                      bool post_add) const {
   std::lock_guard<std::mutex> g(mutex_);
   TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
                     key_tensor.device_ctx(), attention_mask.device_ctx()),
@@ -98,7 +99,17 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
     k_out1.Reshape<float>({batch_size, key_seq_length, hidden_size}, devtype,
                           devid);
 
-    kernels::MatMul(query_tensor, false, q_weight_, false, 1.0, &q_out1, 0.0);
+    if (true == pre_layernorm) {
+      q_out2.Reshape<float>({batch_size, query_seq_length, hidden_size},
+                            devtype, devid);
+      core::Copy<float>(query_tensor, q_out2);
+      kernels::LayerNorm<float>(
+          layernorm_gamma_, layernorm_beta_,
+          &q_out2);  // q_out2 here is used as layernormed_query
+      kernels::MatMul(q_out2, false, q_weight_, false, 1.0, &q_out1, 0.0);
+    } else {
+      kernels::MatMul(query_tensor, false, q_weight_, false, 1.0, &q_out1, 0.0);
+    }
     kernels::MatMul(key_tensor, false, k_weight_, false, 1.0, &k_out1, 0.0);
     kernels::MatMul(value_tensor, false, v_weight_, false, 1.0, &v_out1, 0.0);
 
@@ -133,9 +144,21 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
     qkv_out1.Reshape<float>({3, batch_size, query_seq_length, hidden_size},
                             devtype, devid);
 
-    kernels::MatMul(query_tensor, false, qkv_weight_, false, 1.0, &qkv_out1,
-                    0.0);
-
+    if (true == pre_layernorm) {
+      core::Tensor layernormed_query(nullptr);
+      layernormed_query.Reshape<float>(
+          {batch_size, query_seq_length, hidden_size}, devtype, devid);
+      core::Copy<float>(query_tensor, layernormed_query);
+      kernels::LayerNorm<float>(
+          layernorm_gamma_, layernorm_beta_,
+          &layernormed_query);  // qkv_out2_temp here is used as
+                                // layernormed_query
+      kernels::MatMul(layernormed_query, false, qkv_weight_, false, 1.0,
+                      &qkv_out1, 0.0);
+    } else {
+      kernels::MatMul(query_tensor, false, qkv_weight_, false, 1.0, &qkv_out1,
+                      0.0);
+    }
     core::Tensor& qkv_out2 = qkv_out2_temp.GetTensor(devctx);
     qkv_out2.Reshape<float>(
         {3, batch_size, num_attention_heads_, query_seq_length, size_per_head},
@@ -189,7 +212,11 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
                          devid);
   kernels::MatMul(self_attr_out, false, dense_weight_, false, 1.0, output, 0.0);
   // add bias
-  kernels::AddBias(dense_bias_, output);
+  if (false == post_add) {
+    kernels::AddBias(dense_bias_, output);
+  } else {
+    kernels::AddInputBias(*output, key_tensor, dense_bias_, output);
+  }
 }
 
 void MultiHeadedAttention::EnforceShapeAndType() const {
