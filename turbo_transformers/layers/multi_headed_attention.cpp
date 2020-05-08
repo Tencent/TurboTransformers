@@ -63,6 +63,8 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
     key_seq_length = key_tensor.shape(1);
   } else if (attn_type == "self") {
     key_seq_length = query_seq_length;
+  } else {
+    TT_THROW("attn_type should be context or self.");
   }
 
   auto hidden_size = query_tensor.shape(2);

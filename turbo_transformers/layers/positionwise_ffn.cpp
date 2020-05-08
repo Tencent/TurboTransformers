@@ -69,6 +69,6 @@ void PositionwiseFeedForward::operator()(const core::Tensor& input_tensor,
 }
 
 void PositionwiseFeedForward::EnforceShapeAndType() const {}
-m
+
 }  // namespace layers
 }  // namespace turbo_transformers
