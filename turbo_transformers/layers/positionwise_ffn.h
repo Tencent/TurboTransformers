@@ -19,12 +19,15 @@
 namespace turbo_transformers {
 namespace layers {
 
-class PositonWiseFFN {
+class PositionwiseFeedForward {
  public:
-  PositonWiseFFN(core::Tensor dense_weight_1, core::Tensor dense_bias_1,
-                 core::Tensor dense_weight_2, core::Tensor dense_bias_2,
-                 core::Tensor layer_norm_weight, core::Tensor layer_norm_bias)
-      : dense_weight_1_(std::move(dense_weight_1_)),
+  PositionwiseFeedForward(core::Tensor dense_weight_1,
+                          core::Tensor dense_bias_1,
+                          core::Tensor dense_weight_2,
+                          core::Tensor dense_bias_2,
+                          core::Tensor layer_norm_weight,
+                          core::Tensor layer_norm_bias)
+      : dense_weight_1_(std::move(dense_weight_1)),
         dense_bias_1_(std::move(dense_bias_1)),
         dense_weight_2_(std::move(dense_weight_2)),
         dense_bias_2_(std::move(dense_bias_2)),
@@ -34,7 +37,7 @@ class PositonWiseFFN {
   }
   void EnforceShapeAndType() const;
 
-  void operator()(core::Tensor &input_tensor, core::Tensor *output) const;
+  void operator()(const core::Tensor &input_tensor, core::Tensor *output) const;
 
  private:
   core::Tensor dense_weight_1_;

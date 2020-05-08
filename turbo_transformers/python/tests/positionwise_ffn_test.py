@@ -43,50 +43,49 @@ def create_test(batch_size, input_len):
             if use_cuda:
                 onmt_ffn.to(self.test_device)
 
+            turbo_ffn = turbo_transformers.PositionwiseFeedForward.from_onmt(
+                onmt_ffn)
             # (batch_size, input_len, model_dim)
             inputs = torch.rand(size=(batch_size, input_len, self.model_dim),
                                 dtype=torch.float32,
                                 device=self.test_device)
-            return onmt_ffn, inputs
+            return onmt_ffn, turbo_ffn, inputs
 
         def check_torch_and_turbo(self, use_cuda, num_iter=1):
-            onmt_ffn, inputs = self.init_data(use_cuda)
+            onmt_ffn, turbo_ffn, inputs = self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
-            # w_1.weight
-            # w_1.bias
-            # w_2.weight
-            # w_2.bias
-            # layer_norm.weight
-            # layer_norm.bias
-
-            for k, v in onmt_ffn.named_parameters():
-                print(k)
             onmt_model = lambda: onmt_ffn(inputs)
             onmt_model_result, torch_qps, torch_time_consume = \
-                test_helper.run_model(onmt_model, use_cuda, num_iter) # return output, attns
+                test_helper.run_model(onmt_model, use_cuda, num_iter)
 
             print(
                 f"ONMT PositionwiseFeedForward \"({batch_size}, {input_len:03})\" ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
-            # self.assertTrue(
-            #     torch.max(
-            #         torch.abs(onmt_multi_headed_attention_result[0] -
-            #                   turbo_self_attention_result)) < (
-            #                       1e-3 if use_cuda else 1e-4))
-            # with open(fname, "a") as fh:
-            #     fh.write(
-            #         f"\"({self.attn_type},{batch_size},{input_len:03})\", {torch_qps}, {turbo_qps}\n"
-            #     )
+            turbo_model = lambda: turbo_ffn(inputs)
+            turbo_model_result, turbo_qps, turbo_time_consume = \
+                test_helper.run_model(turbo_model, use_cuda, num_iter)
 
-        def test_multi_headed_attention(self):
+            print(
+                f"ONMT PositionwiseFeedForward \"({batch_size}, {input_len:03})\" ",
+                f"{device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}")
+
+            self.assertTrue(
+                torch.max(torch.abs(turbo_model_result - onmt_model_result)) <
+                (1e-3 if use_cuda else 1e-4))
+            with open(fname, "a") as fh:
+                fh.write(
+                    f"\"({batch_size},{input_len:03})\", {torch_qps}, {turbo_qps}\n"
+                )
+
+        def test_positionwise_feed_forward(self):
             self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
                 turbo_transformers.config.is_compiled_with_cuda():
                 self.check_torch_and_turbo(use_cuda=True)
 
     globals(
-    )[f"TestBertAtt{batch_size}_{input_len:3}"] = TestPositionwiseFeedForward
+    )[f"TestPositionwiseFeedForward{batch_size}_{input_len:3}"] = TestPositionwiseFeedForward
 
 
 with open(fname, "w") as fh:

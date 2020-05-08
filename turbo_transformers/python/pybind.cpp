@@ -24,6 +24,7 @@
 #include "turbo_transformers/layers/bert_output.h"
 #include "turbo_transformers/layers/bert_pooler.h"
 #include "turbo_transformers/layers/multi_headed_attention.h"
+#include "turbo_transformers/layers/positionwise_ffn.h"
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
 
@@ -166,6 +167,19 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
   py::class_<layers::PrepareBertMasks>(m, "PrepareBertMasks")
       .def(py::init())
       .def("__call__", &layers::PrepareBertMasks::operator());
+
+  py::class_<layers::PositionwiseFeedForward>(m, "PositionwiseFeedForward")
+      .def(py::init([](core::Tensor &dense_weight_1, core::Tensor &dense_bias_1,
+                       core::Tensor &dense_weight_2, core::Tensor &dense_bias_2,
+                       core::Tensor &layer_norm_weight,
+                       core::Tensor &layer_norm_bias)
+                        -> layers::PositionwiseFeedForward * {
+        return new layers::PositionwiseFeedForward(
+            std::move(dense_weight_1), std::move(dense_bias_1),
+            std::move(dense_weight_2), std::move(dense_bias_2),
+            std::move(layer_norm_weight), std::move(layer_norm_bias));
+      }))
+      .def("__call__", &layers::PositionwiseFeedForward::operator());
 }
 
 }  // namespace python

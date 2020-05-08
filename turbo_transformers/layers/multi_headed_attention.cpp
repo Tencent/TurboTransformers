@@ -20,24 +20,13 @@
 #include "turbo_transformers/layers/kernels/mat_mul.h"
 #include "turbo_transformers/layers/kernels/softmax.h"
 #include "turbo_transformers/layers/kernels/transpose.h"
+#include "turbo_transformers/layers/kernels/utils.h"
+
 namespace turbo_transformers {
 namespace layers {
 
 static std::mutex mutex_;
 
-namespace details {
-static void AddBias(const core::Tensor& bias, core::Tensor* output) {
-  auto dim1 = bias.shape(0);
-  auto dim0 = output->numel() / dim1;
-#pragma omp parallel for
-  for (int64_t i = 0; i < dim0; ++i) {
-#pragma omp simd
-    for (int64_t j = 0; j < dim1; ++j) {
-      output->mutableData<float>()[i * dim1 + j] += bias.data<float>()[j];
-    }
-  }
-}
-}  // namespace details
 void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
                                       const core::Tensor& value_tensor,
                                       const core::Tensor& query_tensor,
@@ -198,7 +187,7 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
                          devid);
   kernels::MatMul(self_attr_out, false, dense_weight_, false, 1.0, output, 0.0);
   // add bias
-  details::AddBias(dense_bias_, output);
+  kernels::AddBias(dense_bias_, output);
 }
 
 void MultiHeadedAttention::EnforceShapeAndType() const {

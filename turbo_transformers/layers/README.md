@@ -4,7 +4,7 @@ Take [multi_headed_attention](https://github.com/OpenNMT/OpenNMT-py/blob/b98fb3d
 
 1. implement your layer as in ./layers/multiple_headed_attention.cpp
 
-2. add python API in turbo_transformers/python/turbo_transformers/layers/modeling_bert.py
+2. add python API in turbo_transformers/python/turbo_transformers/layers/modeling_decoder.py
 
 3. register in ./turbo_transformers/python/turbo_transformers/layers/__init__.py
 

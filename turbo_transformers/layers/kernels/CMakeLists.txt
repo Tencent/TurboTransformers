@@ -13,7 +13,7 @@
 
 add_library(tt_kernels OBJECT
         layer_norm.cpp softmax.cpp transpose.cpp activation.cpp
-        common.cpp seq_pool.cpp mat_mul.cpp)
+        common.cpp seq_pool.cpp mat_mul.cpp utils.cpp)
 target_link_libraries(tt_kernels PUBLIC tt_core)
 
 if (WITH_GPU)
