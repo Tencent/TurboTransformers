@@ -313,15 +313,17 @@ class BertModel:
         self.encoder = encoder
         self.prepare = cxx.PrepareBertMasks()
 
-    def __call__(self,
-                 inputs: AnyTensor,
-                 attention_masks: Optional[AnyTensor] = None,
-                 token_type_ids: Optional[AnyTensor] = None,
-                 position_ids: Optional[AnyTensor] = None,
-                 pooling_type: PoolingType = PoolingType.FIRST,
-                 hidden_cache: Optional[AnyTensor] = None,
-                 output: Optional[AnyTensor] = None,
-                 return_type: Optional[ReturnType] = None):
+    def __call__(
+            self,
+            inputs: AnyTensor,
+            attention_masks: Optional[AnyTensor] = None,
+            token_type_ids: Optional[AnyTensor] = None,
+            position_ids: Optional[AnyTensor] = None,
+            pooling_type: PoolingType = PoolingType.FIRST,
+            hidden_cache: Optional[AnyTensor] = None,
+            output: Optional[
+                AnyTensor] = None,  #FIXME(jiaruifang) BertModel now return two tensors.
+            return_type: Optional[ReturnType] = None):
         attention_masks = try_convert(create_empty_if_none(attention_masks))
         token_type_ids = try_convert(create_empty_if_none(token_type_ids))
         position_ids = try_convert(create_empty_if_none(position_ids))
