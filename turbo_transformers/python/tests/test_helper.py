@@ -38,3 +38,11 @@ def run_model(model, use_cuda, num_iter=50):
         qps = num_iter / t.elapsed
         time_consume = t.elapsed / num_iter
     return result, qps, time_consume
+
+
+# for debug
+def show_tensor(T, info):
+    print(info, T.size())
+    print(T.view(-1)[0:10])
+    print(T.view(-1)[-10:])
+    print(torch.sum(T.view(-1)))

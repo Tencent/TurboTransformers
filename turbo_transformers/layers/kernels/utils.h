@@ -12,24 +12,14 @@
 // See the AUTHORS file for names of contributors.
 
 #pragma once
-#include <numeric>
-
 #include "turbo_transformers/core/tensor.h"
-
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-template <typename T>
-extern void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
-                      core::Tensor* out_tensor, T eps = 1e-12);
-
-template <typename T>
-extern void AddBiasLayerNorm(const core::Tensor& input_tensor,
-                             const core::Tensor& bias_tensor,
-                             const core::Tensor& gamma_tensor,
-                             const core::Tensor& beta_tensor,
-                             core::Tensor* out_tensor, T eps = 1e-12);
+void AddBias(const core::Tensor& bias, core::Tensor* output);
+void AddInputBias(const core::Tensor& input1, const core::Tensor& input2,
+                  const core::Tensor& bias, core::Tensor* output);
 
 }  // namespace kernels
 }  // namespace layers
