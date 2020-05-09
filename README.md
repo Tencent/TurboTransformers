@@ -41,7 +41,7 @@ env BUILD_TYPE=dev sh tools/build_docker_cpu.sh
 Method 1：I want to unitest
 ```
 cd /workspace
-sh tools/build_and_run_unittests.sh.sh $PWD -DWITH_GPU=OFF
+sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
 ```
 Method 2：I do not want to unitest
 ```
@@ -95,7 +95,9 @@ turbo_transformers provides C ++ / python API interfaces. we hope to do our best
 The first step in using turbo is to load a pre-trained model. We provide a way to load pytorch and tensorflow pre-trained models in [huggingface/transformers](https://github.com/huggingface).
 The specific conversion method is to use the corresponding script in ./tools to convert the pre-trained model into an npz format file, and turbo uses the C ++ or python interface to load the npz format model.
 In particular, we consider that most of the pre-trained models are in pytorch format and used with python. We provide a shortcut for calling directly in python for the pytorch saved model.
+
 <img width="700" height="150" src="./images/pretrainmodelload.jpg" alt="加载预训练模型">
+
 #### python APIs
 Refer to examples in [./example/python](./example/python "python").
 Since the user of BERT acceleration always requires a customized post-processing process for the task, we provide an example of how to write a sequence classification application.
