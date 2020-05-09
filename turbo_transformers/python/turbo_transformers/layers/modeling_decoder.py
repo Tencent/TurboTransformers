@@ -37,6 +37,7 @@ __all__ = [
 ]
 
 
+
 class MultiHeadedAttention(cxx.MultiHeadedAttention):
     def __call__(self,
                  key_tensor: AnyTensor,
@@ -44,6 +45,7 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                  query_tensor: AnyTensor,
                  mask: Optional[AnyTensor],
                  layer_cache: Optional[dict] = None,
+
                  attn_type: str = None,
                  pre_layernorm: bool = False,
                  post_add: bool = False,
@@ -71,6 +73,7 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         super(MultiHeadedAttention,
               self).__call__(key_tensor, value_tensor, query_tensor, mask,
                              attn_type, output, pre_layernorm, post_add)
+
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
@@ -176,7 +179,6 @@ class PositionwiseFeedForward(cxx.PositionwiseFeedForward):
                 convert2tt_tensor(params['layer_norm.weight']),
                 convert2tt_tensor(params['layer_norm.bias']))
             return ffn
-
 
 class TransformerDecoderLayer:
     def __init__(self, self_attn: MultiHeadedAttention,
@@ -325,3 +327,4 @@ class TransformerDecoderLayer:
             transformer_decoder_layer.feed_forward)
 
         return TransformerDecoderLayer(self_attn, context_attn, feed_forward)
+
