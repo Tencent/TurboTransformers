@@ -84,7 +84,8 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         # linear_query.bias
         # final_linear.weight
         # final_linear.bias
-
+        if multi_headed_attn.max_relative_positions != 0:
+            raise "multi_headed_attn's max_relative_positions should be 0!"
         # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
         qkv_weight = torch.clone(
             torch.t(
