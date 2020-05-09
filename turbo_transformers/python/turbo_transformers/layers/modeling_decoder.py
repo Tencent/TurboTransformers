@@ -71,6 +71,7 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         super(MultiHeadedAttention,
               self).__call__(key_tensor, value_tensor, query_tensor, mask,
                              attn_type, output, pre_layernorm, post_add)
+
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
@@ -86,6 +87,7 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         # final_linear.bias
         if multi_headed_attn.max_relative_positions != 0:
             raise "multi_headed_attn's max_relative_positions should be 0!"
+
         # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
         qkv_weight = torch.clone(
             torch.t(
