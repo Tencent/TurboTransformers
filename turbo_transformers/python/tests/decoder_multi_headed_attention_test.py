@@ -23,7 +23,7 @@ from onmt.modules.multi_headed_attn import MultiHeadedAttention
 sys.path.append(os.path.dirname(__file__))
 import test_helper
 
-fname = "tt_multi_headed_attention.txt"
+fname = "tt_decoder_multi_headed_attention.txt"
 
 
 def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
@@ -93,11 +93,11 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 attn_type=attn_type)
             onmt_multi_headed_attention_result, torch_qps, torch_time_consume = \
                 test_helper.run_model(onmt_model, use_cuda, num_iter) # return output, attns
-
+            onmt_attns = onmt_multi_headed_attention_result[1]
             if post_add:
-                onmt_res = onmt_multi_headed_attention_result[0] + Q
+                onmt_output = onmt_multi_headed_attention_result[0] + Q
             else:
-                onmt_res = onmt_multi_headed_attention_result[0]
+                onmt_output = onmt_multi_headed_attention_result[0]
             print(
                 f"ONMT Multi Headed Attention {info} ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
@@ -118,19 +118,21 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 attn_type=attn_type,
                 pre_layernorm=pre_layernorm,
                 post_add=post_add)
-            turbo_result, turbo_qps, turbo_time_consume = \
+            turbo_multi_headed_attention_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turob_model, use_cuda,
                                       num_iter)
+            turbo_output = turbo_multi_headed_attention_result[0]
+            turbo_attns = turbo_multi_headed_attention_result[1]
             print(
                 f"Turbo Multi Headed Attention {info}",
                 f" {device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}"
             )
 
-            # print(onmt_res)
-            # print(turbo_result)
-
             self.assertTrue(
-                torch.max(torch.abs(onmt_res - turbo_result)) < (
+                torch.max(torch.abs(onmt_output - turbo_output)) < (
+                    1e-3 if use_cuda else 1e-4))
+            self.assertTrue(
+                torch.max(torch.abs(onmt_attns - turbo_attns)) < (
                     1e-3 if use_cuda else 1e-4))
             with open(fname, "a") as fh:
                 fh.write(f", {info} {torch_qps}, {turbo_qps}\n")

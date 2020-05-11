@@ -27,13 +27,11 @@ namespace layers {
 
 static std::mutex mutex_;
 
-void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
-                                      const core::Tensor& value_tensor,
-                                      const core::Tensor& query_tensor,
-                                      const core::Tensor& attention_mask,
-                                      const std::string& attn_type,
-                                      core::Tensor* output, bool pre_layernorm,
-                                      bool post_add) const {
+void MultiHeadedAttention::operator()(
+    const core::Tensor& key_tensor, const core::Tensor& value_tensor,
+    const core::Tensor& query_tensor, const core::Tensor& attention_mask,
+    const std::string& attn_type, core::Tensor* output, core::Tensor* att_score,
+    bool pre_layernorm, bool post_add) const {
   std::lock_guard<std::mutex> g(mutex_);
   TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
                     key_tensor.device_ctx(), attention_mask.device_ctx()),
@@ -172,20 +170,21 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
   }
 
   // 2) Calculate and scale scores.
-  static core::TempTensor att_score_tmp;
-  core::Tensor& att_score = att_score_tmp.GetTensor(devctx);
-  att_score.Reshape<float>({batch_size, num_attention_heads_, query_seq_length,
-                            key_seq_length},  // query_seq_length = from_seq_Len
-                           devtype, devid);
+  // static core::TempTensor att_score_tmp;
+  // core::Tensor& att_score = att_score_tmp.GetTensor(devctx);
+  att_score->Reshape<float>(
+      {batch_size, num_attention_heads_, query_seq_length,
+       key_seq_length},  // query_seq_length = from_seq_Len
+      devtype, devid);
 
   const float scaler = 1.0f / std::sqrt(static_cast<float>(size_per_head));
-  kernels::BatchMatMul(*q_ptr, false, *k_ptr, true, scaler, &att_score,
+  kernels::BatchMatMul(*q_ptr, false, *k_ptr, true, scaler, att_score,
                        0.0);  //(B, num_head, q_len, k_len)
 
   // mask = mask.unsqueeze(1)  # [B, 1, 1, T_values]
   // scores = scores.masked_fill(mask, -1e18)
   // attn = self.softmax(scores).to(query.dtype)
-  kernels::ApplyMaskAndSoftmax(&att_score,
+  kernels::ApplyMaskAndSoftmax(att_score,
                                attention_mask,  //(B, num_head, q_len, k_len)
                                1.0);
 
@@ -195,7 +194,7 @@ void MultiHeadedAttention::operator()(const core::Tensor& key_tensor,
   context_layer.Reshape<float>(
       {batch_size, num_attention_heads_, query_seq_length, size_per_head},
       devtype, devid);
-  kernels::BatchMatMul(att_score, false, *v_ptr, false, 1.0, &context_layer,
+  kernels::BatchMatMul(*att_score, false, *v_ptr, false, 1.0, &context_layer,
                        0.0);
   // context = unshape(context_original)
   static core::TempTensor self_attr_out_tmp;

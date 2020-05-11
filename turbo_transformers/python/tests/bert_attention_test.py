@@ -68,7 +68,7 @@ def create_test(batch_size, seq_length):
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
             turob_model = lambda: turbo_attention(input_tensor, attention_mask)
-            turbo_self_attention_result, turbo_qps, turbo_time_consume = \
+            turbo_attention_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turob_model, use_cuda,
                                       num_iter)
             print(
@@ -79,8 +79,9 @@ def create_test(batch_size, seq_length):
             self.assertTrue(
                 torch.max(
                     torch.abs(torch_attention_result[0] -
-                              turbo_self_attention_result)) < (
+                              turbo_attention_result)) < (
                                   1e-3 if use_cuda else 1e-4))
+
             with open(fname, "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {torch_qps}, {turbo_qps}\n"

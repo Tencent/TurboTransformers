@@ -51,7 +51,8 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                  pre_layernorm: bool = False,
                  post_add: bool = False,
                  return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
+                 output: Optional[cxx.Tensor] = None,
+                 attn: Optional[cxx.Tensor] = None):
         """ Implement a MultiHeadedAttention of OpenNMT-py
         https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/modules/multi_headed_attn.py
 
@@ -71,12 +72,15 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         #         assert elem is None
 
         output = create_empty_if_none(output)
+        attn = create_empty_if_none(attn)
 
         super(MultiHeadedAttention,
               self).__call__(key_tensor, value_tensor, query_tensor, mask,
-                             attn_type, output, pre_layernorm, post_add)
+                             attn_type, output, attn, pre_layernorm, post_add)
 
-        return convert_returns_as_type(output, return_type)
+        return convert_returns_as_type(output,
+                                       return_type), convert_returns_as_type(
+                                           attn, return_type)
 
     @staticmethod
     def from_onmt(multi_headed_attn: OnmtMultiHeadedAttention):
@@ -257,29 +261,31 @@ class TransformerDecoderLayer:
 
         dec_mask = try_convert(dec_mask)
 
-        query = self.self_attn(input_tensor,
-                               input_tensor,
-                               input_tensor,
-                               mask=dec_mask,
-                               layer_cache=layer_cache,
-                               attn_type="self",
-                               pre_layernorm=True,
-                               post_add=True,
-                               return_type=ReturnType.turbo_transformers)
+        query, _ = self.self_attn(input_tensor,
+                                  input_tensor,
+                                  input_tensor,
+                                  mask=dec_mask,
+                                  layer_cache=layer_cache,
+                                  attn_type="self",
+                                  pre_layernorm=True,
+                                  post_add=True,
+                                  return_type=ReturnType.turbo_transformers)
 
-        mid = self.context_attn(memory_bank,
-                                memory_bank,
-                                query,
-                                mask=src_pad_mask,
-                                layer_cache=layer_cache,
-                                attn_type="context",
-                                pre_layernorm=True,
-                                post_add=True,
-                                return_type=ReturnType.turbo_transformers)
+        mid, attns = self.context_attn(
+            memory_bank,
+            memory_bank,
+            query,
+            mask=src_pad_mask,
+            layer_cache=layer_cache,
+            attn_type="context",
+            pre_layernorm=True,
+            post_add=True,
+            return_type=ReturnType.turbo_transformers)
 
         output = self.feed_forward(mid, return_type=return_type)
-        return output, None, None
-        # return convert_returns_as_type(output, return_type)
+        return output, convert_returns_as_type(
+            attns, return_type)[:, 0, :, :].contiguous(
+            ), None  #attn_aligned mast be None
 
     @staticmethod
     def from_onmt(transformer_decoder_layer: OnmtTransformerDecoderLayer):
@@ -431,8 +437,9 @@ class TransformerDecoder:
         pad_idx = self.embeddings.word_padding_idx
         src_lens = kwargs["memory_lengths"]
         src_max_len = self.state["src"].shape[0]
-        src_pad_mask = (~sequence_mask(src_lens, src_max_len).unsqueeze(1)
-                        ).float()  #Turbo do bool -> float
+        #Turbo add bool -> float
+        src_pad_mask = (
+            ~sequence_mask(src_lens, src_max_len).unsqueeze(1)).float()
         tgt_pad_mask = tgt_words.data.eq(pad_idx).unsqueeze(
             1).float()  # [B, 1, T_tgt]
 
@@ -460,17 +467,18 @@ class TransformerDecoder:
         # Turbo finished.
         output = self.layer_norm(output)
         dec_outs = output.transpose(0, 1).contiguous()
-        # attn = attn.transpose(0, 1).contiguous()
+        attn = attn.transpose(0, 1).contiguous()
 
-        # attns = {"std": attn}
-        # if self._copy:
-        #     attns["copy"] = attn
-        # if with_align:
-        #     attns["align"] = attn_aligns[self.alignment_layer]  # `(B, Q, K)`
-        #     # attns["align"] = torch.stack(attn_aligns, 0).mean(0)  # All avg
+        attns = {"std": attn}
+        if self._copy:
+            attns["copy"] = attn
+        if with_align:
+            attns["align"] = attn_aligns[self.alignment_layer]  # `(B, Q, K)`
+            # attns["align"] = torch.stack(attn_aligns, 0).mean(0)  # All avg
 
-        # TODO change the way attns is returned dict => list or tuple (onnx)
-        return dec_outs, None  #attns
+        # TODO(OpenNMT-py) change the way attns is returned dict => list or tuple (onnx)
+
+        return dec_outs, attns
 
     def _init_cache(self, memory_bank):
         self.state["cache"] = {}
