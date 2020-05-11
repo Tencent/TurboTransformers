@@ -25,15 +25,18 @@ from .utils import try_convert, convert2tt_tensor, create_empty_if_none, AnyTens
 from onmt.modules.multi_headed_attn import MultiHeadedAttention as OnmtMultiHeadedAttention
 from onmt.modules.position_ffn import PositionwiseFeedForward as OnmtPositionwiseFeedForward
 from onmt.decoders.transformer import TransformerDecoderLayer as OnmtTransformerDecoderLayer
+from onmt.decoders.transformer import TransformerDecoder as OnmtTransformerDecoder
+from onmt.modules import Embeddings as TorchBertEmbeddings
 
 from torch.nn import LayerNorm as TorchLayerNorm
+from onmt.utils.misc import sequence_mask
 
 import enum
 import numpy as np
 
 __all__ = [
     'MultiHeadedAttention', 'PositionwiseFeedForward',
-    'TransformerDecoderLayer'
+    'TransformerDecoderLayer', 'TransformerDecoder'
 ]
 
 
@@ -63,9 +66,10 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         query_tensor = try_convert(query_tensor)
         mask = try_convert(mask)
         # TODO(jiaruifang) add layer_cache suuport in future
-        if layer_cache is not None:
-            for elem in layer_cache:
-                assert layer_cache is None
+        # if layer_cache is not None:
+        #     for elem in layer_cache:
+        #         assert elem is None
+
         output = create_empty_if_none(output)
 
         super(MultiHeadedAttention,
@@ -205,6 +209,7 @@ class TransformerDecoderLayer:
                  layer_cache: Optional[dict] = None,
                  step: Optional[int] = None,
                  future: Optional[bool] = False,
+                 with_align: Optional[bool] = False,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None):
         """ Implement _forward method of class TransformerDecoderLayer
@@ -273,7 +278,7 @@ class TransformerDecoderLayer:
                                 return_type=ReturnType.turbo_transformers)
 
         output = self.feed_forward(mid, return_type=return_type)
-        return output, None
+        return output, None, None
         # return convert_returns_as_type(output, return_type)
 
     @staticmethod
@@ -328,3 +333,168 @@ class TransformerDecoderLayer:
             transformer_decoder_layer.feed_forward)
 
         return TransformerDecoderLayer(self_attn, context_attn, feed_forward)
+
+
+class TransformerDecoder:
+    """The Transformer decoder from "Attention is All You Need".
+    :cite:`DBLP:journals/corr/VaswaniSPUJGKP17`
+    .. mermaid::
+       graph BT
+          A[input]
+          B[multi-head self-attn]
+          BB[multi-head src-attn]
+          C[feed forward]
+          O[output]
+          A --> B
+          B --> BB
+          BB --> C
+          C --> O
+    Args:
+        num_layers (int): number of encoder layers.
+        d_model (int): size of the model
+        heads (int): number of heads
+        d_ff (int): size of the inner FF layer
+        copy_attn (bool): if using a separate copy attention
+        self_attn_type (str): type of self-attention scaled-dot, average
+        dropout (float): dropout in residual, self-attn(dot) and feed-forward
+        attention_dropout (float): dropout in context_attn (and self-attn(avg))
+        embeddings (onmt.modules.Embeddings):
+            embeddings to use, should have positional encodings
+        max_relative_positions (int):
+            Max distance between inputs in relative positions representations, TODO(jiaruifang) only support 0
+        aan_useffn (bool): Turn on the FFN layer in the AAN decoder, TODO(jiaruifang) only support False
+        full_context_alignment (bool):
+            whether enable an extra full context decoder forward for alignment
+        alignment_layer (int): N° Layer to supervise with for alignment guiding
+        alignment_heads (int):
+            N. of cross attention heads to use for alignment guiding
+    """
+    def __init__(self,
+                 embeddings: TorchBertEmbeddings,
+                 transformer_layers: Sequence[TransformerDecoderLayer],
+                 layer_norm: TorchLayerNorm,
+                 copy_attn: Optional[bool] = False,
+                 alignment_layer: Optional[int] = 0):
+        self.embeddings = embeddings
+
+        # Decoder State
+        self.state = {}
+
+        self.transformer_layers = transformer_layers
+
+        # previously, there was a GlobalAttention module here for copy
+        # attention. But it was never actually used -- the "copy" attention
+        # just reuses the context attention.
+        self._copy = copy_attn  #bool
+        self.layer_norm = layer_norm
+
+        self.alignment_layer = alignment_layer
+
+    def init_state(self, src, memory_bank, enc_hidden):
+        """Initialize decoder state."""
+        self.state["src"] = src
+        self.state["cache"] = None
+
+    def map_state(self, fn):
+        def _recursive_map(struct, batch_dim=0):
+            for k, v in struct.items():
+                if v is not None:
+                    if isinstance(v, dict):
+                        _recursive_map(v)
+                    else:
+                        struct[k] = fn(v, batch_dim)
+
+        self.state["src"] = fn(self.state["src"], 1)
+        if self.state["cache"] is not None:
+            _recursive_map(self.state["cache"])
+
+    def detach_state(self):
+        self.state["src"] = self.state["src"].detach()
+
+    def __call__(self,
+                 tgt: torch.Tensor,
+                 memory_bank: torch.Tensor,
+                 step: Optional[int] = None,
+                 **kwargs):
+        """Decode, possibly stepwise."""
+        if step == 0:
+            self._init_cache(memory_bank)
+
+        tgt_words = tgt[:, :, 0].transpose(0, 1)
+
+        emb = self.embeddings(tgt, step=step)
+        assert emb.dim() == 3  # len x batch x embedding_dim
+
+        output = emb.transpose(0, 1).contiguous()
+        src_memory_bank = memory_bank.transpose(0, 1).contiguous()
+
+        pad_idx = self.embeddings.word_padding_idx
+        src_lens = kwargs["memory_lengths"]
+        src_max_len = self.state["src"].shape[0]
+        src_pad_mask = (~sequence_mask(src_lens, src_max_len).unsqueeze(1)
+                        ).float()  #Turbo do bool -> float
+        tgt_pad_mask = tgt_words.data.eq(pad_idx).unsqueeze(
+            1).float()  # [B, 1, T_tgt]
+
+        with_align = kwargs.pop('with_align', False)
+        if with_align:
+            raise "with_align must be False"
+        attn_aligns = []
+
+        # It's Turbo's show time!
+        i = 0
+        for layer in self.transformer_layers:
+            layer_cache = self.state["cache"]["layer_{}".format(i)] \
+                if step is not None else None
+            output, attn, attn_align = layer(output,
+                                             src_memory_bank,
+                                             src_pad_mask,
+                                             tgt_pad_mask,
+                                             layer_cache=layer_cache,
+                                             step=step,
+                                             with_align=with_align)
+            if attn_align is not None:
+                attn_aligns.append(attn_align)
+            i += 1
+
+        # Turbo finished.
+        output = self.layer_norm(output)
+        dec_outs = output.transpose(0, 1).contiguous()
+        # attn = attn.transpose(0, 1).contiguous()
+
+        # attns = {"std": attn}
+        # if self._copy:
+        #     attns["copy"] = attn
+        # if with_align:
+        #     attns["align"] = attn_aligns[self.alignment_layer]  # `(B, Q, K)`
+        #     # attns["align"] = torch.stack(attn_aligns, 0).mean(0)  # All avg
+
+        # TODO change the way attns is returned dict => list or tuple (onnx)
+        return dec_outs, None  #attns
+
+    def _init_cache(self, memory_bank):
+        self.state["cache"] = {}
+        batch_size = memory_bank.size(1)
+        depth = memory_bank.size(-1)
+
+        for i, layer in enumerate(self.transformer_layers):
+            layer_cache = {"memory_keys": None, "memory_values": None}
+            if not isinstance(layer.self_attn, MultiHeadedAttention):
+                raise "MultiHeadedAttention only not supported"
+            else:
+                layer_cache["self_keys"] = None
+                layer_cache["self_values"] = None
+            self.state["cache"]["layer_{}".format(i)] = layer_cache
+
+    @staticmethod
+    def from_onmt(model: OnmtTransformerDecoder,
+                  device: Optional[torch.device] = None):
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
+        ):
+            model.to(device)
+        layers = [
+            TransformerDecoderLayer.from_onmt(transformer_layer)
+            for transformer_layer in model.transformer_layers
+        ]
+        return TransformerDecoder(model.embeddings, layers, model.layer_norm,
+                                  model._copy, model.alignment_layer)

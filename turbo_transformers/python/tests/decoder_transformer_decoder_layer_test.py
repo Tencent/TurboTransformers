@@ -15,7 +15,6 @@ import turbo_transformers
 import unittest
 import sys
 import torch
-from transformers.modeling_bert import BertConfig, BertAttention
 import os
 
 from onmt.decoders.transformer import TransformerDecoderLayer
