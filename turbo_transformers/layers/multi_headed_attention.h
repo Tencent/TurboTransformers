@@ -75,7 +75,8 @@ class MultiHeadedAttention {
                   const core::Tensor& query_tensor,
                   const core::Tensor& attention_mask,
                   const std::string& attn_type, core::Tensor* output,
-                  bool pre_layernorm = false, bool post_add = false) const;
+                  core::Tensor* att_score, bool pre_layernorm = false,
+                  bool post_add = false) const;
 
  private:
   core::Tensor k_weight_;

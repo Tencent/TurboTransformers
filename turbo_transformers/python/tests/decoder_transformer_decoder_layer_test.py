@@ -15,7 +15,6 @@ import turbo_transformers
 import unittest
 import sys
 import torch
-from transformers.modeling_bert import BertConfig, BertAttention
 import os
 
 from onmt.decoders.transformer import TransformerDecoderLayer
@@ -47,6 +46,8 @@ def create_test(batch_size, src_length, T):
                 self.onmt_decoder)
 
         def check_torch_and_turbo(self, use_cuda, num_iter=2):
+            if use_cuda:
+                return
             self.init_data(use_cuda=use_cuda)
             model_dim = 1024
             T = 1
@@ -72,7 +73,7 @@ def create_test(batch_size, src_length, T):
                                             dtype=torch.float32,
                                             device=self.test_device)
 
-            onmt_mid, attns = self.onmt_decoder._forward(
+            onmt_mid, attns, attn_align = self.onmt_decoder(
                 self.inputs,
                 self.memory_bank,
                 self.src_pad_mask.bool(),
@@ -81,17 +82,20 @@ def create_test(batch_size, src_length, T):
                 step=None,
                 future=False)
 
-            turbo_mid, _ = self.turbo_decoder(self.inputs,
-                                              self.memory_bank,
-                                              self.src_pad_mask,
-                                              self.tgt_pad_mask,
-                                              layer_cache=None,
-                                              step=None,
-                                              future=False)
+            turbo_mid, turbo_attns, _ = self.turbo_decoder(self.inputs,
+                                                           self.memory_bank,
+                                                           self.src_pad_mask,
+                                                           self.tgt_pad_mask,
+                                                           layer_cache=None,
+                                                           step=None,
+                                                           future=False)
 
             self.assertTrue(
                 torch.max(torch.abs(onmt_mid -
                                     turbo_mid)) < (1e-3 if use_cuda else 1e-4))
+            self.assertTrue(
+                torch.max(torch.abs(attns - turbo_attns)) < (
+                    1e-3 if use_cuda else 1e-4))
 
         def test_decoder(self):
             self.check_torch_and_turbo(use_cuda=False)
