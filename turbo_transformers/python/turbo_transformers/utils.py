@@ -18,9 +18,10 @@ except ImportError:
     import turbo_transformers.turbo_transformers_cxx as cxx
 import contextlib
 
-__all__ = ['gperf_guard', 'set_num_threads']
+__all__ = ['gperf_guard', 'set_num_threads', 'set_stderr_verbose_level']
 
 set_num_threads = cxx.set_num_threads
+set_stderr_verbose_level = cxx.set_stderr_verbose_level
 
 
 @contextlib.contextmanager
