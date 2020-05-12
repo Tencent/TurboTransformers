@@ -120,7 +120,7 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 post_add=post_add)
             turbo_multi_headed_attention_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turob_model, use_cuda,
-                                      num_iter)
+                                      num_iter, use_profile=True)
             turbo_output = turbo_multi_headed_attention_result[0]
             turbo_attns = turbo_multi_headed_attention_result[1]
             print(
@@ -134,14 +134,15 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
             self.assertTrue(
                 torch.max(torch.abs(onmt_attns - turbo_attns)) < (
                     1e-3 if use_cuda else 1e-4))
+
             with open(fname, "a") as fh:
                 fh.write(f", {info} {torch_qps}, {turbo_qps}\n")
 
         def test_multi_headed_attention(self):
-            self.check_torch_and_turbo(use_cuda=False)
+            self.check_torch_and_turbo(use_cuda=False, num_iter=150)
             if torch.cuda.is_available() and \
                 turbo_transformers.config.is_compiled_with_cuda():
-                self.check_torch_and_turbo(use_cuda=True)
+                self.check_torch_and_turbo(use_cuda=True, num_iter=150)
 
     globals(
     )[f"TestMultiHeadedAttention{batch_size}_{key_seq_len:3}_{query_seq_len:3}_{attn_type}_{pre_layernorm}"] = TestMultiHeadedAttention
@@ -150,8 +151,8 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
 with open(fname, "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 
-for post_add in [False, True]:
-    for pre_layernorm in [False, True]:
+for post_add in [False]:
+    for pre_layernorm in [False]:
         for attn_type in ["self", "context"]:
             for batch_size in [1, 2]:
                 for key_seq_len in [10, 16, 20, 30]:

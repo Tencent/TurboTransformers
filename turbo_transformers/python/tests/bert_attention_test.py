@@ -62,15 +62,15 @@ def create_test(batch_size, seq_length):
             device = "GPU" if use_cuda else "CPU"
             torch_model = lambda: torch_attention(input_tensor, attention_mask)
             torch_attention_result, torch_qps, torch_time_consume = \
-                test_helper.run_model(torch_model, use_cuda, num_iter)
+                test_helper.run_model(torch_model, use_cuda, num_iter, use_profile=False)
             print(
                 f"BertAttention \"({batch_size},{seq_length:03})\" ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
-            turob_model = lambda: turbo_attention(input_tensor, attention_mask)
+            turbo_model = lambda: turbo_attention(input_tensor, attention_mask)
             turbo_attention_result, turbo_qps, turbo_time_consume = \
-                test_helper.run_model(turob_model, use_cuda,
-                                      num_iter)
+                test_helper.run_model(turbo_model, use_cuda,
+                                      num_iter, use_profile=False)
             print(
                 f"BertAttention \"({batch_size},{seq_length:03})\" ",
                 f" {device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}"
@@ -88,10 +88,10 @@ def create_test(batch_size, seq_length):
                 )
 
         def test_bert_attention(self):
-            self.check_torch_and_turbo(use_cuda=False)
+            self.check_torch_and_turbo(use_cuda=False, num_iter=150)
             if torch.cuda.is_available() and \
                 turbo_transformers.config.is_compiled_with_cuda():
-                self.check_torch_and_turbo(use_cuda=True)
+                self.check_torch_and_turbo(use_cuda=True, num_iter=150)
 
     globals()[f"TestBertAtt{batch_size}_{seq_length:3}"] = TestBertAttention
 
@@ -99,7 +99,7 @@ def create_test(batch_size, seq_length):
 with open(fname, "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 for batch_size in [1, 2]:
-    for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
+    for seq_length in [10, 20, 40, 60, 80, 100]:
         create_test(batch_size, seq_length)
 
 if __name__ == '__main__':
