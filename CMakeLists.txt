@@ -23,7 +23,7 @@ set(CMAKE_C_FLAGS "-Wall")
 
 set(TURBO_TRANSFORMERS_VERSION 0.2.0)
 
-option(WITH_PROFILER  "Compile with gperftools" OFF)
+option(WITH_PROFILER  "Compile with gperftools" ON)
 option(WITH_GPU       "Build with GPU"          OFF)
 option(WITH_MODULE_BENCHMAKR       "Build with GPU"          ON)
 
@@ -68,8 +68,6 @@ endif ()
 message(STATUS "Blas provider is ${BLAS_PROVIDER}")
 
 if (WITH_PROFILER)
-    find_package(Gperftools REQUIRED)
-    include_directories(${GPERFTOOLS_INCLUDE_DIR})
     add_definitions(-DWITH_GPERFTOOLS)
 endif ()
 

@@ -23,7 +23,10 @@ from onmt.modules.multi_headed_attn import MultiHeadedAttention
 sys.path.append(os.path.dirname(__file__))
 import test_helper
 
-fname = "tt_decoder_multi_headed_attention.txt"
+fname = "tt_multi_headed_attention.txt"
+
+turbo_transformers.set_num_threads(4)
+turbo_transformers.set_stderr_verbose_level(2)
 
 
 def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
@@ -74,7 +77,6 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
             onmt_multi_headed_attention, torch_layernorm, turbo_multi_headed_attention, Q, K, V = \
                 self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
-
             info = f"\"({pre_layernorm}, {attn_type}, {batch_size}, {key_seq_len:03}, {query_seq_len:03})\""
             attention_mask = torch.zeros(
                 (batch_size, 1, key_seq_len if (attn_type == "context") else
@@ -94,13 +96,14 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                     "self_keys": None
                 },
                 attn_type=attn_type)
+
             onmt_multi_headed_attention_result, torch_qps, torch_time_consume = \
                 test_helper.run_model(onmt_model, use_cuda, num_iter) # return output, attns
-            onmt_attns = onmt_multi_headed_attention_result[1]
+
             if post_add:
-                onmt_output = onmt_multi_headed_attention_result[0] + Q
+                onmt_res = onmt_multi_headed_attention_result[0] + Q
             else:
-                onmt_output = onmt_multi_headed_attention_result[0]
+                onmt_res = onmt_multi_headed_attention_result[0]
             print(
                 f"ONMT Multi Headed Attention {info} ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
@@ -112,6 +115,7 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 device=self.test_device)
 
             turbo_attention_mask = (1.0 - attention_mask) * -1e18
+
             turob_model = lambda: turbo_multi_headed_attention(
                 K,
                 V,
@@ -121,31 +125,29 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 attn_type=attn_type,
                 pre_layernorm=pre_layernorm,
                 post_add=post_add)
-            turbo_multi_headed_attention_result, turbo_qps, turbo_time_consume = \
+            #with turbo_transformers.gperf_guard("gpref_test") as perf:
+            turbo_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turob_model, use_cuda,
-                                      num_iter, use_profile=False)
-            turbo_output = turbo_multi_headed_attention_result[0]
-            turbo_attns = turbo_multi_headed_attention_result[1]
+                                    num_iter)
             print(
                 f"Turbo Multi Headed Attention {info}",
                 f" {device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}"
             )
 
-            self.assertTrue(
-                torch.max(torch.abs(onmt_output - turbo_output)) < (
-                    1e-3 if use_cuda else 1e-4))
-            self.assertTrue(
-                torch.max(torch.abs(onmt_attns - turbo_attns)) < (
-                    1e-3 if use_cuda else 1e-4))
+            # print(onmt_res)
+            # print(turbo_result)
 
+            self.assertTrue(
+                torch.max(torch.abs(onmt_res - turbo_result[0])) < (
+                    1e-3 if use_cuda else 1e-4))
             with open(fname, "a") as fh:
                 fh.write(f", {info} {torch_qps}, {turbo_qps}\n")
 
         def test_multi_headed_attention(self):
-            self.check_torch_and_turbo(use_cuda=False, num_iter=1)
+            self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
                 turbo_transformers.config.is_compiled_with_cuda():
-                self.check_torch_and_turbo(use_cuda=True, num_iter=1)
+                self.check_torch_and_turbo(use_cuda=True)
 
     globals(
     )[f"TestMultiHeadedAttention{batch_size}_{key_seq_len:3}_{query_seq_len:3}_{attn_type}_{pre_layernorm}"] = TestMultiHeadedAttention
@@ -154,12 +156,18 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
 with open(fname, "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 
-for post_add in [False]:
-    for pre_layernorm in [False]:
+for post_add in [False, True]:
+    for pre_layernorm in [False, True]:
         for attn_type in ["self", "context"]:
             for batch_size in [1, 2]:
                 for key_seq_len in [10, 16, 20, 30]:
                     for query_seq_len in [10, 16, 20, 30]:
+                        # for post_add in [False]:
+                        #     for pre_layernorm in [False]:
+                        #         for attn_type in ["self"]:
+                        #             for batch_size in [2]:
+                        #                 for key_seq_len in [10]:
+                        #                     for query_seq_len in [30]:
                         create_test(batch_size, key_seq_len, query_seq_len,
                                     attn_type, pre_layernorm, post_add)
 

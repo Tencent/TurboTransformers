@@ -93,8 +93,10 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                     "self_keys": None
                 },
                 attn_type=attn_type)
-            onmt_multi_headed_attention_result, torch_qps, torch_time_consume = \
-                test_helper.run_model(onmt_model, use_cuda, num_iter) # return output, attns
+
+            with turbo_transformers.gperf_guard("gpref_output") as gperf:
+                onmt_multi_headed_attention_result, torch_qps, torch_time_consume = \
+                    test_helper.run_model(onmt_model, use_cuda, num_iter) # return output, attns
 
             if post_add:
                 onmt_res = onmt_multi_headed_attention_result[0] + Q
@@ -150,12 +152,18 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
 with open(fname, "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 
-for post_add in [False, True]:
-    for pre_layernorm in [False, True]:
-        for attn_type in ["self", "context"]:
-            for batch_size in [1, 2]:
-                for key_seq_len in [10, 16, 20, 30]:
-                    for query_seq_len in [10, 16, 20, 30]:
+# for post_add in [False, True]:
+#     for pre_layernorm in [False, True]:
+#         for attn_type in ["self", "context"]:
+#             for batch_size in [1, 2]:
+#                 for key_seq_len in [10, 16, 20, 30]:
+#                     for query_seq_len in [10, 16, 20, 30]:
+for post_add in [False]:
+    for pre_layernorm in [False]:
+        for attn_type in ["self"]:
+            for batch_size in [2]:
+                for key_seq_len in [10]:
+                    for query_seq_len in [30]:
                         create_test(batch_size, key_seq_len, query_seq_len,
                                     attn_type, pre_layernorm, post_add)
 

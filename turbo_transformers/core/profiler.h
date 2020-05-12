@@ -14,12 +14,39 @@
 #pragma once
 
 #include <string>
+#ifdef WITH_GPERFTOOLS
+#include <memory>
+#include "macros.h"
+#endif
 
 namespace turbo_transformers {
 namespace core {
+#ifdef WITH_GPERFTOOLS
+class Profiler {
+ public:
+  ~Profiler();
+
+  static Profiler& GetInstance() {
+    static Profiler instance;
+    return instance;
+  }
+  void clear();
+  void start_profile(const std::string& ctx_name);
+  void end_profile(const std::string& ctx_name);
+  void print_results() const;
+
+ private:
+  Profiler();
+
+  struct ProfilerImpl;
+  std::unique_ptr<ProfilerImpl> profiler_;
+
+  DISABLE_COPY_AND_ASSIGN(Profiler);
+};
 
 void EnableGperf(const std::string& profile_file);
 void DisableGperf();
+#endif
 
 }  // namespace core
 }  // namespace turbo_transformers
