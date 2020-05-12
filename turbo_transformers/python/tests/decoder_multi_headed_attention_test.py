@@ -69,9 +69,12 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
             return onmt_multi_headed_attention, torch_layernorm, turbo_multi_headed_attention, Q, K, V
 
         def check_torch_and_turbo(self, use_cuda, num_iter=1):
+            if use_cuda:
+                return
             onmt_multi_headed_attention, torch_layernorm, turbo_multi_headed_attention, Q, K, V = \
                 self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
+
             info = f"\"({pre_layernorm}, {attn_type}, {batch_size}, {key_seq_len:03}, {query_seq_len:03})\""
             attention_mask = torch.zeros(
                 (batch_size, 1, key_seq_len if (attn_type == "context") else
@@ -120,7 +123,7 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 post_add=post_add)
             turbo_multi_headed_attention_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turob_model, use_cuda,
-                                      num_iter, use_profile=True)
+                                      num_iter, use_profile=False)
             turbo_output = turbo_multi_headed_attention_result[0]
             turbo_attns = turbo_multi_headed_attention_result[1]
             print(
@@ -139,10 +142,10 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 fh.write(f", {info} {torch_qps}, {turbo_qps}\n")
 
         def test_multi_headed_attention(self):
-            self.check_torch_and_turbo(use_cuda=False, num_iter=150)
+            self.check_torch_and_turbo(use_cuda=False, num_iter=1)
             if torch.cuda.is_available() and \
                 turbo_transformers.config.is_compiled_with_cuda():
-                self.check_torch_and_turbo(use_cuda=True, num_iter=150)
+                self.check_torch_and_turbo(use_cuda=True, num_iter=1)
 
     globals(
     )[f"TestMultiHeadedAttention{batch_size}_{key_seq_len:3}_{query_seq_len:3}_{attn_type}_{pre_layernorm}"] = TestMultiHeadedAttention

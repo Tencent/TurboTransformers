@@ -69,6 +69,8 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
             return onmt_multi_headed_attention, torch_layernorm, turbo_multi_headed_attention, Q, K, V
 
         def check_torch_and_turbo(self, use_cuda, num_iter=1):
+            if use_cuda:
+                return
             onmt_multi_headed_attention, torch_layernorm, turbo_multi_headed_attention, Q, K, V = \
                 self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
@@ -130,7 +132,7 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
             # print(turbo_result)
 
             self.assertTrue(
-                torch.max(torch.abs(onmt_res - turbo_result)) < (
+                torch.max(torch.abs(onmt_res - turbo_result[0])) < (
                     1e-3 if use_cuda else 1e-4))
             with open(fname, "a") as fh:
                 fh.write(f", {info} {torch_qps}, {turbo_qps}\n")

@@ -46,6 +46,8 @@ def create_test(batch_size, src_length, T):
                 self.onmt_decoder)
 
         def check_torch_and_turbo(self, use_cuda, num_iter=2):
+            if use_cuda:
+                return
             self.init_data(use_cuda=use_cuda)
             model_dim = 1024
             T = 1
