@@ -23,7 +23,7 @@ set(CMAKE_C_FLAGS "-Wall")
 
 set(TURBO_TRANSFORMERS_VERSION 0.2.0)
 
-option(WITH_PROFILER  "Compile with gperftools" ON)
+option(WITH_PROFILER  "Compile with gperftools" OFF)
 option(WITH_GPU       "Build with GPU"          OFF)
 option(WITH_MODULE_BENCHMAKR       "Build with GPU"          ON)
 
