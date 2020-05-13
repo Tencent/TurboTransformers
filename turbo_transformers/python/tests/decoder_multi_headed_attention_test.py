@@ -108,13 +108,7 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 f"ONMT Multi Headed Attention {info} ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
-            attention_mask = torch.ones(
-                (batch_size, 1, key_seq_len if (attn_type == "context") else
-                 query_seq_len),  #TODO mask shape is diff for context and self
-                dtype=torch.float32,
-                device=self.test_device)
-
-            turbo_attention_mask = (1.0 - attention_mask) * -1e18
+            turbo_attention_mask = attention_mask.float() * -1e18
 
             turob_model = lambda: turbo_multi_headed_attention(
                 K,

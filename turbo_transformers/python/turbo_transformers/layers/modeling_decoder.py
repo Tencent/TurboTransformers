@@ -230,7 +230,8 @@ class TransformerDecoderLayer:
         Returns:
             (FloatTensor, FloatTensor):
             * output ``(batch_size, T, model_dim)``
-            * attns ``(batch_size, head, T, src_len)``
+            * top_attns ``(batch_size, T, src_len)``  or None
+            * attn_align None
         """
 
         # dec_mask = None
@@ -241,6 +242,7 @@ class TransformerDecoderLayer:
 
         input_tensor = try_convert(input_tensor)
         memory_bank = try_convert(memory_bank)
+        src_pad_mask = src_pad_mask * -1e18
         src_pad_mask = try_convert(src_pad_mask)
 
         if step is None:
@@ -259,6 +261,7 @@ class TransformerDecoderLayer:
             else:  # only mask padding, result mask in (B, 1, T)
                 dec_mask = tgt_pad_mask
 
+        dec_mask = dec_mask * -1e18
         dec_mask = try_convert(dec_mask)
 
         query, _ = self.self_attn(input_tensor,

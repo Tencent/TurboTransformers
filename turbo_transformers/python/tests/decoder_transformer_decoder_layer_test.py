@@ -18,7 +18,6 @@ import torch
 import os
 
 from onmt.decoders.transformer import TransformerDecoderLayer
-# from onmt.translate.translator import Translator
 
 sys.path.append(os.path.dirname(__file__))
 import test_helper
@@ -31,11 +30,13 @@ def create_test(batch_size, src_length, T):
                    torch.device('cpu:0')
             if not use_cuda:
                 torch.set_num_threads(4)
+                turbo_transformers.set_num_threads(4)
 
             torch.set_grad_enabled(False)
-            self.onmt_decoder = TransformerDecoderLayer(d_model=1024,
+            self.model_dim = 1024
+            self.onmt_decoder = TransformerDecoderLayer(d_model=self.model_dim,
                                                         heads=8,
-                                                        d_ff=1,
+                                                        d_ff=32,
                                                         dropout=0.,
                                                         attention_dropout=0.)
             self.onmt_decoder.eval()
@@ -48,47 +49,65 @@ def create_test(batch_size, src_length, T):
         def check_torch_and_turbo(self, use_cuda, num_iter=2):
             if use_cuda:
                 return
+            deivce_type = "GPU" if use_cuda else "CPU"
+            info = f"\"({deivce_type}, {batch_size}, {src_length}, {T})\""
             self.init_data(use_cuda=use_cuda)
-            model_dim = 1024
-            T = 1
-            src_length = 20
+
             self.inputs = torch.rand(batch_size,
                                      T,
-                                     model_dim,
+                                     self.model_dim,
                                      dtype=torch.float32,
                                      device=self.test_device)
             self.memory_bank = torch.rand(batch_size,
                                           src_length,
-                                          model_dim,
+                                          self.model_dim,
                                           dtype=torch.float32,
                                           device=self.test_device)
-            self.src_pad_mask = torch.zeros(batch_size,
-                                            1,
-                                            src_length,
-                                            dtype=torch.float32,
-                                            device=self.test_device)
-            self.tgt_pad_mask = torch.zeros(batch_size,
-                                            1,
-                                            T,
-                                            dtype=torch.float32,
-                                            device=self.test_device)
+            self.src_pad_mask = torch.ones(batch_size,
+                                           1,
+                                           src_length,
+                                           dtype=torch.float32,
+                                           device=self.test_device)
+            self.tgt_pad_mask = torch.ones(batch_size,
+                                           1,
+                                           T,
+                                           dtype=torch.float32,
+                                           device=self.test_device)
 
-            onmt_mid, attns, attn_align = self.onmt_decoder(
-                self.inputs,
-                self.memory_bank,
-                self.src_pad_mask.bool(),
-                self.tgt_pad_mask.bool(),
-                layer_cache=None,
-                step=None,
-                future=False)
+            onmt_model = lambda: self.onmt_decoder(self.inputs,
+                                                   self.memory_bank,
+                                                   self.src_pad_mask.bool(),
+                                                   self.tgt_pad_mask.bool(),
+                                                   layer_cache=None,
+                                                   step=None,
+                                                   future=False)
 
-            turbo_mid, turbo_attns, _ = self.turbo_decoder(self.inputs,
-                                                           self.memory_bank,
-                                                           self.src_pad_mask,
-                                                           self.tgt_pad_mask,
-                                                           layer_cache=None,
-                                                           step=None,
-                                                           future=False)
+            onmt_result, torch_qps, torch_time_consume = \
+                test_helper.run_model(onmt_model, use_cuda, num_iter)
+
+            onmt_mid, attns, attn_align = onmt_result
+
+            print(
+                f"ONMT n {info} ",
+                f"{deivce_type} Torch QPS, {torch_qps}, time, {torch_time_consume}"
+            )
+
+            turbo_model = lambda: self.turbo_decoder(self.inputs,
+                                                     self.memory_bank,
+                                                     self.src_pad_mask,
+                                                     self.tgt_pad_mask,
+                                                     layer_cache=None,
+                                                     step=None,
+                                                     future=False)
+            turbo_result, torch_qps, torch_time_consume = \
+                test_helper.run_model(turbo_model, use_cuda, num_iter)
+
+            turbo_mid, turbo_attns, _ = turbo_result
+
+            print(
+                f"Turbo n {info} ",
+                f"{deivce_type} Torch QPS, {torch_qps}, time, {torch_time_consume}"
+            )
 
             self.assertTrue(
                 torch.max(torch.abs(onmt_mid -
