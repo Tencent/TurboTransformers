@@ -28,11 +28,13 @@ namespace kernels {
 void AddBias(const core::Tensor& bias, core::Tensor* output) {
   auto dim1 = bias.shape(0);
   auto dim0 = output->numel() / dim1;
+  auto output_data = output->mutableData<float>();
+  const auto bias_data = bias.data<float>();
 #pragma omp parallel for
   for (int64_t i = 0; i < dim0; ++i) {
 #pragma omp simd
     for (int64_t j = 0; j < dim1; ++j) {
-      output->mutableData<float>()[i * dim1 + j] += bias.data<float>()[j];
+      output_data[i * dim1 + j] += bias_data[j];
     }
   }
 }

@@ -25,6 +25,9 @@ import test_helper
 
 fname = "tt_decoder_multi_headed_attention.txt"
 
+turbo_transformers.set_num_threads(4)
+turbo_transformers.set_stderr_verbose_level(2)
+
 
 def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 pre_layernorm, post_add):
@@ -94,6 +97,7 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                     "self_keys": None
                 },
                 attn_type=attn_type)
+
             onmt_multi_headed_attention_result, torch_qps, torch_time_consume = \
                 test_helper.run_model(onmt_model, use_cuda, num_iter) # return output, attns
             onmt_attns = onmt_multi_headed_attention_result[1]
@@ -105,13 +109,8 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 f"ONMT Multi Headed Attention {info} ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
-            attention_mask = torch.ones(
-                (batch_size, 1, key_seq_len if (attn_type == "context") else
-                 query_seq_len),  #TODO mask shape is diff for context and self
-                dtype=torch.float32,
-                device=self.test_device)
+            turbo_attention_mask = attention_mask.float() * -1e18
 
-            turbo_attention_mask = (1.0 - attention_mask) * -1e18
             turob_model = lambda: turbo_multi_headed_attention(
                 K,
                 V,
@@ -121,11 +120,12 @@ def create_test(batch_size, key_seq_len, query_seq_len, attn_type,
                 attn_type=attn_type,
                 pre_layernorm=pre_layernorm,
                 post_add=post_add)
-            turbo_multi_headed_attention_result, turbo_qps, turbo_time_consume = \
+            #with turbo_transformers.gperf_guard("gpref_test") as perf:
+            turbo_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turob_model, use_cuda,
-                                      num_iter, use_profile=False)
-            turbo_output = turbo_multi_headed_attention_result[0]
-            turbo_attns = turbo_multi_headed_attention_result[1]
+                                    num_iter)
+
+            turbo_output, turbo_attns = turbo_result
             print(
                 f"Turbo Multi Headed Attention {info}",
                 f" {device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}"

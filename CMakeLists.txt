@@ -68,8 +68,6 @@ endif ()
 message(STATUS "Blas provider is ${BLAS_PROVIDER}")
 
 if (WITH_PROFILER)
-    find_package(Gperftools REQUIRED)
-    include_directories(${GPERFTOOLS_INCLUDE_DIR})
     add_definitions(-DWITH_GPERFTOOLS)
 endif ()
 
