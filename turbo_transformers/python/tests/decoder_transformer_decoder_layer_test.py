@@ -51,6 +51,7 @@ def create_test(batch_size, src_length, T):
                 return
             deivce_type = "GPU" if use_cuda else "CPU"
             info = f"\"({deivce_type}, {batch_size}, {src_length}, {T})\""
+
             self.init_data(use_cuda=use_cuda)
 
             self.inputs = torch.rand(batch_size,
@@ -63,6 +64,7 @@ def create_test(batch_size, src_length, T):
                                           self.model_dim,
                                           dtype=torch.float32,
                                           device=self.test_device)
+
             self.src_pad_mask = torch.ones(batch_size,
                                            1,
                                            src_length,

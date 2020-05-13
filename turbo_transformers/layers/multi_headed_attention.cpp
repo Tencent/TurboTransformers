@@ -200,9 +200,11 @@ void MultiHeadedAttention::operator()(
       {batch_size, num_attention_heads_, query_seq_length,
        key_seq_length},  // query_seq_length = from_seq_Len
       devtype, devid);
+
 #ifdef WITH_GPERFTOOLS
   profile_ctx.start_profile("batch_gemm0");
 #endif
+
   const float scaler = 1.0f / std::sqrt(static_cast<float>(size_per_head));
   kernels::BatchMatMul(*q_ptr, false, *k_ptr, true, scaler, att_score,
                        0.0);  //(B, num_head, q_len, k_len)
@@ -215,6 +217,7 @@ void MultiHeadedAttention::operator()(
 #ifdef WITH_GPERFTOOLS
   profile_ctx.start_profile("ApplyMaskAndSoftmax");
 #endif
+
   kernels::ApplyMaskAndSoftmax(att_score,
                                attention_mask,  //(B, num_head, q_len, k_len)
                                1.0);
@@ -230,6 +233,7 @@ void MultiHeadedAttention::operator()(
 #ifdef WITH_GPERFTOOLS
   profile_ctx.start_profile("batch_gemm1");
 #endif
+
   kernels::BatchMatMul(*att_score, false, *v_ptr, false, 1.0, &context_layer,
                        0.0);
 #ifdef WITH_GPERFTOOLS
