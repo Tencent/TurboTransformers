@@ -43,10 +43,9 @@ class Profiler {
 
   DISABLE_COPY_AND_ASSIGN(Profiler);
 };
-
+#endif
 void EnableGperf(const std::string& profile_file);
 void DisableGperf();
-#endif
 
 }  // namespace core
 }  // namespace turbo_transformers
