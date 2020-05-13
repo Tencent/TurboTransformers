@@ -156,12 +156,6 @@ for post_add in [False, True]:
             for batch_size in [1, 2]:
                 for key_seq_len in [10, 16, 20, 30]:
                     for query_seq_len in [10, 16, 20, 30]:
-                        # for post_add in [False]:
-                        #     for pre_layernorm in [False]:
-                        #         for attn_type in ["self"]:
-                        #             for batch_size in [2]:
-                        #                 for key_seq_len in [10]:
-                        #                     for query_seq_len in [30]:
                         create_test(batch_size, key_seq_len, query_seq_len,
                                     attn_type, pre_layernorm, post_add)
 
