@@ -159,17 +159,21 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
 
 
 class PositionwiseFeedForward(cxx.PositionwiseFeedForward):
-    def __call__(self,
-                 input_tensor: AnyTensor,
-                 return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
+    def __call__(
+            self,
+            input_tensor: AnyTensor,
+            return_type: Optional[ReturnType] = None,
+            is_trans_weight: Optional[bool] = True,  #Intel 61xx True is faster
+            output: Optional[cxx.Tensor] = None):
         input_tensor = try_convert(input_tensor)
         output = create_empty_if_none(output)
-        super(PositionwiseFeedForward, self).__call__(input_tensor, output)
+        super(PositionwiseFeedForward, self).__call__(input_tensor, output,
+                                                      is_trans_weight)
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
-    def from_onmt(position_wise_ffn: OnmtPositionwiseFeedForward):
+    def from_onmt(position_wise_ffn: OnmtPositionwiseFeedForward,
+                  is_trans_weight: Optional[bool] = True):
         params = {k: v for k, v in position_wise_ffn.named_parameters()}
         # w_1.weight
         # w_1.bias
@@ -178,11 +182,17 @@ class PositionwiseFeedForward(cxx.PositionwiseFeedForward):
         # layer_norm.weight
         # layer_norm.bias
 
+        # Note that torch's weights of linear layer is transposed
+        if is_trans_weight:
+            w_1 = convert2tt_tensor(params['w_1.weight'])
+            w_2 = convert2tt_tensor(params['w_2.weight'])
+        else:
+            w_1 = convert2tt_tensor(torch.clone(torch.t(params['w_1.weight'])))
+            w_2 = convert2tt_tensor(torch.clone(torch.t(params['w_2.weight'])))
+
         with torch.no_grad():
             ffn = PositionwiseFeedForward(
-                convert2tt_tensor(torch.clone(torch.t(params['w_1.weight']))),
-                convert2tt_tensor(params['w_1.bias']),
-                convert2tt_tensor(torch.clone(torch.t(params['w_2.weight']))),
+                w_1, convert2tt_tensor(params['w_1.bias']), w_2,
                 convert2tt_tensor(params['w_2.bias']),
                 convert2tt_tensor(params['layer_norm.weight']),
                 convert2tt_tensor(params['layer_norm.bias']))

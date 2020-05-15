@@ -16,7 +16,7 @@
 #include "enforce.h"
 #include "loguru.hpp"
 
-#ifdef WITH_GPERFTOOLS
+#ifdef WITH_PERFTOOLS
 #include <chrono>
 #include <iostream>
 #include <stack>
@@ -25,7 +25,7 @@
 
 namespace turbo_transformers {
 namespace core {
-#ifdef WITH_GPERFTOOLS
+#ifdef WITH_PERFTOOLS
 static bool gProfileStarted = false;
 
 struct Profiler::ProfilerImpl {
@@ -84,7 +84,7 @@ Profiler::Profiler() : profiler_(new ProfilerImpl()) {}
 
 #endif
 void EnableGperf(const std::string& profile_file) {
-#ifdef WITH_GPERFTOOLS
+#ifdef WITH_PERFTOOLS
   LOG_S(1) << "gperf tools enabled." << profile_file;
   TT_ENFORCE_EQ(gProfileStarted, false, "Currently the gPerf is enabled.");
   auto& profile_ctx = core::Profiler::GetInstance();
@@ -96,7 +96,7 @@ void EnableGperf(const std::string& profile_file) {
 }
 
 void DisableGperf() {
-#ifdef WITH_GPERFTOOLS
+#ifdef WITH_PERFTOOLS
   TT_ENFORCE_EQ(gProfileStarted, true, "Currently the gPerf is disabled.");
   gProfileStarted = false;
   auto& profile_ctx = core::Profiler::GetInstance();

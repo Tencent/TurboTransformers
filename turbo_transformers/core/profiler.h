@@ -14,18 +14,17 @@
 #pragma once
 
 #include <string>
-#ifdef WITH_GPERFTOOLS
+#ifdef WITH_PERFTOOLS
 #include <memory>
 #include "macros.h"
 #endif
 
 namespace turbo_transformers {
 namespace core {
-#ifdef WITH_GPERFTOOLS
+#ifdef WITH_PERFTOOLS
 class Profiler {
  public:
   ~Profiler();
-
   static Profiler& GetInstance() {
     static Profiler instance;
     return instance;
@@ -43,10 +42,9 @@ class Profiler {
 
   DISABLE_COPY_AND_ASSIGN(Profiler);
 };
-
+#endif
 void EnableGperf(const std::string& profile_file);
 void DisableGperf();
-#endif
 
 }  // namespace core
 }  // namespace turbo_transformers

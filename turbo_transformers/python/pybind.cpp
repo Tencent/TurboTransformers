@@ -67,8 +67,8 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
 
   m.def("set_stderr_verbose_level",
         [](int v) { loguru::g_stderr_verbosity = v; });
-  m.def("enable_gperf", &core::EnableGperf);
-  m.def("disable_gperf", &core::DisableGperf);
+  m.def("enable_perf", &core::EnableGperf);
+  m.def("disable_perf", &core::DisableGperf);
   m.def("set_num_threads", &core::SetNumThreads);
 
   py::class_<core::Tensor>(m, "Tensor")

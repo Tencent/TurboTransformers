@@ -37,7 +37,10 @@ class PositionwiseFeedForward {
   }
   void EnforceShapeAndType() const;
 
-  void operator()(const core::Tensor &input_tensor, core::Tensor *output) const;
+  // according to profiling results on Intel 61xx, is_trans_weight = true is
+  // faster
+  void operator()(const core::Tensor &input_tensor, core::Tensor *output,
+                  bool is_trans_weight = true) const;
 
  private:
   core::Tensor dense_weight_1_;
