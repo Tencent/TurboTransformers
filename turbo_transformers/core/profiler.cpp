@@ -50,7 +50,7 @@ struct Profiler::ProfilerImpl {
     }
   }
   void print_results() const {
-    std::cerr << "Time line in print_results " << std::endl;
+    std::cerr << std::endl << "Time line: " << std::endl;
     for (auto it = timer_map_.begin(); it != timer_map_.end(); ++it) {
       std::cerr << it->first << " , " << it->second << std::endl;
     }

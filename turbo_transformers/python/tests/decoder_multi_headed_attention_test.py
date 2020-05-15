@@ -70,22 +70,30 @@ def create_test(batch_size,
                     self.model_dim),
                 dtype=torch.float32,
                 device=self.test_device)
-            turbo_multi_headed_attention = turbo_transformers.MultiHeadedAttention.from_onmt(
-                onmt_multi_headed_attention, torch_layernorm)
+
+            turbo_attn_trans = turbo_transformers.MultiHeadedAttention.from_onmt(
+                onmt_multi_headed_attention,
+                torch_layernorm,
+                is_trans_weight=True)
+            turbo_attn_notrans = turbo_transformers.MultiHeadedAttention.from_onmt(
+                onmt_multi_headed_attention,
+                torch_layernorm,
+                is_trans_weight=False)
 
             if with_quantize_dynamic:
                 self.q_onmt_multi_headed_attention = torch.quantization.quantize_dynamic(
                     onmt_multi_headed_attention)
-            return onmt_multi_headed_attention, torch_layernorm, turbo_multi_headed_attention, Q, K, V
+            return onmt_multi_headed_attention, torch_layernorm, turbo_attn_trans, turbo_attn_notrans, Q, K, V
 
         def check_torch_and_turbo(self, use_cuda, num_iter=1):
             if use_cuda:
                 return
-            onmt_multi_headed_attention, torch_layernorm, turbo_multi_headed_attention, Q, K, V = \
+
+            onmt_multi_headed_attention, torch_layernorm, turbo_attn_trans, turbo_attn_notrans, Q, K, V = \
                 self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
+            info = f"\"({device}, {pre_layernorm}, {attn_type}, {batch_size}, {key_seq_len:03}, {query_seq_len:03})\""
 
-            info = f"\"({pre_layernorm}, {attn_type}, {batch_size}, {key_seq_len:03}, {query_seq_len:03})\""
             attention_mask = torch.zeros(
                 (batch_size, 1, key_seq_len if (attn_type == "context") else
                  query_seq_len),  #TODO mask shape is diff for context and self
@@ -113,8 +121,8 @@ def create_test(batch_size,
             else:
                 onmt_output = onmt_multi_headed_attention_result[0]
             print(
-                f"ONMT Multi Headed Attention {info} ",
-                f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
+                f"Multi Headed Attention {info} ONMT, QPS,{torch_qps}, time, {torch_time_consume}"
+            )
 
             # benchmark quantize
             if with_quantize_dynamic:
@@ -143,14 +151,40 @@ def create_test(batch_size,
 
                 # print(self.q_onmt_multi_headed_attention.linear_keys._packed_params._packed_params)
                 print(
-                    f"Quantized ONMT Multi Headed Attention {info} ",
-                    f"{device} Torch QPS, {q_torch_qps}, time, {q_torch_time_consume}"
+                    f"Multi Headed Attention {info} Q-ONMT, QPS, {q_torch_qps}, time, {q_torch_time_consume}"
                 )
 
             # benchmarking turbo
             turbo_attention_mask = attention_mask.float() * -1e18
 
-            turob_model = lambda: turbo_multi_headed_attention(
+            turbo_model_trans = lambda: turbo_attn_trans(K,
+                                                         V,
+                                                         Q,
+                                                         turbo_attention_mask,
+                                                         layer_cache=None,
+                                                         attn_type=attn_type,
+                                                         pre_layernorm=
+                                                         pre_layernorm,
+                                                         post_add=post_add,
+                                                         is_trans_weight=True)
+
+            # with turbo_transformers.pref_guard("pref_test") as perf:
+            turbo_result, turbo_qps, turbo_time_consume = \
+                test_helper.run_model(turbo_model_trans, use_cuda,
+                                    num_iter)
+
+            turbo_output, turbo_attns = turbo_result
+            print(
+                f"Multi Headed Attention {info} Turbo Trans, QPS, {turbo_qps}, time, {turbo_time_consume}"
+            )
+            self.assertTrue(
+                torch.max(torch.abs(onmt_output - turbo_output)) < (
+                    1e-3 if use_cuda else 1e-4))
+            self.assertTrue(
+                torch.max(torch.abs(onmt_attns - turbo_attns)) < (
+                    1e-3 if use_cuda else 1e-4))
+
+            turbo_model_notrans = lambda: turbo_attn_notrans(
                 K,
                 V,
                 Q,
@@ -158,24 +192,24 @@ def create_test(batch_size,
                 layer_cache=None,
                 attn_type=attn_type,
                 pre_layernorm=pre_layernorm,
-                post_add=post_add)
+                post_add=post_add,
+                is_trans_weight=False)
 
             with turbo_transformers.pref_guard("pref_test") as perf:
-                turbo_result, turbo_qps, turbo_time_consume = \
-                    test_helper.run_model(turob_model, use_cuda,
+                turbo_result, turbo_qps, turbo_time_consume_notrans = \
+                    test_helper.run_model(turbo_model_notrans, use_cuda,
                                         num_iter)
 
-            turbo_output, turbo_attns = turbo_result
+            turbo_output_notrans, turbo_attns_notrans = turbo_result
             print(
-                f"Turbo Multi Headed Attention {info}",
-                f" {device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}"
+                f"Multi Headed Attention {info} Turbo NoTrans, QPS,{turbo_qps}, time, {turbo_time_consume_notrans}"
             )
 
             self.assertTrue(
-                torch.max(torch.abs(onmt_output - turbo_output)) < (
+                torch.max(torch.abs(onmt_output - turbo_output_notrans)) < (
                     1e-3 if use_cuda else 1e-4))
             self.assertTrue(
-                torch.max(torch.abs(onmt_attns - turbo_attns)) < (
+                torch.max(torch.abs(onmt_attns - turbo_attns_notrans)) < (
                     1e-3 if use_cuda else 1e-4))
 
             if with_quantize_dynamic:
@@ -194,7 +228,7 @@ def create_test(batch_size,
                 self.check_torch_and_turbo(use_cuda=True)
 
     globals(
-    )[f"TestMultiHeadedAttention{batch_size}_{key_seq_len:3}_{query_seq_len:3}_{attn_type}_{pre_layernorm}"] = TestMultiHeadedAttention
+    )[f"TestMultiHeadedAttention{batch_size}_{key_seq_len:3}_{query_seq_len:3}_{attn_type}_{pre_layernorm}_{post_add}"] = TestMultiHeadedAttention
 
 
 with open(fname, "w") as fh:
@@ -202,25 +236,28 @@ with open(fname, "w") as fh:
 
 for post_add in [False]:
     for pre_layernorm in [False]:
-        for attn_type in ["self", "context"]:
-            for batch_size in [1, 2]:
-                for key_seq_len in [10, 16, 20, 30]:
-                    for query_seq_len in [10, 16, 20, 30]:
-                        create_test(batch_size,
-                                    key_seq_len,
-                                    query_seq_len,
-                                    attn_type,
-                                    pre_layernorm,
-                                    post_add,
-                                    with_quantize_dynamic=True)
-# for post_add in [False]:
-#     for pre_layernorm in [False]:
-#         for attn_type in ["self", "context"]:
-#             for batch_size in [1]:
-#                 for key_seq_len in [30]:
-#                     for query_seq_len in [1]:
-# create_test(batch_size, key_seq_len, query_seq_len,
-#             attn_type, pre_layernorm, post_add, with_quantize_dynamic=True)
+        for batch_size in [4]:
+            for query_seq_len in [1, 2]:
+                create_test(batch_size,
+                            query_seq_len,
+                            query_seq_len,
+                            "self",
+                            pre_layernorm,
+                            post_add,
+                            with_quantize_dynamic=True)
+
+for post_add in [False, True]:
+    for pre_layernorm in [False, Ture]:
+        for batch_size in [4]:
+            for key_seq_len in [10, 20, 30, 40, 50]:
+                for query_seq_len in [1, 2]:
+                    create_test(batch_size,
+                                key_seq_len,
+                                query_seq_len,
+                                "context",
+                                pre_layernorm,
+                                post_add,
+                                with_quantize_dynamic=True)
 
 if __name__ == '__main__':
     unittest.main()

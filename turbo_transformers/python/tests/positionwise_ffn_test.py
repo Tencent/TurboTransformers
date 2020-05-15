@@ -109,8 +109,8 @@ def create_test(batch_size, input_len):
 with open(fname, "w") as fh:
     fh.write(", torch, turbo_trans, turbo_notrans\n")
 
-for batch_size in [1, 2]:
-    for input_len in [10, 16, 20, 30]:
+for batch_size in [4]:
+    for input_len in [10, 20, 30, 40, 50]:
         create_test(batch_size, input_len)
 
 if __name__ == '__main__':

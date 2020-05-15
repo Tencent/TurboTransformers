@@ -116,7 +116,7 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
 
                 print(
                     f"ONMT Quantized Deocder {info} ",
-                    f"{deivce_type} QPS, {torch_qps}, time, {torch_time_consume}"
+                    f"{deivce_type} QPS, {quantized_torch_qps}, time, {quantized_torch_time_consume}"
                 )
 
                 # print(onmt_mid)
@@ -175,9 +175,9 @@ with open(fname, "w") as fh:
     fh.write(", torch, q_torch, turbo_transformers\n")
 
 for quantize in [True]:
-    for batch_size in [1, 2]:
-        for src_length in [10, 20, 30]:
-            for T in [1, 2]:
+    for batch_size in [4]:
+        for src_length in [10, 20, 30, 40, 50]:
+            for T in [1, 2, 40]:
                 create_test(batch_size, src_length, T, quantize)
 
 if __name__ == '__main__':
