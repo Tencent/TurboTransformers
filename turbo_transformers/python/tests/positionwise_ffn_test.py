@@ -23,7 +23,7 @@ from onmt.modules.position_ffn import PositionwiseFeedForward
 sys.path.append(os.path.dirname(__file__))
 import test_helper
 
-fname = "ppf.txt"
+fname = "ffn.txt"
 
 
 def create_test(batch_size, input_len):
@@ -33,6 +33,7 @@ def create_test(batch_size, input_len):
                    torch.device('cpu:0')
             if not use_cuda:
                 torch.set_num_threads(1)
+                turbo_transformers.set_num_threads(1)
 
             self.model_dim = 1024
             self.d_ff = 4096
@@ -43,39 +44,56 @@ def create_test(batch_size, input_len):
             if use_cuda:
                 onmt_ffn.to(self.test_device)
 
-            turbo_ffn = turbo_transformers.PositionwiseFeedForward.from_onmt(
-                onmt_ffn)
+            turbo_ffn_trans = turbo_transformers.PositionwiseFeedForward.from_onmt(
+                onmt_ffn, is_trans_weight=True)
+            turbo_ffn_notrans = turbo_transformers.PositionwiseFeedForward.from_onmt(
+                onmt_ffn, is_trans_weight=False)
             # (batch_size, input_len, model_dim)
             inputs = torch.rand(size=(batch_size, input_len, self.model_dim),
                                 dtype=torch.float32,
                                 device=self.test_device)
-            return onmt_ffn, turbo_ffn, inputs
+            return onmt_ffn, turbo_ffn_trans, turbo_ffn_notrans, inputs
 
         def check_torch_and_turbo(self, use_cuda, num_iter=1):
-            onmt_ffn, turbo_ffn, inputs = self.init_data(use_cuda)
+            onmt_ffn, turbo_ffn_trans, turbo_ffn_notrans, inputs = self.init_data(
+                use_cuda)
             device = "GPU" if use_cuda else "CPU"
             onmt_model = lambda: onmt_ffn(inputs)
             onmt_model_result, torch_qps, torch_time_consume = \
                 test_helper.run_model(onmt_model, use_cuda, num_iter)
 
             print(
-                f"ONMT PositionwiseFeedForward \"({batch_size}, {input_len:03})\" ",
-                f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
+                f"PositionwiseFeedForward \"({batch_size}, {input_len:03})\" ",
+                f"{device} ONMT QPS, {torch_qps}, time, {torch_time_consume}")
 
-            turbo_model = lambda: turbo_ffn(inputs)
-            turbo_model_result, turbo_qps, turbo_time_consume = \
-                test_helper.run_model(turbo_model, use_cuda, num_iter)
+            turbo_model_trans = lambda: turbo_ffn_trans(inputs,
+                                                        is_trans_weight=True)
+            with turbo_transformers.pref_guard("gpref_test") as perf:
+                turbo_model_result, turbo_qps_trans, turbo_time_consume_trans = \
+                    test_helper.run_model(turbo_model_trans, use_cuda, num_iter)
 
             print(
-                f"ONMT PositionwiseFeedForward \"({batch_size}, {input_len:03})\" ",
-                f"{device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}")
+                f"PositionwiseFeedForward \"({batch_size}, {input_len:03})\" ",
+                f"{device} Turbo Trans QPS, {turbo_qps_trans}, time, {turbo_time_consume_trans}"
+            )
 
+            turbo_model_notrans = lambda: turbo_ffn_notrans(
+                inputs, is_trans_weight=False)
+            with turbo_transformers.pref_guard("gpref_test") as perf:
+                turbo_model_result, turbo_qps_notrans, turbo_time_consume_notrans = \
+                    test_helper.run_model(turbo_model_notrans, use_cuda, num_iter)
+
+            print(
+                f"PositionwiseFeedForward Notrans \"({batch_size}, {input_len:03})\" ",
+                f"{device} Turbo NoTrans QPS, {turbo_qps_notrans}, time, {turbo_time_consume_notrans}"
+            )
             self.assertTrue(
                 torch.max(torch.abs(turbo_model_result - onmt_model_result)) <
                 (1e-3 if use_cuda else 1e-4))
+
             with open(fname, "a") as fh:
                 fh.write(
-                    f"\"({batch_size},{input_len:03})\", {torch_qps}, {turbo_qps}\n"
+                    f"\"({batch_size},{input_len:03})\", {torch_qps}, {turbo_qps_trans}, {turbo_qps_notrans}\n"
                 )
 
         def test_positionwise_feed_forward(self):
@@ -89,10 +107,10 @@ def create_test(batch_size, input_len):
 
 
 with open(fname, "w") as fh:
-    fh.write(", torch, turbo_transformers\n")
+    fh.write(", torch, turbo_trans, turbo_notrans\n")
 
-for batch_size in [1, 2]:
-    for input_len in [10, 16, 20, 30]:
+for batch_size in [4]:
+    for input_len in [10, 20, 30, 40, 50]:
         create_test(batch_size, input_len)
 
 if __name__ == '__main__':

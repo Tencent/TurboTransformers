@@ -50,6 +50,7 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                  attn_type: str = None,
                  pre_layernorm: bool = False,
                  post_add: bool = False,
+                 is_trans_weight: bool = False,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None,
                  attn: Optional[cxx.Tensor] = None):
@@ -76,15 +77,16 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
 
         super(MultiHeadedAttention,
               self).__call__(key_tensor, value_tensor, query_tensor, mask,
-                             attn_type, output, attn, pre_layernorm, post_add)
+                             attn_type, output, attn, pre_layernorm, post_add,
+                             is_trans_weight)
 
         return convert_returns_as_type(output,
                                        return_type), convert_returns_as_type(
                                            attn, return_type)
 
     @staticmethod
-    def from_onmt(multi_headed_attn: OnmtMultiHeadedAttention):
-        params = {k: v for k, v in multi_headed_attn.named_parameters()}
+    def pack_parameter(multi_headed_attn: OnmtMultiHeadedAttention,
+                       is_trans_weight: Optional[bool] = False):
         # linear_keys.weight
         # linear_keys.bias
         # linear_values.weight
@@ -93,65 +95,66 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         # linear_query.bias
         # final_linear.weight
         # final_linear.bias
+        attn_params = {k: v for k, v in multi_headed_attn.named_parameters()}
         if multi_headed_attn.max_relative_positions != 0:
             raise "multi_headed_attn's max_relative_positions should be 0!"
 
         # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
-        qkv_weight = torch.clone(
-            torch.t(
-                torch.cat((params['linear_query.weight'],
-                           params['linear_keys.weight'],
-                           params['linear_values.weight']), 0)))
+        if is_trans_weight:
+            qkv_weight = torch.cat((attn_params['linear_query.weight'],
+                                    attn_params['linear_keys.weight'],
+                                    attn_params['linear_values.weight']), 0)
+            k_w = convert2tt_tensor(attn_params['linear_keys.weight'])
+            k_v = convert2tt_tensor(attn_params['linear_values.weight'])
+            k_q = convert2tt_tensor(attn_params['linear_query.weight'])
+        else:
+            qkv_weight = torch.clone(
+                torch.t(
+                    torch.cat((attn_params['linear_query.weight'],
+                               attn_params['linear_keys.weight'],
+                               attn_params['linear_values.weight']), 0)))
+            k_w = convert2tt_tensor(
+                torch.clone(torch.t(attn_params['linear_keys.weight'])))
+            k_v = convert2tt_tensor(
+                torch.clone(torch.t(attn_params['linear_values.weight'])))
+            k_q = convert2tt_tensor(
+                torch.clone(torch.t(attn_params['linear_query.weight'])))
+
         qkv_bias = torch.cat(
-            (params['linear_query.bias'], params['linear_keys.bias'],
-             params['linear_values.bias']), 0)
+            (attn_params['linear_query.bias'], attn_params['linear_keys.bias'],
+             attn_params['linear_values.bias']), 0)
+        return (k_w, convert2tt_tensor(attn_params['linear_keys.bias']), k_v,
+                convert2tt_tensor(attn_params['linear_values.bias']), k_q,
+                convert2tt_tensor(attn_params['linear_query.bias']),
+                convert2tt_tensor(
+                    torch.clone(torch.t(attn_params['final_linear.weight']))),
+                convert2tt_tensor(attn_params['final_linear.bias']),
+                convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias))
+
+    @staticmethod
+    def from_onmt(multi_headed_attn: OnmtMultiHeadedAttention,
+                  is_trans_weight: bool = False):
+        attn_params = {k: v for k, v in multi_headed_attn.named_parameters()}
+        if multi_headed_attn.max_relative_positions != 0:
+            raise "multi_headed_attn's max_relative_positions should be 0!"
+
         with torch.no_grad():
             att = MultiHeadedAttention(
-                convert2tt_tensor(
-                    torch.clone(torch.t(params['linear_keys.weight']))),
-                convert2tt_tensor(params['linear_keys.bias']),
-                convert2tt_tensor(
-                    torch.clone(torch.t(params['linear_values.weight']))),
-                convert2tt_tensor(params['linear_values.bias']),
-                convert2tt_tensor(
-                    torch.clone(torch.t(params['linear_query.weight']))),
-                convert2tt_tensor(params['linear_query.bias']),
-                convert2tt_tensor(
-                    torch.clone(torch.t(params['final_linear.weight']))),
-                convert2tt_tensor(params['final_linear.bias']),
-                convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
+                *(MultiHeadedAttention.pack_parameter(attn_params,
+                                                      is_trans_weight)),
                 multi_headed_attn.head_count)
             return att
 
     @staticmethod
     def from_onmt(multi_headed_attn: OnmtMultiHeadedAttention,
-                  layer_norm: TorchLayerNorm):
-        attn_params = {k: v for k, v in multi_headed_attn.named_parameters()}
+                  layer_norm: TorchLayerNorm,
+                  is_trans_weight: bool = False):
         ln_params = {k: v for k, v in layer_norm.named_parameters()}
-
-        qkv_weight = torch.clone(
-            torch.t(
-                torch.cat((attn_params['linear_query.weight'],
-                           attn_params['linear_keys.weight'],
-                           attn_params['linear_values.weight']), 0)))
-        qkv_bias = torch.cat(
-            (attn_params['linear_query.bias'], attn_params['linear_keys.bias'],
-             attn_params['linear_values.bias']), 0)
+        attn_params = {k: v for k, v in multi_headed_attn.named_parameters()}
         with torch.no_grad():
             att = MultiHeadedAttention(
-                convert2tt_tensor(
-                    torch.clone(torch.t(attn_params['linear_keys.weight']))),
-                convert2tt_tensor(attn_params['linear_keys.bias']),
-                convert2tt_tensor(
-                    torch.clone(torch.t(attn_params['linear_values.weight']))),
-                convert2tt_tensor(attn_params['linear_values.bias']),
-                convert2tt_tensor(
-                    torch.clone(torch.t(attn_params['linear_query.weight']))),
-                convert2tt_tensor(attn_params['linear_query.bias']),
-                convert2tt_tensor(
-                    torch.clone(torch.t(attn_params['final_linear.weight']))),
-                convert2tt_tensor(attn_params['final_linear.bias']),
-                convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
+                *(MultiHeadedAttention.pack_parameter(multi_headed_attn,
+                                                      is_trans_weight)),
                 convert2tt_tensor(ln_params['weight']),
                 convert2tt_tensor(ln_params['bias']),
                 multi_headed_attn.head_count)
@@ -159,17 +162,21 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
 
 
 class PositionwiseFeedForward(cxx.PositionwiseFeedForward):
-    def __call__(self,
-                 input_tensor: AnyTensor,
-                 return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
+    def __call__(
+            self,
+            input_tensor: AnyTensor,
+            return_type: Optional[ReturnType] = None,
+            is_trans_weight: Optional[bool] = True,  #Intel 61xx True is faster
+            output: Optional[cxx.Tensor] = None):
         input_tensor = try_convert(input_tensor)
         output = create_empty_if_none(output)
-        super(PositionwiseFeedForward, self).__call__(input_tensor, output)
+        super(PositionwiseFeedForward, self).__call__(input_tensor, output,
+                                                      is_trans_weight)
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
-    def from_onmt(position_wise_ffn: OnmtPositionwiseFeedForward):
+    def from_onmt(position_wise_ffn: OnmtPositionwiseFeedForward,
+                  is_trans_weight: Optional[bool] = True):
         params = {k: v for k, v in position_wise_ffn.named_parameters()}
         # w_1.weight
         # w_1.bias
@@ -178,11 +185,17 @@ class PositionwiseFeedForward(cxx.PositionwiseFeedForward):
         # layer_norm.weight
         # layer_norm.bias
 
+        # Note that torch's weights of linear layer is transposed
+        if is_trans_weight:
+            w_1 = convert2tt_tensor(params['w_1.weight'])
+            w_2 = convert2tt_tensor(params['w_2.weight'])
+        else:
+            w_1 = convert2tt_tensor(torch.clone(torch.t(params['w_1.weight'])))
+            w_2 = convert2tt_tensor(torch.clone(torch.t(params['w_2.weight'])))
+
         with torch.no_grad():
             ffn = PositionwiseFeedForward(
-                convert2tt_tensor(torch.clone(torch.t(params['w_1.weight']))),
-                convert2tt_tensor(params['w_1.bias']),
-                convert2tt_tensor(torch.clone(torch.t(params['w_2.weight']))),
+                w_1, convert2tt_tensor(params['w_1.bias']), w_2,
                 convert2tt_tensor(params['w_2.bias']),
                 convert2tt_tensor(params['layer_norm.weight']),
                 convert2tt_tensor(params['layer_norm.bias']))
