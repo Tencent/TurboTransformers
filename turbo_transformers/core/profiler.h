@@ -35,6 +35,8 @@ class Profiler {
   void start_profile(const std::string& ctx_name);
   void end_profile(const std::string& ctx_name);
   void print_results() const;
+  void enable(const std::string& profile_name);
+  void disable();
 
  private:
   Profiler();

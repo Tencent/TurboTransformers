@@ -26,7 +26,7 @@
 namespace turbo_transformers {
 namespace core {
 #ifdef WITH_PERFTOOLS
-static bool gProfileStarted = false;
+static bool gProfileEnabled = false;
 
 struct Profiler::ProfilerImpl {
   void start_profile(const std::string& ctx_name) {
@@ -50,7 +50,7 @@ struct Profiler::ProfilerImpl {
     }
   }
   void print_results() const {
-    std::cerr << std::endl << "Time line: " << std::endl;
+    std::cerr << std::endl << profile_name_ << " Time line: " << std::endl;
     for (auto it = timer_map_.begin(); it != timer_map_.end(); ++it) {
       std::cerr << it->first << " , " << it->second << std::endl;
     }
@@ -61,35 +61,48 @@ struct Profiler::ProfilerImpl {
       clock_stack_.pop();
     }
   }
+  void set_name(const std::string& profile_name) {
+    profile_name_ = profile_name;
+  }
 
  private:
   std::unordered_map<std::string, double> timer_map_;
   std::stack<std::chrono::time_point<std::chrono::system_clock>> clock_stack_;
+  std::string profile_name_;
 };
 
 void Profiler::start_profile(const std::string& ctx_name) {
-  profiler_->start_profile(ctx_name);
+  if (gProfileEnabled) profiler_->start_profile(ctx_name);
 }
 
 void Profiler::end_profile(const std::string& ctx_name) {
-  profiler_->end_profile(ctx_name);
+  if (gProfileEnabled) profiler_->end_profile(ctx_name);
 }
 
-void Profiler::print_results() const { profiler_->print_results(); }
+void Profiler::print_results() const {
+  if (gProfileEnabled) {
+    profiler_->print_results();
+  }
+}
 
 void Profiler::clear() { profiler_->clear(); }
+
+void Profiler::enable(const std::string& profile_name) {
+  gProfileEnabled = true;
+  profiler_->set_name(profile_name);
+}
+void Profiler::disable() { gProfileEnabled = false; }
 
 Profiler::~Profiler() = default;
 Profiler::Profiler() : profiler_(new ProfilerImpl()) {}
 
 #endif
-void EnableGperf(const std::string& profile_file) {
+void EnableGperf(const std::string& profile_name) {
 #ifdef WITH_PERFTOOLS
-  LOG_S(1) << "gperf tools enabled." << profile_file;
-  TT_ENFORCE_EQ(gProfileStarted, false, "Currently the gPerf is enabled.");
+  LOG_S(1) << "gperf tools enabled. " << profile_name;
   auto& profile_ctx = core::Profiler::GetInstance();
   profile_ctx.clear();
-  gProfileStarted = true;
+  profile_ctx.enable(profile_name);
 #else
   LOG_S(WARNING) << "turbo_transformers is not compiled with gperftools.";
 #endif
@@ -97,10 +110,9 @@ void EnableGperf(const std::string& profile_file) {
 
 void DisableGperf() {
 #ifdef WITH_PERFTOOLS
-  TT_ENFORCE_EQ(gProfileStarted, true, "Currently the gPerf is disabled.");
-  gProfileStarted = false;
   auto& profile_ctx = core::Profiler::GetInstance();
   profile_ctx.print_results();
+  profile_ctx.disable();
 #else
   LOG_S(WARNING) << "turbo_transformers is not compiled with gperftools.";
 #endif

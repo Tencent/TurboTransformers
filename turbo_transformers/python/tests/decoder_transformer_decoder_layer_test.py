@@ -137,8 +137,9 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                                                      step=None,
                                                      future=False)
 
-            turbo_result, turbo_qps, turbo_time_consume = \
-                test_helper.run_model(turbo_model, use_cuda, num_iter)
+            with turbo_transformers.pref_guard(info) as perf:
+                turbo_result, turbo_qps, turbo_time_consume = \
+                    test_helper.run_model(turbo_model, use_cuda, num_iter)
 
             turbo_mid, turbo_attns, _ = turbo_result
 
@@ -178,7 +179,7 @@ with open(fname, "w") as fh:
 for quantize in [True]:
     for batch_size in [4]:
         for src_length in [10, 20, 30, 40, 50]:
-            for T in [1, 2, 40]:
+            for T in [1, 2]:
                 create_test(batch_size, src_length, T, quantize)
 
 if __name__ == '__main__':

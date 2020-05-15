@@ -53,7 +53,7 @@ void PositionwiseFeedForward::operator()(const core::Tensor& input_tensor,
   auto input_len = input_tensor.shape(1);
 
 #ifdef WITH_PERFTOOLS
-  profile_ctx.start_profile("Copy");
+  profile_ctx.start_profile("ffn/Copy");
 #endif
   // allocate memory for temp data
   core::Tensor input_tensor_copy(nullptr);
@@ -68,39 +68,39 @@ void PositionwiseFeedForward::operator()(const core::Tensor& input_tensor,
   output_tensor->Reshape<float>({batch_size, input_len, model_dim}, devType,
                                 devId);
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("Copy");
-  profile_ctx.start_profile("LayerNorm");
+  profile_ctx.end_profile("ffn/Copy");
+  profile_ctx.start_profile("ffn/LayerNorm");
 #endif
   kernels::LayerNorm<float>(layer_norm_weight_, layer_norm_bias_,
                             &input_tensor_copy);
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("LayerNorm");
-  profile_ctx.start_profile("MatMul1");
+  profile_ctx.end_profile("ffn/LayerNorm");
+  profile_ctx.start_profile("ffn/gemm0");
 #endif
   kernels::MatMul(input_tensor_copy, false, dense_weight_1_, is_trans_weight,
                   1.0,  // input (b*seq, model) X dense_weight_1_ (model_dim,
                         // d_ff) -> temp_tensor (B*seq, d_ff)
                   &temp_tensor, 0.0);
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("MatMul1");
-  profile_ctx.start_profile("AddBiasAct");
+  profile_ctx.end_profile("ffn/gemm0");
+  profile_ctx.start_profile("fnn/AddBiasAct");
 #endif
   kernels::AddBiasAct<float, types::ActivationType::Relu>(dense_bias_1_,
                                                           &temp_tensor);
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("AddBiasAct");
-  profile_ctx.start_profile("MatMul2");
+  profile_ctx.end_profile("ffn/AddBiasAct");
+  profile_ctx.start_profile("ffn/gemm1");
 #endif
   kernels::MatMul(temp_tensor, false, dense_weight_2_, is_trans_weight, 1.0,
                   &input_tensor_copy, 0.0);
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("MatMul2");
-  profile_ctx.start_profile("AddInputBias");
+  profile_ctx.end_profile("ffn/gemm1");
+  profile_ctx.start_profile("ffn/AddInputBias");
 #endif
   kernels::AddInputBias(input_tensor, input_tensor_copy, dense_bias_2_,
                         output_tensor);
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("AddInputBias");
+  profile_ctx.end_profile("ffn/AddInputBias");
   profile_ctx.end_profile("PositionwiseFeedForward");
 #endif
 }

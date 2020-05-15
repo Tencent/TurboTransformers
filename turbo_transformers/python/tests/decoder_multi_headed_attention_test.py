@@ -25,9 +25,6 @@ import test_helper
 
 fname = "tt_decoder_multi_headed_attention.txt"
 
-turbo_transformers.set_num_threads(4)
-turbo_transformers.set_stderr_verbose_level(2)
-
 
 def create_test(batch_size,
                 key_seq_len,
@@ -251,7 +248,7 @@ for post_add in [False]:
                             with_quantize_dynamic=True)
 
 for post_add in [False, True]:
-    for pre_layernorm in [False, Ture]:
+    for pre_layernorm in [False, True]:
         for batch_size in [4]:
             for key_seq_len in [10, 20, 30, 40, 50]:
                 for query_seq_len in [1, 2]:
