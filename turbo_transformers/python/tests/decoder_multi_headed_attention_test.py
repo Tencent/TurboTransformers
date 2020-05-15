@@ -25,6 +25,9 @@ import test_helper
 
 fname = "tt_decoder_multi_headed_attention.txt"
 
+turbo_transformers.set_num_threads(4)
+turbo_transformers.set_stderr_verbose_level(2)
+
 
 def create_test(batch_size,
                 key_seq_len,
@@ -201,6 +204,7 @@ def create_test(batch_size,
                                         num_iter)
 
             turbo_output_notrans, turbo_attns_notrans = turbo_result
+
             print(
                 f"Multi Headed Attention {info} Turbo NoTrans, QPS,{turbo_qps}, time, {turbo_time_consume_notrans}"
             )

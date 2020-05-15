@@ -14,6 +14,7 @@
 #pragma once
 
 #include <string>
+
 #ifdef WITH_PERFTOOLS
 #include <memory>
 #include "macros.h"
@@ -21,6 +22,7 @@
 
 namespace turbo_transformers {
 namespace core {
+
 #ifdef WITH_PERFTOOLS
 class Profiler {
  public:

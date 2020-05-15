@@ -136,6 +136,7 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                                                      layer_cache=None,
                                                      step=None,
                                                      future=False)
+
             turbo_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
 

@@ -68,7 +68,11 @@ endif ()
 message(STATUS "Blas provider is ${BLAS_PROVIDER}")
 
 if (WITH_PROFILER)
+<<<<<<< HEAD
     add_definitions(-DWITH_PERFTOOLS)
+=======
+    add_definitions(-DWITH_GPERFTOOLS)
+>>>>>>> 84cb78a612ae209df221569c476c18442117b73e
 endif ()
 
 IF (UNIX AND NOT APPLE)

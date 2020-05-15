@@ -147,6 +147,7 @@ void MultiHeadedAttention::operator()(
     kernels::AddBiasTransposeForScore(q_out1, q_bias_, &q_out2);
     kernels::AddBiasTransposeForScore(v_out1, v_bias_, &v_out2);
     kernels::AddBiasTransposeForScore(k_out1, k_bias_, &k_out2);
+
 #ifdef WITH_PERFTOOLS
     profile_ctx.end_profile("AddBiasTransposeForScore3");
 #endif
@@ -158,6 +159,7 @@ void MultiHeadedAttention::operator()(
     core::Tensor& qkv_out1 = qkv_out1_temp.GetTensor(devctx);
     qkv_out1.Reshape<float>({3, batch_size, query_seq_length, hidden_size},
                             devtype, devid);
+
 #ifdef WITH_PERFTOOLS
     profile_ctx.start_profile("gemm_fused");
 #endif
@@ -174,6 +176,7 @@ void MultiHeadedAttention::operator()(
       kernels::MatMul(query_tensor, false, qkv_weight_, is_trans_weight, 1.0,
                       &qkv_out1, 0.0);
     }
+
 #ifdef WITH_PERFTOOLS
     profile_ctx.end_profile("gemm_fused");
     profile_ctx.start_profile("SplitAddBiasTransposeForScore");
@@ -183,7 +186,6 @@ void MultiHeadedAttention::operator()(
         {3, batch_size, num_attention_heads_, query_seq_length, size_per_head},
         devtype, devid);
     kernels::SplitAddBiasTransposeForScore(&qkv_out2, qkv_out1, qkv_bias_);
-
     q_ptr =
         new core::Tensor(qkv_out2[0]);  // copy temporary tensor to heap space.
     k_ptr = new core::Tensor(qkv_out2[1]);
@@ -205,9 +207,14 @@ void MultiHeadedAttention::operator()(
        key_seq_length},  // query_seq_length = from_seq_Len
       devtype, devid);
 
+#ifdef WITH_GPERFTOOLS
+  profile_ctx.start_profile("batch_gemm0");
+#endif
+
   const float scaler = 1.0f / std::sqrt(static_cast<float>(size_per_head));
   kernels::BatchMatMul(*q_ptr, false, *k_ptr, true, scaler, att_score,
                        0.0);  //(B, num_head, q_len, k_len)
+
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("batch_gemm0");
 #endif
@@ -221,6 +228,7 @@ void MultiHeadedAttention::operator()(
   kernels::ApplyMaskAndSoftmax(att_score,
                                attention_mask,  //(B, num_head, q_len, k_len)
                                1.0);
+
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("ApplyMaskAndSoftmax");
 #endif
@@ -230,12 +238,14 @@ void MultiHeadedAttention::operator()(
   context_layer.Reshape<float>(
       {batch_size, num_attention_heads_, query_seq_length, size_per_head},
       devtype, devid);
+
 #ifdef WITH_PERFTOOLS
   profile_ctx.start_profile("batch_gemm1");
 #endif
 
   kernels::BatchMatMul(*att_score, false, *v_ptr, false, 1.0, &context_layer,
                        0.0);
+
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("batch_gemm1");
   profile_ctx.start_profile("TransposeForScore");
@@ -251,6 +261,7 @@ void MultiHeadedAttention::operator()(
   // output = self.final_linear(context)
   output->Reshape<float>({batch_size, query_seq_length, hidden_size}, devtype,
                          devid);
+
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("TransposeForScore");
   profile_ctx.start_profile("gemm5");
@@ -266,6 +277,7 @@ void MultiHeadedAttention::operator()(
   } else {
     kernels::AddInputBias(*output, query_tensor, dense_bias_, output);
   }
+
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("AddBias");
   profile_ctx.end_profile("MultiHeadedAttention_" + attn_type);
