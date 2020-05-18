@@ -167,6 +167,9 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
     @staticmethod
     def from_torch(attention: TorchBertAttention,
                    is_trans_weight: bool = False):
+        """
+        load an attn model from huggingface bert attention model.
+        """
         params = {k: v for k, v in attention.named_parameters()}
         with torch.no_grad():
             if is_trans_weight:
