@@ -23,6 +23,8 @@ from .return_type import convert_returns_as_type, ReturnType
 from .utils import try_convert, convert2tt_tensor, create_empty_if_none, AnyTensor
 
 from onmt.modules.multi_headed_attn import MultiHeadedAttention as OnmtMultiHeadedAttention
+from transformers.modeling_bert import BertAttention as TorchBertAttention
+
 from onmt.modules.position_ffn import PositionwiseFeedForward as OnmtPositionwiseFeedForward
 from onmt.decoders.transformer import TransformerDecoderLayer as OnmtTransformerDecoderLayer
 from onmt.decoders.transformer import TransformerDecoder as OnmtTransformerDecoder
@@ -49,7 +51,8 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                  layer_cache: Optional[dict] = None,
                  attn_type: str = None,
                  pre_layernorm: bool = False,
-                 post_add: bool = False,
+                 post_layernorm: bool = False,
+                 post_add_input: bool = False,
                  is_trans_weight: bool = False,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None,
@@ -77,8 +80,8 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
 
         super(MultiHeadedAttention,
               self).__call__(key_tensor, value_tensor, query_tensor, mask,
-                             attn_type, output, attn, pre_layernorm, post_add,
-                             is_trans_weight)
+                             attn_type, output, attn, pre_layernorm,
+                             post_layernorm, post_add_input, is_trans_weight)
 
         return convert_returns_as_type(output,
                                        return_type), convert_returns_as_type(
@@ -105,8 +108,9 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                                     attn_params['linear_keys.weight'],
                                     attn_params['linear_values.weight']), 0)
             k_w = convert2tt_tensor(attn_params['linear_keys.weight'])
-            k_v = convert2tt_tensor(attn_params['linear_values.weight'])
-            k_q = convert2tt_tensor(attn_params['linear_query.weight'])
+            v_w = convert2tt_tensor(attn_params['linear_values.weight'])
+            q_w = convert2tt_tensor(attn_params['linear_query.weight'])
+            f_w = convert2tt_tensor(attn_params['final_linear.weight'])
         else:
             qkv_weight = torch.clone(
                 torch.t(
@@ -115,19 +119,19 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                                attn_params['linear_values.weight']), 0)))
             k_w = convert2tt_tensor(
                 torch.clone(torch.t(attn_params['linear_keys.weight'])))
-            k_v = convert2tt_tensor(
+            v_w = convert2tt_tensor(
                 torch.clone(torch.t(attn_params['linear_values.weight'])))
-            k_q = convert2tt_tensor(
+            q_w = convert2tt_tensor(
                 torch.clone(torch.t(attn_params['linear_query.weight'])))
+            f_w = convert2tt_tensor(
+                torch.clone(torch.t(attn_params['final_linear.weight'])))
 
         qkv_bias = torch.cat(
             (attn_params['linear_query.bias'], attn_params['linear_keys.bias'],
              attn_params['linear_values.bias']), 0)
-        return (k_w, convert2tt_tensor(attn_params['linear_keys.bias']), k_v,
-                convert2tt_tensor(attn_params['linear_values.bias']), k_q,
-                convert2tt_tensor(attn_params['linear_query.bias']),
-                convert2tt_tensor(
-                    torch.clone(torch.t(attn_params['final_linear.weight']))),
+        return (k_w, convert2tt_tensor(attn_params['linear_keys.bias']), v_w,
+                convert2tt_tensor(attn_params['linear_values.bias']), q_w,
+                convert2tt_tensor(attn_params['linear_query.bias']), f_w,
                 convert2tt_tensor(attn_params['final_linear.bias']),
                 convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias))
 
@@ -159,6 +163,73 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                 convert2tt_tensor(ln_params['bias']),
                 multi_headed_attn.head_count)
             return att
+
+    @staticmethod
+    def from_torch(attention: TorchBertAttention,
+                   is_trans_weight: bool = False):
+        params = {k: v for k, v in attention.named_parameters()}
+        with torch.no_grad():
+            if is_trans_weight:
+                # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
+                qkv_weight = torch.cat(
+                    (params['self.query.weight'], params['self.key.weight'],
+                     params['self.value.weight']), 0)
+                output_weight = params['output.dense.weight']
+                k_w = params['self.key.weight']
+                v_w = params['self.value.weight']
+                q_w = params['self.query.weight']
+            else:
+                # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
+                qkv_weight = torch.clone(
+                    torch.t(
+                        torch.cat((params['self.query.weight'],
+                                   params['self.key.weight'],
+                                   params['self.value.weight']), 0)))
+                output_weight = torch.clone(
+                    torch.t(params['output.dense.weight']))
+                k_w = torch.clone(torch.t(params['self.key.weight']))
+                v_w = torch.clone(torch.t(params['self.value.weight']))
+                q_w = torch.clone(torch.t(params['self.query.weight']))
+
+            qkv_bias = torch.cat(
+                (params['self.query.bias'], params['self.key.bias'],
+                 params['self.value.bias']), 0)
+
+            att = MultiHeadedAttention(
+                convert2tt_tensor(k_w),
+                convert2tt_tensor(params['self.key.bias']),
+                convert2tt_tensor(v_w),
+                convert2tt_tensor(params['self.value.bias']),
+                convert2tt_tensor(q_w),
+                convert2tt_tensor(params['self.query.bias']),
+                convert2tt_tensor(output_weight),
+                convert2tt_tensor(params['output.dense.bias']),
+                convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
+                convert2tt_tensor(params['output.LayerNorm.weight']),
+                convert2tt_tensor(params['output.LayerNorm.bias']),
+                attention.self.num_attention_heads)
+
+            return att
+
+    @staticmethod
+    def from_npz(file_name: str, layer_num: int, num_attention_heads: int):
+        f = np.load(file_name)
+        return BertAttention(
+            create_empty_if_none(None), create_empty_if_none(None),
+            create_empty_if_none(None), create_empty_if_none(None),
+            create_empty_if_none(None), create_empty_if_none(None),
+            try_convert(
+                f[f'encoder.layer.{layer_num}.attention.output.dense.weight']),
+            try_convert(
+                f[f'encoder.layer.{layer_num}.attention.output.dense.bias']),
+            try_convert(f[f'encoder.layer.{layer_num}.attention.qkv.weight']),
+            try_convert(f[f'encoder.layer.{layer_num}.attention.qkv.bias']),
+            try_convert(f[
+                f'encoder.layer.{layer_num}.attention.output.LayerNorm.weight']
+                        ),
+            try_convert(
+                f[f'encoder.layer.{layer_num}.attention.output.LayerNorm.bias']
+            ), num_attention_heads)
 
 
 class PositionwiseFeedForward(cxx.PositionwiseFeedForward):
@@ -284,7 +355,7 @@ class TransformerDecoderLayer:
                                   layer_cache=layer_cache,
                                   attn_type="self",
                                   pre_layernorm=True,
-                                  post_add=True,
+                                  post_add_input=True,
                                   return_type=ReturnType.turbo_transformers)
 
         mid, attns = self.context_attn(
@@ -295,7 +366,7 @@ class TransformerDecoderLayer:
             layer_cache=layer_cache,
             attn_type="context",
             pre_layernorm=True,
-            post_add=True,
+            post_add_input=True,
             return_type=ReturnType.turbo_transformers)
 
         output = self.feed_forward(mid, return_type=return_type)

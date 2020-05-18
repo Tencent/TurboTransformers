@@ -31,7 +31,7 @@ def create_test(batch_size,
                 query_seq_len,
                 attn_type,
                 pre_layernorm,
-                post_add,
+                post_add_input,
                 with_quantize_dynamic=False):
     class TestMultiHeadedAttention(unittest.TestCase):
         def init_data(self, use_cuda):
@@ -116,7 +116,7 @@ def create_test(batch_size,
             onmt_multi_headed_attention_result, torch_qps, torch_time_consume = \
                 test_helper.run_model(onmt_model, use_cuda, num_iter) # return output, attns
             onmt_attns = onmt_multi_headed_attention_result[1]
-            if post_add:
+            if post_add_input:
                 onmt_output = onmt_multi_headed_attention_result[0] + Q
             else:
                 onmt_output = onmt_multi_headed_attention_result[0]
@@ -142,7 +142,7 @@ def create_test(batch_size,
                 q_onmt_multi_headed_attention_result, q_torch_qps, q_torch_time_consume = \
                     test_helper.run_model(q_onmt_model, use_cuda, num_iter) # return output, attns
                 # onmt_attns = q_onmt_multi_headed_attention_result[1]
-                # if post_add:
+                # if post_add_input:
                 #     onmt_output = q_onmt_multi_headed_attention_result[0] + Q
                 # else:
                 #     onmt_output = q_onmt_multi_headed_attention_result[0]
@@ -157,16 +157,16 @@ def create_test(batch_size,
             # benchmarking turbo
             turbo_attention_mask = attention_mask.float() * -1e18
 
-            turbo_model_trans = lambda: turbo_attn_trans(K,
-                                                         V,
-                                                         Q,
-                                                         turbo_attention_mask,
-                                                         layer_cache=None,
-                                                         attn_type=attn_type,
-                                                         pre_layernorm=
-                                                         pre_layernorm,
-                                                         post_add=post_add,
-                                                         is_trans_weight=True)
+            turbo_model_trans = lambda: turbo_attn_trans(
+                K,
+                V,
+                Q,
+                turbo_attention_mask,
+                layer_cache=None,
+                attn_type=attn_type,
+                pre_layernorm=pre_layernorm,
+                post_add_input=post_add_input,
+                is_trans_weight=True)
 
             # with turbo_transformers.pref_guard("pref_test") as perf:
             turbo_result, turbo_qps, turbo_time_consume = \
@@ -192,7 +192,7 @@ def create_test(batch_size,
                 layer_cache=None,
                 attn_type=attn_type,
                 pre_layernorm=pre_layernorm,
-                post_add=post_add,
+                post_add_input=post_add_input,
                 is_trans_weight=False)
 
             with turbo_transformers.pref_guard("pref_test") as perf:
@@ -229,13 +229,13 @@ def create_test(batch_size,
                 self.check_torch_and_turbo(use_cuda=True)
 
     globals(
-    )[f"TestMultiHeadedAttention{batch_size}_{key_seq_len:3}_{query_seq_len:3}_{attn_type}_{pre_layernorm}_{post_add}"] = TestMultiHeadedAttention
+    )[f"TestMultiHeadedAttention{batch_size}_{key_seq_len:3}_{query_seq_len:3}_{attn_type}_{pre_layernorm}_{post_add_input}"] = TestMultiHeadedAttention
 
 
 with open(fname, "w") as fh:
     fh.write(", torch, q_torch, turbo_transformers\n")
 
-for post_add in [False]:
+for post_add_input in [False]:
     for pre_layernorm in [False]:
         for batch_size in [4]:
             for query_seq_len in [1, 2]:
@@ -244,10 +244,10 @@ for post_add in [False]:
                             query_seq_len,
                             "self",
                             pre_layernorm,
-                            post_add,
+                            post_add_input,
                             with_quantize_dynamic=True)
 
-for post_add in [False, True]:
+for post_add_input in [False, True]:
     for pre_layernorm in [False, True]:
         for batch_size in [4]:
             for key_seq_len in [10, 20, 30, 40, 50]:
@@ -257,7 +257,7 @@ for post_add in [False, True]:
                                 query_seq_len,
                                 "context",
                                 pre_layernorm,
-                                post_add,
+                                post_add_input,
                                 with_quantize_dynamic=True)
 
 if __name__ == '__main__':

@@ -35,7 +35,8 @@ void MultiHeadedAttention::operator()(
     const core::Tensor& key_tensor, const core::Tensor& value_tensor,
     const core::Tensor& query_tensor, const core::Tensor& attention_mask,
     const std::string& attn_type, core::Tensor* output, core::Tensor* att_score,
-    bool pre_layernorm, bool post_add, bool is_trans_weight) const {
+    bool pre_layernorm, bool post_layernorm, bool post_add_input,
+    bool is_trans_weight) const {
 #ifdef WITH_PERFTOOLS
   auto& profile_ctx = core::Profiler::GetInstance();
   profile_ctx.start_profile("MultiHeadedAttention_" + attn_type);
@@ -109,7 +110,8 @@ void MultiHeadedAttention::operator()(
       core::Copy<float>(query_tensor, q_out2);
       kernels::LayerNorm<float>(
           layernorm_gamma_, layernorm_beta_, &q_out2,
-          1e-6);  // q_out2 here is used as layernormed_query
+          1e-6);  // q_out2 here is used as layernormed_query TODO(jiaruifang)
+                  // 1e-6 should not be hard-coded
       kernels::MatMul(q_out2, false, q_weight_, is_trans_weight, 1.0, &q_out1,
                       0.0);
     } else {
@@ -261,20 +263,29 @@ void MultiHeadedAttention::operator()(
   // output = self.final_linear(context)
   output->Reshape<float>({batch_size, query_seq_length, hidden_size}, devtype,
                          devid);
-
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("TransposeForScore");
   profile_ctx.start_profile("gemm5");
 #endif
-  kernels::MatMul(self_attr_out, false, dense_weight_, false, 1.0, output, 0.0);
+  kernels::MatMul(self_attr_out, false, dense_weight_, is_trans_weight, 1.0,
+                  output, 0.0);
+
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("gemm5");
   profile_ctx.start_profile("AddBias");
 #endif
-  // add bias
-  if (false == post_add) {
-    kernels::AddBias(dense_bias_, output);
+  if (false == post_add_input) {
+    if (false == post_layernorm) {
+      //+bias
+      kernels::AddBias(dense_bias_, output);
+    } else {
+      //+bias+layernorm
+      kernels::AddBiasLayerNorm<float>(query_tensor, dense_bias_,
+                                       layernorm_gamma_,  // gemma
+                                       layernorm_beta_, output);
+    }
   } else {
+    //+input + bias
     kernels::AddInputBias(*output, query_tensor, dense_bias_, output);
   }
 
