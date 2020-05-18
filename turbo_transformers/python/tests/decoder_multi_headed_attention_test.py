@@ -173,15 +173,14 @@ def create_test(batch_size,
                 test_helper.run_model(turbo_model_trans, use_cuda,
                                     num_iter)
 
-            turbo_output, turbo_attns = turbo_result
             print(
                 f"Multi Headed Attention {info} Turbo Trans, QPS, {turbo_qps}, time, {turbo_time_consume}"
             )
             self.assertTrue(
-                torch.max(torch.abs(onmt_output - turbo_output)) < (
+                torch.max(torch.abs(onmt_output - turbo_output_notrans)) < (
                     1e-3 if use_cuda else 1e-4))
             self.assertTrue(
-                torch.max(torch.abs(onmt_attns - turbo_attns)) < (
+                torch.max(torch.abs(onmt_attns - turbo_attns_notrans)) < (
                     1e-3 if use_cuda else 1e-4))
 
             turbo_model_notrans = lambda: turbo_attn_notrans(
