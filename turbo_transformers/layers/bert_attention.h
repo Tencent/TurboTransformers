@@ -17,23 +17,25 @@
 
 #include <utility>
 #include "turbo_transformers/core/tensor.h"
+#include "turbo_transformers/layers/multi_headed_attention.h"
 
 namespace turbo_transformers {
 namespace layers {
 
-class BertAttention {
+class BertAttention : public MultiHeadedAttention {
  public:
   BertAttention(core::Tensor qkv_weight, core::Tensor qkv_bias,
                 core::Tensor dense_weight, core::Tensor dense_bias,
                 core::Tensor layer_norm_weight, core::Tensor layer_norm_bias,
                 int64_t num_attention_heads)
-      : qkv_weight_(std::move(qkv_weight)),  //(768, 768)
-        qkv_bias_(std::move(qkv_bias)),
-        dense_weight_(std::move(dense_weight)),
-        dense_bias_(std::move(dense_bias)),
-        layer_norm_weight_(std::move(layer_norm_weight)),  //(768)
-        layer_norm_bias_(std::move(layer_norm_bias)),
-        num_attention_heads_(num_attention_heads) {
+      : MultiHeadedAttention(
+            std::move(core::Tensor(nullptr)), std::move(core::Tensor(nullptr)),
+            std::move(core::Tensor(nullptr)), std::move(core::Tensor(nullptr)),
+            std::move(core::Tensor(nullptr)), std::move(core::Tensor(nullptr)),
+            std::move(dense_weight), std::move(dense_bias),
+            std::move(qkv_weight), std::move(qkv_bias),
+            std::move(layer_norm_weight),  //(768)
+            std::move(layer_norm_bias), num_attention_heads) {
     EnforceShapeAndType();
   }
   void EnforceShapeAndType() const;
@@ -41,15 +43,6 @@ class BertAttention {
   void operator()(const core::Tensor &input_tensor,
                   const core::Tensor &attention_mask,
                   core::Tensor *output) const;
-
- private:
-  core::Tensor qkv_weight_;
-  core::Tensor qkv_bias_;
-  core::Tensor dense_weight_;
-  core::Tensor dense_bias_;
-  core::Tensor layer_norm_weight_;
-  core::Tensor layer_norm_bias_;
-  int64_t num_attention_heads_;
 };
 
 }  // namespace layers
