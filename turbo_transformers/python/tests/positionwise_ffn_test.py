@@ -32,8 +32,8 @@ def create_test(batch_size, input_len):
             self.test_device = torch.device('cuda:0') if use_cuda else \
                    torch.device('cpu:0')
             if not use_cuda:
-                torch.set_num_threads(1)
-                turbo_transformers.set_num_threads(1)
+                torch.set_num_threads(4)
+                turbo_transformers.set_num_threads(4)
 
             self.model_dim = 1024
             self.d_ff = 4096

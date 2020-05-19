@@ -43,18 +43,16 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                                                         attention_dropout=0.)
             self.onmt_decoder.eval()
             if use_cuda:
-                self.onmt_decoder.to(test_device)
+                self.onmt_decoder.to(self.test_device)
             self.turbo_decoder = turbo_transformers.TransformerDecoderLayer.from_onmt(
                 self.onmt_decoder)
 
             # https://pytorch.org/docs/stable/quantization.html
-            if with_quantize_dynamic:
+            if with_quantize_dynamic and not use_cuda:
                 self.quantized_onmt_decoder = torch.quantization.quantize_dynamic(
                     self.onmt_decoder)
 
         def check_torch_and_turbo(self, use_cuda, num_iter=1):
-            if use_cuda:
-                return
             deivce_type = "GPU" if use_cuda else "CPU"
             info = f"\"({deivce_type}, {batch_size}, {src_length}, {T})\""
 
@@ -99,7 +97,7 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                 f"ONMT Deocder {info} ",
                 f"{deivce_type} QPS, {torch_qps}, time, {torch_time_consume}")
 
-            if with_quantize_dynamic:
+            if with_quantize_dynamic and not use_cuda:
                 quantized_onmt_model = lambda: self.quantized_onmt_decoder(
                     self.inputs,
                     self.memory_bank,
@@ -154,7 +152,7 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                 torch.max(torch.abs(attns - turbo_attns)) < (
                     1e-3 if use_cuda else 1e-4))
 
-            if with_quantize_dynamic:
+            if with_quantize_dynamic and not use_cuda:
                 with open(fname, "a") as fh:
                     fh.write(
                         f"{info} {torch_qps}, {quantized_torch_qps}, {turbo_qps}\n"
