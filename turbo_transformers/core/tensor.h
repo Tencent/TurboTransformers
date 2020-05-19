@@ -223,7 +223,7 @@ class Tensor {
       Memcpy(cpu_data.get(), data<T>(), n * sizeof(T), MemcpyFlag::kGPU2CPU);
       for (int i = 0; i < n; ++i) {
         sum += cpu_data[i];
-        if (cnt-- >= 0) os << cpu_data[i] << ", ";
+        if (cnt-- >= 0 || n - i <= 10) os << cpu_data[i] << ", ";
       }
 #else
       TT_THROW("No CUDA supported, Please Compile with TT_WITH_CUDA");

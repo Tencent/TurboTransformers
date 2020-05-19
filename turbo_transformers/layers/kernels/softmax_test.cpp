@@ -35,27 +35,28 @@ TEST_CASE("softmax-gpu-test") {
   constexpr float scaler = 1.;
 
   std::vector<int64_t> batch_size_list{1, 20};
-  std::vector<int64_t> seq_length_list{10,  20,  40,  60,  80,
-                                       100, 200, 300, 400, 500};
-
+  std::vector<int64_t> from_seq_list{10,  20,  40,  60,  80,
+                                     100, 200, 300, 400, 500};
+  std::vector<int64_t> to_seq_list{10, 20, 40, 60, 80, 100};
   for (auto batch_size : batch_size_list)
-    for (auto seq_length : seq_length_list) {
-      core::Tensor qk_buf_cpu(nullptr), qk_buf_gpu(nullptr);
-      std::tie(qk_buf_cpu, qk_buf_gpu) =
-          common::CreateAndFillRandomForCPUGPUTensors<float>(
-              {batch_size, num_attention_heads, seq_length, seq_length});
+    for (auto from_seq : from_seq_list)
+      for (auto to_seq : to_seq_list) {
+        core::Tensor qk_buf_cpu(nullptr), qk_buf_gpu(nullptr);
+        std::tie(qk_buf_cpu, qk_buf_gpu) =
+            common::CreateAndFillRandomForCPUGPUTensors<float>(
+                {batch_size, num_attention_heads, from_seq, to_seq});
 
-      core::Tensor attr_mask_cpu(nullptr), attr_mask_gpu(nullptr);
-      std::tie(attr_mask_cpu, attr_mask_gpu) =
-          common::CreateAndFillRandomForCPUGPUTensors<float>(
-              {batch_size, seq_length});
+        core::Tensor attr_mask_cpu(nullptr), attr_mask_gpu(nullptr);
+        std::tie(attr_mask_cpu, attr_mask_gpu) =
+            common::CreateAndFillRandomForCPUGPUTensors<float>(
+                {batch_size, to_seq});
 
-      ApplyMaskAndSoftmax(&qk_buf_gpu, attr_mask_gpu, scaler);
+        ApplyMaskAndSoftmax(&qk_buf_gpu, attr_mask_gpu, scaler);
 
-      ApplyMaskAndSoftmax(&qk_buf_cpu, attr_mask_cpu, scaler);
+        ApplyMaskAndSoftmax(&qk_buf_cpu, attr_mask_cpu, scaler);
 
-      REQUIRE(common::CheckResultOfCPUAndGPU<float>(qk_buf_cpu, qk_buf_gpu));
-    }
+        REQUIRE(common::CheckResultOfCPUAndGPU<float>(qk_buf_cpu, qk_buf_gpu));
+      }
 }
 #endif
 

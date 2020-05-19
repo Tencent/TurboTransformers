@@ -19,6 +19,7 @@
 
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/core/cuda_enforce.cuh"
+#include "turbo_transformers/layers/kernels/gpu_utils.h"
 #endif
 
 namespace turbo_transformers {
@@ -30,12 +31,21 @@ void AddBias(const core::Tensor& bias, core::Tensor* output) {
   auto dim0 = output->numel() / dim1;
   auto output_data = output->mutableData<float>();
   const auto bias_data = bias.data<float>();
+  if (bias.device_type() == kDLCPU && output->device_type() == kDLCPU) {
 #pragma omp parallel for
-  for (int64_t i = 0; i < dim0; ++i) {
+    for (int64_t i = 0; i < dim0; ++i) {
 #pragma omp simd
-    for (int64_t j = 0; j < dim1; ++j) {
-      output_data[i * dim1 + j] += bias_data[j];
+      for (int64_t j = 0; j < dim1; ++j) {
+        output_data[i * dim1 + j] += bias_data[j];
+      }
     }
+  } else {
+#ifdef TT_WITH_CUDA
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    const float* dummy{nullptr};
+    GPUAddBias<false>(output_data, dummy, bias_data, dim0, dim1,
+                      cuda_ctx.stream(), output_data);
+#endif
   }
 }
 
@@ -49,13 +59,22 @@ void AddInputBias(const core::Tensor& input1, const core::Tensor& input2,
   const auto bias_data = bias.data<float>();
   const auto input1_data = input1.data<float>();
   const auto input2_data = input2.data<float>();
+
+  if (input1.device_type() == kDLCPU && output->device_type() == kDLCPU) {
 #pragma omp parallel for
-  for (int64_t i = 0; i < dim0; ++i) {
+    for (int64_t i = 0; i < dim0; ++i) {
 #pragma omp simd
-    for (int64_t j = 0; j < dim1; ++j) {
-      output_data[i * dim1 + j] =
-          bias_data[j] + input1_data[i * dim1 + j] + input2_data[i * dim1 + j];
+      for (int64_t j = 0; j < dim1; ++j) {
+        output_data[i * dim1 + j] = bias_data[j] + input1_data[i * dim1 + j] +
+                                    input2_data[i * dim1 + j];
+      }
     }
+  } else {
+#ifdef TT_WITH_CUDA
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUAddBias<true>(input1_data, input2_data, bias_data, dim0, dim1,
+                     cuda_ctx.stream(), output_data);
+#endif
   }
 }
 

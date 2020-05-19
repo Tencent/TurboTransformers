@@ -82,20 +82,30 @@ void MultiHeadedAttention::operator()(
   auto devctx = query_tensor.device_ctx();
 
   core::Tensor *q_ptr{nullptr}, *k_ptr{nullptr}, *v_ptr{nullptr};
+  core::Tensor q_out1(nullptr);
+  core::Tensor v_out1(nullptr);
+  core::Tensor k_out1(nullptr);
+  core::Tensor q_out2(nullptr);
+  core::Tensor v_out2(nullptr);
+  core::Tensor k_out2(nullptr);
+
+  core::Tensor qkv_out1(nullptr);
+  core::Tensor qkv_out2(nullptr);
+
   if (attn_type == "context") {
 #ifdef WITH_PERFTOOLS
     profile_ctx.start_profile("gemm_012");
 #endif
-    static core::TempTensor q_out1_temp, v_out1_temp,
-        k_out1_temp;  // intermediate results after matmul
-    static core::TempTensor q_out2_temp, v_out2_temp,
-        k_out2_temp;  // intermediate results after add bias and transpose
-    core::Tensor& q_out1 = q_out1_temp.GetTensor(devctx);
-    core::Tensor& v_out1 = v_out1_temp.GetTensor(value_tensor.device_ctx());
-    core::Tensor& k_out1 = k_out1_temp.GetTensor(key_tensor.device_ctx());
-    core::Tensor& q_out2 = q_out2_temp.GetTensor(devctx);
-    core::Tensor& v_out2 = v_out2_temp.GetTensor(value_tensor.device_ctx());
-    core::Tensor& k_out2 = k_out2_temp.GetTensor(key_tensor.device_ctx());
+    // static core::TempTensor q_out1_temp, v_out1_temp,
+    //     k_out1_temp;  // intermediate results after matmul
+    // static core::TempTensor q_out2_temp, v_out2_temp,
+    //     k_out2_temp;  // intermediate results after add bias and transpose
+    // core::Tensor& q_out1 = q_out1_temp.GetTensor(devctx);
+    // core::Tensor& v_out1 = v_out1_temp.GetTensor(devctx);
+    // core::Tensor& k_out1 = k_out1_temp.GetTensor(devctx);
+    // core::Tensor& q_out2 = q_out2_temp.GetTensor(devctx);
+    // core::Tensor& v_out2 = v_out2_temp.GetTensor(devctx);
+    // core::Tensor& k_out2 = k_out2_temp.GetTensor(devctx);
 
     q_out1.Reshape<float>({batch_size, query_seq_length, hidden_size}, devtype,
                           devid);
@@ -157,8 +167,10 @@ void MultiHeadedAttention::operator()(
     v_ptr = &v_out2;
     k_ptr = &k_out2;
   } else if (attn_type == "self") {
-    static core::TempTensor qkv_out1_temp, qkv_out2_temp;
-    core::Tensor& qkv_out1 = qkv_out1_temp.GetTensor(devctx);
+    // static core::TempTensor qkv_out1_temp, qkv_out2_temp;
+    // core::Tensor& qkv_out1 = qkv_out1_temp.GetTensor(devctx);
+    // core::Tensor& qkv_out2 = qkv_out2_temp.GetTensor(devctx);
+
     qkv_out1.Reshape<float>({3, batch_size, query_seq_length, hidden_size},
                             devtype, devid);
 
@@ -183,7 +195,6 @@ void MultiHeadedAttention::operator()(
     profile_ctx.end_profile("gemm_fused");
     profile_ctx.start_profile("SplitAddBiasTransposeForScore");
 #endif
-    core::Tensor& qkv_out2 = qkv_out2_temp.GetTensor(devctx);
     qkv_out2.Reshape<float>(
         {3, batch_size, num_attention_heads_, query_seq_length, size_per_head},
         devtype, devid);
@@ -198,6 +209,7 @@ void MultiHeadedAttention::operator()(
   } else {
     TT_THROW("%s is not support in MultiHeadedAttention\n", attn_type);
   }
+
 #ifdef WITH_PERFTOOLS
   profile_ctx.start_profile("batch_gemm0");
 #endif
@@ -226,7 +238,6 @@ void MultiHeadedAttention::operator()(
 #ifdef WITH_PERFTOOLS
   profile_ctx.start_profile("ApplyMaskAndSoftmax");
 #endif
-
   kernels::ApplyMaskAndSoftmax(att_score,
                                attention_mask,  //(B, num_head, q_len, k_len)
                                1.0);
