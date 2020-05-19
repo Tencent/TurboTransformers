@@ -48,10 +48,12 @@ def create_test(batch_size,
             onmt_multi_headed_attention = MultiHeadedAttention(
                 self.head_count, self.model_dim)
             onmt_multi_headed_attention.eval()
+            torch_layernorm = torch.nn.LayerNorm(self.model_dim, eps=1e-6)
+            torch_layernorm.eval()
+
             if use_cuda:
                 onmt_multi_headed_attention.to(self.test_device)
-
-            torch_layernorm = torch.nn.LayerNorm(self.model_dim, eps=1e-6)
+                torch_layernorm.to(self.test_device)
 
             K = torch.rand(
                 size=(
@@ -80,15 +82,12 @@ def create_test(batch_size,
                 torch_layernorm,
                 is_trans_weight=False)
 
-            if with_quantize_dynamic:
+            if with_quantize_dynamic and not use_cuda:
                 self.q_onmt_multi_headed_attention = torch.quantization.quantize_dynamic(
                     onmt_multi_headed_attention)
             return onmt_multi_headed_attention, torch_layernorm, turbo_attn_trans, turbo_attn_notrans, Q, K, V
 
-        def check_torch_and_turbo(self, use_cuda, num_iter=1):
-            if use_cuda:
-                return
-
+        def check_torch_and_turbo(self, use_cuda, num_iter=150):
             onmt_multi_headed_attention, torch_layernorm, turbo_attn_trans, turbo_attn_notrans, Q, K, V = \
                 self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
@@ -125,7 +124,7 @@ def create_test(batch_size,
             )
 
             # benchmark quantize
-            if with_quantize_dynamic:
+            if with_quantize_dynamic and not use_cuda:
                 q_onmt_model = lambda: self.q_onmt_multi_headed_attention(
                     K,
                     V,
@@ -213,17 +212,16 @@ def create_test(batch_size,
                 torch.max(torch.abs(onmt_attns - turbo_attns_notrans)) < (
                     1e-3 if use_cuda else 1e-4))
 
-            if with_quantize_dynamic:
+            if with_quantize_dynamic and not use_cuda:
                 with open(fname, "a") as fh:
                     fh.write(
                         f"{info} {torch_qps}, {q_torch_qps}, {turbo_qps}\n")
             else:
                 with open(fname, "a") as fh:
-                    fh.write(
-                        f"{info} {torch_qps}, {q_torch_qps}, {turbo_qps}\n")
+                    fh.write(f"{info} {torch_qps}, {turbo_qps}\n")
 
         def test_multi_headed_attention(self):
-            self.check_torch_and_turbo(use_cuda=False)
+            # self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
                 turbo_transformers.config.is_compiled_with_cuda():
                 self.check_torch_and_turbo(use_cuda=True)

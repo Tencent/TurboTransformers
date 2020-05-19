@@ -43,8 +43,6 @@ def create_test(batch_size, seq_length):
                 torch_attention.to(test_device)
 
             # Get FT Attention
-            # turbo_attention = turbo_transformers.BertAttention.from_torch(
-            #     torch_attention)
             turbo_attention = turbo_transformers.BertAttention.from_torch(
                 torch_attention)
 
@@ -86,7 +84,7 @@ def create_test(batch_size, seq_length):
             self.assertTrue(
                 torch.max(
                     torch.abs(torch_attention_result[0] -
-                              turbo_attention_result)) < (
+                              turbo_attention_result[0])) < (
                                   1e-3 if use_cuda else 1e-4))
 
             turbo_multiheaded_model = lambda: turbo_decoder_attention(

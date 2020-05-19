@@ -76,11 +76,9 @@ void ApplyMaskAndSoftmax(core::Tensor* inout, const core::Tensor& att_mask,
                 num_att_heads, from_seq_len, to_seq_len, scale);
   } else if (inout->device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
-    // TODO(jiaruifang) Implement GPU version where from_seq_len != to_seq_len
-    auto seq_len = inout->shape(2);
     auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
     GPUSoftmaxMask(inout->mutableData<float>(), att_mask.data<float>(),
-                   batch_size, num_att_heads, seq_len, scale,
+                   batch_size, num_att_heads, from_seq_len, to_seq_len, scale,
                    cuda_ctx.stream());
 #else
     TT_THROW("The current code is not compiled with CUDA.");
