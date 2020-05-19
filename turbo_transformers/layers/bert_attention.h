@@ -14,8 +14,8 @@
 #pragma once
 #include <memory>
 #include <mutex>
-
 #include <utility>
+
 #include "turbo_transformers/core/tensor.h"
 #include "turbo_transformers/layers/multi_headed_attention.h"
 
@@ -41,8 +41,9 @@ class BertAttention : public MultiHeadedAttention {
   void EnforceShapeAndType() const;
 
   void operator()(const core::Tensor &input_tensor,
-                  const core::Tensor &attention_mask,
-                  core::Tensor *output) const;
+                  const core::Tensor &attention_mask, core::Tensor *output,
+                  core::Tensor *attn = nullptr,
+                  bool is_trans_weight = false) const;
 };
 
 }  // namespace layers

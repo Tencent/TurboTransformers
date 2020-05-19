@@ -43,9 +43,9 @@ void MultiHeadedAttention::operator()(
 #endif
   std::lock_guard<std::mutex> g(mutex_);
   TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
-                    key_tensor.device_ctx(), attention_mask.device_ctx()),
+                    query_tensor.device_ctx(), attention_mask.device_ctx()),
                 true,
-                "The key_tensor and attention_mask should have the same "
+                "The query_tensor and attention_mask should have the same "
                 "device type and device id.");
 
   TT_ENFORCE_EQ(key_tensor.n_dim(), 3,
@@ -81,6 +81,7 @@ void MultiHeadedAttention::operator()(
   auto devid = query_tensor.device_id();
   auto devctx = query_tensor.device_ctx();
 
+  // TODO we should caching allocate intermediate tensor.
   core::Tensor *q_ptr{nullptr}, *k_ptr{nullptr}, *v_ptr{nullptr};
   core::Tensor q_out1(nullptr);
   core::Tensor v_out1(nullptr);
@@ -88,7 +89,6 @@ void MultiHeadedAttention::operator()(
   core::Tensor q_out2(nullptr);
   core::Tensor v_out2(nullptr);
   core::Tensor k_out2(nullptr);
-
   core::Tensor qkv_out1(nullptr);
   core::Tensor qkv_out2(nullptr);
 
@@ -106,6 +106,17 @@ void MultiHeadedAttention::operator()(
     // core::Tensor& q_out2 = q_out2_temp.GetTensor(devctx);
     // core::Tensor& v_out2 = v_out2_temp.GetTensor(devctx);
     // core::Tensor& k_out2 = k_out2_temp.GetTensor(devctx);
+
+    TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
+                      query_tensor.device_ctx(), value_tensor.device_ctx()),
+                  true,
+                  "The query_tensor and value_tensor should have the same "
+                  "device type and device id.");
+    TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(query_tensor.device_ctx(),
+                                                      key_tensor.device_ctx()),
+                  true,
+                  "The query_tensor and key_tensor should have the same "
+                  "device type and device id.");
 
     q_out1.Reshape<float>({batch_size, query_seq_length, hidden_size}, devtype,
                           devid);

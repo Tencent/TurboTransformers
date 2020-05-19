@@ -141,13 +141,24 @@ class BertAttention(cxx.BertAttention):
                  input_tensor: AnyTensor,
                  attention_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
+                 output: Optional[cxx.Tensor] = None,
+                 is_trans_weight: Optional[cxx.Tensor] = False):
+        """
+        implement BertSelfAttention in
+        https://github.com/huggingface/transformers/blob/master/src/transformers/modeling_bert.py#L183
+        self.output_attentions always true
+        return (context_layer, attention_probs)
+        """
         input_tensor = try_convert(input_tensor)
         attention_mask = try_convert(attention_mask)
         output = create_empty_if_none(output)
-        super(BertAttention, self).__call__(input_tensor, attention_mask,
-                                            output)
-        return convert_returns_as_type(output, return_type)
+        attn_probs = cxx.Tensor.create_empty()
+        super(BertAttention,
+              self).__call__(input_tensor, attention_mask, output, attn_probs,
+                             is_trans_weight)
+        return convert_returns_as_type(output,
+                                       return_type), convert_returns_as_type(
+                                           attn_probs, return_type)
 
     @staticmethod
     def from_torch(attention: TorchBertAttention):
@@ -206,7 +217,7 @@ class BertLayer:
                  attention_output: Optional[cxx.Tensor] = None,
                  intermediate_output: Optional[cxx.Tensor] = None,
                  output: Optional[cxx.Tensor] = None):
-        attention_output = self.attention(
+        attention_output, attn = self.attention(
             hidden_states,
             attention_mask,
             return_type=ReturnType.turbo_transformers,
@@ -218,7 +229,8 @@ class BertLayer:
         return self.output(intermediate_output,
                            attention_output,
                            return_type=return_type,
-                           output=output)
+                           output=output), convert_returns_as_type(
+                               attn, return_type)
 
     @staticmethod
     def from_torch(layer: TorchBertLayer):
@@ -257,12 +269,12 @@ class BertEncoder:
             else:
                 input_states = output
 
-            output = l(hidden_states=input_states,
-                       attention_mask=attention_mask,
-                       return_type=ReturnType.turbo_transformers,
-                       attention_output=attention_output,
-                       intermediate_output=intermediate_output,
-                       output=output)
+            output, _ = l(hidden_states=input_states,
+                          attention_mask=attention_mask,
+                          return_type=ReturnType.turbo_transformers,
+                          attention_output=attention_output,
+                          intermediate_output=intermediate_output,
+                          output=output)
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
@@ -313,17 +325,15 @@ class BertModel:
         self.encoder = encoder
         self.prepare = cxx.PrepareBertMasks()
 
-    def __call__(
-            self,
-            inputs: AnyTensor,
-            attention_masks: Optional[AnyTensor] = None,
-            token_type_ids: Optional[AnyTensor] = None,
-            position_ids: Optional[AnyTensor] = None,
-            pooling_type: PoolingType = PoolingType.FIRST,
-            hidden_cache: Optional[AnyTensor] = None,
-            output: Optional[
-                AnyTensor] = None,  #FIXME(jiaruifang) BertModel now return two tensors.
-            return_type: Optional[ReturnType] = None):
+    def __call__(self,
+                 inputs: AnyTensor,
+                 attention_masks: Optional[AnyTensor] = None,
+                 token_type_ids: Optional[AnyTensor] = None,
+                 position_ids: Optional[AnyTensor] = None,
+                 pooling_type: PoolingType = PoolingType.FIRST,
+                 hidden_cache: Optional[AnyTensor] = None,
+                 output: Optional[AnyTensor] = None,
+                 return_type: Optional[ReturnType] = None):
         attention_masks = try_convert(create_empty_if_none(attention_masks))
         token_type_ids = try_convert(create_empty_if_none(token_type_ids))
         position_ids = try_convert(create_empty_if_none(position_ids))
