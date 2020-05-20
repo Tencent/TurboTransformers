@@ -166,10 +166,13 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
 
     @staticmethod
     def from_torch(attention: TorchBertAttention,
+                   layer_norm: Optional[TorchLayerNorm] = None,
                    is_trans_weight: bool = False):
         """
         load an attn model from huggingface bert attention model.
         """
+        if layer_norm is not None:
+            ln_params = {k: v for k, v in layer_norm.named_parameters()}
         params = {k: v for k, v in attention.named_parameters()}
         with torch.no_grad():
             if is_trans_weight:
@@ -198,20 +201,36 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                 (params['self.query.bias'], params['self.key.bias'],
                  params['self.value.bias']), 0)
 
-            att = MultiHeadedAttention(
-                convert2tt_tensor(k_w),
-                convert2tt_tensor(params['self.key.bias']),
-                convert2tt_tensor(v_w),
-                convert2tt_tensor(params['self.value.bias']),
-                convert2tt_tensor(q_w),
-                convert2tt_tensor(params['self.query.bias']),
-                convert2tt_tensor(output_weight),
-                convert2tt_tensor(params['output.dense.bias']),
-                convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
-                convert2tt_tensor(params['output.LayerNorm.weight']),
-                convert2tt_tensor(params['output.LayerNorm.bias']),
-                attention.self.num_attention_heads)
-
+            if layer_norm is not None:
+                att = MultiHeadedAttention(
+                    convert2tt_tensor(k_w),
+                    convert2tt_tensor(params['self.key.bias']),
+                    convert2tt_tensor(v_w),
+                    convert2tt_tensor(params['self.value.bias']),
+                    convert2tt_tensor(q_w),
+                    convert2tt_tensor(params['self.query.bias']),
+                    convert2tt_tensor(output_weight),
+                    convert2tt_tensor(params['output.dense.bias']),
+                    convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
+                    convert2tt_tensor(params['output.LayerNorm.weight']),
+                    convert2tt_tensor(params['output.LayerNorm.bias']),
+                    attention.self.num_attention_heads)
+            else:
+                att = MultiHeadedAttention(
+                    convert2tt_tensor(k_w),
+                    convert2tt_tensor(params['self.key.bias']),
+                    convert2tt_tensor(v_w),
+                    convert2tt_tensor(params['self.value.bias']),
+                    convert2tt_tensor(q_w),
+                    convert2tt_tensor(params['self.query.bias']),
+                    convert2tt_tensor(output_weight),
+                    convert2tt_tensor(params['output.dense.bias']),
+                    convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
+                    convert2tt_tensor(params['output.LayerNorm.weight']),
+                    convert2tt_tensor(params['output.LayerNorm.bias']),
+                    convert2tt_tensor(ln_params['weight']),
+                    convert2tt_tensor(ln_params['bias']),
+                    attention.self.num_attention_heads)
             return att
 
     @staticmethod
