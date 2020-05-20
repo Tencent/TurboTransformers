@@ -214,6 +214,8 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                     convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
                     convert2tt_tensor(params['output.LayerNorm.weight']),
                     convert2tt_tensor(params['output.LayerNorm.bias']),
+                    convert2tt_tensor(ln_params['weight']),
+                    convert2tt_tensor(ln_params['bias']),
                     attention.self.num_attention_heads)
             else:
                 att = MultiHeadedAttention(
@@ -228,8 +230,6 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                     convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
                     convert2tt_tensor(params['output.LayerNorm.weight']),
                     convert2tt_tensor(params['output.LayerNorm.bias']),
-                    convert2tt_tensor(ln_params['weight']),
-                    convert2tt_tensor(ln_params['bias']),
                     attention.self.num_attention_heads)
             return att
 
