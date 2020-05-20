@@ -41,7 +41,9 @@ env BUILD_TYPE=dev sh tools/build_docker_cpu.sh
 Method 1：I want to unitest
 ```
 cd /workspace
-sh tools/build_and_run_unittests.sh.sh $PWD -DWITH_GPU=OFF
+sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
+# you can switch between Openblas and MKL by modifying this line in CMakeList.txt
+# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl]")
 ```
 Method 2：I do not want to unitest
 ```
@@ -63,8 +65,9 @@ sh tool/build_conda_package.sh
 ```
 
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
-
+```
 *docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev*
+```
 ### Installation on GPU
 ```
 git clone https://github.com/Tencent/TurboTransformers --recursive
@@ -77,7 +80,7 @@ docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc
 # for example: docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/turbo_transformers:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
 ```
 
-2. Install pip package in docker and single test
+2. Install pip package in docker and unitest test
 ```
 cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=ON
@@ -88,6 +91,10 @@ sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=ON
 cd benchmark
 bash gpu_run_benchmark.sh
 ```
+*We also prepared a docker image containing GPU version of TurboTransformers.
+```
+*docker pull thufeifeibear/turbo_transformers:0.2.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-release*
+```
 
 ### Usage
 turbo_transformers provides C ++ / python API interfaces. we hope to do our best to adapt to a variety of online environments to reduce the difficulty of development for users.
@@ -95,7 +102,9 @@ turbo_transformers provides C ++ / python API interfaces. we hope to do our best
 The first step in using turbo is to load a pre-trained model. We provide a way to load pytorch and tensorflow pre-trained models in [huggingface/transformers](https://github.com/huggingface).
 The specific conversion method is to use the corresponding script in ./tools to convert the pre-trained model into an npz format file, and turbo uses the C ++ or python interface to load the npz format model.
 In particular, we consider that most of the pre-trained models are in pytorch format and used with python. We provide a shortcut for calling directly in python for the pytorch saved model.
+
 <img width="700" height="150" src="./images/pretrainmodelload.jpg" alt="加载预训练模型">
+
 #### python APIs
 Refer to examples in [./example/python](./example/python "python").
 Since the user of BERT acceleration always requires a customized post-processing process for the task, we provide an example of how to write a sequence classification application.
@@ -157,3 +166,7 @@ In our opinion, the tensor transpose API of PyTorch is not stable. We use the fo
 ```
 weight = torch.clone(torch.t(pooler_params['dense.weight']))
 ```
+
+## Contact us
+Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
+Scan this [QR code](./images/namecode.pdf "qrcode") and our contactor as your WeChat friend.
