@@ -42,7 +42,7 @@ class BertForSequenceClassification:  # create a new class for speeding up
             hidden_cache=None,
             output=None,
             return_type=None):
-        pooler_output, _ = self.bert(inputs,
+        pooler_output, _, _ = self.bert(inputs,
                                      attention_masks,
                                      token_type_ids,
                                      position_ids,
