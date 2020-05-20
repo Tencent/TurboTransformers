@@ -6,11 +6,13 @@ on:
         - master
         - develop
         - feature/decoder
+        - feature/albert
   pull_request:
     branches:
         - master
         - develop
         - feature/decoder
+        - feature/albert
 
 
 jobs:
