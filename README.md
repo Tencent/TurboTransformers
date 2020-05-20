@@ -42,6 +42,8 @@ Method 1：I want to unitest
 ```
 cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
+# you can switch between Openblas and MKL by modifying this line in CMakeList.txt
+# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl]")
 ```
 Method 2：I do not want to unitest
 ```
@@ -63,8 +65,9 @@ sh tool/build_conda_package.sh
 ```
 
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
-
+```
 *docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev*
+```
 ### Installation on GPU
 ```
 git clone https://github.com/Tencent/TurboTransformers --recursive
@@ -77,7 +80,7 @@ docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc
 # for example: docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/turbo_transformers:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
 ```
 
-2. Install pip package in docker and single test
+2. Install pip package in docker and unitest test
 ```
 cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=ON
@@ -87,6 +90,10 @@ sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=ON
 ```
 cd benchmark
 bash gpu_run_benchmark.sh
+```
+*We also prepared a docker image containing GPU version of TurboTransformers.
+```
+*docker pull thufeifeibear/turbo_transformers:0.2.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-release*
 ```
 
 ### Usage
@@ -159,3 +166,7 @@ In our opinion, the tensor transpose API of PyTorch is not stable. We use the fo
 ```
 weight = torch.clone(torch.t(pooler_params['dense.weight']))
 ```
+
+## Contact us
+Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
+Scan this [QR code](./images/namecode.pdf "qrcode") and our contactor as your WeChat friend.
