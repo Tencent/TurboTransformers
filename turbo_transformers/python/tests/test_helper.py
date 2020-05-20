@@ -15,8 +15,12 @@ import torch
 import torch.jit
 import torch.onnx
 
+import cProfile
+import cProfile, pstats, io
+from pstats import SortKey
 
-def run_model(model, use_cuda, num_iter=50):
+
+def run_model(model, use_cuda, num_iter=50, use_profile=False):
     # warm up
     model()
     if use_cuda:
@@ -24,9 +28,21 @@ def run_model(model, use_cuda, num_iter=50):
         end = torch.cuda.Event(enable_timing=True)
         start.record()
 
+    if use_profile:
+        pr = cProfile.Profile()
+        pr.enable()
+
     with contexttimer.Timer() as t:
         for it in range(num_iter):
             result = model()
+
+    if use_profile:
+        pr.disable()
+        s = io.StringIO()
+        sortby = SortKey.CUMULATIVE
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
 
     if use_cuda:
         end.record()
@@ -38,3 +54,11 @@ def run_model(model, use_cuda, num_iter=50):
         qps = num_iter / t.elapsed
         time_consume = t.elapsed / num_iter
     return result, qps, time_consume
+
+
+# for debug
+def show_tensor(T, info):
+    print(info, T.size())
+    print(T.view(-1)[0:10])
+    print(T.view(-1)[-10:])
+    print(torch.sum(T.view(-1)))

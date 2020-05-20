@@ -38,6 +38,13 @@ __inline__ __device__ float ActvationOp<float, ActivationType::Tanh>(
     const float& x) {
   return tanhf(x);
 }
+
+template <>
+__inline__ __device__ float ActvationOp<float, ActivationType::Relu>(
+    const float& x) {
+  return (x > 0) ? x : 0;
+}
+
 }  // namespace
 
 template <typename T, ActivationType ActType>
@@ -78,6 +85,11 @@ template void GPUAddBiasActKernel<float, ActivationType::Gelu>(
 template void GPUAddBiasActKernel<float, ActivationType::Tanh>(
     const float* bias_data, int64_t batch_size, int64_t feature_dim,
     cudaStream_t stream, float* out_data);
+
+template void GPUAddBiasActKernel<float, ActivationType::Relu>(
+    const float* bias_data, int64_t batch_size, int64_t feature_dim,
+    cudaStream_t stream, float* out_data);
+
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers

@@ -26,6 +26,32 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
+// tranpose(2,3)
+// input (B x seq_len x head_num * hidden_size)
+// bias (head * hidden_size)
+static void AddBiasTransposeForScoreImpl(const float* input, const float* bias,
+                                         int64_t dim0, int64_t dim1,
+                                         int64_t dim2, int64_t dim3,
+                                         float* output) {
+#pragma omp parallel for
+  for (int64_t idx = 0; idx < dim0 * dim1; ++idx) {
+    int64_t dim0_idx = idx / dim1;
+    int64_t dim1_idx = idx % dim1;
+    for (int64_t dim2_idx = 0; dim2_idx < dim2; ++dim2_idx) {
+      const float* bias_ptr = bias + dim2_idx * dim3;
+      auto* src = input + dim0_idx * (dim1 * dim2 * dim3) +
+                  dim1_idx * dim2 * dim3 + dim2_idx * dim3;
+      auto* dst = output + dim0_idx * (dim1 * dim2 * dim3) +
+                  dim2_idx * dim1 * dim3 + dim1_idx * dim3;
+#pragma omp simd
+      for (int64_t dim3_idx = 0; dim3_idx < dim3; ++dim3_idx) {
+        dst[dim3_idx] = src[dim3_idx] + bias_ptr[dim3_idx];
+      }
+    }
+  }
+}
+
+// tranpose(2,3)
 static void TransposeForScoreImpl(float* output, const float* input,
                                   int64_t batch_size, int64_t seq_length,
                                   int64_t num_attention_heads, int64_t width) {
@@ -60,9 +86,37 @@ void TransposeForScore(core::Tensor* output, const core::Tensor& input) {
     auto num_attention_heads = input.shape(1);
     auto width = input.shape(3);
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPUTransposeForScore<float>(
-        input.data<float>(), output->mutableData<float>(), batch_size,
-        seq_length, num_attention_heads, width, cuda_ctx.stream());
+    const float* dummy = nullptr;
+    GPUTransposeForScore<float, false>(
+        input.data<float>(), dummy, batch_size, seq_length, num_attention_heads,
+        width, cuda_ctx.stream(), output->mutableData<float>());
+#endif
+  } else {
+    TT_THROW("device_type is not supported");
+  }
+}
+
+// add bias and transpose(2,3)
+void AddBiasTransposeForScore(const core::Tensor& input,
+                              const core::Tensor& bias, core::Tensor* output) {
+  TT_ENFORCE_EQ(input.n_dim(), 4, "input should be a 4-D tensor");
+  TT_ENFORCE_EQ(bias.numel(), input.shape(2) * input.shape(3),
+                "bias shape %d should be %d x %d", bias.n_dim(), input.shape(2),
+                input.shape(3));
+  auto dim0 = input.shape(0);
+  auto dim1 = input.shape(1);
+  auto dim2 = input.shape(2);
+  auto dim3 = input.shape(3);
+  if (input.device_type() == kDLCPU && output->device_type() == kDLCPU) {
+    AddBiasTransposeForScoreImpl(input.data<float>(), bias.data<float>(), dim0,
+                                 dim1, dim2, dim3,
+                                 output->mutableData<float>());
+  } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
+#ifdef TT_WITH_CUDA
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUTransposeForScore<float, true>(input.data<float>(), bias.data<float>(),
+                                      dim0, dim1, dim2, dim3, cuda_ctx.stream(),
+                                      output->mutableData<float>());
 #endif
   } else {
     TT_THROW("device_type is not supported");
@@ -75,9 +129,9 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
   TT_ENFORCE_EQ(output_tensor->n_dim(), 5,
                 "output_tensor should be (weight_num, batch_size, seq_length, "
                 "num_attention_heads, size_per_head)");
-  TT_ENFORCE_EQ(output_tensor->shape(0), 3,
-                "output_tensor should be (3, batch_size, seq_length, "
-                "num_attention_heads, size_per_head)");
+  // TT_ENFORCE_EQ(bias_tensor.n_dim(), 1,
+  //               "output_tensor should be (weight_num * num_attention_heads, "
+  //               "size_per_head)");
 
   auto batch_size = output_tensor->shape(1);
   auto seq_length = output_tensor->shape(3);

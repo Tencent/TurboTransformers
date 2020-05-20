@@ -13,6 +13,7 @@
 
 #pragma once
 #include <stdint.h>
+
 #include "turbo_transformers/layers/types.h"
 
 namespace turbo_transformers {
@@ -31,6 +32,9 @@ void GPUFill(T* data_ptr, int64_t size, T val);
 
 extern void GPUTransform(int64_t* src_data_ptr, float* dst_data_ptr,
                          const int64_t size);
+template <bool AddInput, typename T>
+void GPUAddBias(const T* input1, const T* input2, const T* bias, int64_t m,
+                int64_t n, cudaStream_t stream, T* out);
 
 }  // namespace kernels
 }  // namespace layers
