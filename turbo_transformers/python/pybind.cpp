@@ -25,6 +25,7 @@
 #include "turbo_transformers/layers/bert_pooler.h"
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
+#include "turbo_transformers/layers/albert_layer.h"
 
 namespace turbo_transformers {
 namespace python {
@@ -147,6 +148,24 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
   py::class_<layers::PrepareBertMasks>(m, "PrepareBertMasks")
       .def(py::init())
       .def("__call__", &layers::PrepareBertMasks::operator());
+
+  py::class_<layers::AlbertLayer>(m, "AlbertLayer")
+      .def(py::init([](core::Tensor &dense_weight,
+                       core::Tensor &dense_bias,
+                       core::Tensor &dense_output_weight,
+                       core::Tensor &dense_output_bias,
+                       core::Tensor &layer_norm_weight,
+                       core::Tensor &layer_norm_bias
+                       ) -> layers::AlbertLayer * {
+        return new layers::AlbertLayer(std::move(dense_weight),
+                                            std::move(dense_bias),
+                                            std::move(dense_output_weight),
+                                            std::move(dense_output_bias),
+                                            std::move(layer_norm_weight),
+                                            std::move(layer_norm_bias));
+      }))
+      .def("__call__", &layers::AlbertLayer::operator());
+
 }
 
 }  // namespace python

@@ -29,18 +29,22 @@ namespace turbo_transformers {
 namespace layers {
 
 void AlbertLayer::operator()(const core::Tensor& input_tensor,
-                                  core::Tensor* output_tensor) const {
-  output_tensor->Reshape<float>(
+                             core::Tensor* hidden_output,
+                             core::Tensor* output_tensor) const {
+  hidden_output->Reshape<float>(
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(1)},
       input_tensor.device_type(), input_tensor.device_id());
 
-  kernels::MatMul(input_tensor, false, dense_weight_, false, 1.0, output_tensor,
+  kernels::MatMul(input_tensor, false, dense_weight_, false, 1.0, hidden_output,
                   0.0);
   kernels::AddBiasAct<float, kernels::ActivationType::Gelu>(dense_bias_,
-                                                            output_tensor);
-  kernels::MatMul(hidden_states, false, dense_weight_, false, 1.0,
+                                                            hidden_output);
+  output_tensor->Reshape<float>(
+      {input_tensor.shape(0), input_tensor.shape(1), dense_output_weight_.shape(1)},
+      input_tensor.device_type(), input_tensor.device_id());
+  kernels::MatMul(*hidden_output, false, dense_output_weight_, false, 1.0,
                   output_tensor, 0.0);
-  kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
+  kernels::AddBiasLayerNorm<float>(input_tensor, dense_output_bias_,
                                    layer_norm_weight_, layer_norm_bias_,
                                    output_tensor);
 }
@@ -58,6 +62,10 @@ void AlbertLayer::EnforceShapeAndType() const {
     dense_weight_.Print<float>(os);
     os << ">>>>>>>>>>>> query_bias <<<<<<<<<<<<" << std::endl;
     dense_bias_.Print<float>(os);
+    os << "<<<<<<<< dense_weight_ <<<<<<<<<<";
+    dense_output_weight_.Print<float>(os);
+    os << "<<<<<<<< dense_bias <<<<<<<<<<";
+    dense_output_bias_.Print<float>(os);
     os << "<<<<<<<< layer_norm_weight <<<<<<<<<<";
     layer_norm_weight_.Print<float>(os);
     os << "<<<<<<<< layer_norm_bias <<<<<<<<<<";
