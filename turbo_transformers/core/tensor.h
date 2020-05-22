@@ -207,14 +207,14 @@ class Tensor {
     os << "shape: ";
     PrintArray(os, dl_tensor.shape, dl_tensor.ndim);
     os << "\n";
-    os << "first 10 elems: (";
+    os << "first and last 10 elems: (";
     int cnt = 10;
     double sum = 0.;
 
     if (device_type() == kDLCPU) {
       for (int i = 0; i < numel(); ++i) {
         sum += data<T>()[i];
-        if (cnt-- >= 0) os << data<T>()[i] << ", ";
+        if (cnt-- >= 0 || numel() - i <= 10) os << data<T>()[i] << ", ";
       }
     } else if (device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
@@ -223,7 +223,7 @@ class Tensor {
       Memcpy(cpu_data.get(), data<T>(), n * sizeof(T), MemcpyFlag::kGPU2CPU);
       for (int i = 0; i < n; ++i) {
         sum += cpu_data[i];
-        if (cnt-- >= 0) os << cpu_data[i] << ", ";
+        if (cnt-- >= 0 || n - i <= 10) os << cpu_data[i] << ", ";
       }
 #else
       TT_THROW("No CUDA supported, Please Compile with TT_WITH_CUDA");

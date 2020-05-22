@@ -16,32 +16,103 @@
 #include "enforce.h"
 #include "loguru.hpp"
 
-#ifdef WITH_GPERFTOOLS
-#include "gperftools/profiler.h"
+#ifdef WITH_PERFTOOLS
+#include <chrono>
+#include <iostream>
+#include <stack>
+#include <unordered_map>
 #endif
 
 namespace turbo_transformers {
 namespace core {
-#ifdef WITH_GPERFTOOLS
-static bool gProfileStarted = false;
-#endif
+#ifdef WITH_PERFTOOLS
+static bool gProfileEnabled = false;
 
-void EnableGperf(const std::string &profile_file) {
-#ifdef WITH_GPERFTOOLS
-  LOG_S(1) << "gperf tools enabled." << profile_file;
-  TT_ENFORCE_EQ(gProfileStarted, false, "Currently the gPerf is enabled.");
-  ProfilerStart(profile_file.c_str());
-  gProfileStarted = true;
+struct Profiler::ProfilerImpl {
+  void start_profile(const std::string& ctx_name) {
+    auto start = std::chrono::system_clock::now();
+    clock_stack_.push(start);
+  }
+  void end_profile(const std::string& ctx_name) {
+    auto end = std::chrono::system_clock::now();
+    if (clock_stack_.empty()) TT_THROW("Profiler has no start time");
+    auto start = clock_stack_.top();
+    clock_stack_.pop();
+    auto duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    auto elapsed_time = double(duration.count()) *
+                        std::chrono::microseconds::period::num /
+                        std::chrono::microseconds::period::den;
+    if (timer_map_.find(ctx_name) != timer_map_.end()) {
+      timer_map_[ctx_name] += elapsed_time;
+    } else {
+      timer_map_.insert({ctx_name, elapsed_time});
+    }
+  }
+  void print_results() const {
+    std::cerr << std::endl << profile_name_ << " Time line: " << std::endl;
+    for (auto it = timer_map_.begin(); it != timer_map_.end(); ++it) {
+      std::cerr << it->first << " , " << it->second << std::endl;
+    }
+  }
+  void clear() {
+    timer_map_.clear();
+    while (!clock_stack_.empty()) {
+      clock_stack_.pop();
+    }
+  }
+  void set_name(const std::string& profile_name) {
+    profile_name_ = profile_name;
+  }
+
+ private:
+  std::unordered_map<std::string, double> timer_map_;
+  std::stack<std::chrono::time_point<std::chrono::system_clock>> clock_stack_;
+  std::string profile_name_;
+};
+
+void Profiler::start_profile(const std::string& ctx_name) {
+  if (gProfileEnabled) profiler_->start_profile(ctx_name);
+}
+
+void Profiler::end_profile(const std::string& ctx_name) {
+  if (gProfileEnabled) profiler_->end_profile(ctx_name);
+}
+
+void Profiler::print_results() const {
+  if (gProfileEnabled) {
+    profiler_->print_results();
+  }
+}
+
+void Profiler::clear() { profiler_->clear(); }
+
+void Profiler::enable(const std::string& profile_name) {
+  gProfileEnabled = true;
+  profiler_->set_name(profile_name);
+}
+void Profiler::disable() { gProfileEnabled = false; }
+
+Profiler::~Profiler() = default;
+Profiler::Profiler() : profiler_(new ProfilerImpl()) {}
+
+#endif
+void EnableGperf(const std::string& profile_name) {
+#ifdef WITH_PERFTOOLS
+  LOG_S(1) << "gperf tools enabled. " << profile_name;
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.clear();
+  profile_ctx.enable(profile_name);
 #else
   LOG_S(WARNING) << "turbo_transformers is not compiled with gperftools.";
 #endif
 }
 
 void DisableGperf() {
-#ifdef WITH_GPERFTOOLS
-  TT_ENFORCE_EQ(gProfileStarted, true, "Currently the gPerf is disabled.");
-  ProfilerStop();
-  gProfileStarted = false;
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.print_results();
+  profile_ctx.disable();
 #else
   LOG_S(WARNING) << "turbo_transformers is not compiled with gperftools.";
 #endif

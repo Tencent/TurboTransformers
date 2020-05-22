@@ -32,5 +32,4 @@ __all__ = [
     'AlbertLayer',
     'AlbertEmbeddings',
     'AlbertAttention',
-
 ]

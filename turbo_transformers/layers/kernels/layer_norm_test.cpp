@@ -53,9 +53,6 @@ TEST_CASE("add_bias_layer_norm-test") {
         std::tie(cpu_beta, gpu_beta) =
             common::CreateAndFillRandomForCPUGPUTensors<float>({hidden_size});
 
-        std::cout << "batch_size: " << batch_size
-                  << " seq_length: " << seq_length
-                  << " hidden_size: " << hidden_size;
         {
           LayerNorm<float>(cpu_gamma, cpu_beta, &cpu_out);
           LayerNorm<float>(gpu_gamma, gpu_beta, &gpu_out);
