@@ -69,16 +69,16 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                                           dtype=torch.float32,
                                           device=self.test_device)
 
-            self.src_pad_mask = torch.ones(batch_size,
-                                           1,
-                                           src_length,
-                                           dtype=torch.float32,
-                                           device=self.test_device)
-            self.tgt_pad_mask = torch.ones(batch_size,
-                                           1,
-                                           T,
-                                           dtype=torch.float32,
-                                           device=self.test_device)
+            self.src_pad_mask = torch.zeros(batch_size,
+                                            1,
+                                            src_length,
+                                            dtype=torch.float32,
+                                            device=self.test_device)
+            self.tgt_pad_mask = torch.zeros(batch_size,
+                                            1,
+                                            T,
+                                            dtype=torch.float32,
+                                            device=self.test_device)
 
             onmt_model = lambda: self.onmt_decoder(self.inputs,
                                                    self.memory_bank,

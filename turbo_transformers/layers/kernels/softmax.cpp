@@ -23,16 +23,20 @@
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
+// attr_mask's shape coudl be (batch, from_len, to_len) or (batch, 1, to_len)
+// is2D is used to distinguish the two scenarios.
 void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
                  int64_t head_num, int64_t from_seq_len, int64_t to_seq_len,
-                 float scale) {
+                 float scale, bool is2D = true) {
   int64_t M = batch_size * head_num * from_seq_len;
   int64_t N = to_seq_len;
 #pragma omp parallel for
   for (int64_t i = 0; i < M; ++i) {
     auto* qk_buf_ptr = qk_buf + i * N;
     const float* attr_mask_ptr = nullptr;
-    auto attr_mask_offset = i / (head_num * from_seq_len) * to_seq_len;
+
+    auto batch_idx = i / (head_num * from_seq_len);
+    auto from_seq_idx = i % from_seq_len;
     attr_mask_ptr = attr_mask + attr_mask_offset;
     // max-trick
 #pragma omp simd
@@ -70,10 +74,11 @@ void ApplyMaskAndSoftmax(core::Tensor* inout, const core::Tensor& att_mask,
   auto num_att_heads = inout->shape(1);
   auto from_seq_len = inout->shape(2);
   auto to_seq_len = inout->shape(3);
+  bool is_2D = att_mask.shape(att_mask.n_dim() - 2) == 1 ? true : false;
 
   if (inout->device_type() == kDLCPU) {
     SoftmaxMask(inout->mutableData<float>(), att_mask.data<float>(), batch_size,
-                num_att_heads, from_seq_len, to_seq_len, scale);
+                num_att_heads, from_seq_len, to_seq_len, scale, is_2D);
   } else if (inout->device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
     auto& cuda_ctx = core::CUDADeviceContext::GetInstance();

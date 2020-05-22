@@ -94,8 +94,8 @@ def create_test(batch_size,
             info = f"\"({device}, {pre_layernorm}, {attn_type}, {batch_size}, {key_seq_len:03}, {query_seq_len:03})\""
 
             attention_mask = torch.zeros(
-                (batch_size, 1, key_seq_len if (attn_type == "context") else
-                 query_seq_len),  #TODO mask shape is diff for context and self
+                (batch_size, 1, key_seq_len if
+                 (attn_type == "context") else query_seq_len),
                 dtype=torch.bool,
                 device=self.test_device)
 
