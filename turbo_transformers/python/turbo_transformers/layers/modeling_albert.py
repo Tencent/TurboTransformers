@@ -1,3 +1,15 @@
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.
+# All rights reserved.
+# Licensed under the BSD 3-Clause License (the "License"); you may
+# not use this file except in compliance with the License. You may
+# obtain a copy of the License at
+# https://opensource.org/licenses/BSD-3-Clause
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" basis,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+# See the AUTHORS file for names of contributors.
 """PyTorch ALBERT model. """
 try:
     # `turbo_transformers_cxxd` is the name on debug mode
@@ -16,8 +28,9 @@ from transformers.modeling_albert import AlbertLayerGroup as TorchAlbertLayerGro
 import torch
 import enum
 
-
-__all__ = ["AlbertEmbeddings", "AlbertTransformer", "AlbertAttention", "AlbertLayerGroup", "AlbertLayer"
+__all__ = [
+    "AlbertEmbeddings", "AlbertTransformer", "AlbertAttention",
+    "AlbertLayerGroup", "AlbertLayer"
 ]
 ALBERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
     'albert-base': "",
@@ -26,6 +39,7 @@ ALBERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
     'albert-xxlarge': "",
 }
 
+
 def _try_convert(t):
     if isinstance(t, torch.Tensor):
         return convert2tt_tensor(t)
@@ -33,8 +47,11 @@ def _try_convert(t):
         return convert2tt_tensor(torch.from_numpy(t))
     else:
         return t
+
+
 def convert2tt_tensor(t):
     return cxx.Tensor.from_dlpack(dlpack.to_dlpack(t))
+
 
 def _to_param_dict(torch_module: torch.nn.Module):
     return {
@@ -67,16 +84,18 @@ class AlbertEmbeddings(cxx.BERTEmbedding):
         token_type_ids = _try_convert(token_type_ids)
         output = _create_empty_if_none(output)
         super(AlbertEmbeddings, self).__call__(input_ids, position_ids,
-                                             token_type_ids, output)
+                                               token_type_ids, output)
         return convert_returns_as_type(output, return_type)
+
     @staticmethod
-    def from_torch(albert_embedding: TorchAlbertEmbeddings) -> 'AlbertEmbeddings':
+    def from_torch(albert_embedding: TorchAlbertEmbeddings
+                   ) -> 'AlbertEmbeddings':
         params = _to_param_dict(albert_embedding)
         return AlbertEmbeddings(params['word_embeddings.weight'],
-                              params['position_embeddings.weight'],
-                              params['token_type_embeddings.weight'],
-                              params['LayerNorm.weight'],
-                              params['LayerNorm.bias'])
+                                params['position_embeddings.weight'],
+                                params['token_type_embeddings.weight'],
+                                params['LayerNorm.weight'],
+                                params['LayerNorm.bias'])
 
 
 #AlbertAttention seems like a combination of AlbertAttention and AlbertOutput , So just need a small modification.
@@ -89,8 +108,9 @@ class AlbertAttention(cxx.BertAttention):
         input_tensor = _try_convert(input_tensor)
         attention_mask = _try_convert(attention_mask)
         output = _create_empty_if_none(output)
+        attn_probs = cxx.Tensor.create_empty()
         super(AlbertAttention, self).__call__(input_tensor, attention_mask,
-                                            output)
+                                              output, attn_probs, False)
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
@@ -101,12 +121,10 @@ class AlbertAttention(cxx.BertAttention):
             # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
             qkv_weight = torch.clone(
                 torch.t(
-                    torch.cat((params['query.weight'],
-                               params['key.weight'],
+                    torch.cat((params['query.weight'], params['key.weight'],
                                params['value.weight']), 0)))
-            qkv_bias = torch.cat(
-                (params['query.bias'], params['key.bias'],
-                 params['value.bias']), 0)
+            qkv_bias = torch.cat((params['query.bias'], params['key.bias'],
+                                  params['value.bias']), 0)
 
             output_weight = torch.clone(torch.t(params['dense.weight']))
             att = AlbertAttention(
@@ -118,10 +136,15 @@ class AlbertAttention(cxx.BertAttention):
                 attention.num_attention_heads)
 
             return att
+
+
 class AlbertLayer(cxx.AlbertLayer):
-    def __init__(self, attention: AlbertAttention, ffn, ffn_bias, ffn_output, ffn_ouput_bias, fl, fl_bias):
+    def __init__(self, attention: AlbertAttention, ffn, ffn_bias, ffn_output,
+                 ffn_ouput_bias, fl, fl_bias):
         self.attention = attention
-        super(AlbertLayer,self).__init__(ffn, ffn_bias, ffn_output, ffn_ouput_bias, fl, fl_bias)
+        super(AlbertLayer, self).__init__(ffn, ffn_bias, ffn_output,
+                                          ffn_ouput_bias, fl, fl_bias)
+
     def __call__(self,
                  input_tensor: AnyTensor,
                  attention_mask: AnyTensor,
@@ -137,22 +160,26 @@ class AlbertLayer(cxx.AlbertLayer):
         attention_output = _try_convert(attention_output)
         hidden_output = _create_empty_if_none(hidden_output)
         output = _create_empty_if_none(output)
-        super(AlbertLayer, self).__call__(attention_output, hidden_output, output)
+        super(AlbertLayer, self).__call__(attention_output, hidden_output,
+                                          output)
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
     def from_torch(intermediate: TorchAlbertLayer):
         intermediate_params = _to_param_dict_naive(intermediate)
         weight = torch.clone(torch.t(intermediate_params["ffn.weight"]))
-        weight_output = torch.clone(torch.t(intermediate_params["ffn_output.weight"]))
+        weight_output = torch.clone(
+            torch.t(intermediate_params["ffn_output.weight"]))
         return AlbertLayer(
             AlbertAttention.from_torch(intermediate.attention),
             convert2tt_tensor(weight),
             convert2tt_tensor(intermediate_params['ffn.bias']),
             convert2tt_tensor(weight_output),
             convert2tt_tensor(intermediate_params['ffn_output.weight']),
-            convert2tt_tensor(intermediate_params['full_layer_layer_norm.weight']),
-            convert2tt_tensor(intermediate_params['full_layer_layer_norm.bias']))
+            convert2tt_tensor(
+                intermediate_params['full_layer_layer_norm.weight']),
+            convert2tt_tensor(
+                intermediate_params['full_layer_layer_norm.bias']))
 
     @staticmethod
     def from_npz(file_name: str, layer_num: int):
@@ -162,6 +189,7 @@ class AlbertLayer(cxx.AlbertLayer):
                 f[f'encoder.layer.{layer_num}.intermediate.dense.weight']),
             _try_convert(
                 f[f'encoder.layer.{layer_num}.intermediate.dense.bias']))
+
     '''
     def __init__(self, config):
         super().__init__()
@@ -181,6 +209,7 @@ class AlbertLayer(cxx.AlbertLayer):
         hidden_states = self.full_layer_layer_norm(ffn_output + attention_output[0])
         return (hidden_states,) + attention_output[1:]  # add attentions if we output them
     '''
+
 
 '''
 class AlbertLayerGroup(nn.Module):
@@ -947,4 +976,3 @@ class AlbertForQuestionAnswering(AlbertPreTrainedModel):
 
         return outputs  # (loss), start_logits, end_logits, (hidden_states), (attentions)
 '''
-
