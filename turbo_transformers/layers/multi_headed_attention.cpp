@@ -249,9 +249,10 @@ void MultiHeadedAttention::operator()(
 #ifdef WITH_PERFTOOLS
   profile_ctx.start_profile("ApplyMaskAndSoftmax");
 #endif
-  kernels::ApplyMaskAndSoftmax(att_score,
-                               attention_mask,  //(B, num_head, q_len, k_len)
-                               1.0);
+  kernels::ApplyMaskAndSoftmax(
+      att_score,
+      attention_mask,  //(B, q_len, k_len) or (B, 1, k_len)
+      1.0);
 
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("ApplyMaskAndSoftmax");
