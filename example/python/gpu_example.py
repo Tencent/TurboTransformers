@@ -41,5 +41,7 @@ if __name__ == "__main__":
     # print(torch_result)
 
     tt_result = model_tt(input_ids)
-    tt_result = tt_result.cpu().numpy()
-    print(numpy.max(numpy.abs(tt_result) - numpy.abs(torch_result)))
+    tt_result = tt_result[0].cpu().numpy()
+    # print(tt_result - torch_result)
+    print("max diff between turbo and torch",
+          numpy.max(numpy.abs(tt_result - torch_result)))
