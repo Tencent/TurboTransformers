@@ -329,8 +329,8 @@ class TransformerDecoderLayer:
         Args:
             input_tensor (FloatTensor): ``(batch_size, T, model_dim)``
             memory_bank (FloatTensor): ``(batch_size, src_len, model_dim)``
-            src_pad_mask (FloatTensor): ``(batch_size, 1, src_len)``
-            tgt_pad_mask (FloatTensor): ``(batch_size, 1, T)``
+            src_pad_mask (bool): ``(batch_size, 1, src_len)``
+            tgt_pad_mask (bool): ``(batch_size, 1, T)``
             layer_cache (dict or None): cached layer info when stepwise decode
             step (int or None): stepwise decoding counter
             future (bool): If set True, do not apply future_mask.
@@ -340,8 +340,11 @@ class TransformerDecoderLayer:
             * top_attns ``(batch_size, T, src_len)``  or None
             * attn_align None
         """
-
-        # dec_mask = None
+        if layer_cache is not None:
+            for k, v in layer_cache.items():
+                if v is not None:
+                    raise "layer_cache dictionary should only contains None elems"
+        # dec_mask = None which is no mask
         dec_mask = torch.zeros(
             (input_tensor.size(0), 1, src_pad_mask.size(-1)),
             device=tgt_pad_mask.device,
@@ -349,7 +352,7 @@ class TransformerDecoderLayer:
 
         input_tensor = try_convert(input_tensor)
         memory_bank = try_convert(memory_bank)
-        src_pad_mask = src_pad_mask * -1e18
+        src_pad_mask = src_pad_mask.float() * -1e18
         src_pad_mask = try_convert(src_pad_mask)
 
         if step is None:
@@ -548,10 +551,8 @@ class TransformerDecoder:
         src_lens = kwargs["memory_lengths"]
         src_max_len = self.state["src"].shape[0]
         #Turbo add bool -> float
-        src_pad_mask = (
-            ~sequence_mask(src_lens, src_max_len).unsqueeze(1)).float()
-        tgt_pad_mask = tgt_words.data.eq(pad_idx).unsqueeze(
-            1).float()  # [B, 1, T_tgt]
+        src_pad_mask = ~sequence_mask(src_lens, src_max_len).unsqueeze(1)
+        tgt_pad_mask = tgt_words.data.eq(pad_idx).unsqueeze(1)  # [B, 1, T_tgt]
 
         with_align = kwargs.pop('with_align', False)
         if with_align:
@@ -559,8 +560,7 @@ class TransformerDecoder:
         attn_aligns = []
 
         # It's Turbo's show time!
-        i = 0
-        for layer in self.transformer_layers:
+        for i, layer in enumerate(self.transformer_layers):
             layer_cache = self.state["cache"]["layer_{}".format(i)] \
                 if step is not None else None
             output, attn, attn_align = layer(output,
@@ -572,7 +572,6 @@ class TransformerDecoder:
                                              with_align=with_align)
             if attn_align is not None:
                 attn_aligns.append(attn_align)
-            i += 1
 
         # Turbo finished.
         output = self.layer_norm(output)

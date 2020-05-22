@@ -56,6 +56,7 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
             deivce_type = "GPU" if use_cuda else "CPU"
             info = f"\"({deivce_type}, {batch_size}, {src_length}, {T})\""
 
+            step = 2
             self.init_data(use_cuda=use_cuda)
 
             self.inputs = torch.rand(batch_size,
@@ -73,19 +74,19 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                                             1,
                                             src_length,
                                             dtype=torch.float32,
-                                            device=self.test_device)
+                                            device=self.test_device).bool()
             self.tgt_pad_mask = torch.zeros(batch_size,
                                             1,
                                             T,
                                             dtype=torch.float32,
-                                            device=self.test_device)
+                                            device=self.test_device).bool()
 
             onmt_model = lambda: self.onmt_decoder(self.inputs,
                                                    self.memory_bank,
-                                                   self.src_pad_mask.bool(),
-                                                   self.tgt_pad_mask.bool(),
+                                                   self.src_pad_mask,
+                                                   self.tgt_pad_mask,
                                                    layer_cache=None,
-                                                   step=None,
+                                                   step=step,
                                                    future=False)
 
             onmt_result, torch_qps, torch_time_consume = \
@@ -101,10 +102,10 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                 quantized_onmt_model = lambda: self.quantized_onmt_decoder(
                     self.inputs,
                     self.memory_bank,
-                    self.src_pad_mask.bool(),
-                    self.tgt_pad_mask.bool(),
+                    self.src_pad_mask,
+                    self.tgt_pad_mask,
                     layer_cache=None,
-                    step=None,
+                    step=step,
                     future=False)
 
                 quantized_onmt_result, quantized_torch_qps, quantized_torch_time_consume = \
@@ -132,7 +133,7 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                                                      self.src_pad_mask,
                                                      self.tgt_pad_mask,
                                                      layer_cache=None,
-                                                     step=None,
+                                                     step=step,
                                                      future=False)
 
             with turbo_transformers.pref_guard(info) as perf:
