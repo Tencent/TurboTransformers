@@ -58,8 +58,8 @@ def create_test(batch_size, seq_length):
             self.init_data(use_cuda=use_cuda)
             device = "GPU" if use_cuda else "CPU"
             num_iter = 2
-            turbo_model = lambda: self.turbo_layer(
-                self.input_tensor, self.attention_mask)
+            turbo_model = lambda: self.turbo_layer(self.input_tensor, self.
+                                                   attention_mask)
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
 
@@ -68,8 +68,8 @@ def create_test(batch_size, seq_length):
                 f"{device} TurboTransform QPS,  {turbo_qps}, time, {turbo_time}"
             )
 
-            torch_model = lambda: self.torch_layer(
-                self.input_tensor, self.attention_mask)
+            torch_model = lambda: self.torch_layer(self.input_tensor, self.
+                                                   attention_mask)
             torch_result, torch_qps, torch_time = \
                 test_helper.run_model(torch_model, use_cuda, num_iter)
 
@@ -79,9 +79,8 @@ def create_test(batch_size, seq_length):
             # Tensor core will introduce more errors
             tolerate_error = 1e-2 if use_cuda else 2e-2
             self.assertTrue(
-                torch.max(
-                    torch.abs(torch_result[0] -
-                              turbo_result)) < tolerate_error)
+                torch.max(torch.abs(torch_result[0] -
+                                    turbo_result)) < tolerate_error)
 
             with open("albert_layer_res.txt", "a") as fh:
                 fh.write(
@@ -101,7 +100,7 @@ def create_test(batch_size, seq_length):
 with open("albert_layer_res.txt", "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 for batch_size in [1, 2]:
-    for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
+    for seq_length in [10, 20, 40, 80, 120]:
         create_test(batch_size, seq_length)
 
 if __name__ == '__main__':
