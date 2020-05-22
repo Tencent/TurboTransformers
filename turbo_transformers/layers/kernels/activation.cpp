@@ -51,6 +51,7 @@ void CPUAddBiasActKernel<float, ActivationType::Gelu>(const float *bias,
   }
 }
 
+
 template <>
 void CPUAddBiasActKernel<float, ActivationType::Tanh>(const float *bias,
                                                       int64_t batch_size,

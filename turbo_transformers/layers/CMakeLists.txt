@@ -21,6 +21,7 @@ add_library(tt_layers OBJECT
         sequence_pool.cpp
         bert_pooler.cpp
         prepare_bert_masks.cpp
+        albert_layer.cpp
         )
 
 target_link_libraries(tt_layers PUBLIC tt_core tt_kernels)
