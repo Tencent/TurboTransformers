@@ -122,6 +122,7 @@ class AlbertLayer(cxx.AlbertLayer):
     def __init__(self, attention: AlbertAttention, ffn, ffn_bias, ffn_output, ffn_ouput_bias, fl, fl_bias):
         self.attention = attention
         super(AlbertLayer,self).__init__(ffn, ffn_bias, ffn_output, ffn_ouput_bias, fl, fl_bias)
+
     def __call__(self,
                  input_tensor: AnyTensor,
                  attention_mask: AnyTensor,

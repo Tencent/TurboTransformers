@@ -23,6 +23,8 @@
 #include "turbo_transformers/layers/bert_intermediate.h"
 #include "turbo_transformers/layers/bert_output.h"
 #include "turbo_transformers/layers/bert_pooler.h"
+#include "turbo_transformers/layers/multi_headed_attention.h"
+#include "turbo_transformers/layers/positionwise_ffn.h"
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
 #include "turbo_transformers/layers/albert_layer.h"
@@ -66,8 +68,8 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
 
   m.def("set_stderr_verbose_level",
         [](int v) { loguru::g_stderr_verbosity = v; });
-  m.def("enable_gperf", &core::EnableGperf);
-  m.def("disable_gperf", &core::DisableGperf);
+  m.def("enable_perf", &core::EnableGperf);
+  m.def("disable_perf", &core::DisableGperf);
   m.def("set_num_threads", &core::SetNumThreads);
 
   py::class_<core::Tensor>(m, "Tensor")
@@ -113,6 +115,41 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       }))
       .def("__call__", &layers::BertAttention::operator());
 
+  py::class_<layers::MultiHeadedAttention>(m, "MultiHeadedAttention")
+      .def(py::init(
+          [](core::Tensor &key_weight, core::Tensor &key_bias,
+             core::Tensor &value_weight, core::Tensor &value_bias,
+             core::Tensor &query_weight, core::Tensor &query_bias,
+             core::Tensor &dense_weight, core::Tensor &dense_bias,
+             core::Tensor &qkv_weight, core::Tensor &qkv_bias,
+             int num_attention_heads) -> layers::MultiHeadedAttention * {
+            return new layers::MultiHeadedAttention(
+                std::move(key_weight), std::move(key_bias),
+                std::move(value_weight), std::move(value_bias),
+                std::move(query_weight), std::move(query_bias),
+                std::move(dense_weight), std::move(dense_bias),
+                std::move(qkv_weight), std::move(qkv_bias),
+                num_attention_heads);
+          }))
+      .def(py::init(
+          [](core::Tensor &key_weight, core::Tensor &key_bias,
+             core::Tensor &value_weight, core::Tensor &value_bias,
+             core::Tensor &query_weight, core::Tensor &query_bias,
+             core::Tensor &dense_weight, core::Tensor &dense_bias,
+             core::Tensor &qkv_weight, core::Tensor &qkv_bias,
+             core::Tensor &layernorm_gamma, core::Tensor &layernorm_beta,
+             int num_attention_heads) -> layers::MultiHeadedAttention * {
+            return new layers::MultiHeadedAttention(
+                std::move(key_weight), std::move(key_bias),
+                std::move(value_weight), std::move(value_bias),
+                std::move(query_weight), std::move(query_bias),
+                std::move(dense_weight), std::move(dense_bias),
+                std::move(qkv_weight), std::move(qkv_bias),
+                std::move(layernorm_gamma), std::move(layernorm_beta),
+                num_attention_heads);
+          }))
+      .def("__call__", &layers::MultiHeadedAttention::operator());
+
   py::class_<layers::BertIntermediate>(m, "BertIntermediate")
       .def(py::init([](core::Tensor &dense_weight,
                        core::Tensor &dense_bias) -> layers::BertIntermediate * {
@@ -149,6 +186,7 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       .def(py::init())
       .def("__call__", &layers::PrepareBertMasks::operator());
 
+<<<<<<< HEAD
   py::class_<layers::AlbertLayer>(m, "AlbertLayer")
       .def(py::init([](core::Tensor &dense_weight,
                        core::Tensor &dense_bias,
@@ -166,6 +204,20 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       }))
       .def("__call__", &layers::AlbertLayer::operator());
 
+=======
+  py::class_<layers::PositionwiseFeedForward>(m, "PositionwiseFeedForward")
+      .def(py::init([](core::Tensor &dense_weight_1, core::Tensor &dense_bias_1,
+                       core::Tensor &dense_weight_2, core::Tensor &dense_bias_2,
+                       core::Tensor &layer_norm_weight,
+                       core::Tensor &layer_norm_bias)
+                        -> layers::PositionwiseFeedForward * {
+        return new layers::PositionwiseFeedForward(
+            std::move(dense_weight_1), std::move(dense_bias_1),
+            std::move(dense_weight_2), std::move(dense_bias_2),
+            std::move(layer_norm_weight), std::move(layer_norm_bias));
+      }))
+      .def("__call__", &layers::PositionwiseFeedForward::operator());
+>>>>>>> 788e7834923ea391df283c09d3123c5a7e9936d5
 }
 
 }  // namespace python

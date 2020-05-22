@@ -21,7 +21,12 @@ add_library(tt_layers OBJECT
         sequence_pool.cpp
         bert_pooler.cpp
         prepare_bert_masks.cpp
+<<<<<<< HEAD
         albert_layer.cpp
+=======
+        multi_headed_attention.cpp
+        positionwise_ffn.cpp
+>>>>>>> 788e7834923ea391df283c09d3123c5a7e9936d5
         )
 
 target_link_libraries(tt_layers PUBLIC tt_core tt_kernels)

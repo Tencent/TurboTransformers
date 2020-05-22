@@ -48,9 +48,6 @@ if (WITH_GPU)
     target_sources(tt_core PRIVATE cuda_device_context.cpp cuda_allocator.cpp)
     target_link_libraries(tt_core PUBLIC cudart cuda cublas)
 endif()
-if (WITH_PROFILER)
-    target_link_libraries(tt_core gperftools::profiler)
-endif ()
 
 add_executable(tt_core_test
         enforce_test.cpp
