@@ -33,11 +33,12 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
 #pragma omp parallel for
   for (int64_t i = 0; i < M; ++i) {
     auto* qk_buf_ptr = qk_buf + i * N;
-    const float* attr_mask_ptr = nullptr;
-
     auto batch_idx = i / (head_num * from_seq_len);
     auto from_seq_idx = i % from_seq_len;
-    attr_mask_ptr = attr_mask + attr_mask_offset;
+    const float* attr_mask_ptr =
+        attr_mask +
+        (is2D ? batch_idx * to_seq_len
+              : (batch_idx * from_seq_len + from_seq_idx) * to_seq_len);
     // max-trick
 #pragma omp simd
     for (int64_t j = 0; j < N; ++j) {
