@@ -98,7 +98,7 @@ class AlbertEmbeddings(cxx.BERTEmbedding):
                                 params['LayerNorm.bias'])
 
 
-#AlbertAttention seems like a combination of AlbertAttention and AlbertOutput , So just need a small modification.
+#AlbertAttention seems like a combination of BertSelfAttention and BertOutput , So just need a small modification.
 class AlbertAttention(cxx.BertAttention):
     def __call__(self,
                  input_tensor: AnyTensor,
@@ -134,6 +134,7 @@ class AlbertAttention(cxx.BertAttention):
                 convert2tt_tensor(params['LayerNorm.weight']),
                 convert2tt_tensor(params['LayerNorm.bias']),
                 attention.num_attention_heads)
+
 
             return att
 

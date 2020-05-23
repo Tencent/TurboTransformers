@@ -34,6 +34,15 @@ __inline__ __device__ float ActvationOp<float, ActivationType::Gelu>(
 }
 
 template <>
+__inline__ __device__ float ActvationOp<float, ActivationType::Gelu_new>(
+    const float& x) {
+  float cdf =
+      0.5f *
+      (1.0f + tanhf((0.7978845608028654f * (x + 0.044715f * x * x * x))));
+  return x * cdf;
+}
+
+template <>
 __inline__ __device__ float ActvationOp<float, ActivationType::Tanh>(
     const float& x) {
   return tanhf(x);

@@ -37,7 +37,7 @@ void AlbertLayer::operator()(const core::Tensor& input_tensor,
 
   kernels::MatMul(input_tensor, false, dense_weight_, false, 1.0, hidden_output,
                   0.0);
-  kernels::AddBiasAct<float, kernels::ActivationType::Gelu>(dense_bias_,
+  kernels::AddBiasAct<float, kernels::ActivationType::Gelu_new>(dense_bias_,
                                                             hidden_output);
   output_tensor->Reshape<float>(
       {input_tensor.shape(0), input_tensor.shape(1), dense_output_weight_.shape(1)},
