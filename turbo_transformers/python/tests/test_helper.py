@@ -17,7 +17,7 @@ import torch.onnx
 
 import cProfile
 import cProfile, pstats, io
-from pstats import SortKey
+#from pstats import SortKey
 
 
 def run_model(model, use_cuda, num_iter=50, use_profile=False):
@@ -39,8 +39,8 @@ def run_model(model, use_cuda, num_iter=50, use_profile=False):
     if use_profile:
         pr.disable()
         s = io.StringIO()
-        sortby = SortKey.CUMULATIVE
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        #sortby = SortKey.CUMULATIVE
+        ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
         ps.print_stats()
         print(s.getvalue())
 
