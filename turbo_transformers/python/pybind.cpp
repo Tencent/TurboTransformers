@@ -19,6 +19,7 @@
 #include "turbo_transformers/core/profiler.h"
 #include "turbo_transformers/core/tensor.h"
 #include "turbo_transformers/layers/albert_layer.h"
+#include "turbo_transformers/layers/albert_transformer.h"
 #include "turbo_transformers/layers/bert_attention.h"
 #include "turbo_transformers/layers/bert_embedding.h"
 #include "turbo_transformers/layers/bert_intermediate.h"
@@ -71,6 +72,7 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
   m.def("enable_perf", &core::EnableGperf);
   m.def("disable_perf", &core::DisableGperf);
   m.def("set_num_threads", &core::SetNumThreads);
+
 
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",
@@ -198,6 +200,14 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
             std::move(layer_norm_weight), std::move(layer_norm_bias));
       }))
       .def("__call__", &layers::AlbertLayer::operator());
+
+  py::class_<layers::AlbertTransformer>(m, "AlbertTransformer")
+      .def(py::init([](core::Tensor &dense_weight,
+                       core::Tensor &dense_bias) -> layers::AlbertTransformer * {
+        return new layers::AlbertTransformer(
+            std::move(dense_weight), std::move(dense_bias));
+      }))
+      .def("__call__", &layers::AlbertTransformer::operator());
 
   py::class_<layers::PositionwiseFeedForward>(m, "PositionwiseFeedForward")
       .def(py::init([](core::Tensor &dense_weight_1, core::Tensor &dense_bias_1,
