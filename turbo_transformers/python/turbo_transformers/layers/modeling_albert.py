@@ -25,6 +25,8 @@ from transformers.modeling_albert import AlbertTransformer as TorchAlbertTransfo
 from transformers.modeling_albert import AlbertAttention as TorchAlbertAttention
 from transformers.modeling_albert import AlbertLayer as TorchAlbertLayer
 from transformers.modeling_albert import AlbertLayerGroup as TorchAlbertLayerGroup
+from transformers.modeling_albert import AlbertTransformer as TorchAlbertTransformer
+from transformers.configuration_albert import AlbertConfig as TorchAlbertConfig
 import torch
 import enum
 
@@ -111,7 +113,8 @@ class AlbertAttention(cxx.BertAttention):
         attn_probs = cxx.Tensor.create_empty()
         super(AlbertAttention, self).__call__(input_tensor, attention_mask,
                                               output, attn_probs, False)
-        return convert_returns_as_type(output, return_type)
+        return convert_returns_as_type(output, return_type),convert_returns_as_type(
+                                           attn_probs, return_type)
 
     @staticmethod
     def from_torch(attention: TorchAlbertAttention):
@@ -153,7 +156,7 @@ class AlbertLayer(cxx.AlbertLayer):
                  attention_output: Optional[cxx.Tensor] = None,
                  hidden_output: Optional[cxx.Tensor] = None,
                  output: Optional[cxx.Tensor] = None):
-        attention_output = self.attention(
+        attention_output, attn = self.attention(
             input_tensor,
             attention_mask,
             return_type=ReturnType.turbo_transformers,
@@ -163,7 +166,8 @@ class AlbertLayer(cxx.AlbertLayer):
         output = _create_empty_if_none(output)
         super(AlbertLayer, self).__call__(attention_output, hidden_output,
                                           output)
-        return convert_returns_as_type(output, return_type)
+        return convert_returns_as_type(output, return_type),convert_returns_as_type(
+                               attn, return_type)
 
     @staticmethod
     def from_torch(intermediate: TorchAlbertLayer):
@@ -185,8 +189,102 @@ class AlbertLayer(cxx.AlbertLayer):
     @staticmethod
     def from_npz(file_name: str, layer_num: int):
         f = np.load(file_name)
-        return BertIntermediate(
+        return AlbertLayer(
             _try_convert(
                 f[f'encoder.layer.{layer_num}.intermediate.dense.weight']),
             _try_convert(
                 f[f'encoder.layer.{layer_num}.intermediate.dense.bias']))
+
+class AlbertLayerGroup:
+    def __init__(self, layer: Sequence[AlbertLayer]):
+        self.layer = layer
+
+    @staticmethod
+    def from_torch(encoder: TorchAlbertLayerGroup):
+        layer = [
+            AlbertLayer.from_torch(albert_layer) for albert_layer in encoder.albert_layers
+        ]
+        return AlbertLayerGroup(layer)
+
+    def __call__(self,
+                 hidden_states: AnyTensor,
+                 attention_mask: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 attention_output: Optional[cxx.Tensor] = None,
+                 intermediate_output: Optional[cxx.Tensor] = None,
+                 output: Optional[cxx.Tensor] = None):
+        attention_output = _create_empty_if_none(attention_output)
+        intermediate_output = _create_empty_if_none(intermediate_output)
+        output = _create_empty_if_none(output)
+        first = True
+        for l in self.layer:
+            if first:
+                input_states = hidden_states
+                first = False
+            else:
+                input_states = output
+
+            output  ,_= l(input_tensor=input_states,
+                          attention_mask=attention_mask,
+                          return_type=ReturnType.turbo_transformers,
+                          attention_output=attention_output,
+                          hidden_output=intermediate_output,
+                          output=output)
+        return (convert_returns_as_type(output, return_type),)
+
+    @staticmethod
+    def from_npz(file_name: str, num_hidden_layers: int,
+                 num_attention_heads: int):
+        layer = []
+        for i in range(num_hidden_layers):
+            layer.append(AlbertLayer.from_npz(file_name, i, num_attention_heads))
+        return AlbertLayerGroup(layer)
+
+class AlbertTransformer(cxx.AlbertTransformer):
+    def __init__(self, group: Sequence[AlbertLayerGroup], weights, bias, cfg):
+        self.group = group
+        self.cfg = cfg
+        super(AlbertTransformer, self).__init__(weights, bias)
+
+    @staticmethod
+    def from_torch(transformer: TorchAlbertTransformer, cfg ):
+        params = _to_param_dict_naive(transformer)
+        weights = torch.clone(torch.t(params["embedding_hidden_mapping_in.weight"]))
+        group = [AlbertLayerGroup.from_torch(albert_group) for albert_group in transformer.albert_layer_groups]
+        return AlbertTransformer(group, convert2tt_tensor(weights), \
+                  convert2tt_tensor(params['embedding_hidden_mapping_in.bias']),\
+                  cfg)
+
+    def __call__(self,
+                 hidden_states: AnyTensor,
+                 attention_mask: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 attention_output: Optional[cxx.Tensor] = None,
+                 intermediate_output: Optional[cxx.Tensor] = None,
+                 output: Optional[cxx.Tensor] = None):
+        hidden_states = _try_convert(hidden_states)
+        output = _create_empty_if_none(output)
+        super(AlbertTransformer, self).__call__(hidden_states, output)
+        hidden_states = _try_convert(output)
+        output =  cxx.Tensor.create_empty()
+        attention_output = _create_empty_if_none(attention_output)
+        intermediate_output = _create_empty_if_none(intermediate_output)
+        first = True
+        for i in range(self.cfg.num_hidden_layers):
+            group_idx = int(i / (self.cfg.num_hidden_layers / self.cfg.num_hidden_groups))
+
+            if first:
+                input_states = hidden_states
+                first = False
+            else:
+                input_states = output
+
+            output = self.group[group_idx](\
+                hidden_states = input_states, \
+                return_type = ReturnType.turbo_transformers,\
+                attention_mask = attention_mask,\
+                attention_output = attention_output,\
+                intermediate_output = intermediate_output,\
+                output = output)[0]
+
+        return convert_returns_as_type(output, return_type)
