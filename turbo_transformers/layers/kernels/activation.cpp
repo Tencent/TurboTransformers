@@ -16,7 +16,7 @@
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_activation_kernel.h"
 #endif
-#define M_PI       3.14159265358979323846
+//#define M_PI       3.14159265358979323846f
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
@@ -65,7 +65,7 @@ void CPUAddBiasActKernel<float, ActivationType::Gelu_new>(const float *bias,
 #pragma omp simd
     for (int64_t j = feature_dim * i; j < feature_dim * (i + 1); ++j) {
       float tmp_ = out[j] + bias[k++];
-      buff[j] = (std::sqrt(2.0/M_PI) * (tmp_ + 0.044715f * tmp_ * tmp_ * tmp_));
+      buff[j] = (std::sqrt(2.0f/M_PI) * (tmp_ + 0.044715f * tmp_ * tmp_ * tmp_));
     }
     vsTanh(feature_dim, &buff[i * feature_dim], &buff[i * feature_dim]);
     k = 0;
