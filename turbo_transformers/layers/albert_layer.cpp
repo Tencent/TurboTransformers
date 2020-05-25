@@ -18,12 +18,12 @@
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/memory.h"
 #include "turbo_transformers/layers/kernels/activation.h"
+#include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
 #include "turbo_transformers/layers/kernels/mat_mul.h"
 #include "turbo_transformers/layers/kernels/softmax.h"
 #include "turbo_transformers/layers/kernels/transpose.h"
-#include "turbo_transformers/layers/kernels/common.h"
-
+#include "turbo_transformers/layers/kernels/utils.h"
 
 namespace turbo_transformers {
 namespace layers {
@@ -34,19 +34,21 @@ void AlbertLayer::operator()(const core::Tensor& input_tensor,
   hidden_output->Reshape<float>(
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(1)},
       input_tensor.device_type(), input_tensor.device_id());
+  output_tensor->Reshape<float>({input_tensor.shape(0), input_tensor.shape(1),
+                                 dense_output_weight_.shape(1)},
+                                input_tensor.device_type(),
+                                input_tensor.device_id());
 
   kernels::MatMul(input_tensor, false, dense_weight_, false, 1.0, hidden_output,
                   0.0);
   kernels::AddBiasAct<float, kernels::ActivationType::Gelu_new>(dense_bias_,
-                                                            hidden_output);
-  output_tensor->Reshape<float>(
-      {input_tensor.shape(0), input_tensor.shape(1), dense_output_weight_.shape(1)},
-      input_tensor.device_type(), input_tensor.device_id());
+                                                                hidden_output);
   kernels::MatMul(*hidden_output, false, dense_output_weight_, false, 1.0,
                   output_tensor, 0.0);
-  kernels::AddBiasLayerNorm<float>(input_tensor, dense_output_bias_,
-                                   layer_norm_weight_, layer_norm_bias_,
-                                   output_tensor);
+  kernels::AddInputBias(*output_tensor, input_tensor, dense_output_bias_,
+                        output_tensor);
+  kernels::LayerNorm<float>(layer_norm_weight_, layer_norm_bias_, output_tensor,
+                            1e-12);
 }
 
 void AlbertLayer::EnforceShapeAndType() const {

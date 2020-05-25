@@ -86,11 +86,11 @@ class TestAlbertLayerGroup(unittest.TestCase):
         print(f"AlbertLayerGroup Torch QPS, {torch_qps}, ",
               f"Time Cost, {torch_time_consume}")
 
-        diff = torch.abs(torch_albert_layer_result[0] - turbo_albert_layer_result[0])
-        print(torch.max(diff))
-        self.assertTrue(torch.max(diff) < 2e-2)
+        diff = torch.abs(torch_albert_layer_result[0] -
+                         turbo_albert_layer_result[0])
+        self.assertTrue(torch.max(diff) < 1e-3)
 
-    def test_embedding(self):
+    def test_albert_layergroup(self):
         self.check_torch_and_turbo(use_cuda=False)
         if torch.cuda.is_available() and \
             turbo_transformers.config.is_compiled_with_cuda():
