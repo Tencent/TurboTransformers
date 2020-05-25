@@ -45,10 +45,10 @@ void AlbertLayer::operator()(const core::Tensor& input_tensor,
                                                                 hidden_output);
   kernels::MatMul(*hidden_output, false, dense_output_weight_, false, 1.0,
                   output_tensor, 0.0);
-  kernels::AddInputBias(*output_tensor, input_tensor, dense_output_bias_,
-                        output_tensor);
-  kernels::LayerNorm<float>(layer_norm_weight_, layer_norm_bias_, output_tensor,
-                            1e-12);
+
+  kernels::AddBiasLayerNorm<float>(input_tensor, dense_output_bias_,
+                                   layer_norm_weight_, layer_norm_bias_,
+                                   output_tensor);
 }
 
 void AlbertLayer::EnforceShapeAndType() const {
