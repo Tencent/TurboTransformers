@@ -113,7 +113,8 @@ class AlbertAttention(cxx.BertAttention):
         attn_probs = cxx.Tensor.create_empty()
         super(AlbertAttention, self).__call__(input_tensor, attention_mask,
                                               output, attn_probs, False)
-        return convert_returns_as_type(output, return_type),convert_returns_as_type(
+        return convert_returns_as_type(output,
+                                       return_type), convert_returns_as_type(
                                            attn_probs, return_type)
 
     @staticmethod
@@ -137,7 +138,6 @@ class AlbertAttention(cxx.BertAttention):
                 convert2tt_tensor(params['LayerNorm.weight']),
                 convert2tt_tensor(params['LayerNorm.bias']),
                 attention.num_attention_heads)
-
 
             return att
 
@@ -166,12 +166,14 @@ class AlbertLayer(cxx.AlbertLayer):
         output = _create_empty_if_none(output)
         super(AlbertLayer, self).__call__(attention_output, hidden_output,
                                           output)
-        return convert_returns_as_type(output, return_type),convert_returns_as_type(
-                               attn, return_type)
+        return convert_returns_as_type(output,
+                                       return_type), convert_returns_as_type(
+                                           attn, return_type)
 
     @staticmethod
     def from_torch(intermediate: TorchAlbertLayer):
         intermediate_params = _to_param_dict_naive(intermediate)
+
         weight = torch.clone(torch.t(intermediate_params["ffn.weight"]))
         weight_output = torch.clone(
             torch.t(intermediate_params["ffn_output.weight"]))
@@ -180,7 +182,7 @@ class AlbertLayer(cxx.AlbertLayer):
             convert2tt_tensor(weight),
             convert2tt_tensor(intermediate_params['ffn.bias']),
             convert2tt_tensor(weight_output),
-            convert2tt_tensor(intermediate_params['ffn_output.weight']),
+            convert2tt_tensor(intermediate_params['ffn_output.bias']),
             convert2tt_tensor(
                 intermediate_params['full_layer_layer_norm.weight']),
             convert2tt_tensor(
@@ -188,12 +190,8 @@ class AlbertLayer(cxx.AlbertLayer):
 
     @staticmethod
     def from_npz(file_name: str, layer_num: int):
-        f = np.load(file_name)
-        return AlbertLayer(
-            _try_convert(
-                f[f'encoder.layer.{layer_num}.intermediate.dense.weight']),
-            _try_convert(
-                f[f'encoder.layer.{layer_num}.intermediate.dense.bias']))
+        pass
+
 
 class AlbertLayerGroup:
     def __init__(self, layer: Sequence[AlbertLayer]):
@@ -202,7 +200,8 @@ class AlbertLayerGroup:
     @staticmethod
     def from_torch(encoder: TorchAlbertLayerGroup):
         layer = [
-            AlbertLayer.from_torch(albert_layer) for albert_layer in encoder.albert_layers
+            AlbertLayer.from_torch(albert_layer)
+            for albert_layer in encoder.albert_layers
         ]
         return AlbertLayerGroup(layer)
 
@@ -224,21 +223,23 @@ class AlbertLayerGroup:
             else:
                 input_states = output
 
-            output  ,_= l(input_tensor=input_states,
+            output, _ = l(input_tensor=input_states,
                           attention_mask=attention_mask,
                           return_type=ReturnType.turbo_transformers,
                           attention_output=attention_output,
                           hidden_output=intermediate_output,
                           output=output)
-        return (convert_returns_as_type(output, return_type),)
+        return (convert_returns_as_type(output, return_type), )
 
     @staticmethod
     def from_npz(file_name: str, num_hidden_layers: int,
                  num_attention_heads: int):
         layer = []
         for i in range(num_hidden_layers):
-            layer.append(AlbertLayer.from_npz(file_name, i, num_attention_heads))
+            layer.append(
+                AlbertLayer.from_npz(file_name, i, num_attention_heads))
         return AlbertLayerGroup(layer)
+
 
 class AlbertTransformer(cxx.AlbertTransformer):
     def __init__(self, group: Sequence[AlbertLayerGroup], weights, bias, cfg):
@@ -247,10 +248,14 @@ class AlbertTransformer(cxx.AlbertTransformer):
         super(AlbertTransformer, self).__init__(weights, bias)
 
     @staticmethod
-    def from_torch(transformer: TorchAlbertTransformer, cfg ):
+    def from_torch(transformer: TorchAlbertTransformer, cfg):
         params = _to_param_dict_naive(transformer)
-        weights = torch.clone(torch.t(params["embedding_hidden_mapping_in.weight"]))
-        group = [AlbertLayerGroup.from_torch(albert_group) for albert_group in transformer.albert_layer_groups]
+        weights = torch.clone(
+            torch.t(params["embedding_hidden_mapping_in.weight"]))
+        group = [
+            AlbertLayerGroup.from_torch(albert_group)
+            for albert_group in transformer.albert_layer_groups
+        ]
         return AlbertTransformer(group, convert2tt_tensor(weights), \
                   convert2tt_tensor(params['embedding_hidden_mapping_in.bias']),\
                   cfg)
@@ -266,12 +271,13 @@ class AlbertTransformer(cxx.AlbertTransformer):
         output = _create_empty_if_none(output)
         super(AlbertTransformer, self).__call__(hidden_states, output)
         hidden_states = _try_convert(output)
-        output =  cxx.Tensor.create_empty()
+        output = cxx.Tensor.create_empty()
         attention_output = _create_empty_if_none(attention_output)
         intermediate_output = _create_empty_if_none(intermediate_output)
         first = True
         for i in range(self.cfg.num_hidden_layers):
-            group_idx = int(i / (self.cfg.num_hidden_layers / self.cfg.num_hidden_groups))
+            group_idx = int(
+                i / (self.cfg.num_hidden_layers / self.cfg.num_hidden_groups))
 
             if first:
                 input_states = hidden_states
