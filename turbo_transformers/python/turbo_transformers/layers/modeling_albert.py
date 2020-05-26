@@ -25,14 +25,15 @@ from transformers.modeling_albert import AlbertTransformer as TorchAlbertTransfo
 from transformers.modeling_albert import AlbertAttention as TorchAlbertAttention
 from transformers.modeling_albert import AlbertLayer as TorchAlbertLayer
 from transformers.modeling_albert import AlbertLayerGroup as TorchAlbertLayerGroup
-from transformers.modeling_albert import AlbertTransformer as TorchAlbertTransformer
+from transformers.modeling_albert import AlbertModel as TorchAlbertModel
 from transformers.configuration_albert import AlbertConfig as TorchAlbertConfig
 import torch
 import enum
 
 __all__ = [
     "AlbertEmbeddings", "AlbertTransformer", "AlbertAttention",
-    "AlbertLayerGroup", "AlbertLayer"
+    "AlbertLayerGroup", "AlbertLayer", "AlbertModel", "AlbertPooler",
+    "AlbertModelWithPooler"
 ]
 ALBERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
     'albert-base': "",
@@ -73,7 +74,6 @@ def _create_empty_if_none(output):
 AnyTensor = Union[cxx.Tensor, torch.Tensor]
 
 
-# The implement of AlbertEmbeddings is totally equivalent with AlbertEmbedding, So nothing new to do
 class AlbertEmbeddings(cxx.BERTEmbedding):
     def __call__(self,
                  input_ids: AnyTensor,
@@ -100,7 +100,6 @@ class AlbertEmbeddings(cxx.BERTEmbedding):
                                 params['LayerNorm.bias'])
 
 
-#AlbertAttention seems like a combination of BertSelfAttention and BertOutput , So just need a small modification.
 class AlbertAttention(cxx.BertAttention):
     def __call__(self,
                  input_tensor: AnyTensor,
@@ -153,14 +152,14 @@ class AlbertLayer(cxx.AlbertLayer):
                  input_tensor: AnyTensor,
                  attention_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
-                 attention_output: Optional[cxx.Tensor] = None,
                  hidden_output: Optional[cxx.Tensor] = None,
                  output: Optional[cxx.Tensor] = None):
+        attention_output = cxx.Tensor.create_empty()
         attention_output, attn = self.attention(
-            input_tensor,
-            attention_mask,
-            return_type=ReturnType.turbo_transformers,
-            output=attention_output)
+                                        input_tensor,
+                                        attention_mask,
+                                        return_type=ReturnType.turbo_transformers,
+                                        output=attention_output)
         attention_output = _try_convert(attention_output)
         hidden_output = _create_empty_if_none(hidden_output)
         output = _create_empty_if_none(output)
@@ -209,10 +208,8 @@ class AlbertLayerGroup:
                  hidden_states: AnyTensor,
                  attention_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
-                 attention_output: Optional[cxx.Tensor] = None,
                  intermediate_output: Optional[cxx.Tensor] = None,
                  output: Optional[cxx.Tensor] = None):
-        attention_output = _create_empty_if_none(attention_output)
         intermediate_output = _create_empty_if_none(intermediate_output)
         output = _create_empty_if_none(output)
         first = True
@@ -222,11 +219,9 @@ class AlbertLayerGroup:
                 first = False
             else:
                 input_states = output
-
             output, _ = l(input_tensor=input_states,
                           attention_mask=attention_mask,
                           return_type=ReturnType.turbo_transformers,
-                          attention_output=attention_output,
                           hidden_output=intermediate_output,
                           output=output)
         return (convert_returns_as_type(output, return_type), )
@@ -264,7 +259,6 @@ class AlbertTransformer(cxx.AlbertTransformer):
                  hidden_states: AnyTensor,
                  attention_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
-                 attention_output: Optional[cxx.Tensor] = None,
                  intermediate_output: Optional[cxx.Tensor] = None,
                  output: Optional[cxx.Tensor] = None):
         hidden_states = _try_convert(hidden_states)
@@ -272,7 +266,6 @@ class AlbertTransformer(cxx.AlbertTransformer):
         super(AlbertTransformer, self).__call__(hidden_states, output)
         hidden_states = _try_convert(output)
         output = cxx.Tensor.create_empty()
-        attention_output = _create_empty_if_none(attention_output)
         intermediate_output = _create_empty_if_none(intermediate_output)
         first = True
         for i in range(self.cfg.num_hidden_layers):
@@ -284,13 +277,192 @@ class AlbertTransformer(cxx.AlbertTransformer):
                 first = False
             else:
                 input_states = output
-
             output = self.group[group_idx](\
                 hidden_states = input_states, \
                 return_type = ReturnType.turbo_transformers,\
                 attention_mask = attention_mask,\
-                attention_output = attention_output,\
-                intermediate_output = intermediate_output,\
+                intermediate_output = intermediate_output, \
                 output = output)[0]
 
         return convert_returns_as_type(output, return_type)
+
+class PoolingType(enum.Enum):
+    FIRST = "First"
+    LAST = "Last"
+    MEAN = "Mean"
+    MAX = "Max"
+
+
+PoolingMap = {
+    PoolingType.FIRST: "First",
+    PoolingType.LAST: "Last",
+    PoolingType.MEAN: "Mean",
+    PoolingType.MAX: "Max"
+}
+
+class AlbertPooler(cxx.BertPooler):
+    def __call__(self,
+                 input_tensor: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None):
+        input_tensor = _try_convert(input_tensor)
+        output = _create_empty_if_none(output)
+        super(AlbertPooler, self).__call__(input_tensor, output)
+        return convert_returns_as_type(output, return_type)
+
+    @staticmethod
+    def from_torch(pooler: torch.nn.Module):
+        pooler_params = {k:v for k,v in pooler.named_parameters()}
+        weight = torch.clone(torch.t(pooler_params['weight']))
+        return AlbertPooler(convert2tt_tensor(weight),
+                          convert2tt_tensor(pooler_params['bias']))
+
+
+    @staticmethod
+    def from_npz(file_name: str, device: Optional[torch.device] = None):
+        f = np.load(file_name)
+        return AlbertPooler(_try_convert(f['pooler.dense.weight']),
+                          _try_convert(f['pooler.dense.bias']))
+
+
+class SequencePool(cxx.SequencePool):
+    def __call__(self,
+                 input_tensor: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 output_tensor: Optional[cxx.Tensor] = None):
+        input_tensor = _try_convert(input_tensor)
+        output_tensor = _create_empty_if_none(output_tensor)
+        super(SequencePool, self).__call__(input_tensor, output_tensor)
+        return convert_returns_as_type(output_tensor, return_type)
+
+
+class AlbertModel:
+    def __init__(self, Embeddings: AlbertEmbeddings, Encoder: AlbertTransformer):
+        self.embedding = Embeddings
+        self.encoder = Encoder
+        self.prepare = cxx.PrepareBertMasks()
+
+
+    def __call__(self, inputs: AnyTensor,
+                 attention_mask: Optional[AnyTensor] = None,
+                 token_type_ids: Optional[AnyTensor] = None,
+                 position_ids: Optional[AnyTensor] = None,
+                 pooling_type: PoolingType = PoolingType.FIRST,
+                 embedding_cache: Optional[AnyTensor] = None,
+                 hidden_cache: Optional[AnyTensor] = None,
+                 output: Optional[AnyTensor] = None,
+                 return_type: Optional[AnyTensor] = None):
+        attention_mask = _try_convert(_create_empty_if_none(attention_mask))
+        token_type_ids = _try_convert(_create_empty_if_none(token_type_ids))
+        position_ids = _try_convert(_create_empty_if_none(position_ids))
+        inputs = _try_convert(inputs)
+        extended_attention_masks = cxx.Tensor.create_empty()
+        output = _create_empty_if_none(output)
+        hidden_cache = _create_empty_if_none(hidden_cache)
+        embedding_cache = _create_empty_if_none(embedding_cache)
+
+        self.prepare(inputs, attention_mask, token_type_ids, position_ids,
+                     extended_attention_masks)
+
+        embedding_cache = self.embedding(inputs,
+                                      position_ids = position_ids,
+                                      token_type_ids = token_type_ids,
+                                      output = embedding_cache,
+                                      return_type = ReturnType.turbo_transformers)
+
+        hidden_cache = self.encoder(hidden_states = embedding_cache,
+                                    attention_mask = extended_attention_masks,
+                                    return_type = ReturnType.turbo_transformers,
+                                    output = hidden_cache)
+
+        self.seq_pool = SequencePool(PoolingMap[pooling_type])
+
+        output = self.seq_pool(input_tensor=hidden_cache,
+                               return_type=return_type,
+                               output_tensor=output)
+
+        return output, convert_returns_as_type(hidden_cache, return_type)
+
+    @staticmethod
+    def from_torch(model: TorchAlbertModel, cfg: TorchAlbertConfig, device: Optional[torch.device] = None):
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
+        ):
+            model.to(device)
+        embeddings = AlbertEmbeddings.from_torch(model.embeddings)
+        encoder = AlbertTransformer.from_torch(model.encoder, cfg)
+        return AlbertModel(embeddings, encoder)
+
+    @staticmethod
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
+        torch_model = TorchAlbertModel.from_pretrained(model_id_or_path)
+        model = AlbertModel.from_torch(torch_model, torch_model.config, device)
+        model.config = torch_model.config
+        model._torch_model = torch_model  # prevent destroy torch model.
+        return model
+
+    @staticmethod
+    def from_npz(file_name: str, config,
+                 device: Optional[torch.device] = None):
+        embeddings = AlbertEmbeddings.from_npz(file_name)
+        encoder = AlbertEncoder.from_npz(file_name, config.num_hidden_layers,
+                                       config.num_attention_heads)
+        return AlbertModel(embeddings, encoder)
+
+
+
+class AlbertModelWithPooler:
+    def __init__(self, albertmodel: AlbertModel, pooler: AlbertPooler):
+        self.albertmodel = albertmodel
+        self.pooler = pooler
+
+    def __call__(self,
+                 inputs: AnyTensor,
+                 attention_masks: Optional[AnyTensor] = None,
+                 token_type_ids: Optional[AnyTensor] = None,
+                 position_ids: Optional[AnyTensor] = None,
+                 pooling_type: PoolingType = PoolingType.FIRST,
+                 hidden_cache: Optional[AnyTensor] = None,
+                 pooler_output: Optional[AnyTensor] = None,
+                 return_type: Optional[ReturnType] = None):
+        encoder_output, hidden_cache = self.albertmodel(
+            inputs,
+            attention_masks,
+            token_type_ids,
+            position_ids,
+            pooling_type,
+            hidden_cache,
+            output=None,
+            return_type=ReturnType.turbo_transformers)
+        pooler_output = self.pooler(encoder_output, return_type, pooler_output)
+        return pooler_output, convert_returns_as_type(
+            encoder_output,
+            return_type), convert_returns_as_type(hidden_cache, return_type)
+
+    @staticmethod
+    def from_torch(model: TorchAlbertModel, cfg: TorchAlbertConfig,
+                   device: Optional[torch.device] = None):
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
+        ):
+            model.to(device)
+        embeddings = AlbertEmbeddings.from_torch(model.embeddings)
+        encoder = AlbertTransformer.from_torch(model.encoder, cfg)
+        albertmodel = AlbertModel(embeddings, encoder)
+        pooler = AlbertPooler.from_torch(model.pooler)
+        return AlbertModelWithPooler(albertmodel, pooler)
+
+    @staticmethod
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
+        torch_model = TorchAlbertModel.from_pretrained(model_id_or_path)
+        model = AlbertModelWithPooler.from_torch(torch_model, torch_model.config, device)
+        model.config = torch_model.config
+        model._torch_model = torch_model  # prevent destroy torch model.
+        return model
+
+    @staticmethod
+    def from_npz(file_name: str, config,
+                 device: Optional[torch.device] = None):
+        model = BertModel.from_npz(file_name, config)
+        pooler = BertPooler.from_npz(file_name)
+        return BertModelWithPooler(model, pooler)
