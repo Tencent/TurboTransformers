@@ -38,10 +38,10 @@ class TestAlbertModel(unittest.TestCase):
             self.torch_model.to(self.test_device)
 
         self.turbo_model = turbo_transformers.AlbertModel.from_torch(
-            self.torch_model, self.cfg, self.test_device)
+            self.torch_model, self.cfg.num_hidden_layers, self.test_device)
 
         self.turbo_pooler_model = turbo_transformers.AlbertModelWithPooler.from_torch(
-            self.torch_model, self.cfg, self.test_device)
+            self.torch_model, self.cfg.num_hidden_layers, self.test_device)
 
     def check_torch_and_turbo(self, use_cuda, use_pooler):
         self.init_data(use_cuda)
