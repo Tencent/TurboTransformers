@@ -99,36 +99,27 @@ class AlbertAttention(BertAttention):
 
             return att
 
-    @staticmethod
-    def from_npz(file_name: str, layer_num: int, num_attention_heads: int):
-        f = np.load(file_name)
-        return BertAttention(
-            try_convert(f[f'encoder.transformer.layer.{layer_num}.attention.qkv.weight']),
-            try_convert(f[f'encoder.transformer.layer.{layer_num}.attention.qkv.bias']),
-            try_convert(
-                f[f'encoder.transformer.layer.{layer_num}.attention.output.dense.weight']),
-            try_convert(
-                f[f'encoder.layer.{layer_num}.attention.output.dense.bias']),
-            try_convert(f[
-                f'encoder.layer.{layer_num}.attention.output.LayerNorm.weight']
-                        ),
-            try_convert(
-                f[f'encoder.layer.{layer_num}.attention.output.LayerNorm.bias']
-            ), num_attention_heads)
+class AlbertFeedforward(cxx.AlbertFeedforward):
+    def __call__(self,
+                 attention_output: AnyTensor,
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None
+                 ):
+        attention_output = _try_convert(attention_output)
+        hidden_output = cxx.Tensor.create_empty()
+        output = cxx.Tensor.create_empty()
+        super(AlbertFeedforward, self).__call__(attention_output, hidden_output, output)
+        return convert_returns_as_type(output, return_type)
 
-
-class AlbertLayer(cxx.AlbertLayer):
-    def __init__(self, attention: AlbertAttention, ffn, ffn_bias, ffn_output,
-                 ffn_ouput_bias, fl, fl_bias):
+class AlbertLayer:
+    def __init__(self, attention: AlbertAttention, feedforward: AlbertFeedforward):
         self.attention = attention
-        super(AlbertLayer, self).__init__(ffn, ffn_bias, ffn_output,
-                                          ffn_ouput_bias, fl, fl_bias)
+        self.feedforward = feedforward
 
     def __call__(self,
                  input_tensor: AnyTensor,
                  attention_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
-                 hidden_output: Optional[cxx.Tensor] = None,
                  output: Optional[cxx.Tensor] = None):
         attention_output = cxx.Tensor.create_empty()
         attention_output, attn = self.attention(
@@ -136,36 +127,29 @@ class AlbertLayer(cxx.AlbertLayer):
                                         attention_mask,
                                         return_type=ReturnType.turbo_transformers,
                                         output=attention_output)
-        attention_output = _try_convert(attention_output)
-        hidden_output = _create_empty_if_none(hidden_output)
         output = _create_empty_if_none(output)
-        super(AlbertLayer, self).__call__(attention_output, hidden_output,
-                                          output)
-        return convert_returns_as_type(output,
-                                       return_type), convert_returns_as_type(
-                                           attn, return_type)
+        output = self.feedforward(attention_output,
+                                  return_type=ReturnType.turbo_transformers,
+                                  output = output)
+        return convert_returns_as_type(output,return_type), convert_returns_as_type(attn, return_type)
 
     @staticmethod
-    def from_torch(intermediate: TorchAlbertLayer):
-        intermediate_params = _to_param_dict_naive(intermediate)
+    def from_torch(layer: TorchAlbertLayer):
+        layer_params = _to_param_dict_naive(layer)
 
-        weight = torch.clone(torch.t(intermediate_params["ffn.weight"]))
+        weight = torch.clone(torch.t(layer_params["ffn.weight"]))
         weight_output = torch.clone(
-            torch.t(intermediate_params["ffn_output.weight"]))
+            torch.t(layer_params["ffn_output.weight"]))
         return AlbertLayer(
-            AlbertAttention.from_torch(intermediate.attention),
-            convert2tt_tensor(weight),
-            convert2tt_tensor(intermediate_params['ffn.bias']),
-            convert2tt_tensor(weight_output),
-            convert2tt_tensor(intermediate_params['ffn_output.bias']),
-            convert2tt_tensor(
-                intermediate_params['full_layer_layer_norm.weight']),
-            convert2tt_tensor(
-                intermediate_params['full_layer_layer_norm.bias']))
-
-    @staticmethod
-    def from_npz(file_name: str, layer_num: int):
-        pass
+            AlbertAttention.from_torch(layer.attention),
+            AlbertFeedforward(convert2tt_tensor(weight),
+                              convert2tt_tensor(layer_params['ffn.bias']),
+                              convert2tt_tensor(weight_output),
+                              convert2tt_tensor(layer_params['ffn_output.bias']),
+                              convert2tt_tensor(layer_params['full_layer_layer_norm.weight']),
+                              convert2tt_tensor(layer_params['full_layer_layer_norm.bias'])
+                              )
+        )
 
 
 class AlbertLayerGroup:
@@ -184,9 +168,7 @@ class AlbertLayerGroup:
                  hidden_states: AnyTensor,
                  attention_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
-                 intermediate_output: Optional[cxx.Tensor] = None,
                  output: Optional[cxx.Tensor] = None):
-        intermediate_output = _create_empty_if_none(intermediate_output)
         output = _create_empty_if_none(output)
         first = True
         for l in self.layer:
@@ -198,18 +180,9 @@ class AlbertLayerGroup:
             output, _ = l(input_tensor=input_states,
                           attention_mask=attention_mask,
                           return_type=ReturnType.turbo_transformers,
-                          hidden_output=intermediate_output,
                           output=output)
         return (convert_returns_as_type(output, return_type), )
 
-    @staticmethod
-    def from_npz(file_name: str, num_hidden_layers: int,
-                 num_attention_heads: int):
-        layer = []
-        for i in range(num_hidden_layers):
-            layer.append(
-                AlbertLayer.from_npz(file_name, i, num_attention_heads))
-        return AlbertLayerGroup(layer)
 
 
 class AlbertTransformer(cxx.AlbertTransformer):
@@ -231,18 +204,17 @@ class AlbertTransformer(cxx.AlbertTransformer):
                   convert2tt_tensor(params['embedding_hidden_mapping_in.bias']),\
                   cfg)
 
+
     def __call__(self,
                  hidden_states: AnyTensor,
                  attention_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
-                 intermediate_output: Optional[cxx.Tensor] = None,
                  output: Optional[cxx.Tensor] = None):
         hidden_states = _try_convert(hidden_states)
         output = _create_empty_if_none(output)
         super(AlbertTransformer, self).__call__(hidden_states, output)
         hidden_states = _try_convert(output)
         output = cxx.Tensor.create_empty()
-        intermediate_output = _create_empty_if_none(intermediate_output)
         first = True
         for i in range(self.cfg.num_hidden_layers):
             group_idx = int(
@@ -257,7 +229,6 @@ class AlbertTransformer(cxx.AlbertTransformer):
                 hidden_states = input_states, \
                 return_type = ReturnType.turbo_transformers,\
                 attention_mask = attention_mask,\
-                intermediate_output = intermediate_output, \
                 output = output)[0]
 
         return convert_returns_as_type(output, return_type)
@@ -294,13 +265,6 @@ class AlbertPooler(cxx.BertPooler):
                           convert2tt_tensor(pooler_params['bias']))
 
 
-    @staticmethod
-    def from_npz(file_name: str, device: Optional[torch.device] = None):
-        f = np.load(file_name)
-        return AlbertPooler(_try_convert(f['pooler.dense.weight']),
-                          _try_convert(f['pooler.dense.bias']))
-
-
 class SequencePool(cxx.SequencePool):
     def __call__(self,
                  input_tensor: AnyTensor,
@@ -324,7 +288,6 @@ class AlbertModel:
                  token_type_ids: Optional[AnyTensor] = None,
                  position_ids: Optional[AnyTensor] = None,
                  pooling_type: PoolingType = PoolingType.FIRST,
-                 embedding_cache: Optional[AnyTensor] = None,
                  hidden_cache: Optional[AnyTensor] = None,
                  output: Optional[AnyTensor] = None,
                  return_type: Optional[AnyTensor] = None):
@@ -335,7 +298,7 @@ class AlbertModel:
         extended_attention_masks = cxx.Tensor.create_empty()
         output = _create_empty_if_none(output)
         hidden_cache = _create_empty_if_none(hidden_cache)
-        embedding_cache = _create_empty_if_none(embedding_cache)
+        embedding_cache = cxx.Tensor.create_empty()
 
         self.prepare(inputs, attention_mask, token_type_ids, position_ids,
                      extended_attention_masks)
@@ -377,14 +340,6 @@ class AlbertModel:
         model._torch_model = torch_model  # prevent destroy torch model.
         return model
 
-    @staticmethod
-    def from_npz(file_name: str, config,
-                 device: Optional[torch.device] = None):
-        embeddings = BertEmbeddings.from_npz(file_name)
-        encoder = AlbertEncoder.from_npz(file_name, config.num_hidden_layers,
-                                       config.num_attention_heads)
-        return AlbertModel(embeddings, encoder)
-
 
 
 class AlbertModelWithPooler:
@@ -403,17 +358,16 @@ class AlbertModelWithPooler:
                  return_type: Optional[ReturnType] = None):
         encoder_output, hidden_cache = self.albertmodel(
             inputs,
-            attention_masks,
-            token_type_ids,
-            position_ids,
-            pooling_type,
-            hidden_cache,
+            attention_mask = attention_masks,
+            token_type_ids = token_type_ids,
+            position_ids = position_ids,
+            pooling_type = pooling_type,
+            hidden_cache = hidden_cache,
             output=None,
             return_type=ReturnType.turbo_transformers)
         pooler_output = self.pooler(encoder_output, return_type, pooler_output)
-        return pooler_output, convert_returns_as_type(
-            encoder_output,
-            return_type), convert_returns_as_type(hidden_cache, return_type)
+        return pooler_output, convert_returns_as_type(encoder_output, return_type),\
+               convert_returns_as_type(hidden_cache, return_type)
 
     @staticmethod
     def from_torch(model: TorchAlbertModel, cfg: TorchAlbertConfig,
@@ -435,10 +389,3 @@ class AlbertModelWithPooler:
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model
-
-    @staticmethod
-    def from_npz(file_name: str, config,
-                 device: Optional[torch.device] = None):
-        model = BertModel.from_npz(file_name, config)
-        pooler = BertPooler.from_npz(file_name)
-        return BertModelWithPooler(model, pooler)

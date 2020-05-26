@@ -11,7 +11,7 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "turbo_transformers/layers/albert_layer.h"
+#include "turbo_transformers/layers/albert_feedforward.h"
 
 #include <loguru.hpp>
 
@@ -28,7 +28,7 @@
 namespace turbo_transformers {
 namespace layers {
 
-void AlbertLayer::operator()(const core::Tensor& input_tensor,
+void AlbertFeedforward::operator()(const core::Tensor& input_tensor,
                              core::Tensor* hidden_output,
                              core::Tensor* output_tensor) const {
   hidden_output->Reshape<float>(
@@ -51,7 +51,7 @@ void AlbertLayer::operator()(const core::Tensor& input_tensor,
                                    output_tensor);
 }
 
-void AlbertLayer::EnforceShapeAndType() const {
+void AlbertFeedforward::EnforceShapeAndType() const {
   TT_ENFORCE_EQ(dense_weight_.n_dim(), 2, "dense weight must be matrix");
   TT_ENFORCE_EQ(dense_bias_.n_dim(), 1, "dense bias must be vector");
   TT_ENFORCE_EQ(dense_weight_.shape(1), dense_bias_.shape(0),

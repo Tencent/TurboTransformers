@@ -19,9 +19,9 @@
 namespace turbo_transformers {
 namespace layers {
 
-class AlbertLayer {
+class AlbertFeedforward {
  public:
-  AlbertLayer(core::Tensor dense_weight, core::Tensor dense_bias, core::Tensor dense_output_weight, core::Tensor dense_output_bias, core::Tensor layer_norm_weight, core::Tensor layer_norm_bias)
+  AlbertFeedforward(core::Tensor dense_weight, core::Tensor dense_bias, core::Tensor dense_output_weight, core::Tensor dense_output_bias, core::Tensor layer_norm_weight, core::Tensor layer_norm_bias)
       : dense_weight_(std::move(dense_weight)),
         dense_bias_(std::move(dense_bias)),
         dense_output_weight_(std::move(dense_output_weight)),

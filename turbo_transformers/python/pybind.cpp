@@ -18,7 +18,7 @@
 #include "turbo_transformers/core/config.h"
 #include "turbo_transformers/core/profiler.h"
 #include "turbo_transformers/core/tensor.h"
-#include "turbo_transformers/layers/albert_layer.h"
+#include "turbo_transformers/layers/albert_feedforward.h"
 #include "turbo_transformers/layers/albert_transformer.h"
 #include "turbo_transformers/layers/bert_attention.h"
 #include "turbo_transformers/layers/bert_embedding.h"
@@ -188,18 +188,18 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       .def(py::init())
       .def("__call__", &layers::PrepareBertMasks::operator());
 
-  py::class_<layers::AlbertLayer>(m, "AlbertLayer")
+  py::class_<layers::AlbertFeedforward>(m, "AlbertFeedforward")
       .def(py::init([](core::Tensor &dense_weight, core::Tensor &dense_bias,
                        core::Tensor &dense_output_weight,
                        core::Tensor &dense_output_bias,
                        core::Tensor &layer_norm_weight,
-                       core::Tensor &layer_norm_bias) -> layers::AlbertLayer * {
-        return new layers::AlbertLayer(
+                       core::Tensor &layer_norm_bias) -> layers::AlbertFeedforward * {
+        return new layers::AlbertFeedforward(
             std::move(dense_weight), std::move(dense_bias),
             std::move(dense_output_weight), std::move(dense_output_bias),
             std::move(layer_norm_weight), std::move(layer_norm_bias));
       }))
-      .def("__call__", &layers::AlbertLayer::operator());
+      .def("__call__", &layers::AlbertFeedforward::operator());
 
   py::class_<layers::AlbertTransformer>(m, "AlbertTransformer")
       .def(py::init([](core::Tensor &dense_weight,
