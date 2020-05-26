@@ -20,8 +20,7 @@ import torch.utils.dlpack as dlpack
 import numpy as np
 from typing import Union, Optional, Sequence
 from .return_type import convert_returns_as_type, ReturnType
-from .modeling_bert import BertEmbeddings
-from .modeling_bert import BertAttention
+from .modeling_bert import BertEmbeddings, BertAttention, BertPooler, PoolingMap, PoolingType, SequencePool
 from transformers.modeling_albert import AlbertEmbeddings as TorchAlbertEmbeddings
 from transformers.modeling_albert import AlbertTransformer as TorchAlbertTransformer
 from transformers.modeling_albert import AlbertAttention as TorchAlbertAttention
@@ -169,7 +168,6 @@ class AlbertTransformer():
                   convert2tt_tensor(params['embedding_hidden_mapping_in.bias']),\
                   cfg)
 
-
     def __call__(self,
                  hidden_states: AnyTensor,
                  attention_mask: AnyTensor,
@@ -198,30 +196,8 @@ class AlbertTransformer():
 
         return convert_returns_as_type(output, return_type)
 
-class PoolingType(enum.Enum):
-    FIRST = "First"
-    LAST = "Last"
-    MEAN = "Mean"
-    MAX = "Max"
 
-
-PoolingMap = {
-    PoolingType.FIRST: "First",
-    PoolingType.LAST: "Last",
-    PoolingType.MEAN: "Mean",
-    PoolingType.MAX: "Max"
-}
-
-class AlbertPooler(cxx.BertPooler):
-    def __call__(self,
-                 input_tensor: AnyTensor,
-                 return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
-        input_tensor = try_convert(input_tensor)
-        output = create_empty_if_none(output)
-        super(AlbertPooler, self).__call__(input_tensor, output)
-        return convert_returns_as_type(output, return_type)
-
+class AlbertPooler(BertPooler):
     @staticmethod
     def from_torch(pooler: torch.nn.Module):
         pooler_params = {k:v for k,v in pooler.named_parameters()}
@@ -230,23 +206,11 @@ class AlbertPooler(cxx.BertPooler):
                           convert2tt_tensor(pooler_params['bias']))
 
 
-class SequencePool(cxx.SequencePool):
-    def __call__(self,
-                 input_tensor: AnyTensor,
-                 return_type: Optional[ReturnType] = None,
-                 output_tensor: Optional[cxx.Tensor] = None):
-        input_tensor = try_convert(input_tensor)
-        output_tensor = create_empty_if_none(output_tensor)
-        super(SequencePool, self).__call__(input_tensor, output_tensor)
-        return convert_returns_as_type(output_tensor, return_type)
-
-
 class AlbertModel:
     def __init__(self, Embeddings: BertEmbeddings, Encoder: AlbertTransformer):
         self.embedding = Embeddings
         self.encoder = Encoder
         self.prepare = cxx.PrepareBertMasks()
-
 
     def __call__(self, inputs: AnyTensor,
                  attention_mask: Optional[AnyTensor] = None,
@@ -304,7 +268,6 @@ class AlbertModel:
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model
-
 
 
 class AlbertModelWithPooler:
