@@ -150,11 +150,11 @@ class AlbertLayerGroup:
 
 
 
-class AlbertTransformer(cxx.AlbertTransformer):
+class AlbertTransformer():
     def __init__(self, group: Sequence[AlbertLayerGroup], weights, bias, cfg):
         self.group = group
         self.cfg = cfg
-        super(AlbertTransformer, self).__init__(weights, bias)
+        self.embedding_postprocessor = cxx.AlbertPostprocessor(weights, bias)
 
     @staticmethod
     def from_torch(transformer: TorchAlbertTransformer, cfg):
@@ -177,7 +177,7 @@ class AlbertTransformer(cxx.AlbertTransformer):
                  output: Optional[cxx.Tensor] = None):
         hidden_states = try_convert(hidden_states)
         output = create_empty_if_none(output)
-        super(AlbertTransformer, self).__call__(hidden_states, output)
+        self.embedding_postprocessor(hidden_states, output)
         hidden_states = try_convert(output)
         output = cxx.Tensor.create_empty()
         first = True

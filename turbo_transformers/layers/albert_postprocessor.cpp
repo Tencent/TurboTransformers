@@ -11,7 +11,7 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "turbo_transformers/layers/albert_transformer.h"
+#include "turbo_transformers/layers/albert_postprocessor.h"
 
 #include <loguru.hpp>
 
@@ -29,18 +29,17 @@
 namespace turbo_transformers {
 namespace layers {
 
-void AlbertTransformer::operator()(const core::Tensor& input_tensor,
+void AlbertPostprocessor::operator()(const core::Tensor& input_tensor,
                              core::Tensor* output_tensor) const {
   output_tensor->Reshape<float>(
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(1)},
       input_tensor.device_type(), input_tensor.device_id());
-
   kernels::MatMul(input_tensor, false, dense_weight_, false, 1.0, output_tensor,
                   0.0);
   kernels::AddBias(dense_bias_, output_tensor);
 }
 
-void AlbertTransformer::EnforceShapeAndType() const {
+void AlbertPostprocessor::EnforceShapeAndType() const {
   TT_ENFORCE_EQ(dense_weight_.n_dim(), 2, "dense weight must be matrix");
   TT_ENFORCE_EQ(dense_bias_.n_dim(), 1, "dense bias must be vector");
   TT_ENFORCE_EQ(dense_weight_.shape(1), dense_bias_.shape(0),

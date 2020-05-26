@@ -19,7 +19,7 @@
 #include "turbo_transformers/core/profiler.h"
 #include "turbo_transformers/core/tensor.h"
 #include "turbo_transformers/layers/albert_feedforward.h"
-#include "turbo_transformers/layers/albert_transformer.h"
+#include "turbo_transformers/layers/albert_postprocessor.h"
 #include "turbo_transformers/layers/bert_attention.h"
 #include "turbo_transformers/layers/bert_embedding.h"
 #include "turbo_transformers/layers/bert_intermediate.h"
@@ -201,13 +201,13 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       }))
       .def("__call__", &layers::AlbertFeedforward::operator());
 
-  py::class_<layers::AlbertTransformer>(m, "AlbertTransformer")
+  py::class_<layers::AlbertPostprocessor>(m, "AlbertPostprocessor")
       .def(py::init([](core::Tensor &dense_weight,
-                       core::Tensor &dense_bias) -> layers::AlbertTransformer * {
-        return new layers::AlbertTransformer(
+                       core::Tensor &dense_bias) -> layers::AlbertPostprocessor * {
+        return new layers::AlbertPostprocessor(
             std::move(dense_weight), std::move(dense_bias));
       }))
-      .def("__call__", &layers::AlbertTransformer::operator());
+      .def("__call__", &layers::AlbertPostprocessor::operator());
 
   py::class_<layers::PositionwiseFeedForward>(m, "PositionwiseFeedForward")
       .def(py::init([](core::Tensor &dense_weight_1, core::Tensor &dense_bias_1,

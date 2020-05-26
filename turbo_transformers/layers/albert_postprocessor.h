@@ -19,9 +19,9 @@
 namespace turbo_transformers {
 namespace layers {
 
-class AlbertTransformer {
+class AlbertPostprocessor {
  public:
-  AlbertTransformer(core::Tensor dense_weight, core::Tensor dense_bias)
+  AlbertPostprocessor(core::Tensor dense_weight, core::Tensor dense_bias)
       : dense_weight_(std::move(dense_weight)),
         dense_bias_(std::move(dense_bias)){
     EnforceShapeAndType();
