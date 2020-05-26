@@ -48,7 +48,6 @@ def to_param_dict_convert_tt(torch_module: torch.nn.Module):
         for k, v in torch_module.named_parameters()
     }
 
-
 def to_param_dict(torch_module: torch.nn.Module):
     return {k: v for k, v in torch_module.named_parameters()}
 

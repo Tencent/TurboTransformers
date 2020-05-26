@@ -16,7 +16,6 @@
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_activation_kernel.h"
 #endif
-//#define M_PI       3.14159265358979323846f
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {

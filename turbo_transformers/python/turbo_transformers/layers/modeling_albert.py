@@ -29,6 +29,7 @@ from transformers.modeling_albert import AlbertLayer as TorchAlbertLayer
 from transformers.modeling_albert import AlbertLayerGroup as TorchAlbertLayerGroup
 from transformers.modeling_albert import AlbertModel as TorchAlbertModel
 from transformers.configuration_albert import AlbertConfig as TorchAlbertConfig
+from .utils import try_convert, convert2tt_tensor, create_empty_if_none, AnyTensor, to_param_dict
 import torch
 import enum
 
@@ -37,43 +38,7 @@ __all__ = [
     "AlbertLayerGroup", "AlbertLayer", "AlbertModel", "AlbertPooler",
     "AlbertModelWithPooler"
 ]
-ALBERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
-    'albert-base': "",
-    'albert-large': "",
-    'albert-xlarge': "",
-    'albert-xxlarge': "",
-}
 
-
-def _try_convert(t):
-    if isinstance(t, torch.Tensor):
-        return convert2tt_tensor(t)
-    elif isinstance(t, np.ndarray):
-        return convert2tt_tensor(torch.from_numpy(t))
-    else:
-        return t
-
-
-def convert2tt_tensor(t):
-    return cxx.Tensor.from_dlpack(dlpack.to_dlpack(t))
-
-
-def _to_param_dict(torch_module: torch.nn.Module):
-    return {
-        k: convert2tt_tensor(v)
-        for k, v in torch_module.named_parameters()
-    }
-
-
-def _to_param_dict_naive(torch_module: torch.nn.Module):
-    return {k: v for k, v in torch_module.named_parameters()}
-
-
-def _create_empty_if_none(output):
-    return output if output is not None else cxx.Tensor.create_empty()
-
-
-AnyTensor = Union[cxx.Tensor, torch.Tensor]
 
 class AlbertAttention(BertAttention):
     @staticmethod
@@ -105,7 +70,7 @@ class AlbertFeedforward(cxx.AlbertFeedforward):
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None
                  ):
-        attention_output = _try_convert(attention_output)
+        attention_output = try_convert(attention_output)
         hidden_output = cxx.Tensor.create_empty()
         output = cxx.Tensor.create_empty()
         super(AlbertFeedforward, self).__call__(attention_output, hidden_output, output)
@@ -127,7 +92,7 @@ class AlbertLayer:
                                         attention_mask,
                                         return_type=ReturnType.turbo_transformers,
                                         output=attention_output)
-        output = _create_empty_if_none(output)
+        output = create_empty_if_none(output)
         output = self.feedforward(attention_output,
                                   return_type=ReturnType.turbo_transformers,
                                   output = output)
@@ -135,7 +100,7 @@ class AlbertLayer:
 
     @staticmethod
     def from_torch(layer: TorchAlbertLayer):
-        layer_params = _to_param_dict_naive(layer)
+        layer_params = to_param_dict(layer)
 
         weight = torch.clone(torch.t(layer_params["ffn.weight"]))
         weight_output = torch.clone(
@@ -169,7 +134,7 @@ class AlbertLayerGroup:
                  attention_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None):
-        output = _create_empty_if_none(output)
+        output = create_empty_if_none(output)
         first = True
         for l in self.layer:
             if first:
@@ -193,7 +158,7 @@ class AlbertTransformer(cxx.AlbertTransformer):
 
     @staticmethod
     def from_torch(transformer: TorchAlbertTransformer, cfg):
-        params = _to_param_dict_naive(transformer)
+        params = to_param_dict(transformer)
         weights = torch.clone(
             torch.t(params["embedding_hidden_mapping_in.weight"]))
         group = [
@@ -210,10 +175,10 @@ class AlbertTransformer(cxx.AlbertTransformer):
                  attention_mask: AnyTensor,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None):
-        hidden_states = _try_convert(hidden_states)
-        output = _create_empty_if_none(output)
+        hidden_states = try_convert(hidden_states)
+        output = create_empty_if_none(output)
         super(AlbertTransformer, self).__call__(hidden_states, output)
-        hidden_states = _try_convert(output)
+        hidden_states = try_convert(output)
         output = cxx.Tensor.create_empty()
         first = True
         for i in range(self.cfg.num_hidden_layers):
@@ -252,8 +217,8 @@ class AlbertPooler(cxx.BertPooler):
                  input_tensor: AnyTensor,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None):
-        input_tensor = _try_convert(input_tensor)
-        output = _create_empty_if_none(output)
+        input_tensor = try_convert(input_tensor)
+        output = create_empty_if_none(output)
         super(AlbertPooler, self).__call__(input_tensor, output)
         return convert_returns_as_type(output, return_type)
 
@@ -270,8 +235,8 @@ class SequencePool(cxx.SequencePool):
                  input_tensor: AnyTensor,
                  return_type: Optional[ReturnType] = None,
                  output_tensor: Optional[cxx.Tensor] = None):
-        input_tensor = _try_convert(input_tensor)
-        output_tensor = _create_empty_if_none(output_tensor)
+        input_tensor = try_convert(input_tensor)
+        output_tensor = create_empty_if_none(output_tensor)
         super(SequencePool, self).__call__(input_tensor, output_tensor)
         return convert_returns_as_type(output_tensor, return_type)
 
@@ -291,13 +256,13 @@ class AlbertModel:
                  hidden_cache: Optional[AnyTensor] = None,
                  output: Optional[AnyTensor] = None,
                  return_type: Optional[AnyTensor] = None):
-        attention_mask = _try_convert(_create_empty_if_none(attention_mask))
-        token_type_ids = _try_convert(_create_empty_if_none(token_type_ids))
-        position_ids = _try_convert(_create_empty_if_none(position_ids))
-        inputs = _try_convert(inputs)
+        attention_mask = try_convert(create_empty_if_none(attention_mask))
+        token_type_ids = try_convert(create_empty_if_none(token_type_ids))
+        position_ids = try_convert(create_empty_if_none(position_ids))
+        inputs = try_convert(inputs)
         extended_attention_masks = cxx.Tensor.create_empty()
-        output = _create_empty_if_none(output)
-        hidden_cache = _create_empty_if_none(hidden_cache)
+        output = create_empty_if_none(output)
+        hidden_cache = create_empty_if_none(hidden_cache)
         embedding_cache = cxx.Tensor.create_empty()
 
         self.prepare(inputs, attention_mask, token_type_ids, position_ids,
