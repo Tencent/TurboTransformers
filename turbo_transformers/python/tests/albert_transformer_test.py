@@ -89,7 +89,7 @@ class TestAlbertTransformer(unittest.TestCase):
 
         diff = torch.abs(torch_albert_layer_result[0] - turbo_albert_layer_result)
         print(torch.max(diff))
-        self.assertTrue(torch.max(diff) < 2e-2)
+        self.assertTrue(torch.max(diff) < 1e-3)
 
     def test_embedding(self):
         self.check_torch_and_turbo(use_cuda=False)
