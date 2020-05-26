@@ -13,7 +13,7 @@
 
 from .modeling_bert import BertEmbeddings, BertIntermediate, BertOutput, BertAttention, BertLayer, SequencePool, \
     BertEncoder, BertModel, PoolingType, BertPooler, BertModelWithPooler
-from .modeling_albert import AlbertEmbeddings, AlbertAttention, AlbertLayer, AlbertLayerGroup, AlbertTransformer, \
+from .modeling_albert import  AlbertAttention, AlbertLayer, AlbertLayerGroup, AlbertTransformer, \
     AlbertPooler, AlbertModel, AlbertModelWithPooler
 from .return_type import ReturnType
 
@@ -31,7 +31,6 @@ __all__ = [
     'PoolingType',
     'BertModelWithPooler',
     'AlbertLayer',
-    'AlbertEmbeddings',
     'AlbertAttention',
     'AlbertLayerGroup',
     'AlbertTransformer',

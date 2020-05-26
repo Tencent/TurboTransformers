@@ -20,6 +20,7 @@ import torch.utils.dlpack as dlpack
 import numpy as np
 from typing import Union, Optional, Sequence
 from .return_type import convert_returns_as_type, ReturnType
+from .modeling_bert import BertEmbeddings
 from transformers.modeling_albert import AlbertEmbeddings as TorchAlbertEmbeddings
 from transformers.modeling_albert import AlbertTransformer as TorchAlbertTransformer
 from transformers.modeling_albert import AlbertAttention as TorchAlbertAttention
@@ -72,32 +73,6 @@ def _create_empty_if_none(output):
 
 
 AnyTensor = Union[cxx.Tensor, torch.Tensor]
-
-
-class AlbertEmbeddings(cxx.BERTEmbedding):
-    def __call__(self,
-                 input_ids: AnyTensor,
-                 position_ids: AnyTensor,
-                 token_type_ids: AnyTensor,
-                 return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
-        input_ids = _try_convert(input_ids)
-        position_ids = _try_convert(position_ids)
-        token_type_ids = _try_convert(token_type_ids)
-        output = _create_empty_if_none(output)
-        super(AlbertEmbeddings, self).__call__(input_ids, position_ids,
-                                               token_type_ids, output)
-        return convert_returns_as_type(output, return_type)
-
-    @staticmethod
-    def from_torch(albert_embedding: TorchAlbertEmbeddings
-                   ) -> 'AlbertEmbeddings':
-        params = _to_param_dict(albert_embedding)
-        return AlbertEmbeddings(params['word_embeddings.weight'],
-                                params['position_embeddings.weight'],
-                                params['token_type_embeddings.weight'],
-                                params['LayerNorm.weight'],
-                                params['LayerNorm.bias'])
 
 
 class AlbertAttention(cxx.BertAttention):
@@ -337,7 +312,7 @@ class SequencePool(cxx.SequencePool):
 
 
 class AlbertModel:
-    def __init__(self, Embeddings: AlbertEmbeddings, Encoder: AlbertTransformer):
+    def __init__(self, Embeddings: BertEmbeddings, Encoder: AlbertTransformer):
         self.embedding = Embeddings
         self.encoder = Encoder
         self.prepare = cxx.PrepareBertMasks()
@@ -388,7 +363,7 @@ class AlbertModel:
         if device is not None and 'cuda' in device.type and torch.cuda.is_available(
         ):
             model.to(device)
-        embeddings = AlbertEmbeddings.from_torch(model.embeddings)
+        embeddings = BertEmbeddings.from_torch(model.embeddings)
         encoder = AlbertTransformer.from_torch(model.encoder, cfg)
         return AlbertModel(embeddings, encoder)
 
@@ -404,7 +379,7 @@ class AlbertModel:
     @staticmethod
     def from_npz(file_name: str, config,
                  device: Optional[torch.device] = None):
-        embeddings = AlbertEmbeddings.from_npz(file_name)
+        embeddings = BertEmbeddings.from_npz(file_name)
         encoder = AlbertEncoder.from_npz(file_name, config.num_hidden_layers,
                                        config.num_attention_heads)
         return AlbertModel(embeddings, encoder)
@@ -445,7 +420,7 @@ class AlbertModelWithPooler:
         if device is not None and 'cuda' in device.type and torch.cuda.is_available(
         ):
             model.to(device)
-        embeddings = AlbertEmbeddings.from_torch(model.embeddings)
+        embeddings = BertEmbeddings.from_torch(model.embeddings)
         encoder = AlbertTransformer.from_torch(model.encoder, cfg)
         albertmodel = AlbertModel(embeddings, encoder)
         pooler = AlbertPooler.from_torch(model.pooler)
