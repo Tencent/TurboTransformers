@@ -30,14 +30,23 @@ class ReturnType(enum.Enum):
     TENSOR_FLOW = 2
 
 
-def convert_returns_as_type(tensor: cxx.Tensor, rtype: Optional[ReturnType]
+def convert_returns_as_type(tensor, rtype: Optional[ReturnType]
                             ) -> Union[cxx.Tensor, torch.Tensor]:
     if rtype is None:
         rtype = ReturnType.TORCH
-
-    if rtype == ReturnType.turbo_transformers:
-        return tensor
-    elif rtype == ReturnType.TORCH:
-        return dlpack.from_dlpack(tensor.to_dlpack())
+    if isinstance(tensor, cxx.Tensor):
+        if rtype == ReturnType.turbo_transformers:
+            return tensor
+        elif rtype == ReturnType.TORCH:
+            return dlpack.from_dlpack(tensor.to_dlpack())
+        else:
+            raise NotImplementedError()
+    elif isinstance(tensor,torch.Tensor):
+        if rtype == ReturnType.turbo_transformers:
+            cxx.Tensor.from_dlpack(dlpack.to_dlpack(t))
+        elif rtype == ReturnType.TORCH:
+            return tensor
+        else:
+            raise NotImplementedError()
     else:
         raise NotImplementedError()
