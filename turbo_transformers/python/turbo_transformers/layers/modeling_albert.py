@@ -21,6 +21,7 @@ import numpy as np
 from typing import Union, Optional, Sequence
 from .return_type import convert_returns_as_type, ReturnType
 from .modeling_bert import BertEmbeddings
+from .modeling_bert import BertAttention
 from transformers.modeling_albert import AlbertEmbeddings as TorchAlbertEmbeddings
 from transformers.modeling_albert import AlbertTransformer as TorchAlbertTransformer
 from transformers.modeling_albert import AlbertAttention as TorchAlbertAttention
@@ -74,29 +75,12 @@ def _create_empty_if_none(output):
 
 AnyTensor = Union[cxx.Tensor, torch.Tensor]
 
-
-class AlbertAttention(cxx.BertAttention):
-    def __call__(self,
-                 input_tensor: AnyTensor,
-                 attention_mask: AnyTensor,
-                 return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
-        input_tensor = _try_convert(input_tensor)
-        attention_mask = _try_convert(attention_mask)
-        output = _create_empty_if_none(output)
-        attn_probs = cxx.Tensor.create_empty()
-        super(AlbertAttention, self).__call__(input_tensor, attention_mask,
-                                              output, attn_probs, False)
-        return convert_returns_as_type(output,
-                                       return_type), convert_returns_as_type(
-                                           attn_probs, return_type)
-
+class AlbertAttention(BertAttention):
     @staticmethod
     def from_torch(attention: TorchAlbertAttention):
         params = {k: v for k, v in attention.named_parameters()}
 
         with torch.no_grad():
-            # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
             qkv_weight = torch.clone(
                 torch.t(
                     torch.cat((params['query.weight'], params['key.weight'],
@@ -114,6 +98,23 @@ class AlbertAttention(cxx.BertAttention):
                 attention.num_attention_heads)
 
             return att
+
+    @staticmethod
+    def from_npz(file_name: str, layer_num: int, num_attention_heads: int):
+        f = np.load(file_name)
+        return BertAttention(
+            try_convert(f[f'encoder.transformer.layer.{layer_num}.attention.qkv.weight']),
+            try_convert(f[f'encoder.transformer.layer.{layer_num}.attention.qkv.bias']),
+            try_convert(
+                f[f'encoder.transformer.layer.{layer_num}.attention.output.dense.weight']),
+            try_convert(
+                f[f'encoder.layer.{layer_num}.attention.output.dense.bias']),
+            try_convert(f[
+                f'encoder.layer.{layer_num}.attention.output.LayerNorm.weight']
+                        ),
+            try_convert(
+                f[f'encoder.layer.{layer_num}.attention.output.LayerNorm.bias']
+            ), num_attention_heads)
 
 
 class AlbertLayer(cxx.AlbertLayer):
