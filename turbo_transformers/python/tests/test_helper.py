@@ -28,21 +28,9 @@ def run_model(model, use_cuda, num_iter=50, use_profile=False):
         end = torch.cuda.Event(enable_timing=True)
         start.record()
 
-    if use_profile:
-        pr = cProfile.Profile()
-        pr.enable()
-
     with contexttimer.Timer() as t:
         for it in range(num_iter):
             result = model()
-
-    if use_profile:
-        pr.disable()
-        s = io.StringIO()
-        sortby = SortKey.CUMULATIVE
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
 
     if use_cuda:
         end.record()
@@ -58,7 +46,10 @@ def run_model(model, use_cuda, num_iter=50, use_profile=False):
 
 # for debug
 def show_tensor(T, info):
+    if T is None:
+        print(info, " None")
+        return
     print(info, T.size())
-    print(T.view(-1)[0:10])
-    print(T.view(-1)[-10:])
-    print(torch.sum(T.view(-1)))
+    print(T.flatten()[0:10])
+    print(T.flatten()[-10:])
+    print(torch.sum(T.flatten()))

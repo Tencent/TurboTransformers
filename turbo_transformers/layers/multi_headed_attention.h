@@ -14,6 +14,7 @@
 #pragma once
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
 #include <utility>
 #include "turbo_transformers/core/tensor.h"
@@ -75,8 +76,10 @@ class MultiHeadedAttention {
                   const core::Tensor& query_tensor,
                   const core::Tensor& attention_mask,
                   const std::string& attn_type, core::Tensor* output,
-                  core::Tensor* att_score, bool pre_layernorm = false,
-                  bool post_layernorm = false, bool post_add_input = false,
+                  core::Tensor* att_score,
+                  std::unordered_map<std::string, core::Tensor*> layer_cache,
+                  bool pre_layernorm = false, bool post_layernorm = false,
+                  bool post_add_input = false,
                   bool is_trans_weight = false) const;
 
  private:

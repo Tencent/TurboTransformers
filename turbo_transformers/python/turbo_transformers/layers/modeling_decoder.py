@@ -70,18 +70,28 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         value_tensor = try_convert(value_tensor)
         query_tensor = try_convert(query_tensor)
         mask = try_convert(mask)
-        # TODO(jiaruifang) add layer_cache suuport in future
-        # if layer_cache is not None:
-        #     for elem in layer_cache:
-        #         assert elem is None
 
         output = create_empty_if_none(output)
         attn = create_empty_if_none(attn)
+        layer_cache_tmp = {}
+        if layer_cache is not None:
+            for k, v in layer_cache.items():
+                if v is not None:
+                    layer_cache_tmp[k] = try_convert(v)
+                else:
+                    layer_cache_tmp[k] = create_empty_if_none(v)
 
         super(MultiHeadedAttention,
               self).__call__(key_tensor, value_tensor, query_tensor, mask,
-                             attn_type, output, attn, pre_layernorm,
-                             post_layernorm, post_add_input, is_trans_weight)
+                             attn_type, output, attn, layer_cache_tmp,
+                             pre_layernorm, post_layernorm, post_add_input,
+                             is_trans_weight)
+
+        if layer_cache is not None:
+            for k, v in layer_cache_tmp.items():
+                if "memory" in k and "context" in attn_type or "self" in k and "self" in attn_type:
+                    layer_cache[k] = convert_returns_as_type(
+                        v, ReturnType.TORCH)
 
         return convert_returns_as_type(output,
                                        return_type), convert_returns_as_type(
@@ -340,10 +350,6 @@ class TransformerDecoderLayer:
             * top_attns ``(batch_size, T, src_len)``  or None
             * attn_align None
         """
-        if layer_cache is not None:
-            for k, v in layer_cache.items():
-                if v is not None:
-                    raise "layer_cache dictionary should only contains None elems"
         # dec_mask = None which is no mask
         dec_mask = torch.zeros(
             (input_tensor.size(0), 1, src_pad_mask.size(-1)),
