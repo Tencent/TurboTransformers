@@ -23,8 +23,8 @@
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
-// attr_mask's shape coudl be (batch, from_len, to_len) or (batch, 1, to_len)
-// is2D is used to distinguish the two scenarios.
+// attr_mask's shape coudl be (batch, from_len, to_len),  (batch, 1, to_len) or
+// nullptr is2D is used to distinguish the two scenarios.
 void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
                  int64_t head_num, int64_t from_seq_len, int64_t to_seq_len,
                  float scale, bool is2D = true) {
@@ -33,19 +33,30 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
 #pragma omp parallel for
   for (int64_t i = 0; i < M; ++i) {
     auto* qk_buf_ptr = qk_buf + i * N;
-    auto batch_idx = i / (head_num * from_seq_len);
-    auto from_seq_idx = i % from_seq_len;
-    const float* attr_mask_ptr =
-        attr_mask +
-        (is2D ? batch_idx * to_seq_len
-              : (batch_idx * from_seq_len + from_seq_idx) * to_seq_len);
-    // max-trick
+    if (attr_mask != nullptr) {
+      const float* attr_mask_ptr;
+      auto batch_idx = i / (head_num * from_seq_len);
+      auto from_seq_idx = i % from_seq_len;
+      attr_mask_ptr =
+          attr_mask +
+          (is2D ? batch_idx * to_seq_len
+                : (batch_idx * from_seq_len + from_seq_idx) * to_seq_len);
+// max-trick
 #pragma omp simd
-    for (int64_t j = 0; j < N; ++j) {
-      auto qk_val = qk_buf_ptr[j];
-      auto mask_val = attr_mask_ptr[j];
-      qk_val = qk_val * scale + mask_val;
-      qk_buf_ptr[j] = qk_val;
+      for (int64_t j = 0; j < N; ++j) {
+        auto qk_val = qk_buf_ptr[j];
+        auto mask_val = attr_mask_ptr[j];
+        qk_val = qk_val * scale + mask_val;
+        qk_buf_ptr[j] = qk_val;
+      }
+    } else {
+// max-trick
+#pragma omp simd
+      for (int64_t j = 0; j < N; ++j) {
+        auto qk_val = qk_buf_ptr[j];
+        qk_val = qk_val * scale;
+        qk_buf_ptr[j] = qk_val;
+      }
     }
     float max_val = std::numeric_limits<float>::lowest();
 #pragma omp simd reduction(max : max_val)
@@ -75,10 +86,16 @@ void ApplyMaskAndSoftmax(core::Tensor* inout, const core::Tensor& att_mask,
   auto num_att_heads = inout->shape(1);
   auto from_seq_len = inout->shape(2);
   auto to_seq_len = inout->shape(3);
-  bool is_2D = att_mask.shape(att_mask.n_dim() - 2) == 1 ? true : false;
-
+  bool is_2D = false;
+  if (!att_mask.is_null()) {
+    is_2D = att_mask.shape(att_mask.n_dim() - 2) == 1 ? true : false;
+  }
   if (inout->device_type() == kDLCPU) {
-    SoftmaxMask(inout->mutableData<float>(), att_mask.data<float>(), batch_size,
+    const float* att_mask_data = nullptr;
+    if (!att_mask.is_null()) {
+      att_mask_data = att_mask.data<float>();
+    }
+    SoftmaxMask(inout->mutableData<float>(), att_mask_data, batch_size,
                 num_att_heads, from_seq_len, to_seq_len, scale, is_2D);
   } else if (inout->device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA

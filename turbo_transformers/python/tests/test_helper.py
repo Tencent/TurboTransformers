@@ -49,6 +49,7 @@ def show_tensor(T, info):
     if T is None:
         print(info, " None")
         return
+    T = torch.clone(T)
     print(info, T.size())
     print(T.flatten()[0:10])
     print(T.flatten()[-10:])

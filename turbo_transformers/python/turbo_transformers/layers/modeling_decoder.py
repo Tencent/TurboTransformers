@@ -47,7 +47,7 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                  key_tensor: AnyTensor,
                  value_tensor: AnyTensor,
                  query_tensor: AnyTensor,
-                 mask: Optional[AnyTensor],
+                 mask: Optional[AnyTensor] = None,
                  layer_cache: Optional[dict] = None,
                  attn_type: str = None,
                  pre_layernorm: bool = False,
@@ -64,12 +64,11 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
         For self-dot Attention elements in dict `layer_cache` are Nones.
         https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py#L339
         """
-        if mask is None:
-            raise "mask of MultiHeadedAttention shall not be None"
         key_tensor = try_convert(key_tensor)
         value_tensor = try_convert(value_tensor)
         query_tensor = try_convert(query_tensor)
-        mask = try_convert(mask)
+
+        mask = try_convert(create_empty_if_none(mask))
 
         output = create_empty_if_none(output)
         attn = create_empty_if_none(attn)

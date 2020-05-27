@@ -19,6 +19,7 @@ import torch
 import os
 
 from onmt.modules.multi_headed_attn import MultiHeadedAttention
+# from my_multi_headed_attn import MultiHeadedAttention
 
 sys.path.append(os.path.dirname(__file__))
 import test_helper
@@ -95,12 +96,20 @@ def create_test(batch_size,
             device = "GPU" if use_cuda else "CPU"
             info = f"\"({device}, {set_layer_cache}, {pre_layernorm}, {post_add_input}, {attn_type}, {batch_size}, {key_seq_len:03}, {query_seq_len:03})\""
 
-            attention_mask = torch.zeros(
-                (batch_size, 1, (key_seq_len if
-                                 (attn_type == "context") else query_seq_len)),
-                dtype=torch.bool,
-                device=self.test_device)
+            if attn_type == "context":
+                attention_mask = torch.zeros((batch_size, 1, key_seq_len),
+                                             dtype=torch.bool,
+                                             device=self.test_device)
+            elif attn_type == "self":
+                attention_mask = None
+                # torch.zeros(
+                #     (batch_size, query_seq_len, key_seq_len),
+                #     dtype=torch.bool,
+                #     device=self.test_device)
+            else:
+                raise "attn type is not supported"
 
+            # set layer_cache
             if set_layer_cache:
                 memory_keys = torch.rand(size=(batch_size, self.head_count,
                                                key_seq_len,
@@ -122,7 +131,7 @@ def create_test(batch_size,
                                                self.size_per_head),
                                          dtype=torch.float32,
                                          device=self.test_device)
-
+                print("self_keys size: ", self_keys.size())
                 layer_cache_torch = {
                     "memory_keys": torch.clone(memory_keys),
                     "memory_values": torch.clone(memory_values),
@@ -162,7 +171,7 @@ def create_test(batch_size,
                     K,
                     V,
                     torch.clone(torch_layernorm(Q)) if pre_layernorm else Q,
-                    attention_mask,
+                    mask=attention_mask,
                     layer_cache=layer_cache_torch,
                     attn_type=attn_type)
 
@@ -179,7 +188,8 @@ def create_test(batch_size,
                 )
 
             # benchmarking turbo with weight transposed
-            turbo_attention_mask = attention_mask.float() * -1e18
+            turbo_attention_mask = attention_mask.float(
+            ) * -1e18 if attention_mask is not None else None
 
             if set_layer_cache:
                 layer_cache_turbo = {
@@ -223,10 +233,12 @@ def create_test(batch_size,
                 torch.max(torch.abs(onmt_attns - turbo_attns_trans)) < (
                     1e-3 if use_cuda else 1e-4))
 
-            if set_layer_cache:
+            if layer_cache_torch is not None:
                 for k, v in layer_cache_torch.items():
-                    self.assertTrue(
-                        torch.max(torch.abs(layer_cache_turbo[k] - v)) < 1e-3)
+                    if v is not None:
+                        self.assertTrue(
+                            torch.max(torch.abs(layer_cache_turbo[k] -
+                                                v)) < 1e-3)
 
             # benchmarking turbo with weight not transposed
             if set_layer_cache:
@@ -294,18 +306,19 @@ def create_test(batch_size,
 with open(fname, "w") as fh:
     fh.write(", torch, q_torch, turbo_transformers\n")
 
-# for post_add_input in [False]:
-#     for pre_layernorm in [False]:
-#         for batch_size in [4]:
-#             for query_seq_len in [1, 2]:
-#                 create_test(batch_size,
-#                             query_seq_len,
-#                             query_seq_len,
-#                             "self",
-#                             pre_layernorm,
-#                             post_add_input,
-#                             with_quantize_dynamic=False,
-#                             set_layer_cache=False)
+for set_layer_cache in [True, False]:
+    for post_add_input in [False]:
+        for pre_layernorm in [False]:
+            for batch_size in [4]:
+                for query_seq_len in [1, 2]:
+                    create_test(batch_size,
+                                query_seq_len,
+                                query_seq_len,
+                                "self",
+                                pre_layernorm,
+                                post_add_input,
+                                with_quantize_dynamic=False,
+                                set_layer_cache=set_layer_cache)
 
 for set_layer_cache in [False, True]:
     for post_add_input in [False]:
