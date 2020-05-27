@@ -150,8 +150,8 @@ class Tensor {
 
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
   template <typename T>
-  T *Reshape(std::initializer_list<int64_t> shape_list,
-             DLDeviceType device_type, int device_id) {
+  T *Reshape(std::vector<int64_t> shape_list, DLDeviceType device_type,
+             int device_id) {
     // if Need Realloc
     if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
       tensor_ = details::DLManagedTensorPtr(
@@ -294,7 +294,7 @@ class Tensor {
  private:
   struct ReshapeNeedRealloc {
    public:
-    ReshapeNeedRealloc(const std::initializer_list<int64_t> &shape_list)
+    ReshapeNeedRealloc(const std::vector<int64_t> &shape_list)
         : shape_list_(shape_list) {}
 
     bool operator()(details::DLManagedTensorPtr &ptr) const {
@@ -321,7 +321,7 @@ class Tensor {
     }
 
    private:
-    const std::initializer_list<int64_t> &shape_list_;
+    const std::vector<int64_t> &shape_list_;
   };
 
   const DLTensor &to_dl_tensor() const {

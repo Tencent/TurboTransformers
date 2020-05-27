@@ -35,6 +35,7 @@ void MultiHeadedAttention::operator()(
     const core::Tensor& key_tensor, const core::Tensor& value_tensor,
     const core::Tensor& query_tensor, const core::Tensor& attention_mask,
     const std::string& attn_type, core::Tensor* output, core::Tensor* att_score,
+    std::unordered_map<std::string, core::Tensor*> layer_cache,
     bool pre_layernorm, bool post_layernorm, bool post_add_input,
     bool is_trans_weight) const {
 #ifdef WITH_PERFTOOLS
@@ -42,11 +43,6 @@ void MultiHeadedAttention::operator()(
   profile_ctx.start_profile("MultiHeadedAttention_" + attn_type);
 #endif
   std::lock_guard<std::mutex> g(mutex_);
-  TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
-                    query_tensor.device_ctx(), attention_mask.device_ctx()),
-                true,
-                "The query_tensor and attention_mask should have the same "
-                "device type and device id.");
 
   TT_ENFORCE_EQ(key_tensor.n_dim(), 3,
                 "The key_tensor should be a matrix with shape [batch_size, "
@@ -92,21 +88,35 @@ void MultiHeadedAttention::operator()(
   core::Tensor qkv_out1(nullptr);
   core::Tensor qkv_out2(nullptr);
 
+#ifdef WITH_PERFTOOLS
+  profile_ctx.start_profile("gemm_012+AddBiasTransposeForScore3");
+  profile_ctx.start_profile("set_cache_flags");
+#endif
+  bool layer_cache_not_none = layer_cache.size() > 0 ? true : false;
+  bool memory_keys_not_none = false, memory_values_not_none = false,
+       self_keys_not_none = false, self_values_not_none = false;
+  if (layer_cache_not_none) {
+    for (auto it = layer_cache.begin(); it != layer_cache.end(); ++it) {
+      if (it->first == "memory_keys" && !it->second->is_null()) {
+        memory_keys_not_none = true;
+      }
+      if (it->first == "memory_values" && !it->second->is_null()) {
+        memory_values_not_none = true;
+      }
+      if (it->first == "self_keys" && !it->second->is_null()) {
+        self_keys_not_none = true;
+      }
+      if (it->first == "self_values" && !it->second->is_null()) {
+        self_values_not_none = true;
+      }
+    }
+  }
+  bool memory_not_none = memory_values_not_none && memory_keys_not_none;
+
   if (attn_type == "context") {
 #ifdef WITH_PERFTOOLS
-    profile_ctx.start_profile("gemm_012");
+    profile_ctx.end_profile("set_cache_flags");
 #endif
-    // static core::TempTensor q_out1_temp, v_out1_temp,
-    //     k_out1_temp;  // intermediate results after matmul
-    // static core::TempTensor q_out2_temp, v_out2_temp,
-    //     k_out2_temp;  // intermediate results after add bias and transpose
-    // core::Tensor& q_out1 = q_out1_temp.GetTensor(devctx);
-    // core::Tensor& v_out1 = v_out1_temp.GetTensor(devctx);
-    // core::Tensor& k_out1 = k_out1_temp.GetTensor(devctx);
-    // core::Tensor& q_out2 = q_out2_temp.GetTensor(devctx);
-    // core::Tensor& v_out2 = v_out2_temp.GetTensor(devctx);
-    // core::Tensor& k_out2 = k_out2_temp.GetTensor(devctx);
-
     TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
                       query_tensor.device_ctx(), value_tensor.device_ctx()),
                   true,
@@ -120,11 +130,6 @@ void MultiHeadedAttention::operator()(
 
     q_out1.Reshape<float>({batch_size, query_seq_length, hidden_size}, devtype,
                           devid);
-    v_out1.Reshape<float>({batch_size, key_seq_length, hidden_size}, devtype,
-                          devid);
-    k_out1.Reshape<float>({batch_size, key_seq_length, hidden_size}, devtype,
-                          devid);
-
     if (pre_layernorm) {
       q_out2.Reshape<float>({batch_size, query_seq_length, hidden_size},
                             devtype, devid);
@@ -139,49 +144,66 @@ void MultiHeadedAttention::operator()(
       kernels::MatMul(query_tensor, false, q_weight_, is_trans_weight, 1.0,
                       &q_out1, 0.0);
     }
-    kernels::MatMul(key_tensor, false, k_weight_, is_trans_weight, 1.0, &k_out1,
-                    0.0);
-    kernels::MatMul(value_tensor, false, v_weight_, is_trans_weight, 1.0,
-                    &v_out1, 0.0);
-
     q_out1.Reshape<float>(
         {batch_size, query_seq_length, num_attention_heads_, size_per_head},
         devtype, devid);
-    v_out1.Reshape<float>(
-        {batch_size, key_seq_length, num_attention_heads_, size_per_head},
-        devtype, devid);
-    k_out1.Reshape<float>(
-        {batch_size, key_seq_length, num_attention_heads_, size_per_head},
-        devtype, devid);
-
     q_out2.Reshape<float>(
         {batch_size, num_attention_heads_, query_seq_length, size_per_head},
         devtype, devid);
-    v_out2.Reshape<float>(
-        {batch_size, num_attention_heads_, key_seq_length, size_per_head},
-        devtype, devid);
-    k_out2.Reshape<float>(
-        {batch_size, num_attention_heads_, key_seq_length, size_per_head},
-        devtype, devid);
-#ifdef WITH_PERFTOOLS
-    profile_ctx.end_profile("gemm_012");
-    profile_ctx.start_profile("AddBiasTransposeForScore3");
-#endif
     kernels::AddBiasTransposeForScore(q_out1, q_bias_, &q_out2);
-    kernels::AddBiasTransposeForScore(v_out1, v_bias_, &v_out2);
-    kernels::AddBiasTransposeForScore(k_out1, k_bias_, &k_out2);
+    q_ptr = &q_out2;  // point to static memory space
+
+    if (memory_not_none) {
+      v_ptr = layer_cache["memory_values"];
+      k_ptr = layer_cache["memory_keys"];
+    } else {
+      v_out1.Reshape<float>({batch_size, key_seq_length, hidden_size}, devtype,
+                            devid);
+      k_out1.Reshape<float>({batch_size, key_seq_length, hidden_size}, devtype,
+                            devid);
+
+      kernels::MatMul(key_tensor, false, k_weight_, is_trans_weight, 1.0,
+                      &k_out1, 0.0);
+      kernels::MatMul(value_tensor, false, v_weight_, is_trans_weight, 1.0,
+                      &v_out1, 0.0);
+      v_out1.Reshape<float>(
+          {batch_size, key_seq_length, num_attention_heads_, size_per_head},
+          devtype, devid);
+      k_out1.Reshape<float>(
+          {batch_size, key_seq_length, num_attention_heads_, size_per_head},
+          devtype, devid);
+
+      if (layer_cache_not_none) {
+        layer_cache["memory_keys"]->Reshape<float>(
+            {batch_size, num_attention_heads_, key_seq_length, size_per_head},
+            devtype, devid);
+        layer_cache["memory_values"]->Reshape<float>(
+            {batch_size, num_attention_heads_, key_seq_length, size_per_head},
+            devtype, devid);
+        kernels::AddBiasTransposeForScore(v_out1, v_bias_,
+                                          layer_cache["memory_values"]);
+        kernels::AddBiasTransposeForScore(k_out1, k_bias_,
+                                          layer_cache["memory_keys"]);
+        v_ptr = layer_cache["memory_values"];
+        k_ptr = layer_cache["memory_keys"];
+      } else {
+        v_out2.Reshape<float>(
+            {batch_size, num_attention_heads_, key_seq_length, size_per_head},
+            devtype, devid);
+        k_out2.Reshape<float>(
+            {batch_size, num_attention_heads_, key_seq_length, size_per_head},
+            devtype, devid);
+        kernels::AddBiasTransposeForScore(v_out1, v_bias_, &v_out2);
+        kernels::AddBiasTransposeForScore(k_out1, k_bias_, &k_out2);
+        v_ptr = &v_out2;
+        k_ptr = &k_out2;
+      }
+    }  // else
 
 #ifdef WITH_PERFTOOLS
-    profile_ctx.end_profile("AddBiasTransposeForScore3");
+    profile_ctx.end_profile("gemm_012+AddBiasTransposeForScore3");
 #endif
-    q_ptr = &q_out2;  // point to static memory space
-    v_ptr = &v_out2;
-    k_ptr = &k_out2;
   } else if (attn_type == "self") {
-    // static core::TempTensor qkv_out1_temp, qkv_out2_temp;
-    // core::Tensor& qkv_out1 = qkv_out1_temp.GetTensor(devctx);
-    // core::Tensor& qkv_out2 = qkv_out2_temp.GetTensor(devctx);
-
     qkv_out1.Reshape<float>({3, batch_size, query_seq_length, hidden_size},
                             devtype, devid);
 
@@ -212,21 +234,45 @@ void MultiHeadedAttention::operator()(
     kernels::SplitAddBiasTransposeForScore(&qkv_out2, qkv_out1, qkv_bias_);
     q_ptr =
         new core::Tensor(qkv_out2[0]);  // copy temporary tensor to heap space.
-    k_ptr = new core::Tensor(qkv_out2[1]);
-    v_ptr = new core::Tensor(qkv_out2[2]);
+
 #ifdef WITH_PERFTOOLS
     profile_ctx.end_profile("SplitAddBiasTransposeForScore");
 #endif
+    if (self_keys_not_none) {
+      kernels::Concat<float>(*layer_cache["self_keys"], qkv_out2[1], 2,
+                             &k_out2);
+      k_ptr = &k_out2;
+    } else {
+      k_ptr = new core::Tensor(qkv_out2[1]);
+    }
+    if (self_values_not_none) {
+      kernels::Concat<float>(*layer_cache["self_values"], qkv_out2[2], 2,
+                             &v_out2);
+      v_ptr = &v_out2;
+    } else {
+      v_ptr = new core::Tensor(qkv_out2[2]);
+    }
+    if (layer_cache_not_none) {
+      layer_cache["self_keys"]->Reshape<float>(
+          {batch_size, num_attention_heads_, k_ptr->shape(2), size_per_head},
+          devtype, devid);
+      layer_cache["self_values"]->Reshape<float>(
+          {batch_size, num_attention_heads_, v_ptr->shape(2), size_per_head},
+          devtype, devid);
+
+      core::Copy<float>(*k_ptr, *layer_cache["self_keys"]);
+      core::Copy<float>(*v_ptr, *layer_cache["self_values"]);
+    }
   } else {
     TT_THROW("%s is not support in MultiHeadedAttention\n", attn_type);
-  }
+  }  // if (attn_type == "context")
 
 #ifdef WITH_PERFTOOLS
   profile_ctx.start_profile("batch_gemm0");
 #endif
   // 2) Calculate and scale scores.
-  // static core::TempTensor att_score_tmp;
-  // core::Tensor& att_score = att_score_tmp.GetTensor(devctx);
+  key_seq_length = k_ptr->shape(
+      2);  // update for self type attn, since it will concat with cache.
   att_score->Reshape<float>(
       {batch_size, num_attention_heads_, query_seq_length,
        key_seq_length},  // query_seq_length = from_seq_Len
