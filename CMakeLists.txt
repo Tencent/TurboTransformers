@@ -42,7 +42,7 @@ if(WITH_GPU)
 endif()
 
 set(MKLROOT "/opt/intel/mkl" CACHE PATH "The mkl library root")
-set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl]")
+set(BLAS_PROVIDER "blis" CACHE STRING "Set the blas provider library, in [openblas, mkl, blis]")
 if (${BLAS_PROVIDER} STREQUAL "mkl")
     find_package(MKL REQUIRED)
 endif()

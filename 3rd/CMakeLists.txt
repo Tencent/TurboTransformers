@@ -61,3 +61,22 @@ if (${BLAS_PROVIDER} STREQUAL "openblas")
     include(openblas.cmake)
     include(eigen.cmake)
 endif()
+
+if (${BLAS_PROVIDER} STREQUAL "blis")
+        ExternalProject_Add(extern_blis
+                PREXIX ${CMAKE_CURRENT_BINARY_DIR}/blis/
+                GIT_REPOSITORY https://github.com/flame/blis.git
+                GIT_TAG 0.7.0
+                BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/blis/bin
+                SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/blis
+                INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/blis
+                CONFIGURE_COMMAND COMMAND "./configure auto"
+                BUILD_COMMAND COMMAND make -j ${nproc} && make check -j ${nproc}
+                INSTALL_COMMAND COMMAND make install
+                BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/blis/lib/libblis.a)
+        file(MAKE_DIRECTORY /usr/local/include/blis/)
+        add_library(blis STATIC IMPORTED GLOBAL)
+        SET_PROPERTY(TARGET blis PROPERTY IMPORTED_LOCATION /usr/local/lib/libblis.a)
+        target_include_directories(blis INTERFACE /usr/local/include/blis/)
+        add_dependencies(blis extern_blis)
+endif()
