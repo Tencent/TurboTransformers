@@ -1,5 +1,4 @@
 ## turbo_transformers: a fast and user-friendly tool for transformer inference on CPU and GPU
-[Chinese Version](./README_cn.md)
 ![logo](./images/logo.jpeg)
 
 ### **make transformers serving fast by adding a turbo to your inference engine!**
@@ -169,4 +168,4 @@ weight = torch.clone(torch.t(pooler_params['dense.weight']))
 
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
-Scan this [QR code](./images/namecode.pdf "qrcode") and our contactor as your WeChat friend.
+Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.
