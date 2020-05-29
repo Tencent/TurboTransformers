@@ -43,7 +43,7 @@ Method 1：I want to unitest
 cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
 # you can switch between Openblas and MKL by modifying this line in CMakeList.txt
-# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl]")
+# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl, blis]")
 ```
 Method 2：I do not want to unitest
 ```

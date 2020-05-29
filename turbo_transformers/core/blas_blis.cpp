@@ -10,7 +10,9 @@
 // implied. See the License for the specific language governing
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
-
+#include "blas.h"
+#define EIGEN_DONT_PARALLELIZE
+#include "unsupported/Eigen/CXX11/Tensor"
 extern "C" {
 void cblas_sgemm_batch(const CBLAS_ORDER Layout,
                        const CBLAS_TRANSPOSE* transa_array,
@@ -22,12 +24,27 @@ void cblas_sgemm_batch(const CBLAS_ORDER Layout,
                        const float* beta_array, float** c_array,
                        const blasint* ldc_array, const blasint group_count,
                        const blasint* group_size) {
-  // TODO
+  int idx = 0;
+  for (int i = 0; i < group_count; ++i) {
+    auto alpha = alpha_array[i];
+    auto beta = beta_array[i];
+    for (int j = 0; j < group_size[i]; ++j) {
+      cblas_sgemm(Layout, transa_array[i], transb_array[i], m_array[i],
+                  n_array[i], k_array[i], alpha, a_array[idx], lda_array[i],
+                  b_array[idx], ldb_array[i], beta, c_array[idx], ldc_array[i]);
+      ++idx;
+    }
+  }
 }
 
-void cblas_sgemm(const CBLAS_ORDER Layout, const CBLAS_TRANSPOSE* transa_array,
-                 const CBLAS_TRANSPOSE* transb_array, const blasint M,
-                 const blasint N, const blasint K_a, float alpha, float* A,
-                 const blasint lda, float* B, const blasint ldb, float beta,
-                 float* C, const blasint ldc) {}
+using Vec = Eigen::TensorMap<Eigen::Tensor<float, 1>>;
+
+void vsTanh(blasint N, const float* in, float* out) {
+  Vec input(const_cast<float*>(in), N);
+  Vec output(out, N);
+
+  // let use eigen to calculate tanh.
+  // Eigen can use `FAST_MATH`.
+  output = input.tanh();
+}
 }

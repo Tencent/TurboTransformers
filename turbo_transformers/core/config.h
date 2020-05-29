@@ -14,10 +14,7 @@
 #pragma once
 namespace turbo_transformers {
 namespace core {
-enum class BlasProvider {
-  MKL,
-  OpenBlas,
-};
+enum class BlasProvider { MKL, OpenBlas, BLIS };
 
 BlasProvider GetBlasProvider();
 

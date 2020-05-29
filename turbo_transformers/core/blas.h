@@ -40,10 +40,13 @@ void cblas_sgemm_batch(const CBLAS_ORDER Layout,
 void vsTanh(blasint N, const float* in, float* out);
 }
 #elif defined(TT_BLAS_USE_BLIS)
-#include "blis.h"
+#include <unistd.h>
+#include "cblas.h"
 namespace turbo_transformers {
-using BlasInt = dim_t;
+using BlasInt = f77_int;
 }  // namespace turbo_transformers
+
+using blasint = turbo_transformers::BlasInt;
 extern "C" {
 void cblas_sgemm_batch(const CBLAS_ORDER Layout,
                        const CBLAS_TRANSPOSE* transa_array,
@@ -55,5 +58,6 @@ void cblas_sgemm_batch(const CBLAS_ORDER Layout,
                        const float* beta_array, float** c_array,
                        const blasint* ldc_array, const blasint group_count,
                        const blasint* group_size);
+void vsTanh(blasint N, const float* in, float* out);
 }
 #endif

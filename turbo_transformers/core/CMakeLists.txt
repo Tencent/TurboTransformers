@@ -42,7 +42,7 @@ elseif (${BLAS_PROVIDER} STREQUAL "openblas")
     target_link_libraries(tt_core PUBLIC OpenBlas::OpenBlas PUBLIC Eigen3::Eigen)
     target_compile_definitions(tt_core PUBLIC -DTT_BLAS_USE_OPENBLAS)
 elseif (${BLAS_PROVIDER} STREQUAL "blis")
-    target_link_libraries(tt_core PUBLIC blis)
+    target_link_libraries(tt_core PUBLIC blis Eigen3::Eigen)
     target_compile_definitions(tt_core PUBLIC -DTT_BLAS_USE_BLIS)
 endif ()
 
