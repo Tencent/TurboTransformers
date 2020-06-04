@@ -50,7 +50,8 @@ Method 2：I do not want to unitest
 cd /workspace
 mkdir -p build && cd build
 cmake .. -DWITH_GPU=OFF
-pip install -r `find . -name *whl`
+make -j 4 
+pip install `find . -name *whl`
 ```
 3. Run benchmark (optional) in docker, compare with pytorch, torch-JIT, onnxruntime
 ```
