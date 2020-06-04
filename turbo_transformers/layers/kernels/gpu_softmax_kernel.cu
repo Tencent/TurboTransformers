@@ -78,6 +78,7 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
   //     threadIdx.x < to_seq_len ? attr_mask[threadIdx.x + mask_offset] : 0.0f;
   // }
 
+  float mask_val = 0.;
   for (int i = 0; i < K; ++i) {
     float qk = threadIdx.x < to_seq_len
                    ? qk_buf_[threadIdx.x + qk_offset + to_seq_len * i]
@@ -89,7 +90,7 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
       if (attr_mask != nullptr) {
         mask_val =
             threadIdx.x < to_seq_len
-                ? attr_mask[threadIdx.x + is2D
+                ? attr_mask[threadIdx.x + is_2D
                                 ? batch_id * to_seq_len
                                 : batch_id * (from_seq_len * to_seq_len) +
                                       from_seq_id * to_seq_len]
