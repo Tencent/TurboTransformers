@@ -61,7 +61,9 @@ if (${BLAS_PROVIDER} STREQUAL "openblas")
     include(eigen.cmake)
 endif()
 
+
 if (${BLAS_PROVIDER} STREQUAL "blis")
+  message(STATUS "CMAKE_CURRENT_BINARY_DIR " ${CMAKE_CURRENT_BINARY_DIR})
         ExternalProject_Add(extern_blis
                 GIT_REPOSITORY https://github.com/flame/blis.git
                 GIT_TAG 0.7.0
@@ -71,7 +73,7 @@ if (${BLAS_PROVIDER} STREQUAL "blis")
                 CONFIGURE_COMMAND COMMAND ""
                 BUILD_COMMAND COMMAND ./configure --enable-threading=openmp --enable-cblas --prefix=${CMAKE_CURRENT_BINARY_DIR}/blis auto && make -j ${nproc} && make check -j ${nproc}
                 INSTALL_COMMAND COMMAND make install
-                BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/blis/lib/blis.a)
+                BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/blis/lib/libblis.a)
         file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/blis/include/blis/)
         add_library(blis STATIC IMPORTED GLOBAL)
         SET_PROPERTY(TARGET blis PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/blis/lib/libblis.a)
