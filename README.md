@@ -1,5 +1,4 @@
 ## turbo_transformers: a fast and user-friendly tool for transformer inference on CPU and GPU
-[Chinese Version](./README_cn.md)
 ![logo](./images/logo.jpeg)
 
 ### **make transformers serving fast by adding a turbo to your inference engine!**
@@ -43,7 +42,7 @@ Method 1：I want to unitest
 cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
 # you can switch between Openblas and MKL by modifying this line in CMakeList.txt
-# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl]")
+# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl, blis]")
 ```
 Method 2：I do not want to unitest
 ```
@@ -169,4 +168,4 @@ weight = torch.clone(torch.t(pooler_params['dense.weight']))
 
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
-Scan this [QR code](./images/namecode.pdf "qrcode") and our contactor as your WeChat friend.
+Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.
