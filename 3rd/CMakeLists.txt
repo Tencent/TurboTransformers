@@ -69,7 +69,7 @@ if (${BLAS_PROVIDER} STREQUAL "blis")
                 SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/blis
                 INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/blis
                 CONFIGURE_COMMAND COMMAND ""
-                BUILD_COMMAND COMMAND ./configure --enable-threading=openmp --enable-cblas --prefix=${CMAKE_CURRENT_BINARY_DIR}/blis x86_64 && make -j ${nproc} && make check -j ${nproc}
+                BUILD_COMMAND COMMAND ./configure --enable-threading=openmp --enable-cblas --prefix=${CMAKE_CURRENT_BINARY_DIR}/blis auto && make -j ${nproc} && make check -j ${nproc}
                 INSTALL_COMMAND COMMAND make install
                 BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/blis/lib/blis.a)
         file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/blis/include/blis/)
