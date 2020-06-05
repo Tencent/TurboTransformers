@@ -49,7 +49,7 @@ TEST_CASE("softmax-gpu-test") {
         core::Tensor attr_mask_cpu(nullptr), attr_mask_gpu(nullptr);
         std::tie(attr_mask_cpu, attr_mask_gpu) =
             common::CreateAndFillRandomForCPUGPUTensors<float>(
-                {batch_size, to_seq});
+                {batch_size, 1, to_seq});
 
         ApplyMaskAndSoftmax(&qk_buf_gpu, attr_mask_gpu, scaler);
 

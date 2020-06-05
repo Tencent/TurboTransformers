@@ -88,8 +88,13 @@ void ApplyMaskAndSoftmax(core::Tensor* inout, const core::Tensor& att_mask,
   auto to_seq_len = inout->shape(3);
   bool is_2D = false;
   if (!att_mask.is_null()) {
-    is_2D = att_mask.shape(att_mask.n_dim() - 2) == 1 ? true : false;
+    if (att_mask.n_dim() == 2 ||
+        att_mask.n_dim() == 3 && att_mask.shape(1) == 1)
+      is_2D = true;
+  } else {
+    is_2D = false;
   }
+  std::cerr << "is_2D " << is_2D << std::endl;
   const float* att_mask_data = nullptr;
   if (!att_mask.is_null()) {
     att_mask_data = att_mask.data<float>();
