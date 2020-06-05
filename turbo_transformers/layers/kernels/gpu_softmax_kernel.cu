@@ -71,26 +71,19 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
   float tmp[K];
   int qk_offset = blockIdx.x * K * to_seq_len;
 
-  // int mask_offset = batch_id * to_seq_len;
-  // float mask_val =
-  //     threadIdx.x < to_seq_len ? attr_mask[threadIdx.x + mask_offset] : 0.0f;
-  // }
-
   float mask_val = 0.;
   for (int i = 0; i < K; ++i) {
-    int batch_id = (blockIdx.x * K + i) / (head_num * from_seq_len);
-    int from_seq_id = (blockIdx.x * K + i) % from_seq_len;
     float qk = threadIdx.x < to_seq_len
                    ? qk_buf_[threadIdx.x + qk_offset + to_seq_len * i]
                    : 0.0f;
 
     if (attr_mask != nullptr) {
-      mask_val = threadIdx.x < to_seq_len
-                     ? attr_mask[threadIdx.x + is2D
-                                     ? batch_id * to_seq_len
-                                     : batch_id * (from_seq_len * to_seq_len) +
-                                           from_seq_id * to_seq_len]
-                     : 0.0f;
+      int batch_id = (blockIdx.x * K + i) / (head_num * from_seq_len);
+      int from_seq_id = (blockIdx.x * K + i) % from_seq_len;
+      mask_val = attr_mask[threadIdx.x +
+                           (is_2D ? (batch_id * to_seq_len)
+                                  : (batch_id * from_seq_len + from_seq_id) *
+                                        to_seq_len)];
     } else {
       mask_val = 0.0f;
     }
