@@ -43,13 +43,15 @@ cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
 # you can switch between Openblas and MKL by modifying this line in CMakeList.txt
 # set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl, blis]")
+
 ```
 Method 2：I do not want to unitest
 ```
 cd /workspace
 mkdir -p build && cd build
 cmake .. -DWITH_GPU=OFF
-pip install -r `find . -name *whl`
+make -j 4
+pip install `find . -name *whl`
 ```
 3. Run benchmark (optional) in docker, compare with pytorch, torch-JIT, onnxruntime
 ```
@@ -65,7 +67,7 @@ sh tool/build_conda_package.sh
 
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
 ```
-*docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev*
+docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev
 ```
 ### Installation on GPU
 ```
@@ -92,7 +94,7 @@ bash gpu_run_benchmark.sh
 ```
 *We also prepared a docker image containing GPU version of TurboTransformers.
 ```
-*docker pull thufeifeibear/turbo_transformers:0.2.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-release*
+docker pull thufeifeibear/turbo_transformers:0.2.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-release
 ```
 
 ### Usage
