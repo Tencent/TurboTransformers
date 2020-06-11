@@ -11,13 +11,14 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 #include "turbo_transformers/core/cuda_allocator.h"
+
 #include <cuda_runtime.h>
-#include "turbo_transformers/core/cuda_enforce.cuh"
 
 #include <cub/util_allocator.cuh>
 #include <unordered_map>
 
 #include "turbo_transformers/core/cuda_device_context.h"
+#include "turbo_transformers/core/cuda_enforce.cuh"
 
 namespace turbo_transformers {
 namespace core {
@@ -62,7 +63,7 @@ struct CubCUDAAllocator::CubAllocatorImpl {
   ~CubAllocatorImpl() { cub_allocator.FreeAllCached(); }
 
   cub::CachingDeviceAllocator cub_allocator;
-};
+};  // struct CubCUDAAllocator::CubAllocatorImpl
 
 CubCUDAAllocator::CubCUDAAllocator() : allocator_(new CubAllocatorImpl()) {}
 
