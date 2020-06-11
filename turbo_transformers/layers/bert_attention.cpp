@@ -51,8 +51,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
                          input_tensor.device_type(), input_tensor.device_id());
 
   // 1. temp_qkv = MatMul(input)
-  static core::TempTensor temp_qkv_tmp;
-  core::Tensor& temp_qkv = temp_qkv_tmp.GetTensor(input_tensor.device_ctx());
+  core::Tensor temp_qkv(nullptr);
   temp_qkv.Reshape<float>({3, batch_size, seq_length, hidden_size},
                           input_tensor.device_type(), input_tensor.device_id());
 
@@ -61,8 +60,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   // 2. qkv = transpose(temp_qkv + bias)
   // Since `SplitAddBiasTransposeForScore` does not support inplace,
   // qkv and temp_qkv cannot be same tensor
-  static core::TempTensor qkv_tensor_tmp;
-  core::Tensor& qkv = qkv_tensor_tmp.GetTensor(input_tensor.device_ctx());
+  core::Tensor qkv(nullptr);
   qkv.Reshape<float>(
       {3, batch_size, num_attention_heads_, seq_length, size_per_head},
       input_tensor.device_type(), input_tensor.device_id());
@@ -74,8 +72,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   auto v = qkv[2];
 
   // 4. att_score = softmax((q * k^T)*1/sqrt(size_per_head) + att_mask)
-  static core::TempTensor att_score_tmp;
-  core::Tensor& att_score = att_score_tmp.GetTensor(input_tensor.device_ctx());
+  core::Tensor& att_score(nullptr);
   att_score.Reshape<float>(
       {batch_size, num_attention_heads_, seq_length, seq_length},
       input_tensor.device_type(), input_tensor.device_id());
@@ -85,18 +82,14 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
       &att_score, attention_mask,
       1 / std::sqrt(static_cast<float>(size_per_head)));
   // 5. ctx = v * att_score
-  static core::TempTensor context_layer_tmpr;
-  core::Tensor& context_layer =
-      context_layer_tmpr.GetTensor(input_tensor.device_ctx());
+  core::Tensor context_layer(nullptr);
   context_layer.Reshape<float>(
       {batch_size, num_attention_heads_, seq_length, size_per_head},
       input_tensor.device_type(), input_tensor.device_id());
   kernels::BatchMatMul(att_score, false, v, false, 1.0, &context_layer, 0.0);
 
   // 6. self_att_out = transpose(ctx)
-  static core::TempTensor self_attr_out_tmp;
-  core::Tensor& self_attr_out =
-      self_attr_out_tmp.GetTensor(input_tensor.device_ctx());
+  core::Tensor self_attr_out(nullptr);
   self_attr_out.Reshape<float>(
       {batch_size, seq_length, num_attention_heads_ * size_per_head},
       input_tensor.device_type(), input_tensor.device_id());
