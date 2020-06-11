@@ -28,7 +28,11 @@ struct BadAlloc : public std::exception {
   std::string err_str_;
 };
 
-struct CUDAAllocator::AllocatorImpl {
+/**********
+ * Allocator using cub Caching Memory algorithm
+ **********/
+
+struct CubCUDAAllocator::CubAllocatorImpl {
   void *alloc(size_t size) {
     static auto stream = core::CUDADeviceContext::GetInstance().stream();
     void *data = nullptr;
@@ -51,16 +55,14 @@ struct CUDAAllocator::AllocatorImpl {
 
   void free_all_cache() { cub_allocator.FreeAllCached(); }
 
-  ~AllocatorImpl() { cub_allocator.FreeAllCached(); }
+  ~CubAllocatorImpl() { cub_allocator.FreeAllCached(); }
 
   cub::CachingDeviceAllocator cub_allocator;
 };
 
-CUDAAllocator::CUDAAllocator() : allocator_(new AllocatorImpl()) {}
+CubCUDAAllocator::CubCUDAAllocator() : allocator_(new CubAllocatorImpl()) {}
 
-CUDAAllocator::~CUDAAllocator() = default;
-
-void *CUDAAllocator::allocate(size_t size) {
+void *CubCUDAAllocator::allocate(size_t size) {
   try {
     return allocator_->alloc(size);
   } catch (BadAlloc &) {
@@ -69,7 +71,88 @@ void *CUDAAllocator::allocate(size_t size) {
   }
 }
 
-void CUDAAllocator::free(void *memory) { allocator_->free(memory); }
+void CubCUDAAllocator::free(void *memory) { allocator_->free(memory); }
+
+/**********
+ * Allocator using best fit algorithm
+ **********/
+
+static void *cuda_alloc(size_t sz) {
+  void *device_mem;
+  try {
+    TT_ENFORCE_CUDA_SUCCESS(cudaMalloc((void **)&(device_mem), sz));
+  } catch (...) {
+    throw BadAlloc("cudaMalloc failed.");
+  }
+  return device_mem;
+}
+
+static void cuda_free(void *data) { TT_ENFORCE_CUDA_SUCCESS(cudaFree(data)); }
+
+struct BestFitCUDAAllocator::BestFitAllocatorImpl {
+ public:
+  void free_cache(size_t size) {
+    if (size == 0) return;
+    size_t cur = 0;
+    while (!allocations_.empty()) {  // free the largest
+      auto it = --allocations_.end();
+      cur += it->first;
+      cuda_free(it->second);
+      allocation_size_ -= it->first;
+      allocations_.erase(it);
+      if (cur >= size) return;
+    }
+  }
+
+  void *alloc(size_t size) {
+    static auto stream = core::CUDADeviceContext::GetInstance().stream();
+    auto it = allocations_.lower_bound(size);
+    void *allocated_addr;
+    if (it != allocations_.end() && it->first >= size) {
+      allocated_addr = it->second;
+      allocations_.erase(it);
+      return result;
+    }
+
+    try {
+      allocated_addr = cuda_alloc(size);
+    } catch (BadAlloc &) {
+      free_cache(size);
+      allocated_addr = cuda_alloc(size);
+    }
+    addr_size_map_[allocated_addr] = size;
+    return allocated_addr;
+  }
+
+  void free(void *data) {
+    auto size = addr_size_map_[data];
+    allocations_.emplace(size, data);
+    allocation_size_ += size;
+    addr_size_map_.erase(data);
+  }
+
+  BestFitAllocatorImpl() : allocation_size_(0) {}
+  ~BestFitAllocatorImpl() = default;
+
+ private:
+  std::multimap<size_t, void *> allocations_;
+  std::unordered_map<void *, size_t> addr_size_map_;
+  size_t allocation_size_;
+};
+
+BestFitCUDAAllocator::BestFitCUDAAllocator()
+    : allocator_(new BestFitAllocatorImpl()) {}
+
+void *BestFitCUDAAllocator::allocate(size_t size) {
+  try {
+    return allocator_->alloc(size);
+  } catch (BadAlloc &) {
+    allocator_->free_cache(size);
+    return allocator_->alloc(size);
+  }
+}
+
+void BestFitCUDAAllocator::free(void *memory) { allocator_->free(memory); }
 
 }  // namespace core
 }  // namespace turbo_transformers
