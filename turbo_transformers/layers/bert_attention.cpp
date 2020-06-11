@@ -72,7 +72,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   auto v = qkv[2];
 
   // 4. att_score = softmax((q * k^T)*1/sqrt(size_per_head) + att_mask)
-  core::Tensor& att_score(nullptr);
+  core::Tensor att_score(nullptr);
   att_score.Reshape<float>(
       {batch_size, num_attention_heads_, seq_length, seq_length},
       input_tensor.device_type(), input_tensor.device_id());
