@@ -1,12 +1,11 @@
 ## turbo_transformers: a fast and user-friendly tool for transformer inference on CPU and GPU
-[Chinese Version](./README_cn.md)
 ![logo](./images/logo.jpeg)
 
 ### **make transformers serving fast by adding a turbo to your inference engine!**
 
 Transformer is the most critical alogrithm innovation in the NLP field in recent years. It brings higher model accuracy while introduces more calculations. The efficient deployment of online Transformer-based services faces enormous challenges. In order to make the costly Transformer online service more efficient, the WeChat AI open-sourced a Transformer inference acceleration tool called TurboTransformers, which has the following characteristics.
 1. Excellent CPU / GPU performance. For Intel multi-core CPU and NVIDIA GPU hardware platforms, TurboTransformers can fully utilize all levels of computing power of the hardware. It has achieved better performance over pytorch / tensorflow and current mainstream optimization engines (such as onnxruntime-mkldnn / onnxruntime-gpu, torch JIT, NVIDIA faster transformers) on a variety of CPU and GPU hardware. See the detailed benchmark results below.
-2. Tailored to the characteristics of NLP inference tasks. Unlike the CV task, the input dimensions of the NLP inference task always change. The traditional approach is zero padding or truncation to a fixed length, which introduces additional zero padding computational overhead. Besides, some frameworks such as onnxruntime, tensorRT, and torchlib need to preprocess the calculation graph according to the input size in advance, which is not suitable for NLP tasks with varying sizes. TurboTransformers can support variable-length input sequence processing without preprocessing.
+2. Tailored to the characteristics of NLP inference tasks. Unlike the CV task, the input dimensions of the NLP inference task always change. The traditional approach is zero padding or truncation to a fixed length, which introduces additional zero padding computational overhead. Besides, some frameworks such as onnxruntime, tensorRT, and torchlib need to preprocess the compuatation-graph according to the input size in advance for the best performance, which is not suitable for NLP tasks with varying sizes. TurboTransformers can support variable-length input sequence processing without preprocessing.
 3. A simpler method of use. TurboTransformers supports python and C ++ interface for calling. It can be used as an acceleration plug-in for pytorch. In the Transformer task, the end-to-end acceleration effect obtained by adding a few lines of python code.
 
 TurboTransformers has been applied to multiple online BERT service scenarios in Tencent. For example, It brings 1.88x acceleration to the WeChat FAQ service, 2.11x acceleration to the public cloud sentiment analysis service, and 13.6x acceleration to the QQ recommendation system.
@@ -41,14 +40,18 @@ env BUILD_TYPE=dev sh tools/build_docker_cpu.sh
 Method 1：I want to unitest
 ```
 cd /workspace
-sh tools/build_and_run_unittests.sh.sh $PWD -DWITH_GPU=OFF
+sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
+# you can switch between Openblas and MKL by modifying this line in CMakeList.txt
+# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl, blis]")
+
 ```
 Method 2：I do not want to unitest
 ```
 cd /workspace
 mkdir -p build && cd build
 cmake .. -DWITH_GPU=OFF
-pip install -r `find . -name *whl`
+make -j 4
+pip install `find . -name *whl`
 ```
 3. Run benchmark (optional) in docker, compare with pytorch, torch-JIT, onnxruntime
 ```
@@ -63,8 +66,9 @@ sh tool/build_conda_package.sh
 ```
 
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
-
-*docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev*
+```
+docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev
+```
 ### Installation on GPU
 ```
 git clone https://github.com/Tencent/TurboTransformers --recursive
@@ -77,7 +81,7 @@ docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc
 # for example: docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/turbo_transformers:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
 ```
 
-2. Install pip package in docker and single test
+2. Install pip package in docker and unitest test
 ```
 cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=ON
@@ -88,6 +92,10 @@ sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=ON
 cd benchmark
 bash gpu_run_benchmark.sh
 ```
+*We also prepared a docker image containing GPU version of TurboTransformers.
+```
+docker pull thufeifeibear/turbo_transformers:0.2.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-release
+```
 
 ### Usage
 turbo_transformers provides C ++ / python API interfaces. we hope to do our best to adapt to a variety of online environments to reduce the difficulty of development for users.
@@ -95,7 +103,9 @@ turbo_transformers provides C ++ / python API interfaces. we hope to do our best
 The first step in using turbo is to load a pre-trained model. We provide a way to load pytorch and tensorflow pre-trained models in [huggingface/transformers](https://github.com/huggingface).
 The specific conversion method is to use the corresponding script in ./tools to convert the pre-trained model into an npz format file, and turbo uses the C ++ or python interface to load the npz format model.
 In particular, we consider that most of the pre-trained models are in pytorch format and used with python. We provide a shortcut for calling directly in python for the pytorch saved model.
+
 <img width="700" height="150" src="./images/pretrainmodelload.jpg" alt="加载预训练模型">
+
 #### python APIs
 Refer to examples in [./example/python](./example/python "python").
 Since the user of BERT acceleration always requires a customized post-processing process for the task, we provide an example of how to write a sequence classification application.
@@ -157,3 +167,7 @@ In our opinion, the tensor transpose API of PyTorch is not stable. We use the fo
 ```
 weight = torch.clone(torch.t(pooler_params['dense.weight']))
 ```
+
+## Contact us
+Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
+Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.
