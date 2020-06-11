@@ -26,11 +26,6 @@ class CUDAAllocator {
  public:
   virtual ~CUDAAllocator() = default;
 
-  static CUDAAllocator &GetInstance() {
-    static CUDAAllocator instance;
-    return instance;
-  }
-
   virtual void *allocate(size_t size) = 0;
 
   virtual void free(void *memory) = 0;
@@ -43,6 +38,10 @@ class CUDAAllocator {
 
 class CubCUDAAllocator : public CUDAAllocator {
  public:
+  static CubCUDAAllocator &GetInstance() {
+    static CubCUDAAllocator instance;
+    return instance;
+  }
   virtual void *allocate(size_t size) override;
   virtual void free(void *memory) override;
   ~CubCUDAAllocator = default;
@@ -55,6 +54,10 @@ class CubCUDAAllocator : public CUDAAllocator {
 
 class BestFitCUDAAllocator : public CUDAAllocator {
  public:
+  static BestFitCUDAAllocator &GetInstance() {
+    static BestFitCUDAAllocator instance;
+    return instance;
+  }
   virtual void *allocate(size_t size) override;
   virtual void free(void *memory) override;
   ~BestFitCUDAAllocator = default;
