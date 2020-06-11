@@ -12,8 +12,10 @@
 // See the AUTHORS file for names of contributors.
 #include "turbo_transformers/core/cuda_allocator.h"
 #include <cuda_runtime.h>
+#include "turbo_transformers/core/cuda_enforce.cuh"
 
 #include <cub/util_allocator.cuh>
+#include <unordered_map>
 
 #include "turbo_transformers/core/cuda_device_context.h"
 
@@ -27,6 +29,8 @@ struct BadAlloc : public std::exception {
 
   std::string err_str_;
 };
+
+CUDAAllocator::CUDAAllocator() = default;
 
 /**********
  * Allocator using cub Caching Memory algorithm
@@ -72,6 +76,7 @@ void *CubCUDAAllocator::allocate(size_t size) {
 }
 
 void CubCUDAAllocator::free(void *memory) { allocator_->free(memory); }
+CubCUDAAllocator::~CubCUDAAllocator() = default;
 
 /**********
  * Allocator using best fit algorithm
@@ -98,6 +103,7 @@ struct BestFitCUDAAllocator::BestFitAllocatorImpl {
       auto it = --allocations_.end();
       cur += it->first;
       cuda_free(it->second);
+      addr_size_map_.erase(it->second);
       allocation_size_ -= it->first;
       allocations_.erase(it);
       if (cur >= size) return;
@@ -105,13 +111,11 @@ struct BestFitCUDAAllocator::BestFitAllocatorImpl {
   }
 
   void *alloc(size_t size) {
-    static auto stream = core::CUDADeviceContext::GetInstance().stream();
     auto it = allocations_.lower_bound(size);
     void *allocated_addr;
     if (it != allocations_.end() && it->first >= size) {
       allocated_addr = it->second;
       allocations_.erase(it);
-      return result;
     }
 
     try {
@@ -153,6 +157,8 @@ void *BestFitCUDAAllocator::allocate(size_t size) {
 }
 
 void BestFitCUDAAllocator::free(void *memory) { allocator_->free(memory); }
+
+BestFitCUDAAllocator::~BestFitCUDAAllocator() = default;
 
 }  // namespace core
 }  // namespace turbo_transformers

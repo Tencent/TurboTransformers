@@ -29,10 +29,9 @@ class CUDAAllocator {
   virtual void *allocate(size_t size) = 0;
 
   virtual void free(void *memory) = 0;
+  CUDAAllocator();
 
  private:
-  CUDAAllocator() = default;
-
   DISABLE_COPY_AND_ASSIGN(CUDAAllocator);
 };
 
@@ -44,13 +43,13 @@ class CubCUDAAllocator : public CUDAAllocator {
   }
   virtual void *allocate(size_t size) override;
   virtual void free(void *memory) override;
-  ~CubCUDAAllocator = default;
+  ~CubCUDAAllocator();
 
  private:
   CubCUDAAllocator();
   struct CubAllocatorImpl;
   std::unique_ptr<CubAllocatorImpl> allocator_;
-}
+};
 
 class BestFitCUDAAllocator : public CUDAAllocator {
  public:
@@ -60,13 +59,13 @@ class BestFitCUDAAllocator : public CUDAAllocator {
   }
   virtual void *allocate(size_t size) override;
   virtual void free(void *memory) override;
-  ~BestFitCUDAAllocator = default;
+  ~BestFitCUDAAllocator();
 
  private:
   BestFitCUDAAllocator();
   struct BestFitAllocatorImpl;
   std::unique_ptr<BestFitAllocatorImpl> allocator_;
-}
+};
 
 }  // namespace core
 }  // namespace turbo_transformers
