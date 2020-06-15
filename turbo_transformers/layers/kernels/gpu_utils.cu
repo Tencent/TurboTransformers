@@ -11,8 +11,6 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "turbo_transformers/layers/kernels/gpu_utils.h"
-
 #include <thrust/copy.h>
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
@@ -21,6 +19,8 @@
 #include <thrust/functional.h>
 #include <thrust/sequence.h>
 #include <thrust/transform.h>
+
+#include "turbo_transformers/layers/kernels/gpu_utils.h"
 
 namespace turbo_transformers {
 namespace layers {
@@ -128,6 +128,47 @@ void GPUTransform(int64_t* src_data_ptr, float* dst_data_ptr,
   thrust::transform(src_data_ptr_dev_ptr, src_data_ptr_dev_ptr + size,
                     dst_data_ptr_dev_ptr, func);
 }
+
+// TODO(jiaruifang) if the lowese dimension is not 32x and <= 1024,
+// implementation is not optimized
+template <bool AddInput>
+static __global__ void add_bias(const float* input1, const float* input2,
+                                const float* bias, int m, int n,
+                                float* output) {
+  int offset = blockIdx.x * n;
+  int block_dim_x = blockDim.x;
+
+  int idx = threadIdx.x;
+  if (AddInput) {
+    while (idx < n) {
+      output[idx + offset] =
+          input1[idx + offset] + input2[idx + offset] + bias[idx];
+      idx += block_dim_x;
+    }
+  } else {
+    while (idx < n) {
+      output[idx + offset] = input1[idx + offset] + bias[idx];
+      idx += block_dim_x;
+    }
+  }
+}
+
+template <bool AddInput, typename T>
+void GPUAddBias(const T* input1, const T* input2, const T* bias, int64_t m,
+                int64_t n, cudaStream_t stream, T* output) {
+  dim3 grid(m);
+  int block_size = min(1024, (int)((n + 31) / 32 * 32));
+  dim3 block(block_size);
+  add_bias<AddInput><<<grid, block, 0, stream>>>(
+      input1, input2, bias, m, n, output);  // m : high dim, n : low dim
+}
+
+template void GPUAddBias<true>(const float* input1, const float* input2,
+                               const float* bias, int64_t m, int64_t n,
+                               cudaStream_t stream, float* output);
+template void GPUAddBias<false>(const float* input1, const float* input2,
+                                const float* bias, int64_t m, int64_t n,
+                                cudaStream_t stream, float* output);
 
 }  // namespace kernels
 }  // namespace layers

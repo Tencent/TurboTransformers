@@ -150,8 +150,8 @@ class Tensor {
 
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
   template <typename T>
-  T *Reshape(std::initializer_list<int64_t> shape_list,
-             DLDeviceType device_type, int device_id) {
+  T *Reshape(std::vector<int64_t> shape_list, DLDeviceType device_type,
+             int device_id) {
     // if Need Realloc
     if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
       tensor_ = details::DLManagedTensorPtr(
@@ -207,14 +207,14 @@ class Tensor {
     os << "shape: ";
     PrintArray(os, dl_tensor.shape, dl_tensor.ndim);
     os << "\n";
-    os << "first 10 elems: (";
+    os << "first and last 10 elems: (";
     int cnt = 10;
     double sum = 0.;
 
     if (device_type() == kDLCPU) {
       for (int i = 0; i < numel(); ++i) {
         sum += data<T>()[i];
-        if (cnt-- >= 0) os << data<T>()[i] << ", ";
+        if (cnt-- >= 0 || numel() - i <= 10) os << data<T>()[i] << ", ";
       }
     } else if (device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
@@ -223,7 +223,7 @@ class Tensor {
       Memcpy(cpu_data.get(), data<T>(), n * sizeof(T), MemcpyFlag::kGPU2CPU);
       for (int i = 0; i < n; ++i) {
         sum += cpu_data[i];
-        if (cnt-- >= 0) os << cpu_data[i] << ", ";
+        if (cnt-- >= 0 || n - i <= 10) os << cpu_data[i] << ", ";
       }
 #else
       TT_THROW("No CUDA supported, Please Compile with TT_WITH_CUDA");
@@ -294,7 +294,7 @@ class Tensor {
  private:
   struct ReshapeNeedRealloc {
    public:
-    ReshapeNeedRealloc(const std::initializer_list<int64_t> &shape_list)
+    ReshapeNeedRealloc(const std::vector<int64_t> &shape_list)
         : shape_list_(shape_list) {}
 
     bool operator()(details::DLManagedTensorPtr &ptr) const {
@@ -321,7 +321,7 @@ class Tensor {
     }
 
    private:
-    const std::initializer_list<int64_t> &shape_list_;
+    const std::vector<int64_t> &shape_list_;
   };
 
   const DLTensor &to_dl_tensor() const {
@@ -331,22 +331,5 @@ class Tensor {
   details::TensorPayload tensor_;
 };
 
-struct TempTensor {
-  TempTensor() : cpu_tensor(nullptr), gpu_tensor(nullptr) {}
-
-  core::Tensor &GetTensor(DLContext context) {
-    if (context.device_type == kDLCPU) {
-      return cpu_tensor;
-    } else if (context.device_type == kDLGPU) {
-      return gpu_tensor;
-    } else {
-      TT_THROW("This device is not support.");
-    }
-  }
-
- private:
-  core::Tensor cpu_tensor;
-  core::Tensor gpu_tensor;
-};
 }  // namespace core
 }  // namespace turbo_transformers

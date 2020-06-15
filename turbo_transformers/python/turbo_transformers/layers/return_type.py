@@ -12,6 +12,7 @@
 # See the AUTHORS file for names of contributors.
 
 import enum
+import torch
 import torch.utils.dlpack as dlpack
 try:
     # `turbo_transformers_cxxd` is the name on debug mode
@@ -19,7 +20,6 @@ try:
 except ImportError:
     import turbo_transformers.turbo_transformers_cxx as cxx
 from typing import Optional, Union
-import torch
 
 __all__ = ['ReturnType', 'convert_returns_as_type']
 

@@ -29,7 +29,8 @@ static void DLManagedTensorDeletor(DLManagedTensor *self) {
       free(self->dl_tensor.data);
     } else if (self->dl_tensor.ctx.device_type == kDLGPU) {
 #ifdef TT_WITH_CUDA
-      CUDAAllocator &cuda_allocator = CUDAAllocator::GetInstance();
+      BestFitCUDAAllocator &cuda_allocator =
+          BestFitCUDAAllocator::GetInstance();
       cuda_allocator.free(self->dl_tensor.data);
 #endif
     }
@@ -65,7 +66,7 @@ DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
     newTensor->dl_tensor.data = align_alloc(numel * (bits / 8));
   } else if (device == kDLGPU) {
 #ifdef TT_WITH_CUDA
-    CUDAAllocator &cuda_allocator = CUDAAllocator::GetInstance();
+    BestFitCUDAAllocator &cuda_allocator = BestFitCUDAAllocator::GetInstance();
     size_t size = numel * (bits / 8);
     newTensor->dl_tensor.data = cuda_allocator.allocate(size);
 #endif
