@@ -73,39 +73,69 @@ void GPUSplitAddBiasTransposeForScore(
       weight_num, size_per_head, out_data);
 }
 
-static __global__ void transpose(const float* src, float* dst,
-                                 const int batch_size, const int seq_len,
-                                 const int head_num, const int size_per_head) {
-  int tid = threadIdx.x;
-  int batch_id = blockIdx.x / (head_num * seq_len);
-  int seq_id = blockIdx.x % seq_len;
-  int head_id = (blockIdx.x % (head_num * seq_len)) / seq_len;
+namespace {
 
+// batch, head, seq, size_per_head -> batch head seq size_per_head
+template <bool AddBias>
+__global__ void transpose(const float* src, const float* bias,
+                          const int batch_size, const int seq_len,
+                          const int head_num, const int size_per_head,
+                          float* dst) {
+  int tid = threadIdx.x;
   int idx = tid;
-  while (idx < size_per_head) {
-    dst[batch_id * (head_num * seq_len * size_per_head) +
-        seq_id * head_num * size_per_head + head_id * size_per_head + idx] =
-        src[blockIdx.x * size_per_head + idx];
-    idx += blockDim.x;
+  if (AddBias) {
+    int batch_id = blockIdx.x / (seq_len * head_num);
+    int seq_id = blockIdx.x / head_num % seq_len;
+    int head_id = blockIdx.x % head_num;
+    while (idx < size_per_head) {
+      dst[batch_id * (head_num * seq_len * size_per_head) +
+          head_id * seq_len * size_per_head + seq_id * size_per_head + idx] =
+          src[blockIdx.x * size_per_head + idx] +
+          bias[head_id * size_per_head + idx];
+      idx += blockDim.x;
+    }
+  } else {
+    //(batch, head, seq_len, size_per_head) -> (batch, seq_len, head,
+    // size_per_head)
+    int batch_id = blockIdx.x / (head_num * seq_len);
+    int head_id = (blockIdx.x % (head_num * seq_len)) / seq_len;
+    int seq_id = blockIdx.x % seq_len;
+
+    while (idx < size_per_head) {
+      dst[batch_id * (head_num * seq_len * size_per_head) +
+          seq_id * head_num * size_per_head + head_id * size_per_head + idx] =
+          src[blockIdx.x * size_per_head + idx];
+      idx += blockDim.x;
+    }
   }
 }
-
+}  // namespace
 /*
    (batch_size, seq_len, num_attention_heads, size_per_head) ->
    (batch_size, head_num, seq_len, size_per_head)
    */
-template <>
-void GPUTransposeForScore(const float* input_data, float* output_data,
+template <typename T, bool AddBias>
+void GPUTransposeForScore(const T* input_data, const T* bias,
                           int64_t batch_size, int64_t seq_len,
                           int64_t num_attention_heads, int64_t size_per_head,
-                          cudaStream_t stream) {
+                          cudaStream_t stream, T* output_data) {
   dim3 grid, block;
   grid.x = batch_size * num_attention_heads * seq_len;
   block.x = min(1024, int(size_per_head));
-  transpose<<<grid, block, 0, stream>>>(input_data, output_data, batch_size,
-                                        seq_len, num_attention_heads,
-                                        size_per_head);
+  transpose<AddBias><<<grid, block, 0, stream>>>(input_data, bias, batch_size,
+                                                 seq_len, num_attention_heads,
+                                                 size_per_head, output_data);
 }
+
+template void GPUTransposeForScore<float, true>(
+    const float* input_data, const float* bias, int64_t batch_size,
+    int64_t seq_len, int64_t num_attention_heads, int64_t size_per_head,
+    cudaStream_t stream, float* output_data);
+
+template void GPUTransposeForScore<float, false>(
+    const float* input_data, const float* bias, int64_t batch_size,
+    int64_t seq_len, int64_t num_attention_heads, int64_t size_per_head,
+    cudaStream_t stream, float* output_data);
 
 }  // namespace kernels
 }  // namespace layers

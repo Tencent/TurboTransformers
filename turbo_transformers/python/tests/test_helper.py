@@ -15,8 +15,12 @@ import torch
 import torch.jit
 import torch.onnx
 
+import cProfile
+import cProfile, pstats, io
+from pstats import SortKey
 
-def run_model(model, use_cuda, num_iter=50):
+
+def run_model(model, use_cuda, num_iter=50, use_profile=False):
     # warm up
     model()
     if use_cuda:
@@ -38,3 +42,15 @@ def run_model(model, use_cuda, num_iter=50):
         qps = num_iter / t.elapsed
         time_consume = t.elapsed / num_iter
     return result, qps, time_consume
+
+
+# for debug
+def show_tensor(T, info):
+    if T is None:
+        print(info, " None")
+        return
+    T = torch.clone(T)
+    print(info, T.size())
+    print(T.flatten()[0:10])
+    print(T.flatten()[-10:])
+    print(torch.sum(T.flatten()))

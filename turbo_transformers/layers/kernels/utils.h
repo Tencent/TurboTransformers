@@ -12,43 +12,18 @@
 // See the AUTHORS file for names of contributors.
 
 #pragma once
-
-#include <string>
-
-#ifdef WITH_PERFTOOLS
-#include <memory>
-#include "macros.h"
-#endif
-
+#include "turbo_transformers/core/tensor.h"
 namespace turbo_transformers {
-namespace core {
+namespace layers {
+namespace kernels {
 
-#ifdef WITH_PERFTOOLS
-class Profiler {
- public:
-  ~Profiler();
-  static Profiler& GetInstance() {
-    static Profiler instance;
-    return instance;
-  }
-  void clear();
-  void start_profile(const std::string& ctx_name);
-  void end_profile(const std::string& ctx_name);
-  void print_results() const;
-  void enable(const std::string& profile_name);
-  void disable();
+void AddBias(const core::Tensor& bias, core::Tensor* output);
+void AddInputBias(const core::Tensor& input1, const core::Tensor& input2,
+                  const core::Tensor& bias, core::Tensor* output);
+template <typename T>
+void Concat(const core::Tensor& t1, const core::Tensor& t2, size_t dim,
+            core::Tensor* output);
 
- private:
-  Profiler();
-
-  struct ProfilerImpl;
-  std::unique_ptr<ProfilerImpl> profiler_;
-
-  DISABLE_COPY_AND_ASSIGN(Profiler);
-};
-#endif
-void EnableGperf(const std::string& profile_file);
-void DisableGperf();
-
-}  // namespace core
+}  // namespace kernels
+}  // namespace layers
 }  // namespace turbo_transformers
