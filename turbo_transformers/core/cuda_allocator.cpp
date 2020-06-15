@@ -35,7 +35,8 @@ CUDAAllocator::CUDAAllocator() = default;
 
 /**********
  * Allocator using cub Caching Memory algorithm
- * Benchmarking on P40 showed that cub will slow the system.
+ * Benchmark results on P40 showed that cubcaching may slow the execution of the
+ *runtime.
  **********/
 
 struct CubCUDAAllocator::CubAllocatorImpl {
