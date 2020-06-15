@@ -115,42 +115,7 @@ Our example provides the GPU and two CPU multi-thread calling methods. One is to
 Users can link turbo-transformers to your code through add_subdirectory.
 
 ## Performance
-### CPU
-We tested the performance of TurboTransformers on three CPU hardware platforms.
-We choose [pytorch](https://github.com/huggingface "pytorch"), [pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit" ) and [onnxruntime-mkldnn](https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn") and TensorRT implementation as a comparison. The performance test result is the average of 150 iterations. In order to avoid the phenomenon that the data of the last iteration is cached in the cache during multiple tests, each test uses random data and refreshes the cache data after calculation.
-* Intel Xeon 61xx
-
-<img width="900" height="300" src="./images/61xx_perf_thd48_0415.jpg" alt="61xx性能">
-<img width="900" height="300" src="./images/61xx_speedup_thd48_0415.jpg" alt="61xx加速">
-
-* Intel Xeon 6133
-Compared to the 61xx model, Intel Xeon 6133 has a longer vectorized length of 512 bits, and it has a 30 MB shared L3 cache between cores.
-
-<img width="900" height="300" src="./images/6133_perf_thd48_0415.jpg" alt="6133性能">
-<img width="900" height="300" src="./images/6133_speedup_thd48_0415.jpg" alt="6133加速">
-
-### GPU
-We tested the performance of turbo_transformers on four GPU hardware platforms.
-We choose [pytorch](https://github.com/huggingface "pytorch"), [NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer"), [onnxruntime-gpu](https://github.com/microsoft/onnxruntime "onnxrt-gpu") and [TensorRT](https://github.com/NVIDIA/TensorRT/tree/release/6.0/demo/BERT) implementation as a comparison. The performance test result is the average of 150 iterations.
-
-* RTX 2060
-<img width="900" height="300" src="./images/2060-perf.jpg" alt="2060性能">
-<img width="900" height="300" src="./images/2060-speedup.jpg" alt="2060加速">
-
-* Tesla V100
-
-<img width="900" height="300" src="./images/v100-perf.jpg" alt="V100性能">
-<img width="900" height="300" src="./images/V100-speedup.jpg" alt="V100加速">
-
-* Tesla P40
-
-<img width="900" height="300" src="./images/p40-perf.jpg" alt="P40性能">
-<img width="900" height="300" src="./images/p40-speedup.jpg" alt="P40加速">
-
-* Tesla M40
-
-<img width="900" height="300" src="./images/M40-perf-0302.jpg" alt="M40性能">
-<img width="900" height="300" src="./images/M40-speedup-0302.jpg" alt="M40加速">
+![BenchmarkBERT](./docs/bert.md)
 
 ## TODO
 Currently (April 2020), we only support a interface of the BERT encoder model using FP32. In the near futuer, we will add support for other models (GPT2, decoders, etc.) and low-precision floating point (CPU int8, GPU FP16).
@@ -161,12 +126,6 @@ BSD 3-Clause License
 ## Known Issues
 1. The results of Turbo Transformers may be different from the results of PyTorch after 2 digits behind the decimal point.
 The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
-
-2. On AuthenticAMD CPU, member function `from_torch` of class `BertModelWithPooler` and `BertModel` does not support PyTorch version as 1.5.0.
-In our opinion, the tensor transpose API of PyTorch is not stable. We use the following way to transpose weight matrices.
-```
-weight = torch.clone(torch.t(pooler_params['dense.weight']))
-```
 
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.

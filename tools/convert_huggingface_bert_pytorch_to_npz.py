@@ -50,7 +50,7 @@ def main():
                         arrays[k],
                         arrays[k[:-len(q_weight_key)] + k_weight_key],
                         arrays[k[:-len(q_weight_key)] + v_weight_key]
-                    ], 0)))
+                    ], 0).contiguous()).contiguous())
             numpy_dict[k[:-len(q_weight_key)] + "qkv.weight"] = v.numpy()
         elif k.endswith(q_bias_key):
             v = torch.cat([
@@ -65,7 +65,8 @@ def main():
               or k.endswith("pooler.dense.weight")
               or (k.endswith("output.dense.weight")
                   or k.endswith("intermediate.dense.weight"))):
-            numpy_dict[k] = torch.clone(torch.t(arrays[k])).numpy()
+            numpy_dict[k] = torch.clone(torch.t(
+                arrays[k]).contiguous()).numpy()
         else:
             numpy_dict[k] = arrays[k].numpy()
     del arrays

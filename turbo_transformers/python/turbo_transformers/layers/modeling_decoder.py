@@ -125,15 +125,20 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                 torch.t(
                     torch.cat((attn_params['linear_query.weight'],
                                attn_params['linear_keys.weight'],
-                               attn_params['linear_values.weight']), 0)))
+                               attn_params['linear_values.weight']),
+                              0).contiguous()).contiguous())
             k_w = convert2tt_tensor(
-                torch.clone(torch.t(attn_params['linear_keys.weight'])))
+                torch.clone(
+                    torch.t(attn_params['linear_keys.weight']).contiguous()))
             v_w = convert2tt_tensor(
-                torch.clone(torch.t(attn_params['linear_values.weight'])))
+                torch.clone(
+                    torch.t(attn_params['linear_values.weight']).contiguous()))
             q_w = convert2tt_tensor(
-                torch.clone(torch.t(attn_params['linear_query.weight'])))
+                torch.clone(
+                    torch.t(attn_params['linear_query.weight']).contiguous()))
             f_w = convert2tt_tensor(
-                torch.clone(torch.t(attn_params['final_linear.weight'])))
+                torch.clone(
+                    torch.t(attn_params['final_linear.weight']).contiguous()))
 
         qkv_bias = torch.cat(
             (attn_params['linear_query.bias'], attn_params['linear_keys.bias'],
@@ -200,12 +205,16 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                     torch.t(
                         torch.cat((params['self.query.weight'],
                                    params['self.key.weight'],
-                                   params['self.value.weight']), 0)))
+                                   params['self.value.weight']),
+                                  0).contiguous()).contiguous())
                 output_weight = torch.clone(
-                    torch.t(params['output.dense.weight']))
-                k_w = torch.clone(torch.t(params['self.key.weight']))
-                v_w = torch.clone(torch.t(params['self.value.weight']))
-                q_w = torch.clone(torch.t(params['self.query.weight']))
+                    torch.t(params['output.dense.weight']).contiguous())
+                k_w = torch.clone(
+                    torch.t(params['self.key.weight']).contiguous())
+                v_w = torch.clone(
+                    torch.t(params['self.value.weight']).contiguous())
+                q_w = torch.clone(
+                    torch.t(params['self.query.weight']).contiguous())
 
             qkv_bias = torch.cat(
                 (params['self.query.bias'], params['self.key.bias'],
@@ -293,8 +302,10 @@ class PositionwiseFeedForward(cxx.PositionwiseFeedForward):
             w_1 = convert2tt_tensor(params['w_1.weight'])
             w_2 = convert2tt_tensor(params['w_2.weight'])
         else:
-            w_1 = convert2tt_tensor(torch.clone(torch.t(params['w_1.weight'])))
-            w_2 = convert2tt_tensor(torch.clone(torch.t(params['w_2.weight'])))
+            w_1 = convert2tt_tensor(
+                torch.clone(torch.t(params['w_1.weight']).contiguous()))
+            w_2 = convert2tt_tensor(
+                torch.clone(torch.t(params['w_2.weight']).contiguous()))
 
         with torch.no_grad():
             ffn = PositionwiseFeedForward(
