@@ -115,7 +115,7 @@ Our example provides the GPU and two CPU multi-thread calling methods. One is to
 Users can link turbo-transformers to your code through add_subdirectory.
 
 ## Performance
-![BenchmarkBERT](./docs/bert.md)
+[BenchmarkBERT](./docs/bert.md)
 
 ## TODO
 Currently (April 2020), we only support a interface of the BERT encoder model using FP32. In the near futuer, we will add support for other models (GPT2, decoders, etc.) and low-precision floating point (CPU int8, GPU FP16).
