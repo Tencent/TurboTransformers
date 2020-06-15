@@ -12,6 +12,7 @@
 // See the AUTHORS file for names of contributors.
 
 #include "turbo_transformers/layers/bert_attention.h"
+
 #include <unordered_map>
 
 #include "loguru.hpp"
