@@ -15,11 +15,22 @@
 #include <vector>
 
 #include "catch2/catch.hpp"
+#include "turbo_transformers/core/tensor.h"
 
 namespace turbo_transformers {
 namespace core {
 
 #ifdef TT_WITH_CUDA
+TEST_CASE("cuda_allocator2", "default allocator for tensor") {
+  std::vector<size_t> size_list{100, 100, 1000, 256, 200};
+  std::vector<void *> addr_list(4);
+  for (size_t i = 0; i < size_list.size(); ++i) {
+    turbo_transformers::core::Tensor test_tensor(
+        turbo_transformers::core::NewDLPackTensorT<float>({size_list[i]},
+                                                          kDLGPU));
+  }
+}
+
 TEST_CASE("cuda_allocator1", "cub") {
   CubCUDAAllocator &cuda_allocator = CubCUDAAllocator::GetInstance();
   std::vector<size_t> size_list{100, 1000, 256, 200};
@@ -32,17 +43,6 @@ TEST_CASE("cuda_allocator1", "cub") {
   }
 }
 
-TEST_CASE("cuda_allocator2", "bestfit") {
-  BestFitCUDAAllocator &cuda_allocator = BestFitCUDAAllocator::GetInstance();
-  std::vector<size_t> size_list{100, 1000, 256, 200};
-  std::vector<void *> addr_list(4);
-  for (size_t i = 0; i < size_list.size(); ++i) {
-    addr_list[i] = cuda_allocator.allocate(size_list[i]);
-  }
-  for (int i = 0; i < size_list.size(); ++i) {
-    cuda_allocator.free(addr_list[i]);
-  }
-}
 #endif
 
 }  // namespace core

@@ -117,14 +117,15 @@ struct BestFitCUDAAllocator::BestFitAllocatorImpl {
     if (it != allocations_.end() && it->first >= size) {
       allocated_addr = it->second;
       allocations_.erase(it);
+    } else {
+      try {
+        allocated_addr = cuda_alloc(size);
+      } catch (BadAlloc &) {
+        free_cache(size);
+        allocated_addr = cuda_alloc(size);
+      }
     }
 
-    try {
-      allocated_addr = cuda_alloc(size);
-    } catch (BadAlloc &) {
-      free_cache(size);
-      allocated_addr = cuda_alloc(size);
-    }
     addr_size_map_[allocated_addr] = size;
     return allocated_addr;
   }
