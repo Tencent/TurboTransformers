@@ -173,12 +173,12 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
 
 
 with open(fname, "w") as fh:
-    fh.write(", torch, q_torch, turbo_transformers\n")
+    fh.write(", torch, *q_torch, turbo_transformers\n")
 
 for quantize in [True]:
     for batch_size in [4]:
-        for src_length in [10, 20, 30, 40, 50]:
-            for T in [1, 2]:
+        for src_length in [10, 20, 40, 60, 80, 100]:
+            for T in range(10, src_length, 10):
                 create_test(batch_size, src_length, T, quantize)
 
 if __name__ == '__main__':

@@ -10,7 +10,7 @@
 // implied. See the License for the specific language governing
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
-#include "turbo_transformers/core/cuda_allocator.h"
+#include "turbo_transformers/core/allocator.h"
 
 #include <vector>
 
@@ -32,21 +32,21 @@ TEST_CASE("cuda_allocator_default", "Test the default allocator for tensor") {
 }
 
 TEST_CASE("cuda_allocator_cub", "Test the cubcaching allocator") {
-  CubCUDAAllocator &cuda_allocator = CubCUDAAllocator::GetInstance();
+  Allocator &allocator = Allocator::GetInstance();
   std::vector<size_t> size_list{100, 100, 1000, 256, 200};
   std::vector<void *> addr_list(4);
   for (size_t i = 0; i < size_list.size(); ++i) {
-    addr_list[i] = cuda_allocator.allocate(size_list[i]);
+    addr_list[i] = allocator.allocate(size_list[i], "cub", kDLCPU);
     cuda_allocator.free(addr_list[i]);
   }
 }
 
 TEST_CASE("cuda_allocator_bestfit", "Test the bestfit allocator") {
-  CubCUDAAllocator &cuda_allocator = CubCUDAAllocator::GetInstance();
+  Allocator &allocator = Allocator::GetInstance();
   std::vector<size_t> size_list{100, 100, 1000, 256, 200};
   std::vector<void *> addr_list(4);
   for (size_t i = 0; i < size_list.size(); ++i) {
-    addr_list[i] = cuda_allocator.allocate(size_list[i]);
+    addr_list[i] = allocator.allocate(size_list[i], "bestfit", kDLCPU);
     cuda_allocator.free(addr_list[i]);
   }
 }
