@@ -63,29 +63,29 @@ template <int BlockDim, int K>
 __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
                                      const int batch_size, const int head_num,
                                      const int from_seq_len,
-                                     const int to_seq_len, const float scaler) {
+                                     const int to_seq_len, const float scaler,
+                                     bool is_2D) {
   using CubBlockReduce = cub::BlockReduce<Array<float, K>, BlockDim>;
   __shared__ typename CubBlockReduce::TempStorage temp_storage;
   __shared__ float s_sum[K], s_max[K];
   float tmp[K];
   int qk_offset = blockIdx.x * K * to_seq_len;
 
-  int batch_id = (blockIdx.x * K) / (head_num * from_seq_len);
-  int mask_offset = batch_id * to_seq_len;
-  float mask_val =
-      threadIdx.x < to_seq_len ? attr_mask[threadIdx.x + mask_offset] : 0.0f;
-
+  float mask_val = 0.;
   for (int i = 0; i < K; ++i) {
     float qk = threadIdx.x < to_seq_len
                    ? qk_buf_[threadIdx.x + qk_offset + to_seq_len * i]
                    : 0.0f;
-    int next_batch_id =
-        i == 0 ? batch_id : (blockIdx.x * K + i) / (head_num * from_seq_len);
-    if (batch_id != next_batch_id) {
-      batch_id = next_batch_id;
-      mask_val = threadIdx.x < to_seq_len
-                     ? attr_mask[threadIdx.x + batch_id * to_seq_len]
-                     : 0.0f;
+
+    if (attr_mask != nullptr) {
+      int batch_id = (blockIdx.x * K + i) / (head_num * from_seq_len);
+      int from_seq_id = (blockIdx.x * K + i) % from_seq_len;
+      mask_val = attr_mask[threadIdx.x +
+                           (is_2D ? (batch_id * to_seq_len)
+                                  : (batch_id * from_seq_len + from_seq_id) *
+                                        to_seq_len)];
+    } else {
+      mask_val = 0.0f;
     }
     // mask_val = (1.0f - mask_val) * -10000.0f;
     tmp[i] = threadIdx.x < to_seq_len ? (qk * scaler + mask_val) : -1e20f;
@@ -181,7 +181,7 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
 template <>
 void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
                     int64_t head_num, int64_t from_seq_len, int64_t to_seq_len,
-                    float scale, cudaStream_t stream) {
+                    float scale, bool is_2D, cudaStream_t stream) {
   dim3 block, grid;
   int high_dim_size = batch_size * head_num * from_seq_len;
   const int OneRowPerThreadBlock = 1;
@@ -196,7 +196,7 @@ void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
   // Because there are many function templates, the compilation speed may be
   // slow.
   RUN_KERNEL(qk_buf, attr_mask, batch_size, head_num, from_seq_len, to_seq_len,
-             scale);
+             scale, is_2D);
 }
 #undef RUN_KERNEL
 #undef SOFTMAX_KERNEL_CASE

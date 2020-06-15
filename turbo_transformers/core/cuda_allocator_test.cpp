@@ -24,7 +24,7 @@ namespace core {
 TEST_CASE("cuda_allocator_default", "Test the default allocator for tensor") {
   std::vector<int64_t> size_list{100, 100, 1000, 256, 200};
   std::vector<void *> addr_list(4);
-  for (int64_t i = 0; i < size_list.size(); ++i) {
+  for (size_t i = 0; i < size_list.size(); ++i) {
     turbo_transformers::core::Tensor test_tensor(
         turbo_transformers::core::NewDLPackTensorT<float>({size_list[i]},
                                                           kDLGPU));
