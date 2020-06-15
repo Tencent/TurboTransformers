@@ -21,28 +21,35 @@ namespace turbo_transformers {
 namespace core {
 
 #ifdef TT_WITH_CUDA
-TEST_CASE("cuda_allocator2", "default allocator for tensor") {
-  std::vector<size_t> size_list{100, 100, 1000, 256, 200};
+TEST_CASE("cuda_allocator_default", "Test the default allocator for tensor") {
+  std::vector<int64_t> size_list{100, 100, 1000, 256, 200};
   std::vector<void *> addr_list(4);
-  for (size_t i = 0; i < size_list.size(); ++i) {
+  for (int64_t i = 0; i < size_list.size(); ++i) {
     turbo_transformers::core::Tensor test_tensor(
         turbo_transformers::core::NewDLPackTensorT<float>({size_list[i]},
                                                           kDLGPU));
   }
 }
 
-TEST_CASE("cuda_allocator1", "cub") {
+TEST_CASE("cuda_allocator_cub", "Test the cubcaching allocator") {
   CubCUDAAllocator &cuda_allocator = CubCUDAAllocator::GetInstance();
-  std::vector<size_t> size_list{100, 1000, 256, 200};
+  std::vector<size_t> size_list{100, 100, 1000, 256, 200};
   std::vector<void *> addr_list(4);
   for (size_t i = 0; i < size_list.size(); ++i) {
     addr_list[i] = cuda_allocator.allocate(size_list[i]);
-  }
-  for (size_t i = 0; i < size_list.size(); ++i) {
     cuda_allocator.free(addr_list[i]);
   }
 }
 
+TEST_CASE("cuda_allocator_bestfit", "Test the bestfit allocator") {
+  CubCUDAAllocator &cuda_allocator = CubCUDAAllocator::GetInstance();
+  std::vector<size_t> size_list{100, 100, 1000, 256, 200};
+  std::vector<void *> addr_list(4);
+  for (size_t i = 0; i < size_list.size(); ++i) {
+    addr_list[i] = cuda_allocator.allocate(size_list[i]);
+    cuda_allocator.free(addr_list[i]);
+  }
+}
 #endif
 
 }  // namespace core
