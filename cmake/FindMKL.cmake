@@ -37,6 +37,9 @@ endif()
 set(INT_LIB "mkl_intel_lp64")
 set(THR_LIB "mkl_intel_thread")
 set(COR_LIB "mkl_core")
+set(DEF_LIB "mkl_def")
+set(AVX512_LIB "mkl_avx512")
+set(VMLAVX512_LIB "mkl_vml_avx512")
 
 message(STATUS ${CMAKE_PREFIX_PATH}/include)
 find_path(MKL_INCLUDE_DIR NAMES mkl.h HINTS $ENV{CONDA_PREFIX}/include ${MKLROOT}/include )
@@ -65,9 +68,40 @@ find_library(MKL_CORE_LIBRARY
                    ${MKLROOT}/lib/intel64
                    ${INTEL}/mkl/lib/intel64)
 
-set(MKL_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
-set(MKL_LIBRARIES ${MKL_INTERFACE_LIBRARY} ${MKL_THREADS_LIBRARY} ${MKL_CORE_LIBRARY})
+find_library(MKL_DEFINE_LIBRARY
+             NAMES ${DEF_LIB}
+             PATHS
+                   $ENV{CONDA_PREFIX}/lib
+                   ${MKLROOT}/lib
+                   ${MKLROOT}/lib/intel64
+                   ${INTEL}/mkl/lib/intel64)
 
+find_library(MKL_AVX512_LIBRARY
+             NAMES ${AVX512_LIB}
+             PATHS
+                   $ENV{CONDA_PREFIX}/lib
+                   ${MKLROOT}/lib
+                   ${MKLROOT}/lib/intel64
+                   ${INTEL}/mkl/lib/intel64)
+
+find_library(MKL_VMLAVX512_LIBRARY
+             NAMES ${VMLAVX512_LIB}
+             PATHS
+                   $ENV{CONDA_PREFIX}/lib
+                   ${MKLROOT}/lib
+                   ${MKLROOT}/lib/intel64
+                   ${INTEL}/mkl/lib/intel64)
+
+set(MKL_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
+
+set(MKL_LIBRARIES 
+  ${MKL_INTERFACE_LIBRARY} 
+  ${MKL_THREADS_LIBRARY} 
+  ${MKL_CORE_LIBRARY} 
+  ${MKL_DEFINE_LIBRARY}
+  ${MKL_AVX512_LIBRARY}
+  ${MKL_VMLAVX512_LIBRARY} 
+  )
 
 if (NOT APPLE)
     find_library(IOMP_LIBRARY
