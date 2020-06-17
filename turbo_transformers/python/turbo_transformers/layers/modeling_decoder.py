@@ -350,10 +350,11 @@ class TransformerDecoderLayer:
             * attn_align None
         """
         # dec_mask = None which is no mask
-        dec_mask = torch.zeros(
-            (input_tensor.size(0), 1, src_pad_mask.size(-1)),
-            device=tgt_pad_mask.device,
-            dtype=torch.float32)
+        # dec_mask = torch.zeros(
+        #     (input_tensor.size(0), 1, tgt_pad_mask.size(-1)),
+        #     device=tgt_pad_mask.device,
+        #     dtype=torch.float32)
+        dec_mask = None
 
         input_tensor = try_convert(input_tensor)
         memory_bank = try_convert(memory_bank)
@@ -376,8 +377,11 @@ class TransformerDecoderLayer:
             else:  # only mask padding, result mask in (B, 1, T)
                 dec_mask = tgt_pad_mask
 
-        dec_mask = dec_mask * -1e18
-        dec_mask = try_convert(dec_mask)
+        if dec_mask is None:
+            dec_mask = create_empty_if_none(dec_mask)
+        else:
+            dec_mask = dec_mask * -1e18
+            dec_mask = try_convert(dec_mask)
 
         query, _ = self.self_attn(input_tensor,
                                   input_tensor,
