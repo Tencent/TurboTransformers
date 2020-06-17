@@ -37,7 +37,7 @@ TEST_CASE("cuda_allocator_cub", "Test the cubcaching allocator") {
   std::vector<void *> addr_list(4);
   for (size_t i = 0; i < size_list.size(); ++i) {
     addr_list[i] = allocator.allocate(size_list[i], "cub", kDLCPU);
-    cuda_allocator.free(addr_list[i]);
+    allocator.free(addr_list[i]);
   }
 }
 
@@ -47,7 +47,7 @@ TEST_CASE("cuda_allocator_bestfit", "Test the bestfit allocator") {
   std::vector<void *> addr_list(4);
   for (size_t i = 0; i < size_list.size(); ++i) {
     addr_list[i] = allocator.allocate(size_list[i], "bestfit", kDLCPU);
-    cuda_allocator.free(addr_list[i]);
+    allocator.free(addr_list[i]);
   }
 }
 #endif
