@@ -56,8 +56,8 @@ void *allocate_impl(size_t size, DLDeviceType dev) {
 #endif
   } else {
     TT_THROW("Not supported devtype");
-    return nullptr;
   }
+  return nullptr;
 }
 
 void free_impl(void *memory_addr, DLDeviceType dev) {

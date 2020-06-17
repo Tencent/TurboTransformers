@@ -36,10 +36,11 @@ TEST_CASE("cuda_allocator_cub", "Test the cubcaching allocator") {
   std::vector<size_t> size_list{100, 100, 1000, 256, 200};
   std::vector<void *> addr_list(4);
   for (size_t i = 0; i < size_list.size(); ++i) {
-    addr_list[i] = allocator.allocate(size_list[i], "cub", kDLCPU);
-    allocator.free(addr_list[i], kDLCPU);
+    addr_list[i] = allocator.allocate(size_list[i], "cub", kDLGPU);
+    allocator.free(addr_list[i], "cub", kDLGPU);
   }
 }
+#endif
 
 TEST_CASE("cuda_allocator_bestfit", "Test the bestfit allocator") {
   Allocator &allocator = Allocator::GetInstance();
@@ -47,10 +48,9 @@ TEST_CASE("cuda_allocator_bestfit", "Test the bestfit allocator") {
   std::vector<void *> addr_list(4);
   for (size_t i = 0; i < size_list.size(); ++i) {
     addr_list[i] = allocator.allocate(size_list[i], "bestfit", kDLCPU);
-    allocator.free(addr_list[i], kDLCPU);
+    allocator.free(addr_list[i], "bestfit", kDLCPU);
   }
 }
-#endif
 
 }  // namespace core
 }  // namespace turbo_transformers
