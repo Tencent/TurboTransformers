@@ -75,7 +75,6 @@ void MultiHeadedAttention::operator()(
   auto size_per_head = hidden_size / num_attention_heads_;
   auto devtype = query_tensor.device_type();
   auto devid = query_tensor.device_id();
-  auto devctx = query_tensor.device_ctx();
 
   // TODO we should caching allocate intermediate tensor.
   core::Tensor *q_ptr{nullptr}, *k_ptr{nullptr}, *v_ptr{nullptr};
@@ -304,8 +303,7 @@ void MultiHeadedAttention::operator()(
   profile_ctx.end_profile("ApplyMaskAndSoftmax");
 #endif
   // context_original = torch.matmul(drop_attn, value)
-  static core::TempTensor context_layer_tmpr;
-  core::Tensor& context_layer = context_layer_tmpr.GetTensor(devctx);
+  core::Tensor context_layer(nullptr);
   context_layer.Reshape<float>(
       {batch_size, num_attention_heads_, query_seq_length, size_per_head},
       devtype, devid);
@@ -322,8 +320,7 @@ void MultiHeadedAttention::operator()(
   profile_ctx.start_profile("TransposeForScore");
 #endif
   // context = unshape(context_original)
-  static core::TempTensor self_attr_out_tmp;
-  core::Tensor& self_attr_out = self_attr_out_tmp.GetTensor(devctx);
+  core::Tensor self_attr_out(nullptr);
 
   self_attr_out.Reshape<float>(
       {batch_size, query_seq_length, num_attention_heads_ * size_per_head},

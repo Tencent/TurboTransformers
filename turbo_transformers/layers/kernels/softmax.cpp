@@ -23,7 +23,7 @@
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
-// attr_mask's shape coudl be (batch, from_len, to_len),  (batch, 1, to_len) or
+// attr_mask's shape could be (batch, from_len, to_len),  (batch, 1, to_len) or
 // nullptr is2D is used to distinguish the two scenarios.
 void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
                  int64_t head_num, int64_t from_seq_len, int64_t to_seq_len,
@@ -88,20 +88,26 @@ void ApplyMaskAndSoftmax(core::Tensor* inout, const core::Tensor& att_mask,
   auto to_seq_len = inout->shape(3);
   bool is_2D = false;
   if (!att_mask.is_null()) {
-    is_2D = att_mask.shape(att_mask.n_dim() - 2) == 1 ? true : false;
+    if (att_mask.n_dim() == 2 ||
+        (att_mask.n_dim() == 3 && att_mask.shape(1) == 1) ||
+        (att_mask.n_dim() == 4 && att_mask.shape(2) == 1)) {
+      is_2D = true;
+    } else {
+      is_2D = false;
+    }
+  }
+  const float* att_mask_data = nullptr;
+  if (!att_mask.is_null()) {
+    att_mask_data = att_mask.data<float>();
   }
   if (inout->device_type() == kDLCPU) {
-    const float* att_mask_data = nullptr;
-    if (!att_mask.is_null()) {
-      att_mask_data = att_mask.data<float>();
-    }
     SoftmaxMask(inout->mutableData<float>(), att_mask_data, batch_size,
                 num_att_heads, from_seq_len, to_seq_len, scale, is_2D);
   } else if (inout->device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
     auto& cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPUSoftmaxMask(inout->mutableData<float>(), att_mask.data<float>(),
-                   batch_size, num_att_heads, from_seq_len, to_seq_len, scale,
+    GPUSoftmaxMask(inout->mutableData<float>(), att_mask_data, batch_size,
+                   num_att_heads, from_seq_len, to_seq_len, scale, is_2D,
                    cuda_ctx.stream());
 #else
     TT_THROW("The current code is not compiled with CUDA.");

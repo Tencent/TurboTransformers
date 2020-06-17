@@ -1,5 +1,4 @@
 ## turbo_transformers: a fast and user-friendly tool for transformer inference on CPU and GPU
-[Chinese Version](./README_cn.md)
 ![logo](./images/logo.jpeg)
 
 ### **make transformers serving fast by adding a turbo to your inference engine!**
@@ -43,14 +42,16 @@ Method 1：I want to unitest
 cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
 # you can switch between Openblas and MKL by modifying this line in CMakeList.txt
-# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl]")
+# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl, blis]")
+
 ```
 Method 2：I do not want to unitest
 ```
 cd /workspace
 mkdir -p build && cd build
 cmake .. -DWITH_GPU=OFF
-pip install -r `find . -name *whl`
+make -j 4
+pip install `find . -name *whl`
 ```
 3. Run benchmark (optional) in docker, compare with pytorch, torch-JIT, onnxruntime
 ```
@@ -66,7 +67,7 @@ sh tool/build_conda_package.sh
 
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
 ```
-*docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev*
+docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev
 ```
 ### Installation on GPU
 ```
@@ -93,7 +94,7 @@ bash gpu_run_benchmark.sh
 ```
 *We also prepared a docker image containing GPU version of TurboTransformers.
 ```
-*docker pull thufeifeibear/turbo_transformers:0.2.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-release*
+docker pull thufeifeibear/turbo_transformers:0.2.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-release
 ```
 
 ### Usage
@@ -105,54 +106,25 @@ In particular, we consider that most of the pre-trained models are in pytorch fo
 
 <img width="700" height="150" src="./images/pretrainmodelload.jpg" alt="加载预训练模型">
 
-#### python APIs
+#### Bert Examples
+##### python APIs
 Refer to examples in [./example/python](./example/python "python").
 Since the user of BERT acceleration always requires a customized post-processing process for the task, we provide an example of how to write a sequence classification application.
-#### C++ APIs
+##### C++ APIs
 Refer to [./example/cpp](./example/cpp "C ++") for an example.
 Our example provides the GPU and two CPU multi-thread calling methods. One is to do one BERT inference using multiple threads; the other is to do multiple BERT inference, each of which using one thread.
 Users can link turbo-transformers to your code through add_subdirectory.
 
+#### Decoder Examples
+[TurboNLP/Translate-Demo](https://github.com/TurboNLP/Translate-Demo "translate") shows a demo of applying TurboTransformer in Translatetion Task.
+
 ## Performance
-### CPU
-We tested the performance of TurboTransformers on three CPU hardware platforms.
-We choose [pytorch](https://github.com/huggingface "pytorch"), [pytorch-jit](https://pytorch.org/docs/stable/_modules/torch/jit.html "pytorch-jit" ) and [onnxruntime-mkldnn](https://github.com/microsoft/onnxruntime "onnxruntime-mkldnn") and TensorRT implementation as a comparison. The performance test result is the average of 150 iterations. In order to avoid the phenomenon that the data of the last iteration is cached in the cache during multiple tests, each test uses random data and refreshes the cache data after calculation.
-* Intel Xeon 61xx
-
-<img width="900" height="300" src="./images/61xx_perf_thd48_0415.jpg" alt="61xx性能">
-<img width="900" height="300" src="./images/61xx_speedup_thd48_0415.jpg" alt="61xx加速">
-
-* Intel Xeon 6133
-Compared to the 61xx model, Intel Xeon 6133 has a longer vectorized length of 512 bits, and it has a 30 MB shared L3 cache between cores.
-
-<img width="900" height="300" src="./images/6133_perf_thd48_0415.jpg" alt="6133性能">
-<img width="900" height="300" src="./images/6133_speedup_thd48_0415.jpg" alt="6133加速">
-
-### GPU
-We tested the performance of turbo_transformers on four GPU hardware platforms.
-We choose [pytorch](https://github.com/huggingface "pytorch"), [NVIDIA Faster Transformers](https://github.com/NVIDIA/DeepLearningExamples/tree/master/FasterTransformer "FasterTransformer"), [onnxruntime-gpu](https://github.com/microsoft/onnxruntime "onnxrt-gpu") and [TensorRT](https://github.com/NVIDIA/TensorRT/tree/release/6.0/demo/BERT) implementation as a comparison. The performance test result is the average of 150 iterations.
-
-* RTX 2060
-<img width="900" height="300" src="./images/2060-perf.jpg" alt="2060性能">
-<img width="900" height="300" src="./images/2060-speedup.jpg" alt="2060加速">
-
-* Tesla V100
-
-<img width="900" height="300" src="./images/v100-perf.jpg" alt="V100性能">
-<img width="900" height="300" src="./images/V100-speedup.jpg" alt="V100加速">
-
-* Tesla P40
-
-<img width="900" height="300" src="./images/p40-perf.jpg" alt="P40性能">
-<img width="900" height="300" src="./images/p40-speedup.jpg" alt="P40加速">
-
-* Tesla M40
-
-<img width="900" height="300" src="./images/M40-perf-0302.jpg" alt="M40性能">
-<img width="900" height="300" src="./images/M40-speedup-0302.jpg" alt="M40加速">
+[BERT Benchmark Results](./docs/bert.md)
+[Transformer Docoder Results](./docs/decoder.md)
 
 ## TODO
-Currently (April 2020), we only support a interface of the BERT encoder model using FP32. In the near futuer, we will add support for other models (GPT2, decoders, etc.) and low-precision floating point (CPU int8, GPU FP16).
+Currently (June 2020), In the near futuer, we will add support for other models (Albert [Work In Progress], GPT2) and low-precision floating point (CPU int8, GPU FP16).
+**Looking forwards to your contribution!**
 
 ## Lisence
 BSD 3-Clause License
@@ -161,12 +133,6 @@ BSD 3-Clause License
 1. The results of Turbo Transformers may be different from the results of PyTorch after 2 digits behind the decimal point.
 The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
 
-2. On AuthenticAMD CPU, member function `from_torch` of class `BertModelWithPooler` and `BertModel` does not support PyTorch version as 1.5.0.
-In our opinion, the tensor transpose API of PyTorch is not stable. We use the following way to transpose weight matrices.
-```
-weight = torch.clone(torch.t(pooler_params['dense.weight']))
-```
-
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
-Scan this [QR code](./images/namecode.pdf "qrcode") and our contactor as your WeChat friend.
+Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.

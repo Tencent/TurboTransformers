@@ -88,7 +88,8 @@ class BertIntermediate(cxx.BertIntermediate):
     @staticmethod
     def from_torch(intermediate: TorchBertIntermediate):
         intermediate_params = to_param_dict(intermediate)
-        weight = torch.clone(torch.t(intermediate_params["dense.weight"]))
+        weight = torch.clone(
+            torch.t(intermediate_params["dense.weight"]).contiguous())
         return BertIntermediate(
             convert2tt_tensor(weight),
             convert2tt_tensor(intermediate_params['dense.bias']))
@@ -119,8 +120,8 @@ class BertOutput(cxx.BertOutput):
     @staticmethod
     def from_torch(output: TorchBertOutput):
         params = to_param_dict(output)
-        weight = convert2tt_tensor(torch.clone(torch.t(
-            params["dense.weight"])))
+        weight = convert2tt_tensor(
+            torch.clone(torch.t(params["dense.weight"]).contiguous()))
         return BertOutput(weight, convert2tt_tensor(params["dense.bias"]),
                           convert2tt_tensor(params["LayerNorm.weight"]),
                           convert2tt_tensor(params["LayerNorm.bias"]))
@@ -169,12 +170,14 @@ class BertAttention(cxx.BertAttention):
                 torch.t(
                     torch.cat((params['self.query.weight'],
                                params['self.key.weight'],
-                               params['self.value.weight']), 0)))
+                               params['self.value.weight']),
+                              0).contiguous()).contiguous())
             qkv_bias = torch.cat(
                 (params['self.query.bias'], params['self.key.bias'],
-                 params['self.value.bias']), 0)
+                 params['self.value.bias']), 0).contiguous()
 
-            output_weight = torch.clone(torch.t(params['output.dense.weight']))
+            output_weight = torch.clone(
+                torch.t(params['output.dense.weight']).contiguous())
             att = BertAttention(
                 convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
                 convert2tt_tensor(output_weight),
@@ -404,7 +407,8 @@ class BertPooler(cxx.BertPooler):
     @staticmethod
     def from_torch(pooler: TorchBertPooler):
         pooler_params = to_param_dict(pooler)
-        weight = torch.clone(torch.t(pooler_params['dense.weight']))
+        weight = torch.clone(
+            torch.t(pooler_params['dense.weight']).contiguous())
         return BertPooler(convert2tt_tensor(weight),
                           convert2tt_tensor(pooler_params['dense.bias']))
 
