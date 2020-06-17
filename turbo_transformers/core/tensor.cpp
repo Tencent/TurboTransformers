@@ -14,7 +14,6 @@
 #include "tensor.h"
 
 #ifdef TT_WITH_CUDA
-// #include "turbo_transformers/core/cuda_allocator.h"
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
 #include "turbo_transformers/core/allocator.h"
