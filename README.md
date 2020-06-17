@@ -106,19 +106,25 @@ In particular, we consider that most of the pre-trained models are in pytorch fo
 
 <img width="700" height="150" src="./images/pretrainmodelload.jpg" alt="加载预训练模型">
 
-#### python APIs
+#### Bert Examples
+##### python APIs
 Refer to examples in [./example/python](./example/python "python").
 Since the user of BERT acceleration always requires a customized post-processing process for the task, we provide an example of how to write a sequence classification application.
-#### C++ APIs
+##### C++ APIs
 Refer to [./example/cpp](./example/cpp "C ++") for an example.
 Our example provides the GPU and two CPU multi-thread calling methods. One is to do one BERT inference using multiple threads; the other is to do multiple BERT inference, each of which using one thread.
 Users can link turbo-transformers to your code through add_subdirectory.
 
+#### Decoder Examples
+[TurboNLP/Translate-Demo](https://github.com/TurboNLP/Translate-Demo "translate") shows a demo of applying TurboTransformer in Translatetion Task.
+
 ## Performance
-[BenchmarkBERT](./docs/bert.md)
+[BERT Benchmark Results](./docs/bert.md)
+[Transformer Docoder Results](./docs/decoder.md)
 
 ## TODO
-Currently (April 2020), we only support a interface of the BERT encoder model using FP32. In the near futuer, we will add support for other models (GPT2, decoders, etc.) and low-precision floating point (CPU int8, GPU FP16).
+Currently (June 2020), In the near futuer, we will add support for other models (Albert [Work In Progress], GPT2) and low-precision floating point (CPU int8, GPU FP16).
+**Looking forwards to your contribution!**
 
 ## Lisence
 BSD 3-Clause License
