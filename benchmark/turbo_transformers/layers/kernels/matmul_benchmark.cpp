@@ -27,7 +27,7 @@ using layers::kernels::common::FillRandom;
 static void MatmulBenchmarkHelper(DLDeviceType device_type, bool trans_weight,
                                   std::initializer_list<int64_t> weight_shape,
                                   std::vector<int64_t> m_list) {
-  constexpr int n_step = 1000;
+  constexpr int n_step = 100;
   const std::string device_name = device_type == kDLCPU ? "CPU" : "GPU";
   const std::string trans_name = trans_weight ? "Tran" : "NoTrans";
 
@@ -123,9 +123,16 @@ static void MatmulBenchmarkGeneralHelper(DLDeviceType device_type,
 }
 
 TEST_CASE("matmal-cpu-benchmark-general") {
+#if defined(TT_BLAS_USE_MKL)
+  std::cout << "blas uses MKL" << std::endl;
+#elif defined(TT_BLAS_USE_OPENBLAS)
+  std::cout << "blas uses OpenBLAS" << std::endl;
+#elif defined(TT_BLAS_USE_BLIS)
+  std::cout << "blas uses BLIS" << std::endl;
+#endif
   std::cout << "=================================" << std::endl;
   std::cout << "CPU General MatMul Benchmark" << std::endl;
-  std::vector<int64_t> dim_list{10, 50, 100, 500, 1000, 1500, 2000, 10000};
+  std::vector<int64_t> dim_list{10, 50, 100, 500, 1000, 1500, 2000};
   MatmulBenchmarkGeneralHelper(kDLCPU, false, dim_list);
   std::cout << std::endl;
 }
