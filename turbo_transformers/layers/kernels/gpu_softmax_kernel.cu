@@ -76,7 +76,6 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
     float qk = threadIdx.x < to_seq_len
                    ? qk_buf_[threadIdx.x + qk_offset + to_seq_len * i]
                    : 0.0f;
-
     if (attr_mask != nullptr) {
       int batch_id = (blockIdx.x * K + i) / (head_num * from_seq_len);
       int from_seq_id = (blockIdx.x * K + i) % from_seq_len;

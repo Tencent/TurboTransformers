@@ -60,6 +60,7 @@ void Concat(const core::Tensor& t1, const core::Tensor& t2, size_t dim,
   }
 
   output->Reshape<T>(output_shape, t1.device_type(), t1.device_id());
+#pragma omp parallel for
   for (int64_t i = 0; i < high_dim; ++i) {
     for (int64_t j = 0; j < t1_size; ++j) {
       core::Copy(

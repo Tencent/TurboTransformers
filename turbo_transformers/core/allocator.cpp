@@ -12,11 +12,14 @@
 // See the AUTHORS file for names of contributors.
 
 #include "turbo_transformers/core/allocator.h"
+
 #include <unordered_map>
 
 #ifdef TT_WITH_CUDA
 #include <cuda_runtime.h>
+
 #include <cub/util_allocator.cuh>
+
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/core/cuda_enforce.cuh"
 #endif
@@ -128,7 +131,7 @@ struct Allocator::CachingAllocatorImpl {
   void *alloc(size_t size, DLDeviceType dev) {
     void *data = nullptr;
     if (dev == kDLCPU) {
-      TT_THROW("Allocator only supports");
+      return allocate_impl(size, kDLCPU);
     } else if (dev == kDLGPU) {
 #ifdef TT_WITH_CUDA
       static auto stream = core::CUDADeviceContext::GetInstance().stream();
@@ -145,7 +148,7 @@ struct Allocator::CachingAllocatorImpl {
 
   void free(void *data, DLDeviceType dev) {
     if (dev == kDLCPU) {
-      TT_THROW("Allocator only supports");
+      free_impl(data, kDLCPU);
     } else if (dev == kDLGPU) {
 #ifdef TT_WITH_CUDA
       try {
@@ -180,6 +183,7 @@ void *Allocator::allocate(size_t size, const std::string &strategy,
   } else if ("cub" == strategy) {
     return caching_allocator_->alloc(size, dev);
   }
+  return nullptr;
 }
 
 void Allocator::free(void *memory, const std::string &strategy,

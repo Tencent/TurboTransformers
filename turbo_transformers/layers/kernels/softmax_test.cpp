@@ -38,6 +38,7 @@ TEST_CASE("softmax-gpu-2Dmask-test") {
   std::vector<int64_t> from_seq_list{10,  20,  40,  60,  80,
                                      100, 200, 300, 400, 500};
   std::vector<int64_t> to_seq_list{10, 20, 40, 60, 80, 100};
+
   for (auto batch_size : batch_size_list)
     for (auto from_seq : from_seq_list)
       for (auto to_seq : to_seq_list) {
