@@ -81,6 +81,55 @@ TEST_CASE("matmal-cpu-benchmark") {
   std::cout << std::endl;
 }
 
+static void MatmulBenchmarkGeneralHelper(DLDeviceType device_type,
+                                         bool trans_weight,
+                                         std::vector<int64_t> dim_list) {
+  constexpr int n_step = 1000;
+  const std::string device_name = device_type == kDLCPU ? "CPU" : "GPU";
+  const std::string trans_name = trans_weight ? "Trans" : "NoTrans";
+
+  for (auto m : dim_list) {
+    std::initializer_list<int64_t> input_shape{m, m};
+    std::initializer_list<int64_t> weight_shape{m, m};
+    std::initializer_list<int64_t> output_shape{m, m};
+
+    using turbo_transformers::core::NewDLPackTensorT;
+
+    core::Tensor input_tensor(
+        NewDLPackTensorT<float>(input_shape, device_type, 0));
+    FillRandom<float>(input_tensor);
+
+    core::Tensor weight_tensor(
+        NewDLPackTensorT<float>(weight_shape, device_type, 0));
+    FillRandom<float>(weight_tensor);
+
+    core::Tensor output_tensor(
+        NewDLPackTensorT<float>(output_shape, device_type, 0));
+    FillRandom<float>(output_tensor);
+
+    std::stringstream ss;
+    ss << device_name << " " << trans_name << " MatMul " << m << ", " << m
+       << ", " << m << " ";
+    auto g_flops = m * m * m * 2 / 1e9;
+    auto flops = benchmark::TestFuncSpeed(
+        [&]() {
+          layers::kernels::MatMul(input_tensor, false, weight_tensor,
+                                  trans_weight, 1.0, &output_tensor, 0.0);
+        },
+        n_step, ss.str(), g_flops, device_type);
+
+    std::cout << ss.str() << " flops: " << flops << std::endl;
+  }  // for
+}
+
+TEST_CASE("matmal-cpu-benchmark-general") {
+  std::cout << "=================================" << std::endl;
+  std::cout << "CPU General MatMul Benchmark" << std::endl;
+  std::vector<int64_t> dim_list{10, 50, 100, 500, 1000, 1500, 2000, 10000};
+  MatmulBenchmarkGeneralHelper(kDLCPU, false, dim_list);
+  std::cout << std::endl;
+}
+
 #ifdef TT_WITH_CUDA
 
 TEST_CASE("matmal-gpu-gemm7-benchmark") {
