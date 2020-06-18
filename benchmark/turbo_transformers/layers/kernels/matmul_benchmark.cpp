@@ -61,27 +61,15 @@ static void MatmulBenchmarkHelper(DLDeviceType device_type, bool trans_weight,
     ss << device_name << " " << trans_name << " MatMul " << m << ", " << k
        << ", " << n << " ";
     auto g_flops = m * n * k * 2 / 1e9;
+    auto flops = benchmark::TestFuncSpeed(
+        [&]() {
+          layers::kernels::MatMul(input_tensor, false, weight_tensor,
+                                  trans_weight, 1.0, &output_tensor, 0.0);
+        },
+        n_step, ss.str(), g_flops, device_type);
 
-    if (device_type == kDLGPU) {
-#ifdef TT_WITH_CUDA
-      auto flops = benchmark::TestFuncSpeed(
-          [&]() {
-            layers::kernels::MatMul(input_tensor, false, weight_tensor,
-                                    trans_weight, 1.0, &output_tensor, 0.0);
-          },
-          n_step, ss.str(), g_flops, device_type);
-
-      std::cout << ss.str() << " flops: " << flops << std::endl;
-#endif
-    } else {
-      benchmark::TestFuncSpeed(
-          [&]() {
-            layers::kernels::MatMul(input_tensor, false, weight_tensor,
-                                    trans_weight, 1.0, &output_tensor, 0.0);
-          },
-          n_step, ss.str(), g_flops, device_type);
-    }
-  }
+    std::cout << ss.str() << " flops: " << flops << std::endl;
+  }  // for
 }
 
 TEST_CASE("matmal-cpu-benchmark") {
