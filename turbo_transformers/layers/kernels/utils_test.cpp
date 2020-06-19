@@ -18,7 +18,7 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-TEST_CASE("concate", "test1") {
+TEST_CASE("cpu-concate", "test1") {
   turbo_transformers::core::Tensor t1(
       turbo_transformers::core::NewDLPackTensorT<float>({2, 1, 2, 2}));
   turbo_transformers::core::Tensor t2(

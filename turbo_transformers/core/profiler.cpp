@@ -61,7 +61,8 @@ struct Profiler::ProfilerImpl {
 #endif
     } else if (kDLCPU == dev_type) {
       auto end = std::chrono::system_clock::now();
-      if (clock_stack_.empty()) TT_THROW("Profiler has no start time");
+      if (clock_stack_.empty())
+        TT_THROW("Profiler %s has no start time", ctx_name.c_str());
       auto start = clock_stack_.top();
       clock_stack_.pop();
       auto duration =

@@ -60,19 +60,27 @@ void Concat(const core::Tensor& t1, const core::Tensor& t2, size_t dim,
   }
 
   output->Reshape<T>(output_shape, t1.device_type(), t1.device_id());
+  if (t1.device_type() == kDLGPU) {
+#ifdef TT_WITH_CUDA
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUConcat<T>(t1.data<T>(), t2.data<T>(), high_dim, t1_size, t2_size,
+                 low_dim, cuda_ctx.stream(), output->mutableData<T>());
+#endif
+  } else if (t1.device_type() == kDLCPU) {
 #pragma omp parallel for
-  for (int64_t i = 0; i < high_dim; ++i) {
-    for (int64_t j = 0; j < t1_size; ++j) {
-      core::Copy(
-          t1.data<T>() + (i * t1_size + j) * low_dim, low_dim, t1.device_type(),
-          output->device_type(),
-          output->mutableData<T>() + (i * (t1_size + t2_size) + j) * low_dim);
-    }
-    for (int64_t j = 0; j < t2_size; ++j) {
-      core::Copy(t2.data<T>() + (i * t2_size + j) * low_dim, low_dim,
-                 t1.device_type(), output->device_type(),
-                 output->mutableData<T>() +
-                     (i * (t1_size + t2_size) + t1_size + j) * low_dim);
+    for (int64_t i = 0; i < high_dim; ++i) {
+      for (int64_t j = 0; j < t1_size; ++j) {
+        core::Copy(
+            t1.data<T>() + (i * t1_size + j) * low_dim, low_dim,
+            t1.device_type(), output->device_type(),
+            output->mutableData<T>() + (i * (t1_size + t2_size) + j) * low_dim);
+      }
+      for (int64_t j = 0; j < t2_size; ++j) {
+        core::Copy(t2.data<T>() + (i * t2_size + j) * low_dim, low_dim,
+                   t1.device_type(), output->device_type(),
+                   output->mutableData<T>() +
+                       (i * (t1_size + t2_size) + t1_size + j) * low_dim);
+      }
     }
   }
 }
@@ -97,8 +105,8 @@ void AddBias(const core::Tensor& bias, core::Tensor* output) {
 #ifdef TT_WITH_CUDA
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
     const float* dummy{nullptr};
-    GPUAddBias<false>(output_data, dummy, bias_data, dim0, dim1,
-                      cuda_ctx.stream(), output_data);
+    kernels::GPUAddBias<false>(output_data, dummy, bias_data, dim0, dim1,
+                               cuda_ctx.stream(), output_data);
 #endif
   }
 }
