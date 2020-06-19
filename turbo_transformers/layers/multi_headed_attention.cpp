@@ -257,14 +257,22 @@ void MultiHeadedAttention::operator()(
 
 #ifdef WITH_PERFTOOLS
     profile_ctx.end_profile("self/SplitAddBiasTransposeForScore", devtype);
+    profile_ctx.start_profile("self/concat0", devtype);
 #endif
     if (self_keys_not_none) {
+      // layer_cache["self_keys"]->Print<float>(std::cerr);
+      // qkv_out2[1].Print<float>(std::cerr);
       kernels::Concat<float>(*layer_cache["self_keys"], qkv_out2[1], 2,
                              &k_out2);
+      // k_out2.Print<float>(std::cerr);
       k_ptr = &k_out2;
     } else {
       k_ptr = new core::Tensor(qkv_out2[1]);
     }
+#ifdef WITH_PERFTOOLS
+    profile_ctx.end_profile("self/concat0", devtype);
+    profile_ctx.start_profile("self/concat1", devtype);
+#endif
     if (self_values_not_none) {
       kernels::Concat<float>(*layer_cache["self_values"], qkv_out2[2], 2,
                              &v_out2);
@@ -272,6 +280,10 @@ void MultiHeadedAttention::operator()(
     } else {
       v_ptr = new core::Tensor(qkv_out2[2]);
     }
+#ifdef WITH_PERFTOOLS
+    profile_ctx.end_profile("self/concat1", devtype);
+    profile_ctx.start_profile("self/copy2", devtype);
+#endif
     if (layer_cache_not_none) {
       layer_cache["self_keys"]->Reshape<float>(
           {batch_size, num_attention_heads_, k_ptr->shape(2), size_per_head},
@@ -283,17 +295,24 @@ void MultiHeadedAttention::operator()(
       core::Copy<float>(*k_ptr, *layer_cache["self_keys"]);
       core::Copy<float>(*v_ptr, *layer_cache["self_values"]);
     }
+#ifdef WITH_PERFTOOLS
+    profile_ctx.end_profile("self/copy2", devtype);
+#endif
   } else {
     TT_THROW("%s is not support in MultiHeadedAttention\n", attn_type);
   }  // if (attn_type == "context")
-#ifdef WITH_GPERFTOOLS
+#ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("gemm_012+AddBiasTransposeForScore3", devtype);
   profile_ctx.start_profile("batch_gemm3", devtype);
 #endif
 
+#ifdef WITH_PERFTOOLS
+  profile_ctx.start_profile("batch_gemm3/shape", devtype);
+#endif
   // 2) Calculate and scale scores.
   key_seq_length = k_ptr->shape(
       2);  // update for self type attn, since it will concat with cache.
+
   bool is_return_att_score = true;
   if (att_score == nullptr) {
     att_score = new core::Tensor(nullptr);
@@ -303,7 +322,10 @@ void MultiHeadedAttention::operator()(
       {batch_size, num_attention_heads_, query_seq_length,
        key_seq_length},  // query_seq_length = from_seq_Len
       devtype, devid);
-
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile("batch_gemm3/shape", devtype);
+  profile_ctx.start_profile("batch_gemm3/compute", devtype);
+#endif
   const float scaler = 1.0f / std::sqrt(static_cast<float>(size_per_head));
   kernels::BatchMatMul(*q_ptr, false, *k_ptr, true, scaler, att_score,
                        0.0);  //(B, num_head, q_len, k_len)
@@ -311,6 +333,7 @@ void MultiHeadedAttention::operator()(
   // scores = scores.masked_fill(mask, -1e18)
   // attn = self.softmax(scores).to(query.dtype)
 #ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile("batch_gemm3/compute", devtype);
   profile_ctx.end_profile("batch_gemm3", devtype);
   profile_ctx.start_profile("ApplyMaskAndSoftmax", devtype);
 #endif
@@ -372,6 +395,7 @@ void MultiHeadedAttention::operator()(
     //+input + bias
     kernels::AddInputBias(*output, query_tensor, dense_bias_, output);
   }
+  // TOOD(jiaruifang) A terrible solution to make att_score is nullptr capacity!
   if (!is_return_att_score) {
     delete att_score;
   }

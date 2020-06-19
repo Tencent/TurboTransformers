@@ -212,12 +212,14 @@ class Tensor {
     double sum = 0.;
 
     if (device_type() == kDLCPU) {
+      os << "CPU\n";
       for (int i = 0; i < numel(); ++i) {
         sum += data<T>()[i];
         if (cnt-- >= 0 || numel() - i <= 10) os << data<T>()[i] << ", ";
       }
     } else if (device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
+      os << "GPU\n";
       auto n = numel();
       std::unique_ptr<T[]> cpu_data(new T[n]);
       Memcpy(cpu_data.get(), data<T>(), n * sizeof(T), MemcpyFlag::kGPU2CPU);
