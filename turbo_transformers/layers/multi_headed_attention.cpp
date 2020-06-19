@@ -40,7 +40,8 @@ void MultiHeadedAttention::operator()(
     bool is_trans_weight) const {
 #ifdef WITH_PERFTOOLS
   auto& profile_ctx = core::Profiler::GetInstance();
-  profile_ctx.start_profile("MultiHeadedAttention_" + attn_type);
+  profile_ctx.start_profile("MultiHeadedAttention_" + attn_type,
+                            query_tensor.device_type());
 #endif
   std::lock_guard<std::mutex> g(mutex_);
 
@@ -88,8 +89,7 @@ void MultiHeadedAttention::operator()(
   core::Tensor qkv_out2(nullptr);
 
 #ifdef WITH_PERFTOOLS
-  profile_ctx.start_profile("gemm_012+AddBiasTransposeForScore3");
-  profile_ctx.start_profile("set_cache_flags");
+  profile_ctx.start_profile("gemm_012+AddBiasTransposeForScore3", devtype);
 #endif
   bool layer_cache_not_none = layer_cache.size() > 0 ? true : false;
   bool memory_keys_not_none = false, memory_values_not_none = false,
@@ -111,10 +111,9 @@ void MultiHeadedAttention::operator()(
     }
   }
   bool memory_not_none = memory_values_not_none && memory_keys_not_none;
-
   if (attn_type == "context") {
 #ifdef WITH_PERFTOOLS
-    profile_ctx.end_profile("set_cache_flags");
+    profile_ctx.start_profile("context/gemm0", devtype);
 #endif
     TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
                       query_tensor.device_ctx(), value_tensor.device_ctx()),
@@ -143,6 +142,10 @@ void MultiHeadedAttention::operator()(
       kernels::MatMul(query_tensor, false, q_weight_, is_trans_weight, 1.0,
                       &q_out1, 0.0);
     }
+#ifdef WITH_PERFTOOLS
+    profile_ctx.end_profile("context/gemm0", devtype);
+    profile_ctx.start_profile("context/AddBiasTransposeForScore", devtype);
+#endif
     q_out1.Reshape<float>(
         {batch_size, query_seq_length, num_attention_heads_, size_per_head},
         devtype, devid);
@@ -151,11 +154,16 @@ void MultiHeadedAttention::operator()(
         devtype, devid);
     kernels::AddBiasTransposeForScore(q_out1, q_bias_, &q_out2);
     q_ptr = &q_out2;  // point to static memory space
-
+#ifdef WITH_PERFTOOLS
+    profile_ctx.end_profile("context/AddBiasTransposeForScore", devtype);
+#endif
     if (memory_not_none) {
       v_ptr = layer_cache["memory_values"];
       k_ptr = layer_cache["memory_keys"];
     } else {
+#ifdef WITH_PERFTOOLS
+      profile_ctx.start_profile("context/gemm12", devtype);
+#endif
       v_out1.Reshape<float>({batch_size, key_seq_length, hidden_size}, devtype,
                             devid);
       k_out1.Reshape<float>({batch_size, key_seq_length, hidden_size}, devtype,
@@ -165,6 +173,9 @@ void MultiHeadedAttention::operator()(
                       &k_out1, 0.0);
       kernels::MatMul(value_tensor, false, v_weight_, is_trans_weight, 1.0,
                       &v_out1, 0.0);
+#ifdef WITH_PERFTOOLS
+      profile_ctx.end_profile("context/gemm12", devtype);
+#endif
       v_out1.Reshape<float>(
           {batch_size, key_seq_length, num_attention_heads_, size_per_head},
           devtype, devid);
@@ -173,6 +184,10 @@ void MultiHeadedAttention::operator()(
           devtype, devid);
 
       if (layer_cache_not_none) {
+#ifdef WITH_PERFTOOLS
+        profile_ctx.start_profile("context/AddBiasTransposeForScorex2",
+                                  devtype);
+#endif
         layer_cache["memory_keys"]->Reshape<float>(
             {batch_size, num_attention_heads_, key_seq_length, size_per_head},
             devtype, devid);
@@ -185,7 +200,14 @@ void MultiHeadedAttention::operator()(
                                           layer_cache["memory_keys"]);
         v_ptr = layer_cache["memory_values"];
         k_ptr = layer_cache["memory_keys"];
+#ifdef WITH_PERFTOOLS
+        profile_ctx.end_profile("context/AddBiasTransposeForScorex2", devtype);
+#endif
       } else {
+#ifdef WITH_PERFTOOLS
+        profile_ctx.start_profile("context/AddBiasTransposeForScorex2",
+                                  devtype);
+#endif
         v_out2.Reshape<float>(
             {batch_size, num_attention_heads_, key_seq_length, size_per_head},
             devtype, devid);
@@ -196,18 +218,17 @@ void MultiHeadedAttention::operator()(
         kernels::AddBiasTransposeForScore(k_out1, k_bias_, &k_out2);
         v_ptr = &v_out2;
         k_ptr = &k_out2;
+#ifdef WITH_PERFTOOLS
+        profile_ctx.end_profile("context/AddBiasTransposeForScorex2", devtype);
+#endif
       }
     }  // else
-
-#ifdef WITH_PERFTOOLS
-    profile_ctx.end_profile("gemm_012+AddBiasTransposeForScore3");
-#endif
   } else if (attn_type == "self") {
     qkv_out1.Reshape<float>({3, batch_size, query_seq_length, hidden_size},
                             devtype, devid);
 
 #ifdef WITH_PERFTOOLS
-    profile_ctx.start_profile("gemm_fused");
+    profile_ctx.start_profile("self/gemm012_fused", devtype);
 #endif
     if (pre_layernorm) {
       core::Tensor layernormed_query(nullptr);
@@ -224,8 +245,8 @@ void MultiHeadedAttention::operator()(
     }
 
 #ifdef WITH_PERFTOOLS
-    profile_ctx.end_profile("gemm_fused");
-    profile_ctx.start_profile("SplitAddBiasTransposeForScore");
+    profile_ctx.end_profile("self/gemm012_fused", devtype);
+    profile_ctx.start_profile("self/SplitAddBiasTransposeForScore", devtype);
 #endif
     qkv_out2.Reshape<float>(
         {3, batch_size, num_attention_heads_, query_seq_length, size_per_head},
@@ -235,7 +256,7 @@ void MultiHeadedAttention::operator()(
         new core::Tensor(qkv_out2[0]);  // copy temporary tensor to heap space.
 
 #ifdef WITH_PERFTOOLS
-    profile_ctx.end_profile("SplitAddBiasTransposeForScore");
+    profile_ctx.end_profile("self/SplitAddBiasTransposeForScore", devtype);
 #endif
     if (self_keys_not_none) {
       kernels::Concat<float>(*layer_cache["self_keys"], qkv_out2[1], 2,
@@ -265,10 +286,11 @@ void MultiHeadedAttention::operator()(
   } else {
     TT_THROW("%s is not support in MultiHeadedAttention\n", attn_type);
   }  // if (attn_type == "context")
-
-#ifdef WITH_PERFTOOLS
-  profile_ctx.start_profile("batch_gemm0");
+#ifdef WITH_GPERFTOOLS
+  profile_ctx.end_profile("gemm_012+AddBiasTransposeForScore3", devtype);
+  profile_ctx.start_profile("batch_gemm3", devtype);
 #endif
+
   // 2) Calculate and scale scores.
   key_seq_length = k_ptr->shape(
       2);  // update for self type attn, since it will concat with cache.
@@ -277,31 +299,21 @@ void MultiHeadedAttention::operator()(
        key_seq_length},  // query_seq_length = from_seq_Len
       devtype, devid);
 
-#ifdef WITH_GPERFTOOLS
-  profile_ctx.start_profile("batch_gemm0");
-#endif
-
   const float scaler = 1.0f / std::sqrt(static_cast<float>(size_per_head));
   kernels::BatchMatMul(*q_ptr, false, *k_ptr, true, scaler, att_score,
                        0.0);  //(B, num_head, q_len, k_len)
-
-#ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("batch_gemm0");
-#endif
   // mask = mask.unsqueeze(1)  # [B, 1, 1, T_values]
   // scores = scores.masked_fill(mask, -1e18)
   // attn = self.softmax(scores).to(query.dtype)
 #ifdef WITH_PERFTOOLS
-  profile_ctx.start_profile("ApplyMaskAndSoftmax");
+  profile_ctx.end_profile("batch_gemm3", devtype);
+  profile_ctx.start_profile("ApplyMaskAndSoftmax", devtype);
 #endif
   kernels::ApplyMaskAndSoftmax(
       att_score,
       attention_mask,  //(B, q_len, k_len) or (B, 1, k_len)
       1.0);
 
-#ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("ApplyMaskAndSoftmax");
-#endif
   // context_original = torch.matmul(drop_attn, value)
   core::Tensor context_layer(nullptr);
   context_layer.Reshape<float>(
@@ -309,15 +321,16 @@ void MultiHeadedAttention::operator()(
       devtype, devid);
 
 #ifdef WITH_PERFTOOLS
-  profile_ctx.start_profile("batch_gemm1");
+  profile_ctx.end_profile("ApplyMaskAndSoftmax", devtype);
+  profile_ctx.start_profile("batch_gemm4", devtype);
 #endif
 
   kernels::BatchMatMul(*att_score, false, *v_ptr, false, 1.0, &context_layer,
                        0.0);
 
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("batch_gemm1");
-  profile_ctx.start_profile("TransposeForScore");
+  profile_ctx.end_profile("batch_gemm4", devtype);
+  profile_ctx.start_profile("TransposeForScore", devtype);
 #endif
   // context = unshape(context_original)
   core::Tensor self_attr_out(nullptr);
@@ -330,15 +343,15 @@ void MultiHeadedAttention::operator()(
   output->Reshape<float>({batch_size, query_seq_length, hidden_size}, devtype,
                          devid);
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("TransposeForScore");
-  profile_ctx.start_profile("gemm5");
+  profile_ctx.end_profile("TransposeForScore", devtype);
+  profile_ctx.start_profile("gemm5", devtype);
 #endif
   kernels::MatMul(self_attr_out, false, dense_weight_, is_trans_weight, 1.0,
                   output, 0.0);
 
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("gemm5");
-  profile_ctx.start_profile("AddBias");
+  profile_ctx.end_profile("gemm5", devtype);
+  profile_ctx.start_profile("AddBias", devtype);
 #endif
   if (false == post_add_input) {
     if (false == post_layernorm) {
@@ -356,8 +369,8 @@ void MultiHeadedAttention::operator()(
   }
 
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("AddBias");
-  profile_ctx.end_profile("MultiHeadedAttention_" + attn_type);
+  profile_ctx.end_profile("AddBias", devtype);
+  profile_ctx.end_profile("MultiHeadedAttention_" + attn_type, devtype);
 #endif
 }
 
