@@ -19,6 +19,7 @@
 #include <cuda_runtime.h>
 
 #include <cub/util_allocator.cuh>
+#include <iostream>
 
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/core/cuda_enforce.cuh"
@@ -55,7 +56,8 @@ void *allocate_impl(size_t size, DLDeviceType dev) {
     return align_alloc(size);
   } else if (kDLGPU == dev) {
 #ifdef TT_WITH_GPU
-    return cuda_alloc(size);
+    auto addr = cuda_alloc(size);
+    return addr;
 #endif
   } else {
     TT_THROW("Not supported devtype");
@@ -135,10 +137,19 @@ struct Allocator::CachingAllocatorImpl {
     } else if (dev == kDLGPU) {
 #ifdef TT_WITH_CUDA
       static auto stream = core::CUDADeviceContext::GetInstance().stream();
-
-      cudaError_t result = cub_allocator.DeviceAllocate(&data, size, stream);
-      if (result != cudaSuccess) {
-        throw BadAlloc("DeviceAllocate failed.");
+      try {
+        cudaError_t result = cub_allocator.DeviceAllocate(&data, size, stream);
+        if (result != cudaSuccess) {
+          throw BadAlloc("DeviceAllocate failed.");
+        }
+      } catch (...) {
+        cub_allocator.FreeAllCached();
+        cudaError_t result = cub_allocator.DeviceAllocate(&data, size, stream);
+        if (result != cudaSuccess) {
+          std::stringstream ss;
+          ss << "DeviceAllocate failed Again. " << size;
+          throw BadAlloc(ss.str());
+        }
       }
 #endif
     }

@@ -267,10 +267,10 @@ def create_test(batch_size,
                 post_add_input=post_add_input,
                 is_trans_weight=False)
 
-            # with turbo_transformers.pref_guard("pref_test") as perf:
-            turbo_result, turbo_qps, turbo_time_consume_notrans = \
-                test_helper.run_model(turbo_model_notrans, use_cuda,
-                                    num_iter)
+            with turbo_transformers.pref_guard("pref_test") as perf:
+                turbo_result, turbo_qps, turbo_time_consume_notrans = \
+                    test_helper.run_model(turbo_model_notrans, use_cuda,
+                                        num_iter)
 
             turbo_output_notrans, turbo_attns_notrans = turbo_result
 
