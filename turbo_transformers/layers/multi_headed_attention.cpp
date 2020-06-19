@@ -294,8 +294,10 @@ void MultiHeadedAttention::operator()(
   // 2) Calculate and scale scores.
   key_seq_length = k_ptr->shape(
       2);  // update for self type attn, since it will concat with cache.
+  bool is_return_att_score = true;
   if (att_score == nullptr) {
     att_score = new core::Tensor(nullptr);
+    is_return_att_score = false;
   }
   att_score->Reshape<float>(
       {batch_size, num_attention_heads_, query_seq_length,
@@ -370,7 +372,9 @@ void MultiHeadedAttention::operator()(
     //+input + bias
     kernels::AddInputBias(*output, query_tensor, dense_bias_, output);
   }
-
+  if (!is_return_att_score) {
+    delete att_score;
+  }
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("AddBias", devtype);
   profile_ctx.end_profile("MultiHeadedAttention_" + attn_type, devtype);
