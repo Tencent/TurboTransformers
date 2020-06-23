@@ -158,11 +158,13 @@ struct BertModel::Impl {
     for (size_t i = 0; i < inputs.size();
          ++i, iptr += max_seq_len, mptr += max_seq_len) {
       auto &input = inputs[i];
+      // TODO(jiaruifang) Bert_Attention use mask value as 1 to indicate a valid
+      // position.
       std::copy(input.begin(), input.end(), iptr);
-      std::fill(mptr, mptr + input.size(), 0);
+      std::fill(mptr, mptr + input.size(), 1);
       if (input.size() != static_cast<size_t>(max_seq_len)) {
         std::fill(iptr + input.size(), iptr + max_seq_len, 0);
-        std::fill(mptr + input.size(), mptr + max_seq_len, 1);
+        std::fill(mptr + input.size(), mptr + max_seq_len, 0);
       }
     }
     if (device_type_ == DLDeviceType::kDLGPU) {
