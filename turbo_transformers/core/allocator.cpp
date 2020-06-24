@@ -55,7 +55,7 @@ void *allocate_impl(size_t size, DLDeviceType dev) {
   if (kDLCPU == dev) {
     return align_alloc(size);
   } else if (kDLGPU == dev) {
-#ifdef TT_WITH_GPU
+#ifdef TT_WITH_CUDA
     auto addr = cuda_alloc(size);
     return addr;
 #endif
@@ -69,7 +69,7 @@ void free_impl(void *memory_addr, DLDeviceType dev) {
   if (kDLCPU == dev) {
     free(memory_addr);
   } else if (kDLGPU == dev) {
-#ifdef TT_WITH_GPU
+#ifdef TT_WITH_CUDA
     cuda_free(memory_addr);
 #endif
   } else {

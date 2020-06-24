@@ -21,6 +21,9 @@
 #include "turbo_transformers/core/cuda_enforce.cuh"
 #include "turbo_transformers/layers/kernels/gpu_utils.h"
 #endif
+#ifdef WITH_PERFTOOLS
+#include "turbo_transformers/core/profiler.h"
+#endif
 
 namespace turbo_transformers {
 namespace layers {
@@ -28,7 +31,11 @@ namespace kernels {
 
 template <typename T>
 void Concat(const core::Tensor& t1, const core::Tensor& t2, size_t dim,
-            core::Tensor* output) {
+            core::Tensor* output, const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, t1.device_type());
+#endif
   TT_ENFORCE(t1.n_dim() >= dim && t2.n_dim() >= dim,
              "concatation of two tensors with dim as %d and %d is illegal.",
              t1.n_dim(), t2.n_dim());
@@ -59,7 +66,8 @@ void Concat(const core::Tensor& t1, const core::Tensor& t2, size_t dim,
     low_dim *= t2.shape(i);
   }
 
-  output->Reshape<T>(output_shape, t1.device_type(), t1.device_id());
+  output->Reshape<T>(output_shape, t1.device_type(), t1.device_id(),
+                     "Concat/Reshape");
   if (t1.device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
@@ -83,12 +91,21 @@ void Concat(const core::Tensor& t1, const core::Tensor& t2, size_t dim,
       }
     }
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, t1.device_type());
+#endif
 }
 
 template void Concat<float>(const core::Tensor& t1, const core::Tensor& t2,
-                            size_t dim, core::Tensor* output);
+                            size_t dim, core::Tensor* output,
+                            const std::string name);
 
-void AddBias(const core::Tensor& bias, core::Tensor* output) {
+void AddBias(const core::Tensor& bias, core::Tensor* output,
+             const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, bias.device_type());
+#endif
   auto dim1 = bias.shape(0);
   auto dim0 = output->numel() / dim1;
   auto output_data = output->mutableData<float>();
@@ -109,10 +126,18 @@ void AddBias(const core::Tensor& bias, core::Tensor* output) {
                                cuda_ctx.stream(), output_data);
 #endif
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, bias.device_type());
+#endif
 }
 
 void AddInputBias(const core::Tensor& input1, const core::Tensor& input2,
-                  const core::Tensor& bias, core::Tensor* output) {
+                  const core::Tensor& bias, core::Tensor* output,
+                  const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, input1.device_type());
+#endif
   TT_ENFORCE_EQ(input1.numel(), input2.numel(),
                 "Tensor input1 and Tensor input2 should have the same numel.");
   auto dim1 = bias.shape(0);
@@ -138,6 +163,9 @@ void AddInputBias(const core::Tensor& input1, const core::Tensor& input2,
                      cuda_ctx.stream(), output_data);
 #endif
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, input1.device_type());
+#endif
 }
 
 }  // namespace kernels

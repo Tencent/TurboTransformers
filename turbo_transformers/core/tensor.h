@@ -24,7 +24,9 @@
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/core/half.h"
 #include "turbo_transformers/core/memory.h"
-
+#ifdef WITH_PERFTOOLS
+#include "turbo_transformers/core/profiler.h"
+#endif
 namespace turbo_transformers {
 
 namespace core {
@@ -151,12 +153,19 @@ class Tensor {
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
   template <typename T>
   T *Reshape(std::vector<int64_t> shape_list, DLDeviceType device_type,
-             int device_id) {
+             int device_id, const std::string name = "Reshape") {
     // if Need Realloc
+#ifdef WITH_PERFTOOLS
+    auto &profile_ctx = core::Profiler::GetInstance();
+    profile_ctx.start_profile(name, device_type);
+#endif
     if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
       tensor_ = details::DLManagedTensorPtr(
           NewDLPackTensorT<T>(shape_list, device_type, device_id));
     }
+#ifdef WITH_PERFTOOLS
+    profile_ctx.end_profile(name, device_type);
+#endif
     return this->template mutableData<T>();
   }
 
