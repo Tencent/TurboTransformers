@@ -21,6 +21,9 @@
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_transpose_kernel.h"
 #endif
+#ifdef WITH_PERFTOOLS
+#include "turbo_transformers/core/profiler.h"
+#endif
 
 namespace turbo_transformers {
 namespace layers {
@@ -74,7 +77,12 @@ static void TransposeForScoreImpl(float* output, const float* input,
   }
 }
 
-void TransposeForScore(core::Tensor* output, const core::Tensor& input) {
+void TransposeForScore(core::Tensor* output, const core::Tensor& input,
+                       const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, input.device_type());
+#endif
   if (input.device_type() == kDLCPU && output->device_type() == kDLCPU) {
     TransposeForScoreImpl(output->mutableData<float>(), input.data<float>(),
                           output->shape(0), output->shape(1), input.shape(1),
@@ -94,11 +102,19 @@ void TransposeForScore(core::Tensor* output, const core::Tensor& input) {
   } else {
     TT_THROW("device_type is not supported");
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, input.device_type());
+#endif
 }
 
 // add bias and transpose(2,3)
 void AddBiasTransposeForScore(const core::Tensor& input,
-                              const core::Tensor& bias, core::Tensor* output) {
+                              const core::Tensor& bias, core::Tensor* output,
+                              const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, input.device_type());
+#endif
   TT_ENFORCE_EQ(input.n_dim(), 4, "input should be a 4-D tensor");
   TT_ENFORCE_EQ(bias.numel(), input.shape(2) * input.shape(3),
                 "bias shape %d should be %d x %d", bias.n_dim(), input.shape(2),
@@ -121,11 +137,20 @@ void AddBiasTransposeForScore(const core::Tensor& input,
   } else {
     TT_THROW("device_type is not supported");
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, input.device_type());
+#endif
 }
 
 void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
                                    const core::Tensor& input_tensor,
-                                   const core::Tensor& bias_tensor) {
+                                   const core::Tensor& bias_tensor,
+                                   const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, input_tensor.device_type());
+#endif
+
   TT_ENFORCE_EQ(output_tensor->n_dim(), 5,
                 "output_tensor should be (weight_num, batch_size, seq_length, "
                 "num_attention_heads, size_per_head)");
@@ -194,6 +219,9 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
   } else {
     TT_THROW("device_type is not supported");
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, input_tensor.device_type());
+#endif
 }
 
 }  // namespace kernels

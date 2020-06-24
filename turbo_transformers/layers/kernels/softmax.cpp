@@ -81,7 +81,11 @@ void SoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
 }
 
 void ApplyMaskAndSoftmax(core::Tensor* inout, const core::Tensor& att_mask,
-                         float scale) {
+                         float scale, const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, inout->device_type());
+#endif
   auto batch_size = inout->shape(0);
   auto num_att_heads = inout->shape(1);
   auto from_seq_len = inout->shape(2);
@@ -115,6 +119,9 @@ void ApplyMaskAndSoftmax(core::Tensor* inout, const core::Tensor& att_mask,
   } else {
     TT_THROW("device_type is not supported");
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, inout->device_type());
+#endif
 }
 
 }  // namespace kernels

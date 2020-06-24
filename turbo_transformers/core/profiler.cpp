@@ -31,6 +31,11 @@ namespace core {
 #ifdef WITH_PERFTOOLS
 static bool gProfileEnabled = false;
 
+static bool comp(std::pair<std::string, double> a,
+                 std::pair<std::string, double> b) {
+  return a.second < b.second;
+}
+
 struct Profiler::ProfilerImpl {
   void start_profile(const std::string& ctx_name, DLDeviceType dev_type) {
     if (kDLGPU == dev_type) {
@@ -80,8 +85,16 @@ struct Profiler::ProfilerImpl {
   }
   void print_results() const {
     std::cerr << std::endl << profile_name_ << " Time line: " << std::endl;
+    std::vector<std::pair<std::string, double>> elems(timer_map_.begin(),
+                                                      timer_map_.end());
+    std::sort(elems.begin(), elems.end(), comp);
+    float total_elapsed = 0.;
     for (auto it = timer_map_.begin(); it != timer_map_.end(); ++it) {
-      std::cerr << it->first << " , " << it->second << std::endl;
+      total_elapsed += it->second;
+    }
+    for (auto it = elems.begin(); it != elems.end(); ++it) {
+      std::cerr << it->first << " , " << it->second << ", "
+                << it->second / total_elapsed * 100 << " % " << std::endl;
     }
   }
   void clear() {
