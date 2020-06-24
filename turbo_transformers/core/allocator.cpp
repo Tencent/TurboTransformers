@@ -189,6 +189,9 @@ Allocator::~Allocator() = default;
 
 void *Allocator::allocate(size_t size, const std::string &strategy,
                           DLDeviceType dev) {
+  if (dev == kDLCPU) {
+    return allocate_impl(size, dev);
+  }
   if ("bestfit" == strategy) {
     return bestfit_allocator_->alloc(size, dev);
   } else if ("cub" == strategy) {
@@ -199,6 +202,9 @@ void *Allocator::allocate(size_t size, const std::string &strategy,
 
 void Allocator::free(void *memory, const std::string &strategy,
                      DLDeviceType dev) {
+  if (dev == kDLCPU) {
+    return free_impl(memory, dev);
+  }
   if ("bestfit" == strategy) {
     bestfit_allocator_->free(memory, dev);
   } else if ("cub" == strategy) {
