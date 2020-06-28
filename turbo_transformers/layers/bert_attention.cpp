@@ -12,6 +12,7 @@
 // See the AUTHORS file for names of contributors.
 
 #include "turbo_transformers/layers/bert_attention.h"
+
 #include <unordered_map>
 
 #include "loguru.hpp"
@@ -32,10 +33,17 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
                                core::Tensor* output, core::Tensor* attn,
                                bool is_trans_weight) const {
   std::unordered_map<std::string, core::Tensor*> dummy{};
+  std::shared_ptr<core::Tensor> attn_ptr;
+  if (attn == nullptr) {
+    attn_ptr = std::make_shared<core::Tensor>(nullptr);
+  } else {
+    attn_ptr.reset(attn);
+  }
   MultiHeadedAttention::operator()(
       input_tensor, input_tensor, input_tensor, attention_mask, "self", output,
-      attn, dummy, false /* pre_layernorm */, true /* post_layernorm */,
-      false /* post_add_input */, is_trans_weight /* is_trans_weight */);
+      attn_ptr.get(), dummy, false /* pre_layernorm */,
+      true /* post_layernorm */, false /* post_add_input */,
+      is_trans_weight /* is_trans_weight */);
 }
 
 void BertAttention::EnforceShapeAndType() const {
