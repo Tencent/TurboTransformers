@@ -1,4 +1,4 @@
-FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu16.04
+FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
 
 RUN apt-get update && \
     apt-get install -y curl git wget bzip2 build-essential ninja-build g++ && rm -rf /var/lib/apt/lists/*
@@ -8,8 +8,8 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     bash Miniconda3-latest-Linux-x86_64.sh -p /opt/miniconda3 -b && \
     rm Miniconda3-latest-Linux-x86_64.sh && \
     conda update -y conda && \
-    conda install pytorch==1.4.0 cudatoolkit=10.0 && \
-    pip install OpenNMT-py==1.1.1 && \
+    conda install pytorch==1.5.0 cudatoolkit=10.0 && \
+    pip install OpenNMT-py && \
     conda install curl conda-verify conda-build mkl-include cmake -c anaconda && \
     conda install git git-lfs docopt -c conda-forge  && \
     conda clean -afy
