@@ -56,6 +56,10 @@ bool test_multiple_threads(const std::string &model_path, bool only_input,
                            bool use_cuda, int n_threads) {
   std::shared_ptr<BertModel> model_ptr =
       std::make_shared<BertModel>(model_path, DLDeviceType::kDLCPU, 12, 12);
+  // input_ids, position_ids, segment_ids lengths of each row may not be the
+  // same. For example. std::vector<std::vector<int64_t>> input_ids{{1, 2, 3, 4,
+  // 5,  6, 7},
+  //                                             {1, 2}};
   std::vector<std::vector<int64_t>> input_ids{{12166, 10699, 16752, 4454},
                                               {5342, 16471, 817, 16022}};
   std::vector<std::vector<int64_t>> position_ids{{1, 0, 0, 0}, {1, 1, 1, 0}};
@@ -93,10 +97,6 @@ bool test_multiple_threads(const std::string &model_path, bool only_input,
     // bert-base-uncased (2020.04.23 version), you may need to change it to
     // real-time values.
     if (only_input) {
-      std::cerr << vec.data()[0] << std::endl;
-      std::cerr << vec.data()[1] << std::endl;
-      std::cerr << vec.data()[768] << std::endl;
-      std::cerr << vec.data()[768 + 1] << std::endl;
       assert(fabs(vec.data()[0] - -0.1901) < 1e-3);
       assert(fabs(vec.data()[1] - 0.0193) < 1e-3);
       assert(fabs(vec.data()[768] - 0.3060) < 1e-3);

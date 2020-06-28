@@ -69,7 +69,7 @@ sh tool/build_conda_package.sh
 
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
 ```
-docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev
+docker pull thufeifeibear/turbo_transformers:0.3.0-cpu-dev
 ```
 ### Installation on GPU
 ```
@@ -94,7 +94,7 @@ sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=ON
 cd benchmark
 bash gpu_run_benchmark.sh
 ```
-*We also prepared a docker image containing GPU version of TurboTransformers.
+We also prepared a docker image containing GPU version of TurboTransformers.
 ```
 docker pull thufeifeibear/turbo_transformers:0.3.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-dev
 ```
