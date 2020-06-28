@@ -11,8 +11,6 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "bert_model.h"
-
 #include <cassert>
 #include <cmath>
 #include <future>
@@ -20,6 +18,7 @@
 #include <string>
 #include <thread>
 
+#include "bert_model.h"
 #include "turbo_transformers/core/config.h"
 
 static bool test(const std::string &model_path, bool use_cuda = false) {
@@ -54,7 +53,7 @@ static std::vector<float> CallBackFunction(
 }
 
 bool test_multiple_threads(const std::string &model_path, bool only_input,
-                           int n_threads) {
+                           bool use_cuda, int n_threads) {
   std::shared_ptr<BertModel> model_ptr =
       std::make_shared<BertModel>(model_path, DLDeviceType::kDLCPU, 12, 12);
   std::vector<std::vector<int64_t>> input_ids{{12166, 10699, 16752, 4454},
@@ -94,6 +93,10 @@ bool test_multiple_threads(const std::string &model_path, bool only_input,
     // bert-base-uncased (2020.04.23 version), you may need to change it to
     // real-time values.
     if (only_input) {
+      std::cerr << vec.data()[0] << std::endl;
+      std::cerr << vec.data()[1] << std::endl;
+      std::cerr << vec.data()[768] << std::endl;
+      std::cerr << vec.data()[768 + 1] << std::endl;
       assert(fabs(vec.data()[0] - -0.1901) < 1e-3);
       assert(fabs(vec.data()[1] - 0.0193) < 1e-3);
       assert(fabs(vec.data()[768] - 0.3060) < 1e-3);
@@ -132,8 +135,10 @@ int main(int argc, char *argv[]) {
   turbo_transformers::core::SetNumThreads(1);
   if (core::IsCompiledWithCUDA()) {
     std::cout << "10 threads do 10 independent bert inferences." << std::endl;
-    test_multiple_threads(model_path, true /*use cuda*/, 10);
+    test_multiple_threads(model_path, false /*only_input*/, true /*use cuda*/,
+                          10);
   }
-  test_multiple_threads(model_path, false /*not use cuda*/, 10);
+  test_multiple_threads(model_path, false /*only_input*/,
+                        false /*not use cuda*/, 10);
   return 0;
 }
