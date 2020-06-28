@@ -21,9 +21,9 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-Wall")
 set(CMAKE_C_FLAGS "-Wall")
 
-set(TURBO_TRANSFORMERS_VERSION 0.2.1)
+set(TURBO_TRANSFORMERS_VERSION 0.3.0)
 
-option(WITH_PROFILER  "Compile with gperftools" OFF)
+option(WITH_PROFILER  "Compile with profiler" OFF)
 option(WITH_GPU       "Build with GPU"          OFF)
 option(WITH_MODULE_BENCHMAKR       "Catch2 unitest with benchmarking"          ON)
 
@@ -65,9 +65,7 @@ endif ()
 
 
 if (WITH_PROFILER)
-    find_package(Gperftools REQUIRED)
-    include_directories(${GPERFTOOLS_INCLUDE_DIR})
-    add_definitions(-DWITH_GPERFTOOLS)
+    add_definitions(-DWITH_PERFTOOLS)
 endif ()
 
 IF (UNIX AND NOT APPLE)

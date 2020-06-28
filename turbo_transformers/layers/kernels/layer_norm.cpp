@@ -20,6 +20,9 @@
 #include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/gpu_layer_norm_kernel.h"
 #endif
+#ifdef WITH_PERFTOOLS
+#include "turbo_transformers/core/profiler.h"
+#endif
 
 namespace turbo_transformers {
 namespace layers {
@@ -28,7 +31,11 @@ static constexpr float g_epsilon = 1e-12;
 
 template <typename T>
 void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
-               core::Tensor* out_tensor) {
+               core::Tensor* out_tensor, T eps, const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, out_tensor->device_type());
+#endif
   TT_ENFORCE_EQ(
       common::is_same_device_ctx(gamma.device_ctx(), beta.device_ctx()), true,
       "LayerNorm gamma and beta must be on the same device context.");
@@ -57,7 +64,7 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
       mean = mean / feature_dim;
       var = var / feature_dim - mean * mean;
 
-      var = 1.f / sqrtf(var + g_epsilon);
+      var = 1.f / sqrtf(var + eps);
 
 #pragma omp simd
       for (int64_t i = 0; i < feature_dim; ++i) {
@@ -78,18 +85,26 @@ void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
     TT_THROW("AddBiasLayerNorm device_type %d is not supported",
              out_tensor->device_type());
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, out_tensor->device_type());
+#endif
 }
 
 template void LayerNorm<float>(const core::Tensor& gamma,
                                const core::Tensor& beta,
-                               core::Tensor* out_tensor);
+                               core::Tensor* out_tensor, float eps,
+                               const std::string name);
 
 template <typename T>
 void AddBiasLayerNorm(const core::Tensor& input_tensor,
                       const core::Tensor& bias_tensor,
                       const core::Tensor& gamma_tensor,
-                      const core::Tensor& beta_tensor,
-                      core::Tensor* out_tensor) {
+                      const core::Tensor& beta_tensor, core::Tensor* out_tensor,
+                      T eps, const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, input_tensor.device_type());
+#endif
   TT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
                                            bias_tensor.device_ctx()),
                 true,
@@ -131,7 +146,7 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
       mean = mean / n;
       var = var / n - mean * mean;
 
-      var = 1.f / sqrtf(var + g_epsilon);
+      var = 1.f / sqrtf(var + eps);
 
 #pragma omp simd
       for (int64_t i = 0; i < n; ++i) {
@@ -151,13 +166,17 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
     TT_THROW("LayerNorm device_type %d is not supported",
              input_tensor.device_type());
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, input_tensor.device_type());
+#endif
 }
 
 template void AddBiasLayerNorm<float>(const core::Tensor& input_tensor,
                                       const core::Tensor& bias_tensor,
                                       const core::Tensor& gamma_tensor,
                                       const core::Tensor& beta_tensor,
-                                      core::Tensor* out_tensor);
+                                      core::Tensor* out_tensor, float eps,
+                                      const std::string name);
 
 }  // namespace kernels
 }  // namespace layers

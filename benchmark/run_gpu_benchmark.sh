@@ -18,6 +18,7 @@ FRAMEWORKS=("turbo-transformers" "torch")
 # FRAMEWORKS=("onnxruntime")
 SEQ_LEN=(10 20 40 60 80 100 200 300 400 500)
 BATCH_SIZE=(1 20)
+
 N=150
 MODEL="bert-base-chinese"
 for batch_size in ${BATCH_SIZE[*]}
