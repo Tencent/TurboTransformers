@@ -39,7 +39,7 @@ env BUILD_TYPE=dev sh tools/build_docker_cpu.sh
 
 2. Install turbo in docker
 
-Method 1：I want to unitest
+Method 1: I want to unitest
 ```
 cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
