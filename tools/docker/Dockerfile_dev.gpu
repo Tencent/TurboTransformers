@@ -1,7 +1,7 @@
 FROM IMAGE_BASE
 
 RUN apt-get update && \
-    apt-get install -y curl git wget bzip2 build-essential ninja-build g++ && rm -rf /var/lib/apt/lists/*
+    apt-get install -y curl git wget bzip2 build-essential gfortran ninja-build g++ && rm -rf /var/lib/apt/lists/*
 
 ENV PATH=/opt/miniconda3/bin:${PATH} CONDA_PREFIX=/opt/miniconda3
 RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \

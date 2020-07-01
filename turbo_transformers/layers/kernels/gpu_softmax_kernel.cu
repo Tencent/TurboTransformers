@@ -65,8 +65,8 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
                                      const int from_seq_len,
                                      const int to_seq_len, const float scaler,
                                      bool is_2D) {
-  using CubBlockReduce = cub::BlockReduce<Array<float, K>, BlockDim>;
-  __shared__ typename CubBlockReduce::TempStorage temp_storage;
+  __shared__ typename cub::BlockReduce<Array<float, K>, BlockDim>::TempStorage
+      temp_storage;
   __shared__ float s_sum[K], s_max[K];
   float tmp[K];
   int qk_offset = blockIdx.x * K * to_seq_len;
@@ -91,7 +91,7 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
   }
 
   Array<float, K> max_val =
-      CubBlockReduce(temp_storage)
+      cub::BlockReduce<Array<float, K>, BlockDim>(temp_storage)
           .Reduce(Array<float, K>(tmp), ArrayMaxFunc<float, K>());
 
   if (threadIdx.x == 0) {
@@ -107,7 +107,7 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
   }
 
   Array<float, K> sum_val =
-      CubBlockReduce(temp_storage)
+      cub::BlockReduce<Array<float, K>, BlockDim>(temp_storage)
           .Reduce(Array<float, K>(qk_tmp), ArrayAddFunc<float, K>());
 
   if (threadIdx.x == 0) {
