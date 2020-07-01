@@ -1,7 +1,7 @@
-## turbo_transformers: a fast and user-friendly tool for transformer inference on CPU and GPU
+## turbo_transformers: a fast and user-friendly runtime for transformer inference on CPU and GPU
 ![logo](./images/logo.jpeg)
 
-<center>**make transformers serving fast by adding a turbo to your inference engine!**</center>
+<center>*Make transformers serving fast by adding a turbo to your inference engine!*</center>
 
 ### Background
 Transformer is the most critical alogrithm innovation in the NLP field in recent years. It brings higher model accuracy while introduces more calculations. The efficient deployment of online Transformer-based services faces enormous challenges. In order to make the costly Transformer online service more efficient, the WeChat AI open-sourced a Transformer inference acceleration tool called TurboTransformers, which has the following characteristics.
@@ -39,7 +39,7 @@ env BUILD_TYPE=dev sh tools/build_docker_cpu.sh
 
 2. Install turbo in docker
 
-Method 1：I want to unitest
+Method 1: I want to unitest
 ```
 cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
@@ -80,7 +80,11 @@ git clone https://github.com/Tencent/TurboTransformers --recursive
 # You can modify the environment variables in the script to specify the cuda version and operating system version
 sh tools/build_docker_gpu.sh $PWD
 nvidia-docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=your_container_name REPOSITORY:TAG
+<<<<<<< HEAD
+# for example: nvidia-docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=turbo_gpu_env thufeifeibear:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
+=======
 # for example: nvidia-docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/turbo_transformers:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
+>>>>>>> 3b493ad0e4a61667ee3220a022da8642fcaa17ff
 ```
 
 2. Install pip package in docker and unitest test
@@ -127,6 +131,10 @@ Users can link turbo-transformers to your code through add_subdirectory.
 
 [How to know hotspots of your code](./docs/profiler.md)
 
+#### How to contribute new models
+[How to add a new layer](./turbo_transformers/layers/README.md)
+
+
 ## TODO
 Currently (June 2020), In the near futuer, we will add support for other models (Albert [Work In Progress], GPT2) and low-precision floating point (CPU int8, GPU FP16).
 **Looking forwards to your contribution!**
@@ -138,7 +146,7 @@ BSD 3-Clause License
 1. The results of Turbo Transformers may be different from the results of PyTorch after 2 digits behind the decimal point.
 The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
 
-### History
+## History
 1. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
 2. June 2020 v0.2.1, TurboTransformers add BLIS as a BLAS option. Better performance on AMD CPU.
 3. June 2020 v0.3.0, TurboTransformers adds support for Transformer Decoder on CPU/GPU.

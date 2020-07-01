@@ -17,7 +17,6 @@
 
 #ifdef WITH_PERFTOOLS
 #include <dlpack/dlpack.h>
-
 #include <memory>
 
 #include "macros.h"
