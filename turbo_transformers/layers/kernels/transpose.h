@@ -41,10 +41,6 @@ extern void AddBiasTransposeForScore(
     const core::Tensor& input, const core::Tensor& bias, core::Tensor* output,
     const std::string name = "AddBiasTransposeForScore");
 
-extern void AddBiasTransposeForScore(const core::Tensor& input,
-                                     const core::Tensor& bias,
-                                     core::Tensor* output);
-
 // input: (batch_size, seq_length, 3, head_num, *size_per_head)
 // bias: (3, head_num, size_per_head)
 // output: (3, batch_size, num_attention_heads, seq_length, size_per_head)
