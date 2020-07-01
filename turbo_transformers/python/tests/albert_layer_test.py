@@ -30,7 +30,8 @@ def create_test(batch_size, seq_length):
             self.test_device = torch.device('cuda:0') if use_cuda else \
                 torch.device('cpu:0')
             if not use_cuda:
-                torch.set_num_threads(1)
+                torch.set_num_threads(4)
+                turbo_transformers.set_num_threads(4)
 
             torch.set_grad_enabled(False)
             self.cfg = AlbertConfig()
