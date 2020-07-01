@@ -122,11 +122,12 @@ class AlbertAttention(cxx.BertAttention):
             qkv_weight = torch.clone(
                 torch.t(
                     torch.cat((params['query.weight'], params['key.weight'],
-                               params['value.weight']), 0)))
+                               params['value.weight']), 0)).contiguous())
             qkv_bias = torch.cat((params['query.bias'], params['key.bias'],
                                   params['value.bias']), 0)
 
-            output_weight = torch.clone(torch.t(params['dense.weight']))
+            output_weight = torch.clone(
+                torch.t(params['dense.weight']).contiguous())
             att = AlbertAttention(
                 convert2tt_tensor(qkv_weight), convert2tt_tensor(qkv_bias),
                 convert2tt_tensor(output_weight),
@@ -167,9 +168,10 @@ class AlbertLayer(cxx.AlbertLayer):
     @staticmethod
     def from_torch(intermediate: TorchAlbertLayer):
         intermediate_params = _to_param_dict_naive(intermediate)
-        weight = torch.clone(torch.t(intermediate_params["ffn.weight"]))
+        weight = torch.clone(
+            torch.t(intermediate_params["ffn.weight"]).contiguous())
         weight_output = torch.clone(
-            torch.t(intermediate_params["ffn_output.weight"]))
+            torch.t(intermediate_params["ffn_output.weight"]).contiguous())
         return AlbertLayer(
             AlbertAttention.from_torch(intermediate.attention),
             convert2tt_tensor(weight),

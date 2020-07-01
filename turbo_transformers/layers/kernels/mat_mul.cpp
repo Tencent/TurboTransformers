@@ -20,12 +20,20 @@
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/core/cuda_enforce.cuh"
 #endif
+#ifdef WITH_PERFTOOLS
+#include "turbo_transformers/core/profiler.h"
+#endif
 
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
-            bool b_trans, float alpha, core::Tensor* out, float beta) {
+            bool b_trans, float alpha, core::Tensor* out, float beta,
+            const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, A.device_type());
+#endif
   BlasInt a_cols = A.shape(-1);
   BlasInt a_rows = A.numel() / a_cols;
   BlasInt b_cols = B.shape(-1);
@@ -97,9 +105,17 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   } else {
     TT_THROW("device_type %d is not supported for MatMul", A.device_type());
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, A.device_type());
+#endif
 }
 void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
-                 bool b_trans, float alpha, core::Tensor* C, float beta) {
+                 bool b_trans, float alpha, core::Tensor* C, float beta,
+                 const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, A.device_type());
+#endif
   auto* A_shape = &A.shape(0);
   auto A_ndim = A.n_dim();
   auto* B_shape = &B.shape(0);
@@ -184,6 +200,9 @@ void BatchMatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
   } else {
     TT_THROW("device_type %d is not supported!", A.device_type());
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, A.device_type());
+#endif
 }
 
 }  // namespace kernels

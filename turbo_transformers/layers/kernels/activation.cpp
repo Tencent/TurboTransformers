@@ -16,6 +16,9 @@
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_activation_kernel.h"
 #endif
+#ifdef WITH_PERFTOOLS
+#include "turbo_transformers/core/profiler.h"
+#endif
 
 namespace turbo_transformers {
 namespace layers {
@@ -51,7 +54,6 @@ void CPUAddBiasActKernel<float, ActivationType::Gelu>(const float *bias,
   }
 }
 
-
 template <>
 void CPUAddBiasActKernel<float, ActivationType::Tanh>(const float *bias,
                                                       int64_t batch_size,
@@ -86,7 +88,12 @@ void CPUAddBiasActKernel<float, ActivationType::Relu>(const float *bias,
 }  // namespace
 
 template <typename T, ActivationType ActType>
-void AddBiasAct(const core::Tensor &bias_tensor, core::Tensor *out_tensor) {
+void AddBiasAct(const core::Tensor &bias_tensor, core::Tensor *out_tensor,
+                const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto &profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, bias_tensor.device_type());
+#endif
   auto *out = out_tensor->mutableData<T>();
   auto *bias = bias_tensor.data<T>();
 
@@ -106,16 +113,22 @@ void AddBiasAct(const core::Tensor &bias_tensor, core::Tensor *out_tensor) {
     TT_THROW("device_type %d is not supported for AddBiasAct",
              out_tensor->device_type());
   }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, bias_tensor.device_type());
+#endif
 }
 
 template void AddBiasAct<float, ActivationType::Tanh>(
-    const core::Tensor &bias_tensor, core::Tensor *out_tensor);
+    const core::Tensor &bias_tensor, core::Tensor *out_tensor,
+    const std::string name);
 
 template void AddBiasAct<float, ActivationType::Gelu>(
-    const core::Tensor &bias_tensor, core::Tensor *out_tensor);
+    const core::Tensor &bias_tensor, core::Tensor *out_tensor,
+    const std::string name);
 
 template void AddBiasAct<float, ActivationType::Relu>(
-    const core::Tensor &bias_tensor, core::Tensor *out_tensor);
+    const core::Tensor &bias_tensor, core::Tensor *out_tensor,
+    const std::string name);
 
 }  // namespace kernels
 }  // namespace layers

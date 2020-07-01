@@ -170,6 +170,51 @@ template void GPUAddBias<false>(const float* input1, const float* input2,
                                 const float* bias, int64_t m, int64_t n,
                                 cudaStream_t stream, float* output);
 
+template <typename Dtype>
+__global__ void concat_kernel(const Dtype* t1, const Dtype* t2,
+                              int64_t high_dim, int64_t t1_mid_size,
+                              int64_t t2_mid_size, int64_t low_dim,
+                              Dtype* out_data) {
+  int tid = threadIdx.x;  // hidden_size idx
+  int gid = blockIdx.x;   // batch_size idx
+  int out_mid_dim = t1_mid_size + t2_mid_size;
+  int out_high_idx = gid / out_mid_dim;
+  int out_mid_idx = gid % out_mid_dim;
+  int out_low_dix = tid;
+
+  if (out_mid_idx < t1_mid_size) {
+    // copy from t1
+    out_data[out_high_idx * out_mid_dim * low_dim + out_mid_idx * low_dim +
+             out_low_dix] = t1[out_high_idx * t1_mid_size * low_dim +
+                               out_mid_idx * low_dim + out_low_dix];
+  } else {
+    // copy from t2
+    out_data[out_high_idx * out_mid_dim * low_dim + out_mid_idx * low_dim +
+             out_low_dix] =
+        t2[out_high_idx * t2_mid_size * low_dim +
+           (out_mid_idx - t1_mid_size) * low_dim + out_low_dix];
+  }
+}
+
+template <typename Dtype>
+void GPUConcat(const Dtype* t1, const Dtype* t2, const int64_t high_dim,
+               const int64_t t1_mid_size, const int64_t t2_mid_size,
+               const int64_t low_dim, cudaStream_t stream, Dtype* out_data) {
+  assert(low_dim < 1024);
+  dim3 grid(high_dim * (t1_mid_size + t2_mid_size));
+  int block_size = std::min((int)low_dim, 1024);
+  dim3 block(block_size);
+  concat_kernel<<<grid, block, 0, stream>>>(
+      t1, t2, high_dim, t1_mid_size, t2_mid_size, low_dim,
+      out_data);  // m : high dim, n : low dim
+}
+
+template void GPUConcat<float>(const float* t1, const float* t2,
+                               const int64_t high_dim,
+                               const int64_t t1_mid_size,
+                               const int64_t t2_mid_size, const int64_t low_dim,
+                               cudaStream_t stream, float* out_data);
+
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers

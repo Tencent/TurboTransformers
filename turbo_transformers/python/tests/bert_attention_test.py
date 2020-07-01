@@ -75,7 +75,7 @@ def create_test(batch_size, seq_length):
             turbo_model = lambda: turbo_attention(input_tensor, attention_mask)
             turbo_attention_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turbo_model, use_cuda,
-                                      num_iter, use_profile=False)
+                                      num_iter)
             print(
                 f"BertAttention \"({batch_size},{seq_length:03})\" ",
                 f" {device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}"

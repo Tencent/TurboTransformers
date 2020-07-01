@@ -1,6 +1,6 @@
 # Build ONNX Runtime for benchmark
 FROM continuumio/miniconda3 as OnnxRTBuilder
-RUN apt-get update && apt-get install -y build-essential
+RUN apt-get update && apt-get install -y gfortran build-essential
 RUN /opt/conda/bin/conda install mklml cmake curl git numpy -c anaconda
 RUN mkdir /src && cd /src/ && git clone -v https://github.com/microsoft/onnxruntime.git &&\
     cd onnxruntime && git checkout v1.2.0 && git submodule update --init --recursive

@@ -11,9 +11,11 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
+#include <pybind11/stl.h>
 #include "absl/memory/memory.h"
 #include "loguru.hpp"
 #include "pybind11/pybind11.h"
+
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/config.h"
 #include "turbo_transformers/core/profiler.h"

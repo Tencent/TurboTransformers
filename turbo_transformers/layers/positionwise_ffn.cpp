@@ -41,10 +41,7 @@ void PositionwiseFeedForward::operator()(const core::Tensor& input_tensor,
   TT_ENFORCE_EQ(
       model_dim_weight, model_dim,
       "dense weight and input tensor should have the same model_dim.");
-#ifdef WITH_PERFTOOLS
-  auto& profile_ctx = core::Profiler::GetInstance();
-  profile_ctx.start_profile("PositionwiseFeedForward");
-#endif
+
   auto devType = input_tensor.device_type();
   auto devId = input_tensor.device_id();
 
@@ -52,9 +49,6 @@ void PositionwiseFeedForward::operator()(const core::Tensor& input_tensor,
   auto batch_size = input_tensor.shape(0);
   auto input_len = input_tensor.shape(1);
 
-#ifdef WITH_PERFTOOLS
-  profile_ctx.start_profile("ffn/Copy");
-#endif
   // allocate memory for temp data
   core::Tensor input_tensor_copy(nullptr);
   input_tensor_copy.Reshape<float>({batch_size, input_len, model_dim}, devType,
@@ -63,46 +57,22 @@ void PositionwiseFeedForward::operator()(const core::Tensor& input_tensor,
   temp_tensor.Reshape<float>({batch_size * input_len, d_ff}, devType, devId);
 
   // start computation
-  core::Copy<float>(input_tensor, input_tensor_copy);
+  core::Copy<float>(input_tensor, input_tensor_copy, "FFN/AddInputBias");
 
   output_tensor->Reshape<float>({batch_size, input_len, model_dim}, devType,
-                                devId);
-#ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("ffn/Copy");
-  profile_ctx.start_profile("ffn/LayerNorm");
-#endif
+                                devId, "FFN/Reshape");
   kernels::LayerNorm<float>(layer_norm_weight_, layer_norm_bias_,
-                            &input_tensor_copy);
-#ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("ffn/LayerNorm");
-  profile_ctx.start_profile("ffn/gemm0");
-#endif
+                            &input_tensor_copy, 1e-12, "FFN/LayerNorm");
   kernels::MatMul(input_tensor_copy, false, dense_weight_1_, is_trans_weight,
                   1.0,  // input (b*seq, model) X dense_weight_1_ (model_dim,
                         // d_ff) -> temp_tensor (B*seq, d_ff)
-                  &temp_tensor, 0.0);
-#ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("ffn/gemm0");
-  profile_ctx.start_profile("fnn/AddBiasAct");
-#endif
-  kernels::AddBiasAct<float, types::ActivationType::Relu>(dense_bias_1_,
-                                                          &temp_tensor);
-#ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("ffn/AddBiasAct");
-  profile_ctx.start_profile("ffn/gemm1");
-#endif
+                  &temp_tensor, 0.0, "FFN/gemm0");
+  kernels::AddBiasAct<float, types::ActivationType::Relu>(
+      dense_bias_1_, &temp_tensor, "FFN/AddBiasAct");
   kernels::MatMul(temp_tensor, false, dense_weight_2_, is_trans_weight, 1.0,
-                  &input_tensor_copy, 0.0);
-#ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("ffn/gemm1");
-  profile_ctx.start_profile("ffn/AddInputBias");
-#endif
+                  &input_tensor_copy, 0.0, "FFN/gemm1");
   kernels::AddInputBias(input_tensor, input_tensor_copy, dense_bias_2_,
-                        output_tensor);
-#ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("ffn/AddInputBias");
-  profile_ctx.end_profile("PositionwiseFeedForward");
-#endif
+                        output_tensor, "FFN/AddInputBias");
 }
 
 void PositionwiseFeedForward::EnforceShapeAndType() const {}

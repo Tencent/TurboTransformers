@@ -21,6 +21,9 @@
 #include <iostream>
 #include <stack>
 #include <unordered_map>
+#ifdef TT_WITH_CUDA
+#include "turbo_transformers/core/cuda_device_context.h"
+#endif
 #endif
 
 namespace turbo_transformers {
@@ -28,21 +31,52 @@ namespace core {
 #ifdef WITH_PERFTOOLS
 static bool gProfileEnabled = false;
 
+static bool comp(std::pair<std::string, double> a,
+                 std::pair<std::string, double> b) {
+  return a.second < b.second;
+}
+
 struct Profiler::ProfilerImpl {
-  void start_profile(const std::string& ctx_name) {
-    auto start = std::chrono::system_clock::now();
-    clock_stack_.push(start);
+  void start_profile(const std::string& ctx_name, DLDeviceType dev_type) {
+    if (kDLGPU == dev_type) {
+#ifdef TT_WITH_CUDA
+      cudaEvent_t start_event;
+      static auto stream = core::CUDADeviceContext::GetInstance().stream();
+      cudaEventCreate(&start_event);
+      cudaEventRecord(start_event, stream);
+      event_stack_.push(start_event);
+#endif
+    } else if (kDLCPU == dev_type) {
+      auto start = std::chrono::system_clock::now();
+      clock_stack_.push(start);
+    }
   }
-  void end_profile(const std::string& ctx_name) {
-    auto end = std::chrono::system_clock::now();
-    if (clock_stack_.empty()) TT_THROW("Profiler has no start time");
-    auto start = clock_stack_.top();
-    clock_stack_.pop();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    auto elapsed_time = double(duration.count()) *
-                        std::chrono::microseconds::period::num /
-                        std::chrono::microseconds::period::den;
+  void end_profile(const std::string& ctx_name, DLDeviceType dev_type) {
+    float elapsed_time;
+    if (kDLGPU == dev_type) {
+#ifdef TT_WITH_CUDA
+      cudaEvent_t stop_event;
+      cudaEventCreate(&stop_event);
+      static auto stream = core::CUDADeviceContext::GetInstance().stream();
+      cudaEventRecord(stop_event, stream);
+      cudaEventSynchronize(stop_event);
+      auto start_event = event_stack_.top();
+      event_stack_.pop();
+      cudaEventElapsedTime(&elapsed_time, start_event, stop_event);
+#endif
+    } else if (kDLCPU == dev_type) {
+      auto end = std::chrono::system_clock::now();
+      if (clock_stack_.empty())
+        TT_THROW("Profiler %s has no start time", ctx_name.c_str());
+      auto start = clock_stack_.top();
+      clock_stack_.pop();
+      auto duration =
+          std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+      elapsed_time = float(duration.count()) *
+                     std::chrono::microseconds::period::num /
+                     std::chrono::microseconds::period::den;
+    }
+
     if (timer_map_.find(ctx_name) != timer_map_.end()) {
       timer_map_[ctx_name] += elapsed_time;
     } else {
@@ -51,8 +85,16 @@ struct Profiler::ProfilerImpl {
   }
   void print_results() const {
     std::cerr << std::endl << profile_name_ << " Time line: " << std::endl;
+    std::vector<std::pair<std::string, double>> elems(timer_map_.begin(),
+                                                      timer_map_.end());
+    std::sort(elems.begin(), elems.end(), comp);
+    float total_elapsed = 0.;
     for (auto it = timer_map_.begin(); it != timer_map_.end(); ++it) {
-      std::cerr << it->first << " , " << it->second << std::endl;
+      total_elapsed += it->second;
+    }
+    for (auto it = elems.begin(); it != elems.end(); ++it) {
+      std::cerr << it->first << " , " << it->second << ", "
+                << it->second / total_elapsed * 100 << " % " << std::endl;
     }
   }
   void clear() {
@@ -60,6 +102,12 @@ struct Profiler::ProfilerImpl {
     while (!clock_stack_.empty()) {
       clock_stack_.pop();
     }
+
+#ifdef TT_WITH_CUDA
+    while (!event_stack_.empty()) {
+      event_stack_.pop();
+    }
+#endif
   }
   void set_name(const std::string& profile_name) {
     profile_name_ = profile_name;
@@ -68,15 +116,19 @@ struct Profiler::ProfilerImpl {
  private:
   std::unordered_map<std::string, double> timer_map_;
   std::stack<std::chrono::time_point<std::chrono::system_clock>> clock_stack_;
+#ifdef TT_WITH_CUDA
+  std::stack<cudaEvent_t> event_stack_;
+#endif
   std::string profile_name_;
 };
 
-void Profiler::start_profile(const std::string& ctx_name) {
-  if (gProfileEnabled) profiler_->start_profile(ctx_name);
+void Profiler::start_profile(const std::string& ctx_name,
+                             DLDeviceType dev_type) {
+  if (gProfileEnabled) profiler_->start_profile(ctx_name, dev_type);
 }
 
-void Profiler::end_profile(const std::string& ctx_name) {
-  if (gProfileEnabled) profiler_->end_profile(ctx_name);
+void Profiler::end_profile(const std::string& ctx_name, DLDeviceType dev_type) {
+  if (gProfileEnabled) profiler_->end_profile(ctx_name, dev_type);
 }
 
 void Profiler::print_results() const {

@@ -24,7 +24,9 @@
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/core/half.h"
 #include "turbo_transformers/core/memory.h"
-
+#ifdef WITH_PERFTOOLS
+#include "turbo_transformers/core/profiler.h"
+#endif
 namespace turbo_transformers {
 
 namespace core {
@@ -150,13 +152,20 @@ class Tensor {
 
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
   template <typename T>
-  T *Reshape(std::initializer_list<int64_t> shape_list,
-             DLDeviceType device_type, int device_id) {
+  T *Reshape(std::vector<int64_t> shape_list, DLDeviceType device_type,
+             int device_id, const std::string name = "Reshape") {
     // if Need Realloc
+#ifdef WITH_PERFTOOLS
+    auto &profile_ctx = core::Profiler::GetInstance();
+    profile_ctx.start_profile(name, device_type);
+#endif
     if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
       tensor_ = details::DLManagedTensorPtr(
           NewDLPackTensorT<T>(shape_list, device_type, device_id));
     }
+#ifdef WITH_PERFTOOLS
+    profile_ctx.end_profile(name, device_type);
+#endif
     return this->template mutableData<T>();
   }
 
@@ -212,12 +221,14 @@ class Tensor {
     double sum = 0.;
 
     if (device_type() == kDLCPU) {
+      os << "CPU\n";
       for (int i = 0; i < numel(); ++i) {
         sum += data<T>()[i];
         if (cnt-- >= 0 || numel() - i <= 10) os << data<T>()[i] << ", ";
       }
     } else if (device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
+      os << "GPU\n";
       auto n = numel();
       std::unique_ptr<T[]> cpu_data(new T[n]);
       Memcpy(cpu_data.get(), data<T>(), n * sizeof(T), MemcpyFlag::kGPU2CPU);
@@ -294,7 +305,7 @@ class Tensor {
  private:
   struct ReshapeNeedRealloc {
    public:
-    ReshapeNeedRealloc(const std::initializer_list<int64_t> &shape_list)
+    ReshapeNeedRealloc(const std::vector<int64_t> &shape_list)
         : shape_list_(shape_list) {}
 
     bool operator()(details::DLManagedTensorPtr &ptr) const {
@@ -321,7 +332,7 @@ class Tensor {
     }
 
    private:
-    const std::initializer_list<int64_t> &shape_list_;
+    const std::vector<int64_t> &shape_list_;
   };
 
   const DLTensor &to_dl_tensor() const {
@@ -331,22 +342,5 @@ class Tensor {
   details::TensorPayload tensor_;
 };
 
-struct TempTensor {
-  TempTensor() : cpu_tensor(nullptr), gpu_tensor(nullptr) {}
-
-  core::Tensor &GetTensor(DLContext context) {
-    if (context.device_type == kDLCPU) {
-      return cpu_tensor;
-    } else if (context.device_type == kDLGPU) {
-      return gpu_tensor;
-    } else {
-      TT_THROW("This device is not support.");
-    }
-  }
-
- private:
-  core::Tensor cpu_tensor;
-  core::Tensor gpu_tensor;
-};
 }  // namespace core
 }  // namespace turbo_transformers

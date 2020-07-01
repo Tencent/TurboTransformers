@@ -16,7 +16,9 @@
 #include <string>
 
 #ifdef WITH_PERFTOOLS
+#include <dlpack/dlpack.h>
 #include <memory>
+
 #include "macros.h"
 #endif
 
@@ -32,8 +34,9 @@ class Profiler {
     return instance;
   }
   void clear();
-  void start_profile(const std::string& ctx_name);
-  void end_profile(const std::string& ctx_name);
+  void start_profile(const std::string& ctx_name,
+                     DLDeviceType dev_type = kDLCPU);
+  void end_profile(const std::string& ctx_name, DLDeviceType dev_type = kDLCPU);
   void print_results() const;
   void enable(const std::string& profile_name);
   void disable();

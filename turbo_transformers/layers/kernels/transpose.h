@@ -34,7 +34,12 @@ namespace kernels {
     output_tensor = tf.transpose(output_tensor, [0, 2, 1, 3])
     return output_tensor
  * **/
-extern void TransposeForScore(core::Tensor* output, const core::Tensor& input);
+extern void TransposeForScore(core::Tensor* output, const core::Tensor& input,
+                              const std::string name = "TransposeForScore");
+
+extern void AddBiasTransposeForScore(
+    const core::Tensor& input, const core::Tensor& bias, core::Tensor* output,
+    const std::string name = "AddBiasTransposeForScore");
 
 extern void AddBiasTransposeForScore(const core::Tensor& input,
                                      const core::Tensor& bias,
@@ -43,9 +48,10 @@ extern void AddBiasTransposeForScore(const core::Tensor& input,
 // input: (batch_size, seq_length, 3, head_num, *size_per_head)
 // bias: (3, head_num, size_per_head)
 // output: (3, batch_size, num_attention_heads, seq_length, size_per_head)
-extern void SplitAddBiasTransposeForScore(core::Tensor* output,
-                                          const core::Tensor& input_tensor,
-                                          const core::Tensor& bias_tensor);
+extern void SplitAddBiasTransposeForScore(
+    core::Tensor* output, const core::Tensor& input_tensor,
+    const core::Tensor& bias_tensor,
+    const std::string name = "SplitAddBiasTransposeForScore");
 
 }  // namespace kernels
 }  // namespace layers

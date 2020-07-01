@@ -14,9 +14,9 @@
 #include "tensor.h"
 
 #ifdef TT_WITH_CUDA
-#include "turbo_transformers/core/cuda_allocator.h"
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
+#include "turbo_transformers/core/allocator.h"
 
 namespace turbo_transformers {
 namespace core {
@@ -25,13 +25,12 @@ static void DLManagedTensorDeletor(DLManagedTensor *self) {
     return;
   }
   if (self->dl_tensor.data != nullptr) {
-    if (self->dl_tensor.ctx.device_type == kDLCPU) {
-      free(self->dl_tensor.data);
-    } else if (self->dl_tensor.ctx.device_type == kDLGPU) {
-#ifdef TT_WITH_CUDA
-      CUDAAllocator &cuda_allocator = CUDAAllocator::GetInstance();
-      cuda_allocator.free(self->dl_tensor.data);
-#endif
+    if (self->dl_tensor.ctx.device_type == kDLCPU ||
+        self->dl_tensor.ctx.device_type == kDLGPU) {
+      // free(self->dl_tensor.data);
+      Allocator &allocator = Allocator::GetInstance();
+      allocator.free(self->dl_tensor.data, "bestfit",
+                     self->dl_tensor.ctx.device_type);
     }
   }
 
@@ -61,14 +60,10 @@ DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
 
   size_t numel = std::accumulate(shape_list.begin(), shape_list.end(), 1,
                                  std::multiplies<int64_t>());
-  if (device == kDLCPU) {
-    newTensor->dl_tensor.data = align_alloc(numel * (bits / 8));
-  } else if (device == kDLGPU) {
-#ifdef TT_WITH_CUDA
-    CUDAAllocator &cuda_allocator = CUDAAllocator::GetInstance();
+  if (device == kDLCPU || device == kDLGPU) {
     size_t size = numel * (bits / 8);
-    newTensor->dl_tensor.data = cuda_allocator.allocate(size);
-#endif
+    Allocator &allocator = Allocator::GetInstance();
+    newTensor->dl_tensor.data = allocator.allocate(size, "bestfit", device);
   } else {
     TT_THROW("only cpu and gpu are supported!");
   }

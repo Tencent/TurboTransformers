@@ -16,32 +16,34 @@
 
 #include <map>
 #include <memory>
-
+#include <unordered_map>
 #include "macros.h"
+#include "turbo_transformers/core/memory.h"
 
 namespace turbo_transformers {
 namespace core {
 
-class CUDAAllocator {
+class Allocator {
  public:
-  ~CUDAAllocator();
+  ~Allocator();
 
-  static CUDAAllocator &GetInstance() {
-    static CUDAAllocator instance;
+  static Allocator &GetInstance() {
+    static Allocator instance;
     return instance;
   }
 
-  void *allocate(size_t size);
+  void *allocate(size_t size, const std::string &strategy, DLDeviceType dev);
 
-  void free(void *memory);
+  void free(void *memory, const std::string &strategy, DLDeviceType dev);
 
  private:
-  CUDAAllocator();
+  Allocator();
+  struct BestFitAllocatorImpl;
+  std::unique_ptr<BestFitAllocatorImpl> bestfit_allocator_;
+  struct CachingAllocatorImpl;
+  std::unique_ptr<CachingAllocatorImpl> caching_allocator_;
 
-  struct AllocatorImpl;
-  std::unique_ptr<AllocatorImpl> allocator_;
-
-  DISABLE_COPY_AND_ASSIGN(CUDAAllocator);
+  DISABLE_COPY_AND_ASSIGN(Allocator);
 };
 
 }  // namespace core

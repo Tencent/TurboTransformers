@@ -58,7 +58,11 @@ def run_model(model, use_cuda, num_iter=50, use_profile=False):
 
 # for debug
 def show_tensor(T, info):
+    if T is None:
+        print(info, " None")
+        return
+    T = torch.clone(T)
     print(info, T.size())
-    print(T.view(-1)[0:10])
-    print(T.view(-1)[-10:])
-    print(torch.sum(T.view(-1)))
+    print(T.flatten()[0:10])
+    print(T.flatten()[-10:])
+    print(torch.sum(T.flatten()))
