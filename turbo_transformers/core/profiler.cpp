@@ -102,6 +102,7 @@ struct Profiler::ProfilerImpl {
     while (!clock_stack_.empty()) {
       clock_stack_.pop();
     }
+
 #ifdef TT_WITH_CUDA
     while (!event_stack_.empty()) {
       event_stack_.pop();

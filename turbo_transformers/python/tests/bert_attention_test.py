@@ -67,7 +67,7 @@ def create_test(batch_size, seq_length):
             device = "GPU" if use_cuda else "CPU"
             torch_model = lambda: torch_attention(input_tensor, attention_mask)
             torch_attention_result, torch_qps, torch_time_consume = \
-                test_helper.run_model(torch_model, use_cuda, num_iter)
+                test_helper.run_model(torch_model, use_cuda, num_iter, use_profile=False)
             print(
                 f"BertAttention \"({batch_size},{seq_length:03})\" ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")

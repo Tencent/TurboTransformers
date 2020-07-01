@@ -19,10 +19,10 @@ VERSION=$(cat ../CMakeLists.txt | grep TURBO_TRANSFORMERS_VERSION | \
 
 CUDA_VERSION=10.0
 DOCKER_BASE=${CUDA_VERSION}-cudnn7-devel-ubuntu18.04
-PYTORCH_VERSION=1.1.0
+PYTORCH_VERSION=1.5.0
 sed 's#IMAGE_BASE#nvidia/cuda:'${DOCKER_BASE}'#g' ./docker/Dockerfile_dev.gpu |
 sed 's#CUDA_VERSION#'${CUDA_VERSION}'#g'         |
 sed 's#PYTORCH_VERSION#'${PYTORCH_VERSION}'#g'    > Dockerfile.gpu
 
 docker build ${EXTRA_ARGS} \
-  -t ccr.ccs.tencentyun.com/mmspr/turbo_transformers:${VERSION}-cuda${DOCKER_BASE}-gpu-dev -f Dockerfile.gpu  .
+  -t thufeifeibear/turbo_transformers:${VERSION}-cuda${DOCKER_BASE}-gpu-dev -f Dockerfile.gpu  .
