@@ -28,9 +28,21 @@ def run_model(model, use_cuda, num_iter=50, use_profile=False):
         end = torch.cuda.Event(enable_timing=True)
         start.record()
 
+    if use_profile:
+        pr = cProfile.Profile()
+        pr.enable()
+
     with contexttimer.Timer() as t:
         for it in range(num_iter):
             result = model()
+
+    if use_profile:
+        pr.disable()
+        s = io.StringIO()
+        sortby = SortKey.CUMULATIVE
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
 
     if use_cuda:
         end.record()
