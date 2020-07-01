@@ -1,5 +1,4 @@
 ## turbo_transformers: a fast and user-friendly tool for transformer inference on CPU and GPU
-[Chinese Version](./README_cn.md)
 ![logo](./images/logo.jpeg)
 
 ### **make transformers serving fast by adding a turbo to your inference engine!**
@@ -43,14 +42,16 @@ Method 1：I want to unitest
 cd /workspace
 sh tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF
 # you can switch between Openblas and MKL by modifying this line in CMakeList.txt
-# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl]")
+# set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl, blis]")
+
 ```
 Method 2：I do not want to unitest
 ```
 cd /workspace
 mkdir -p build && cd build
 cmake .. -DWITH_GPU=OFF
-pip install -r `find . -name *whl`
+make -j 4
+pip install `find . -name *whl`
 ```
 3. Run benchmark (optional) in docker, compare with pytorch, torch-JIT, onnxruntime
 ```
@@ -66,7 +67,7 @@ sh tool/build_conda_package.sh
 
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
 ```
-*docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev*
+docker pull thufeifeibear/turbo_transformers:0.2.0-release-cpu-dev
 ```
 ### Installation on GPU
 ```
@@ -93,7 +94,7 @@ bash gpu_run_benchmark.sh
 ```
 *We also prepared a docker image containing GPU version of TurboTransformers.
 ```
-*docker pull thufeifeibear/turbo_transformers:0.2.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-release*
+docker pull thufeifeibear/turbo_transformers:0.2.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-release
 ```
 
 ### Usage
@@ -169,4 +170,4 @@ weight = torch.clone(torch.t(pooler_params['dense.weight']))
 
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
-Scan this [QR code](./images/namecode.pdf "qrcode") and our contactor as your WeChat friend.
+Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.

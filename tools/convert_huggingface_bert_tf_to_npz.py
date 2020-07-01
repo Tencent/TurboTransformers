@@ -11,7 +11,10 @@
 # permissions and limitations under the License.
 # See the AUTHORS file for names of contributors.
 
-from transformers import TFBertModel
+try:
+    from transformers import TFBertModel
+except ImportError:
+    print("please install tensorflow 2.0 by run `pip install tensorflow`")
 import numpy as np
 import sys
 
