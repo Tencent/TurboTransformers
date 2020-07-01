@@ -309,7 +309,6 @@ void MultiHeadedAttention::operator()(
     //+input + bias
     kernels::AddInputBias(*output, query_tensor, dense_bias_, output);
   }
-
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile("MultiHeadedAttention_" + attn_type, devtype);
 #endif

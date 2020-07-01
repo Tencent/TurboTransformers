@@ -48,7 +48,6 @@ void PositionwiseFeedForward::operator()(const core::Tensor& input_tensor,
   // input tensor size (batch_size, input_len, model_dim)
   auto batch_size = input_tensor.shape(0);
   auto input_len = input_tensor.shape(1);
-
   // allocate memory for temp data
   core::Tensor input_tensor_copy(nullptr);
   input_tensor_copy.Reshape<float>({batch_size, input_len, model_dim}, devType,

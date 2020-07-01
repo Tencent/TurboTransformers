@@ -46,6 +46,7 @@ def create_test(batch_size,
             self.head_count = 16
             self.model_dim = 1024  #self.model_dim should % self.head_count = 0
             self.size_per_head = int(self.model_dim / self.head_count)
+
             onmt_multi_headed_attention = MultiHeadedAttention(
                 self.head_count, self.model_dim)
             onmt_multi_headed_attention.eval()
@@ -154,6 +155,7 @@ def create_test(batch_size,
 
             onmt_multi_headed_attention_result, torch_qps, torch_time_consume = \
                 test_helper.run_model(onmt_model, use_cuda, num_iter) # return output, attns
+
             onmt_attns = onmt_multi_headed_attention_result[1]
             if post_add_input:
                 onmt_output = onmt_multi_headed_attention_result[0] + Q

@@ -80,7 +80,11 @@ git clone https://github.com/Tencent/TurboTransformers --recursive
 # You can modify the environment variables in the script to specify the cuda version and operating system version
 sh tools/build_docker_gpu.sh $PWD
 nvidia-docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=your_container_name REPOSITORY:TAG
+<<<<<<< HEAD
 # for example: nvidia-docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=turbo_gpu_env thufeifeibear:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
+=======
+# for example: nvidia-docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/turbo_transformers:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
+>>>>>>> 3b493ad0e4a61667ee3220a022da8642fcaa17ff
 ```
 
 2. Install pip package in docker and unitest test
@@ -129,6 +133,7 @@ Users can link turbo-transformers to your code through add_subdirectory.
 
 #### How to contribute new models
 [How to add a new layer](./turbo_transformers/layers/README.md)
+
 
 ## TODO
 Currently (June 2020), In the near futuer, we will add support for other models (Albert [Work In Progress], GPT2) and low-precision floating point (CPU int8, GPU FP16).
