@@ -1,7 +1,7 @@
-## turbo_transformers: a fast and user-friendly tool for transformer inference on CPU and GPU
+## turbo_transformers: a fast and user-friendly runtime for transformer inference on CPU and GPU
 ![logo](./images/logo.jpeg)
 
-<center>**make transformers serving fast by adding a turbo to your inference engine!**</center>
+<center>*Make transformers serving fast by adding a turbo to your inference engine!*</center>
 
 ### Background
 Transformer is the most critical alogrithm innovation in the NLP field in recent years. It brings higher model accuracy while introduces more calculations. The efficient deployment of online Transformer-based services faces enormous challenges. In order to make the costly Transformer online service more efficient, the WeChat AI open-sourced a Transformer inference acceleration tool called TurboTransformers, which has the following characteristics.

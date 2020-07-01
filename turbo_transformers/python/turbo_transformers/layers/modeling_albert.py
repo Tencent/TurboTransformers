@@ -191,3 +191,6 @@ class AlbertLayer(cxx.AlbertLayer):
                 f[f'encoder.layer.{layer_num}.intermediate.dense.weight']),
             _try_convert(
                 f[f'encoder.layer.{layer_num}.intermediate.dense.bias']))
+
+
+# TODO(jiaruifang) Add Albert Transformers
