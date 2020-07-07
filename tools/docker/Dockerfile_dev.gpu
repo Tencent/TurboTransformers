@@ -14,5 +14,5 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     pip install OpenNMT-py && \
     conda clean -afy
 
-RUN pip --no-cache-dir install contexttimer future transformers docopt
+RUN pip --no-cache-dir install contexttimer future transformers==3.0.2 docopt
 WORKDIR /workspace

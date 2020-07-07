@@ -24,6 +24,9 @@ The following table is a comparison of TurboTransformers and related work.
 | pytorch (CPU/GPU) | Medium/Medium | No | Yes | Easy |
 | **turbo-transformers (CPU/GPU)** | **Fastest/Fastest** | **No** | **Yes** | **Easy** |
 
+Supported Models
+
+[BERT](https://arxiv.org/abs/1810.04805), [ALBERT](https://arxiv.org/abs/1909.11942), [Transformer Decoder](https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py).
 
 ### Installation on CPU
 ```
@@ -80,11 +83,7 @@ git clone https://github.com/Tencent/TurboTransformers --recursive
 # You can modify the environment variables in the script to specify the cuda version and operating system version
 sh tools/build_docker_gpu.sh $PWD
 nvidia-docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=your_container_name REPOSITORY:TAG
-<<<<<<< HEAD
 # for example: nvidia-docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=turbo_gpu_env thufeifeibear:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
-=======
-# for example: nvidia-docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=jiarui_gpu_env ccr.ccs.tencentyun.com/mmspr/turbo_transformers:0.1.1-cuda9.0-ubuntu16.04-gpu-dev
->>>>>>> 3b493ad0e4a61667ee3220a022da8642fcaa17ff
 ```
 
 2. Install pip package in docker and unitest test
@@ -150,6 +149,7 @@ The diff mainly comes from Bert Output Layer. We use a approximate GELU algorith
 1. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
 2. June 2020 v0.2.1, TurboTransformers add BLIS as a BLAS option. Better performance on AMD CPU.
 3. June 2020 v0.3.0, TurboTransformers adds support for Transformer Decoder on CPU/GPU.
+4. June 2020 v0.3.1, TurboTransformers adds support for ALbert on CPU/GPU.
 
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.

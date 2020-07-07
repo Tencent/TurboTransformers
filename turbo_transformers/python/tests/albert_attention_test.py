@@ -1,3 +1,15 @@
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.
+# All rights reserved.
+# Licensed under the BSD 3-Clause License (the "License"); you may
+# not use this file except in compliance with the License. You may
+# obtain a copy of the License at
+# https://opensource.org/licenses/BSD-3-Clause
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" basis,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+# See the AUTHORS file for names of contributors.
 
 import turbo_transformers
 
@@ -23,7 +35,7 @@ def create_test(batch_size, seq_length):
 
             torch.set_grad_enabled(False)
             cfg = AlbertConfig(attention_probs_dropout_prob=0.0,
-                             hidden_dropout_prob=0.0)
+                               hidden_dropout_prob=0.0)
             torch_attention = AlbertAttention(cfg)
             torch_attention.eval()
             if use_cuda:
@@ -48,14 +60,16 @@ def create_test(batch_size, seq_length):
             torch_attention, turbo_attention, input_tensor, attention_mask = \
                 self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
-            torch_model = lambda: torch_attention(input_tensor, attention_mask)
+            torch_model = lambda: torch_attention(
+                input_tensor, attention_mask, output_attentions=True)
             torch_attention_result, torch_qps, torch_time_consume = \
                 test_helper.run_model(torch_model, use_cuda, num_iter)
             print(
                 f"AlbertAttention \"({batch_size},{seq_length:03})\" ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
-            turob_model = lambda: turbo_attention(input_tensor, attention_mask)
+            turob_model = lambda: turbo_attention(
+                input_tensor, attention_mask, output_attentions=True)
             turbo_self_attention_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turob_model, use_cuda,
                                       num_iter)
@@ -67,7 +81,12 @@ def create_test(batch_size, seq_length):
             self.assertTrue(
                 torch.max(
                     torch.abs(torch_attention_result[0] -
-                              turbo_self_attention_result)) < 1e-3
+                              turbo_self_attention_result[0])) < 1e-3
+                if use_cuda else 1e-4)
+            self.assertTrue(
+                torch.max(
+                    torch.abs(torch_attention_result[1] -
+                              turbo_self_attention_result[1])) < 1e-3
                 if use_cuda else 1e-4)
             with open(fname, "a") as fh:
                 fh.write(
@@ -80,7 +99,8 @@ def create_test(batch_size, seq_length):
                 turbo_transformers.config.is_compiled_with_cuda():
                 self.check_torch_and_turbo(use_cuda=True)
 
-    globals()[f"TestAlbertAtt{batch_size}_{seq_length:3}"] = TestAlbertAttention
+    globals(
+    )[f"TestAlbertAtt{batch_size}_{seq_length:3}"] = TestAlbertAttention
 
 
 with open(fname, "w") as fh:

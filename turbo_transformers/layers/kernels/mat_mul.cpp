@@ -44,7 +44,7 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
 
   BlasInt K_a = a_trans ? a_rows : a_cols;
   BlasInt K_b = b_trans ? b_cols : b_rows;
-  TT_ENFORCE_EQ(K_a, K_b, "matrix shape mismatch");
+  TT_ENFORCE_EQ(K_a, K_b, "matrix shape mismatch %d vs %d", K_a, K_b);
   TT_ENFORCE(common::is_same_device_ctx(A.device_ctx(), B.device_ctx()),
              "MatMul error: the device of A and B is different.");
   TT_ENFORCE(common::is_same_device_ctx(A.device_ctx(), out->device_ctx()),

@@ -26,8 +26,6 @@
 namespace turbo_transformers {
 namespace layers {
 
-static std::mutex mutex_;
-
 void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
                                core::Tensor* output, core::Tensor* attn,
