@@ -105,7 +105,7 @@ def create_test(batch_size, seq_length):
 
             print(turbo_result, torch_result[0])
             # TODO(jiaruifang) Error is too high. Does tensor core introduce more differences?
-            tolerate_error = 2e-2
+            tolerate_error = 1e-2
             self.assertTrue(
                 torch.max(torch.abs(torch_result[0] -
                                     turbo_result)) < tolerate_error)
@@ -116,10 +116,10 @@ def create_test(batch_size, seq_length):
                 )
 
         def test_layer(self):
-            self.check_torch_and_turbo(use_cuda=False)
-            # if torch.cuda.is_available() and \
-            #     turbo_transformers.config.is_compiled_with_cuda():
-            #     self.check_torch_and_turbo(use_cuda=True)
+            # self.check_torch_and_turbo(use_cuda=False)
+            if torch.cuda.is_available() and \
+                turbo_transformers.config.is_compiled_with_cuda():
+                self.check_torch_and_turbo(use_cuda=True)
 
     globals()[f"TestAlbertTransformers{batch_size}_{seq_length:03}"] = \
         TestAlbertTransformers
@@ -127,10 +127,9 @@ def create_test(batch_size, seq_length):
 
 with open("albert_transformers_res.txt", "w") as fh:
     fh.write(", torch, turbo_transformers\n")
-for batch_size in [1]:
-    for seq_length in [128]:
-        pass
-        # create_test(batch_size, seq_length)
+for batch_size in [1, 2]:
+    for seq_length in [10]:
+        create_test(batch_size, seq_length)
 
 if __name__ == '__main__':
     unittest.main()
