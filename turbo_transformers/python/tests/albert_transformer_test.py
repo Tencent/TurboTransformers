@@ -16,7 +16,7 @@ import unittest
 import sys
 import torch
 import turbo_transformers
-from transformers.modeling_albert import AlbertConfig, AlbertTransformer, AlbertModel
+from transformers.modeling_albert import AlbertConfig, AlbertModel
 import numpy
 import os
 
@@ -95,7 +95,7 @@ def create_test(batch_size, seq_length):
             torch_result, torch_qps, torch_time = \
                 test_helper.run_model(torch_model, use_cuda, num_iter)
 
-            print(f"AlbertTransformer \"({batch_size},{seq_length:03})\" ",
+            print(f"AlbertModel \"({batch_size},{seq_length:03})\" ",
                   f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
             # print(turbo_result[-1])
@@ -113,9 +113,9 @@ def create_test(batch_size, seq_length):
 
         def test_layer(self):
             self.check_torch_and_turbo(use_cuda=False)
-            # if torch.cuda.is_available() and \
-            #     turbo_transformers.config.is_compiled_with_cuda():
-            #     self.check_torch_and_turbo(use_cuda=True)
+            if torch.cuda.is_available() and \
+                turbo_transformers.config.is_compiled_with_cuda():
+                self.check_torch_and_turbo(use_cuda=True)
 
     globals()[f"TestAlbertModel{batch_size}_{seq_length:03}"] = \
         TestAlbertModel
