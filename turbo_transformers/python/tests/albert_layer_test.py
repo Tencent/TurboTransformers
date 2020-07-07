@@ -59,8 +59,8 @@ def create_test(batch_size, seq_length):
             self.init_data(use_cuda=use_cuda)
             device = "GPU" if use_cuda else "CPU"
             num_iter = 2
-            turbo_model = lambda: self.turbo_layer(self.input_tensor, self.
-                                                   attention_mask)
+            turbo_model = lambda: self.turbo_layer(
+                self.input_tensor, self.attention_mask, output_attentions=True)
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
 
@@ -69,21 +69,24 @@ def create_test(batch_size, seq_length):
                 f"{device} TurboTransform QPS,  {turbo_qps}, time, {turbo_time}"
             )
 
-            torch_model = lambda: self.torch_layer(self.input_tensor, self.
-                                                   attention_mask)
+            torch_model = lambda: self.torch_layer(
+                self.input_tensor, self.attention_mask, output_attentions=True)
             torch_result, torch_qps, torch_time = \
                 test_helper.run_model(torch_model, use_cuda, num_iter)
 
             print(f"AlbertLayer \"({batch_size},{seq_length:03})\" ",
                   f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
-            # print(turbo_result, torch_result[0])
+            # print(turbo_result - torch_result[0])
             # TODO(jiaruifang) Error is too high. Does tensor core introduce more differences?
-            tolerate_error = 2e-2
+            cpu_tolerate_error = 1e-5
+            gpu_tolerate_error = 1e-3
             self.assertTrue(
-                torch.max(torch.abs(torch_result[0] -
-                                    turbo_result)) < tolerate_error)
-
+                torch.max(torch.abs(torch_result[0] - turbo_result[0])) <
+                gpu_tolerate_error if use_cuda else cpu_tolerate_error)
+            self.assertTrue(
+                torch.max(torch.abs(torch_result[1] - turbo_result[1])) <
+                gpu_tolerate_error if use_cuda else cpu_tolerate_error)
             with open("albert_layer_res.txt", "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {torch_qps}, {torch_qps}\n"

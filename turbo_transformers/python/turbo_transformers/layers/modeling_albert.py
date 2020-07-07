@@ -25,12 +25,14 @@ from transformers.modeling_albert import AlbertTransformer as TorchAlbertTransfo
 from transformers.modeling_albert import AlbertAttention as TorchAlbertAttention
 from transformers.modeling_albert import AlbertLayer as TorchAlbertLayer
 from transformers.modeling_albert import AlbertLayerGroup as TorchAlbertLayerGroup
+from transformers.modeling_albert import AlbertModel as TorchAlbertModel
 import torch
+from torch import nn
 import enum
 
 __all__ = [
-    "AlbertEmbeddings", "AlbertTransformer", "AlbertAttention",
-    "AlbertLayerGroup", "AlbertLayer"
+    "AlbertEmbeddings", "AlbertAttention", "AlbertLayerGroup", "AlbertLayer",
+    "AlbertTransformer", "AlbertModel"
 ]
 ALBERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
     'albert-base': "",
@@ -38,6 +40,30 @@ ALBERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
     'albert-xlarge': "",
     'albert-xxlarge': "",
 }
+
+
+def get_head_mask(head_mask,
+                  num_hidden_layers: int,
+                  is_attention_chunked: bool = False):
+    """
+    # Prepare head mask if needed
+    # 1.0 in head_mask indicate we keep the head
+    attention_probs has shape bsz x n_heads x N x N
+    Arguments:
+        head_mask: torch.Tensor or None: has shape [num_heads] or [num_hidden_layers x num_heads]
+        num_hidden_layers: int
+    Returns:
+            Tensor of shape shape [num_hidden_layers x batch x num_heads x seq_length x seq_length]
+            or list with [None] for each layer
+    """
+    if head_mask is not None:
+        head_mask = self._convert_head_mask_to_5d(head_mask, num_hidden_layers)
+        if is_attention_chunked is True:
+            head_mask = head_mask.unsqueeze(-1)
+    else:
+        head_mask = [None] * num_hidden_layers
+
+    return head_mask
 
 
 def _try_convert(t):
@@ -77,8 +103,11 @@ class AlbertEmbeddings(cxx.BERTEmbedding):
                  input_ids: AnyTensor,
                  position_ids: AnyTensor,
                  token_type_ids: AnyTensor,
+                 inputs_embeds: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None):
+        if inputs_embeds is not None:
+            raise ("inputs_embeds must be None")
         input_ids = _try_convert(input_ids)
         position_ids = _try_convert(position_ids)
         token_type_ids = _try_convert(token_type_ids)
@@ -98,11 +127,11 @@ class AlbertEmbeddings(cxx.BERTEmbedding):
                                 params['LayerNorm.bias'])
 
 
-#AlbertAttention seems like a combination of AlbertAttention and AlbertOutput , So just need a small modification.
 class AlbertAttention(cxx.BertAttention):
     def __call__(self,
                  input_tensor: AnyTensor,
                  attention_mask: AnyTensor,
+                 output_attentions: Optional[bool] = False,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None):
         input_tensor = _try_convert(input_tensor)
@@ -111,12 +140,14 @@ class AlbertAttention(cxx.BertAttention):
         attn_probs = cxx.Tensor.create_empty()
         super(AlbertAttention, self).__call__(input_tensor, attention_mask,
                                               output, attn_probs, False)
-        return convert_returns_as_type(output, return_type)
+        return (convert_returns_as_type(output, return_type),
+                convert_returns_as_type(
+                    attn_probs, return_type)) if output_attentions else (
+                        convert_returns_as_type(output, return_type), )
 
     @staticmethod
     def from_torch(attention: TorchAlbertAttention):
         params = {k: v for k, v in attention.named_parameters()}
-
         with torch.no_grad():
             # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
             qkv_weight = torch.clone(
@@ -135,7 +166,6 @@ class AlbertAttention(cxx.BertAttention):
                 convert2tt_tensor(params['LayerNorm.weight']),
                 convert2tt_tensor(params['LayerNorm.bias']),
                 attention.num_attention_heads)
-
             return att
 
 
@@ -146,51 +176,277 @@ class AlbertLayer(cxx.AlbertLayer):
         super(AlbertLayer, self).__init__(ffn, ffn_bias, ffn_output,
                                           ffn_ouput_bias, fl, fl_bias)
 
-    def __call__(self,
-                 input_tensor: AnyTensor,
-                 attention_mask: AnyTensor,
-                 return_type: Optional[ReturnType] = None,
-                 attention_output: Optional[cxx.Tensor] = None,
-                 hidden_output: Optional[cxx.Tensor] = None,
-                 output: Optional[cxx.Tensor] = None):
+    def __call__(
+            self,
+            input_tensor: AnyTensor,
+            attention_mask: AnyTensor,
+            head_mask: AnyTensor = None,
+            output_attentions: Optional[bool] = False,
+            output_hidden_states: Optional[
+                bool] = False,  # a useless parameter in transformers v3.0.2
+            return_type: Optional[ReturnType] = ReturnType.TORCH,
+            attention_output: Optional[AnyTensor] = None):
+        #TODO(jiaruifang) soldom see users use head_mask, so I am too lazy to add a head_mask.
+        if head_mask is not None:
+            raise ("head mask must be None")
+        attention_output = _create_empty_if_none(attention_output)
         attention_output = self.attention(
             input_tensor,
             attention_mask,
+            output_attentions=output_attentions,
             return_type=ReturnType.turbo_transformers,
             output=attention_output)
         attention_output = _try_convert(attention_output)
-        hidden_output = _create_empty_if_none(hidden_output)
-        output = _create_empty_if_none(output)
-        super(AlbertLayer, self).__call__(attention_output, hidden_output,
-                                          output)
-        return convert_returns_as_type(output, return_type)
+        hidden_output = _create_empty_if_none(None)
+        hidden_states = _create_empty_if_none(None)
+        super(AlbertLayer, self).__call__(attention_output[0], hidden_output,
+                                          hidden_states)
+        #return convert_returns_as_type(output, return_type)
+        return (convert_returns_as_type(hidden_states, return_type),
+                convert_returns_as_type(attention_output[1], return_type)
+                ) if output_attentions else (convert_returns_as_type(
+                    hidden_states, return_type), )
 
     @staticmethod
-    def from_torch(intermediate: TorchAlbertLayer):
-        intermediate_params = _to_param_dict_naive(intermediate)
-        weight = torch.clone(
-            torch.t(intermediate_params["ffn.weight"]).contiguous())
-        weight_output = torch.clone(
-            torch.t(intermediate_params["ffn_output.weight"]).contiguous())
+    def from_torch(torch_albert_layer: TorchAlbertLayer):
+        # print('Inside AlbertLayer', torch_albert_layer)
+        ffn_params = _to_param_dict_naive(torch_albert_layer.ffn)
+        ffn_output_params = _to_param_dict_naive(torch_albert_layer.ffn_output)
+        full_layer_norm_params = _to_param_dict_naive(
+            torch_albert_layer.full_layer_layer_norm)
+        # print("all parameters")
+        # for k, v in torch_albert_layer.named_parameters():
+        #     print(k)
+        # print("ffn_params parameters")
+        # print(ffn_params.keys())
+        # print("ffn_output_params parameters")
+        # print(ffn_output_params.keys())
+        # print("full_layer_norm_params parameters")
+        # print(full_layer_norm_params.keys())
+
+        ffn_weight = torch.clone(torch.t(ffn_params["weight"]).contiguous())
+        ffn_output_weight = torch.clone(
+            torch.t(ffn_output_params["weight"]).contiguous())
         return AlbertLayer(
-            AlbertAttention.from_torch(intermediate.attention),
-            convert2tt_tensor(weight),
-            convert2tt_tensor(intermediate_params['ffn.bias']),
-            convert2tt_tensor(weight_output),
-            convert2tt_tensor(intermediate_params['ffn_output.weight']),
-            convert2tt_tensor(
-                intermediate_params['full_layer_layer_norm.weight']),
-            convert2tt_tensor(
-                intermediate_params['full_layer_layer_norm.bias']))
+            AlbertAttention.from_torch(torch_albert_layer.attention),
+            convert2tt_tensor(ffn_weight),
+            convert2tt_tensor(ffn_params['bias']),
+            convert2tt_tensor(ffn_output_weight),
+            convert2tt_tensor(ffn_output_params['bias']),
+            convert2tt_tensor(full_layer_norm_params['weight']),
+            convert2tt_tensor(full_layer_norm_params['bias']))
 
     @staticmethod
     def from_npz(file_name: str, layer_num: int):
-        f = np.load(file_name)
-        return BertIntermediate(
-            _try_convert(
-                f[f'encoder.layer.{layer_num}.intermediate.dense.weight']),
-            _try_convert(
-                f[f'encoder.layer.{layer_num}.intermediate.dense.bias']))
+        raise ("Not Implemented")
+
+
+class AlbertLayerGroup:
+    def __init__(self, layers: Sequence[AlbertLayer]):
+        self.albert_layers = layers
+
+    def __call__(
+            self,
+            hidden_states: AnyTensor,
+            attention_mask: AnyTensor = None,
+            head_mask: AnyTensor = None,
+            output_attentions: bool = False,
+            output_hidden_states: bool = False,
+            return_type: Optional[ReturnType] = ReturnType.turbo_transformers,
+            outputs: Optional[cxx.Tensor] = None):
+        outputs = _create_empty_if_none(outputs)
+        layer_hidden_states = ()
+        layer_attentions = ()
+
+        for layer_index, albert_layer in enumerate(self.albert_layers):
+            layer_output = albert_layer(
+                hidden_states,
+                attention_mask,
+                #head_mask[layer_index],
+                # TODO(jiaruifang) head_mask must be None
+                head_mask=None)
+            hidden_states = layer_output  #[0] TODO(jiaruifang) return attention
+
+            # if output_attentions:
+            #     layer_attentions = layer_attentions + (layer_output[1],)
+
+            # if output_hidden_states:
+            #     layer_hidden_states = layer_hidden_states + (hidden_states,)
+
+        outputs = hidden_states
+        # if output_hidden_states:
+        #     outputs = outputs + (layer_hidden_states,)
+        # if output_attentions:
+        #     outputs = outputs + (layer_attentions,)
+        return convert_returns_as_type(
+            outputs, return_type
+        )  # last-layer hidden state, (layer hidden states), (layer attentions)
+
+    @staticmethod
+    def from_torch(torch_layer_group: TorchAlbertLayerGroup):
+        albertlayergroup = [
+            AlbertLayer.from_torch(layer)
+            for layer in torch_layer_group.albert_layers
+        ]
+        return AlbertLayerGroup(albertlayergroup)
 
 
 # TODO(jiaruifang) Add Albert Transformers
+class AlbertTransformer:
+    """
+    huggingface/transformer v3.0
+    https://github.com/huggingface/transformers/blob/58cca47c16149e43d1b516623d59e3c5d97f695e/src/transformers/modeling_albert.py#L316
+    """
+    def __init__(self, embedding_hidden_mapping_in: nn.Linear,
+                 albert_layer_groups: AlbertLayerGroup):
+        self.embedding_hidden_mapping_in = embedding_hidden_mapping_in
+        self.albert_layer_groups = albert_layer_groups
+
+    def __call__(self,
+                 config,
+                 hidden_states: AnyTensor,
+                 attention_mask: AnyTensor,
+                 head_mask: AnyTensor = None,
+                 output_attentions: bool = False,
+                 output_hidden_states: bool = False,
+                 return_type: Optional[ReturnType] = None,
+                 output: Optional[cxx.Tensor] = None):
+        if head_mask is not None:
+            raise ("head_mask must be None")
+        self.config = config
+        output = _create_empty_if_none(output)
+        hidden_states = self.embedding_hidden_mapping_in(hidden_states)
+        all_attentions = ()
+        if output_hidden_states:
+            all_hidden_states = (hidden_states, )
+        for i in range(self.config.num_hidden_layers):
+            # Number of layers in a hidden group
+            layers_per_group = int(self.config.num_hidden_layers /
+                                   self.config.num_hidden_groups)
+
+            # Index of the hidden group
+            group_idx = int(i / (self.config.num_hidden_layers /
+                                 self.config.num_hidden_groups))
+
+            layer_group_output = self.albert_layer_groups[group_idx](
+                hidden_states,
+                attention_mask,
+                None,
+                # TODO(jiaruifang) add head_mask
+                # head_mask[group_idx * layers_per_group : (group_idx + 1) * layers_per_group],
+                output_attentions,
+                output_hidden_states,
+            )
+            hidden_states = layer_group_output  #[0] TODO(jiaruifang) return more parameters
+
+            # if output_attentions:
+            #     all_attentions = all_attentions + layer_group_output[-1]
+
+            # if output_hidden_states:
+            #     all_hidden_states = all_hidden_states + (hidden_states,)
+
+        #TODO
+        output = hidden_states
+        # if output_hidden_states:
+        #     outputs = outputs + (all_hidden_states,)
+        # if output_attentions:
+        #     outputs = outputs + (all_attentions,)
+        return convert_returns_as_type(output, return_type)
+
+    @staticmethod
+    def from_torch(torch_transformer_model: TorchAlbertTransformer):
+        albert_layer_groups = [
+            AlbertLayerGroup.from_torch(albert_layer_group) for
+            albert_layer_group in torch_transformer_model.albert_layer_groups
+        ]
+        return AlbertTransformer(
+            torch_transformer_model.embedding_hidden_mapping_in,
+            albert_layer_groups)
+
+
+class AlbertModel:
+    """
+    huggingface/transformer v3.0
+    https://github.com/huggingface/transformers/blob/master/src/transformers/modeling_albert.py#L442
+    """
+    def __init__(self, embeddings: AlbertEmbeddings,
+                 encoder: AlbertTransformer, pooler: nn.Linear):
+        self.embeddings = embeddings
+        self.encoder = encoder
+        self.pooler = pooler
+        self.pooler_activation = nn.Tanh()
+
+    def __call__(self,
+                 config,
+                 input_ids=None,
+                 attention_mask: Optional[AnyTensor] = None,
+                 token_type_ids: Optional[AnyTensor] = None,
+                 position_ids: Optional[AnyTensor] = None,
+                 head_mask=None,
+                 inputs_embeds=None,
+                 output_attentions=None,
+                 output_hidden_states=None,
+                 output: Optional[AnyTensor] = None,
+                 return_type: Optional[ReturnType] = None):
+        self.config = config
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_hidden_states = (output_hidden_states
+                                if output_hidden_states is not None else
+                                self.config.output_hidden_states)
+
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError(
+                "You cannot specify both input_ids and inputs_embeds at the same time"
+            )
+        elif input_ids is not None:
+            input_shape = input_ids.size()
+        elif inputs_embeds is not None:
+            input_shape = inputs_embeds.size()[:-1]
+        else:
+            raise ValueError(
+                "You have to specify either input_ids or inputs_embeds")
+
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+
+        if attention_mask is None:
+            attention_mask = torch.ones(input_shape, device=device)
+        if token_type_ids is None:
+            token_type_ids = torch.zeros(input_shape,
+                                         dtype=torch.long,
+                                         device=device)
+
+        extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+        extended_attention_mask = extended_attention_mask.to(
+            dtype=torch.float32)  # fp16 compatibility
+        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+        head_mask = get_head_mask(head_mask, self.config.num_hidden_layers)
+
+        embedding_output = self.embeddings(input_ids,
+                                           position_ids=position_ids,
+                                           token_type_ids=token_type_ids,
+                                           inputs_embeds=inputs_embeds)
+        encoder_outputs = self.encoder(
+            self.config,
+            embedding_output,
+            attention_mask=extended_attention_mask,
+            head_mask=None,  #TODO(jiaruifang) head_mask,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+        )
+
+        sequence_output = encoder_outputs  #TODO(jiaruifang) [0]
+
+        # pooled_output = self.pooler_activation(self.pooler(sequence_output[:, 0]))
+
+        # outputs = (sequence_output, pooled_output) + encoder_outputs[
+        #     1:
+        # ]  # add hidden_states and attentions if they are here
+        return sequence_output
+
+    @staticmethod
+    def from_torch(torch_model: TorchAlbertModel):
+        return AlbertModel(
+            AlbertEmbeddings.from_torch(torch_model.embeddings),
+            #   torch_model.embeddings,
+            AlbertTransformer.from_torch(torch_model.encoder),
+            torch_model.pooler)
