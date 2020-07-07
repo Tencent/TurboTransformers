@@ -70,12 +70,6 @@ def create_test(batch_size, seq_length):
                                               size=(batch_size, seq_length),
                                               device=self.test_device)
 
-            self.attention_mask = torch.ones((batch_size, seq_length),
-                                             dtype=torch.float32,
-                                             device=self.test_device)
-            self.attention_mask = self.attention_mask[:, None, None, :]
-            self.attention_mask = (1.0 - self.attention_mask) * -10000.0
-
             self.turbo_model = turbo_transformers.AlbertModel.from_torch(
                 self.torch_model)
 
@@ -83,8 +77,10 @@ def create_test(batch_size, seq_length):
             self.init_data(use_cuda=use_cuda)
             device = "GPU" if use_cuda else "CPU"
             num_iter = 2
-            turbo_model = lambda: self.turbo_model(self.cfg, self.input_tensor,
-                                                   self.attention_mask)
+            turbo_model = lambda: self.turbo_model(self.cfg,
+                                                   self.input_tensor,
+                                                   attention_mask=None,
+                                                   head_mask=None)
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
 
@@ -102,7 +98,7 @@ def create_test(batch_size, seq_length):
             print(f"AlbertTransformer \"({batch_size},{seq_length:03})\" ",
                   f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
-            print(turbo_result[-1])
+            # print(turbo_result[-1])
             # print(turbo_result, torch_result[0])
             # TODO(jiaruifang) Error is too high. Does tensor core introduce more differences?
             tolerate_error = 1e-2
@@ -128,7 +124,7 @@ def create_test(batch_size, seq_length):
 with open("albert_model_res.txt", "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 for batch_size in [1, 2]:
-    for seq_length in [10]:
+    for seq_length in [10, 60, 120]:
         create_test(batch_size, seq_length)
 
 if __name__ == '__main__':
