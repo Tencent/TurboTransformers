@@ -27,7 +27,7 @@
 namespace turbo_transformers {
 namespace layers {
 namespace kernels {
-static constexpr float g_epsilon = 1e-12;
+// static constexpr float g_epsilon = 1e-12;
 
 template <typename T>
 void LayerNorm(const core::Tensor& gamma, const core::Tensor& beta,
