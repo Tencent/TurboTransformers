@@ -49,7 +49,7 @@ def get_head_mask(head_mask,
 
 
 def create_test(batch_size, seq_length):
-    class TestAlbertTransformers(unittest.TestCase):
+    class TestAlbertModel(unittest.TestCase):
         def init_data(self, use_cuda: bool) -> None:
             self.test_device = torch.device('cuda:0') if use_cuda else \
                 torch.device('cpu:0')
@@ -92,8 +92,7 @@ def create_test(batch_size, seq_length):
                 f"AlbertLayer \"({batch_size},{seq_length:03})\" ",
                 f"{device} TurboTransform QPS,  {turbo_qps}, time, {turbo_time}"
             )
-            # head_mask = None
-            # head_mask = get_head_mask(head_mask, self.cfg.num_hidden_layers)
+
             torch_model = lambda: self.torch_model(input_ids=self.input_tensor,
                                                    attention_mask=None,
                                                    head_mask=None)
@@ -103,29 +102,30 @@ def create_test(batch_size, seq_length):
             print(f"AlbertTransformer \"({batch_size},{seq_length:03})\" ",
                   f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
-            print(turbo_result, torch_result[0])
+            print(turbo_result[-1])
+            # print(turbo_result, torch_result[0])
             # TODO(jiaruifang) Error is too high. Does tensor core introduce more differences?
             tolerate_error = 1e-2
             self.assertTrue(
                 torch.max(torch.abs(torch_result[0] -
-                                    turbo_result)) < tolerate_error)
+                                    turbo_result[0])) < tolerate_error)
 
-            with open("albert_transformers_res.txt", "a") as fh:
+            with open("albert_model_res.txt", "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {torch_qps}, {torch_qps}\n"
                 )
 
         def test_layer(self):
-            # self.check_torch_and_turbo(use_cuda=False)
-            if torch.cuda.is_available() and \
-                turbo_transformers.config.is_compiled_with_cuda():
-                self.check_torch_and_turbo(use_cuda=True)
+            self.check_torch_and_turbo(use_cuda=False)
+            # if torch.cuda.is_available() and \
+            #     turbo_transformers.config.is_compiled_with_cuda():
+            #     self.check_torch_and_turbo(use_cuda=True)
 
-    globals()[f"TestAlbertTransformers{batch_size}_{seq_length:03}"] = \
-        TestAlbertTransformers
+    globals()[f"TestAlbertModel{batch_size}_{seq_length:03}"] = \
+        TestAlbertModel
 
 
-with open("albert_transformers_res.txt", "w") as fh:
+with open("albert_model_res.txt", "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 for batch_size in [1, 2]:
     for seq_length in [10]:
