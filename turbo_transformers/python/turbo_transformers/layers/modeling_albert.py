@@ -27,6 +27,7 @@ from transformers.modeling_albert import AlbertLayer as TorchAlbertLayer
 from transformers.modeling_albert import AlbertLayerGroup as TorchAlbertLayerGroup
 from transformers.modeling_albert import AlbertModel as TorchAlbertModel
 import torch
+from .utils import get_head_mask
 from torch import nn
 import enum
 
@@ -34,36 +35,6 @@ __all__ = [
     "AlbertEmbeddings", "AlbertAttention", "AlbertLayerGroup", "AlbertLayer",
     "AlbertTransformer", "AlbertModel"
 ]
-ALBERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
-    'albert-base': "",
-    'albert-large': "",
-    'albert-xlarge': "",
-    'albert-xxlarge': "",
-}
-
-
-def get_head_mask(head_mask,
-                  num_hidden_layers: int,
-                  is_attention_chunked: bool = False):
-    """
-    # Prepare head mask if needed
-    # 1.0 in head_mask indicate we keep the head
-    attention_probs has shape bsz x n_heads x N x N
-    Arguments:
-        head_mask: torch.Tensor or None: has shape [num_heads] or [num_hidden_layers x num_heads]
-        num_hidden_layers: int
-    Returns:
-            Tensor of shape shape [num_hidden_layers x batch x num_heads x seq_length x seq_length]
-            or list with [None] for each layer
-    """
-    if head_mask is not None:
-        head_mask = self._convert_head_mask_to_5d(head_mask, num_hidden_layers)
-        if is_attention_chunked is True:
-            head_mask = head_mask.unsqueeze(-1)
-    else:
-        head_mask = [None] * num_hidden_layers
-
-    return head_mask
 
 
 def _try_convert(t):

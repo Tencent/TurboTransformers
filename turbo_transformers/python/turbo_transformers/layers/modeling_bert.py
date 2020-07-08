@@ -140,7 +140,7 @@ class BertOutput(cxx.BertOutput):
 class BertAttention(cxx.BertAttention):
     def __call__(self,
                  input_tensor: AnyTensor,
-                 attention_mask: AnyTensor,
+                 attention_mask: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None,
                  is_trans_weight: Optional[cxx.Tensor] = False):
@@ -151,7 +151,7 @@ class BertAttention(cxx.BertAttention):
         return (context_layer, attention_probs)
         """
         input_tensor = try_convert(input_tensor)
-        attention_mask = try_convert(attention_mask)
+        attention_mask = try_convert(create_empty_if_none(attention_mask))
         output = create_empty_if_none(output)
         attn_probs = cxx.Tensor.create_empty()
         super(BertAttention,
@@ -215,7 +215,7 @@ class BertLayer:
 
     def __call__(self,
                  hidden_states: AnyTensor,
-                 attention_mask: AnyTensor,
+                 attention_mask: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None,
                  attention_output: Optional[cxx.Tensor] = None,
                  intermediate_output: Optional[cxx.Tensor] = None,
@@ -256,7 +256,7 @@ class BertEncoder:
 
     def __call__(self,
                  hidden_states: AnyTensor,
-                 attention_mask: AnyTensor,
+                 attention_mask: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None,
                  attention_output: Optional[cxx.Tensor] = None,
                  intermediate_output: Optional[cxx.Tensor] = None,

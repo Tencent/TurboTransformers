@@ -16,6 +16,7 @@ from .modeling_bert import BertEmbeddings, BertIntermediate, BertOutput, BertAtt
 
 from .modeling_albert import AlbertEmbeddings, AlbertAttention, AlbertLayer, AlbertTransformer, AlbertModel
 from .modeling_decoder import MultiHeadedAttention, PositionwiseFeedForward, TransformerDecoderLayer, TransformerDecoder
+from .modeling_roberta import RobertaModel
 from .return_type import ReturnType
 
 __all__ = [
@@ -24,5 +25,6 @@ __all__ = [
     'SequencePool', 'PoolingType', 'BertModelWithPooler',
     'MultiHeadedAttention', 'PositionwiseFeedForward', 'AlbertLayer',
     'AlbertEmbeddings', 'AlbertAttention', 'AlbertTransformer', 'AlbertModel',
-    'PositionwiseFeedForward', 'TransformerDecoderLayer', 'TransformerDecoder'
+    'PositionwiseFeedForward', 'TransformerDecoderLayer', 'TransformerDecoder',
+    'RobertaModel'
 ]
