@@ -401,10 +401,9 @@ class BertModelNoPooler:
             token_type_ids=token_type_ids,
             return_type=ReturnType.turbo_transformers)
 
-        encoder_outputs = self.encoder(
-            hidden_states=hidden_cache,
-            attention_mask=extended_attention_masks,
-            return_type=ReturnType.turbo_transformers)
+        encoder_outputs = self.encoder(hidden_states=hidden_cache,
+                                       attention_mask=extended_attention_masks,
+                                       return_type=return_type)
         return encoder_outputs
 
     @staticmethod
@@ -457,9 +456,10 @@ class BertModel:
             pooling_type,
             return_type=ReturnType.turbo_transformers)
 
+        sequence_output = encoder_outputs[0]
         self.seq_pool = SequencePool(PoolingMap[pooling_type])
         sequence_output = self.seq_pool(
-            input_tensor=encoder_outputs[0],
+            input_tensor=sequence_output,
             return_type=ReturnType.turbo_transformers)
         pooler_output = self.pooler(sequence_output, return_type,
                                     pooler_output)

@@ -130,7 +130,7 @@ class RobertaModel:
             return_type=ReturnType.turbo_transformers)
         sequence_output = encoder_outputs[0]
         self.seq_pool = SequencePool(PoolingMap[pooling_type])
-        output = self.seq_pool(input_tensor=encoder_outputs[0],
+        output = self.seq_pool(input_tensor=sequence_output,
                                return_type=return_type)
         pooler_output = self.pooler(output, return_type)
         return (

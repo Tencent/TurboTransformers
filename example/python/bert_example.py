@@ -13,8 +13,16 @@
 import torch
 import transformers
 import turbo_transformers
+import enum
 
-if __name__ == "__main__":
+
+class LoadType(enum.Enum):
+    PYTORCH = "PYTORCH"
+    PRETRAINED = "PRETRAINED"
+    NPZ = "NPZ"
+
+
+def test(loadtype: LoadType):
     # use 4 threads for computing
     turbo_transformers.set_num_threads(4)
     model_id = "bert-base-uncased"
@@ -31,31 +39,39 @@ if __name__ == "__main__":
     torch_res = model(
         input_ids, position_ids=position_ids, token_type_ids=segment_ids
     )  # sequence_output, pooled_output, (hidden_states), (attentions)
-    torch_seqence_output = torch_res[0][:, 0, :]
-    print("torch bert: ", torch_seqence_output)
-    print("torch pooled_output:", torch_res[1])  # pooled_output
+    print("torch bert sequence output: ",
+          torch_res[0][:, 0, :])  #get the first sequence
+    print("torch bert pooler output: ", torch_res[1])  # pooled_output
 
     # there are three ways to load pretrained model.
-    # 1, from a PyTorch model, which has loaded a pretrained model
-    tt_model = turbo_transformers.BertModelWithPooler.from_torch(model)
-    # 2. directly load from checkpoint (torch saved model)
-    # tt_model = turbo_transformers.BertModelWithPooler.from_pretrained(model_id)
-    # 3. load model from npz
-    # if len(sys.argv) == 2:
-    #     try:
-    #         print(sys.argv[1])
-    #         in_file = sys.argv[1]
-    #     except:
-    #         sys.exit("ERROR. can not open ", sys.argv[1])
-    # else:
-    #     in_file = "/workspace/bert_torch.npz"
-    # tt_model = turbo_transformers.BertModelWithPooler.from_npz(in_file, cfg)
-
+    if loadtype is LoadType.PYTORCH:
+        # 1, from a PyTorch model, which has loaded a pretrained model
+        tt_model = turbo_transformers.BertModel.from_torch(model)
+    elif loadtype is LoadType.PRETRAINED:
+        # 2. directly load from checkpoint (torch saved model)
+        tt_model = turbo_transformers.BertModel.from_pretrained(model_id)
+    elif loadtype is LoadType.NPZ:
+        # 3. load model from npz
+        if len(sys.argv) == 2:
+            try:
+                print(sys.argv[1])
+                in_file = sys.argv[1]
+            except:
+                sys.exit("ERROR. can not open ", sys.argv[1])
+        else:
+            in_file = "/workspace/bert_torch.npz"
+        tt_model = turbo_transformers.BertModel.from_npz(in_file, cfg)
+    else:
+        raise ("LoadType is not supported")
     res = tt_model(
         input_ids, position_ids=position_ids,
-        token_type_ids=segment_ids)  # pooled_output, sequence_output
-    tt_seqence_output = res[1]
-    print("turbo bert: ", res[1])
-    print("turbo pooled_output:", res[0])  # pooled_output
-    assert (torch.max(torch.abs(tt_seqence_output - torch_seqence_output)) <
-            0.1)
+        token_type_ids=segment_ids)  # sequence_output, pooled_output
+    print("turbo bert sequence output:", res[0], res[0].size())
+    print("turbo bert pooler output: ", res[1])  # pooled_output
+    # assert (torch.max(torch.abs(tt_seqence_output - torch_seqence_output)) <
+    #         0.1)
+
+
+if __name__ == "__main__":
+    test(LoadType.PYTORCH)
+    test(LoadType.PRETRAINED)
