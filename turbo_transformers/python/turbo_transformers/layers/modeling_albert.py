@@ -28,6 +28,8 @@ from transformers.modeling_albert import AlbertLayerGroup as TorchAlbertLayerGro
 from transformers.modeling_albert import AlbertModel as TorchAlbertModel
 import torch
 from .utils import get_head_mask
+from .utils import try_convert, convert2tt_tensor, to_param_dict_convert_tt, to_param_dict, create_empty_if_none, AnyTensor, get_head_mask, get_extended_attention_mask
+
 from torch import nn
 import enum
 
@@ -37,35 +39,8 @@ __all__ = [
 ]
 
 
-def _try_convert(t):
-    if isinstance(t, torch.Tensor):
-        return convert2tt_tensor(t)
-    elif isinstance(t, np.ndarray):
-        return convert2tt_tensor(torch.from_numpy(t))
-    else:
-        return t
-
-
-def convert2tt_tensor(t):
-    return cxx.Tensor.from_dlpack(dlpack.to_dlpack(t))
-
-
-def _to_param_dict(torch_module: torch.nn.Module):
-    return {
-        k: convert2tt_tensor(v)
-        for k, v in torch_module.named_parameters()
-    }
-
-
 def _to_param_dict_naive(torch_module: torch.nn.Module):
     return {k: v for k, v in torch_module.named_parameters()}
-
-
-def _create_empty_if_none(output):
-    return output if output is not None else cxx.Tensor.create_empty()
-
-
-AnyTensor = Union[cxx.Tensor, torch.Tensor]
 
 
 # The implement of AlbertEmbeddings is totally equivalent with AlbertEmbedding, So nothing new to do
@@ -79,10 +54,10 @@ class AlbertEmbeddings(cxx.BERTEmbedding):
                  output: Optional[cxx.Tensor] = None):
         if inputs_embeds is not None:
             raise ("inputs_embeds must be None")
-        input_ids = _try_convert(input_ids)
-        position_ids = _try_convert(position_ids)
-        token_type_ids = _try_convert(token_type_ids)
-        output = _create_empty_if_none(output)
+        input_ids = try_convert(input_ids)
+        position_ids = try_convert(position_ids)
+        token_type_ids = try_convert(token_type_ids)
+        output = create_empty_if_none(output)
         super(AlbertEmbeddings, self).__call__(input_ids, position_ids,
                                                token_type_ids, output)
         return convert_returns_as_type(output, return_type)
@@ -90,7 +65,7 @@ class AlbertEmbeddings(cxx.BERTEmbedding):
     @staticmethod
     def from_torch(albert_embedding: TorchAlbertEmbeddings
                    ) -> 'AlbertEmbeddings':
-        params = _to_param_dict(albert_embedding)
+        params = to_param_dict_convert_tt(albert_embedding)
         return AlbertEmbeddings(params['word_embeddings.weight'],
                                 params['position_embeddings.weight'],
                                 params['token_type_embeddings.weight'],
@@ -105,9 +80,9 @@ class AlbertAttention(cxx.BertAttention):
                  output_attentions: Optional[bool] = False,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None):
-        input_tensor = _try_convert(input_tensor)
-        attention_mask = _try_convert(attention_mask)
-        output = _create_empty_if_none(output)
+        input_tensor = try_convert(input_tensor)
+        attention_mask = try_convert(attention_mask)
+        output = create_empty_if_none(output)
         attn_probs = cxx.Tensor.create_empty()
         super(AlbertAttention, self).__call__(input_tensor, attention_mask,
                                               output, attn_probs, False)
@@ -160,16 +135,16 @@ class AlbertLayer(cxx.AlbertLayer):
         #TODO(jiaruifang) soldom see users use head_mask, so I am too lazy to add a head_mask.
         if head_mask is not None:
             raise ("head mask must be None")
-        attention_output = _create_empty_if_none(attention_output)
+        attention_output = create_empty_if_none(attention_output)
         attention_output = self.attention(
             input_tensor,
             attention_mask,
             output_attentions=output_attentions,
             return_type=ReturnType.turbo_transformers,
             output=attention_output)
-        attention_output = _try_convert(attention_output)
-        hidden_output = _create_empty_if_none(None)
-        hidden_states = _create_empty_if_none(None)
+        attention_output = try_convert(attention_output)
+        hidden_output = create_empty_if_none(None)
+        hidden_states = create_empty_if_none(None)
         super(AlbertLayer, self).__call__(attention_output[0], hidden_output,
                                           hidden_states)
 
@@ -215,10 +190,10 @@ class AlbertLayerGroup:
                  output_hidden_states: bool = False,
                  return_type: Optional[ReturnType] = None,
                  outputs: Optional[cxx.Tensor] = None):
-        outputs = _create_empty_if_none(outputs)
+        outputs = create_empty_if_none(outputs)
         layer_hidden_states = ()
         layer_attentions = ()
-        hidden_states = _try_convert(hidden_states)
+        hidden_states = try_convert(hidden_states)
 
         for layer_index, albert_layer in enumerate(self.albert_layers):
             # TODO(jiaruifang) head_mask must be None
@@ -275,7 +250,7 @@ class AlbertTransformer:
                  return_type: Optional[ReturnType] = ReturnType.TORCH,
                  output: Optional[cxx.Tensor] = None):
         self.config = config
-        output = _create_empty_if_none(output)
+        output = create_empty_if_none(output)
         hidden_states = self.embedding_hidden_mapping_in(hidden_states)
         all_attentions = ()
         if output_hidden_states:
@@ -302,7 +277,7 @@ class AlbertTransformer:
 
             # hidden_states_debug = convert_returns_as_type(layer_group_output[0], ReturnType.TORCH)
             # print(f"hidden_states_debug layer {i}", hidden_states)
-            # hidden_states = _try_convert(hidden_states)
+            # hidden_states = try_convert(hidden_states)
             if output_attentions:
                 all_attentions = all_attentions + layer_group_output[-1]
 
@@ -333,7 +308,7 @@ class AlbertModel:
     huggingface/transformer v3.0
     https://github.com/huggingface/transformers/blob/master/src/transformers/modeling_albert.py#L442
     """
-    def __init__(self, embeddings: AlbertEmbeddings,
+    def __init__(self, embeddings: TorchAlbertEmbeddings,
                  encoder: AlbertTransformer, pooler: nn.Linear):
         self.embeddings = embeddings
         self.encoder = encoder

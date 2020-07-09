@@ -83,7 +83,7 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
                                                        token_type_ids)
             turbo_result, turbo_qps, turbo_time = test_helper.run_model(
                 turbo_model, use_cuda, num_iter)
-            print(f"BertEmbeddings \"({batch_size},{seq_length:03})\" ",
+            print(f"AlbertEmbeddings \"({batch_size},{seq_length:03})\" ",
                   f"{device} Turbo QPS,  {turbo_qps}, time, {turbo_time}")
 
             self.assertTrue(

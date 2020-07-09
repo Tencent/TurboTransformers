@@ -58,6 +58,8 @@ class BertEmbeddings(cxx.BERTEmbedding):
     @staticmethod
     def from_torch(bert_embedding: TorchBertEmbeddings) -> 'BertEmbeddings':
         params = to_param_dict_convert_tt(bert_embedding)
+        # for k, v in bert_embedding.named_parameters():
+        #     print(k)
         return BertEmbeddings(params['word_embeddings.weight'],
                               params['position_embeddings.weight'],
                               params['token_type_embeddings.weight'],
