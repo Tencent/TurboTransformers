@@ -28,7 +28,7 @@ from transformers.modeling_roberta import RobertaModel as TorchRobertaModel
 from transformers.modeling_roberta import RobertaEmbeddings as TorchRobertaEmbeddings
 from transformers.modeling_roberta import RobertaConfig
 from transformers.modeling_bert import BertEncoder as TorchBertEncoder
-from .modeling_bert import BertEncoder, SequencePool
+from .modeling_bert import BertEncoder, SequencePool, BertPooler
 
 __all__ = [" RobertaModel"]
 
@@ -51,10 +51,12 @@ PoolingMap = {
 
 class RobertaModel:
     def __init__(self, embeddings: TorchRobertaEmbeddings,
-                 encoder: BertEncoder, config: RobertaConfig):
+                 encoder: BertEncoder, pooler: BertPooler,
+                 config: RobertaConfig):
         self.config = config
         self.embeddings = embeddings
         self.encoder = encoder
+        self.pooler = pooler
         self.prepare = cxx.PrepareBertMasks()
 
     def __call__(self,
@@ -122,17 +124,19 @@ class RobertaModel:
             encoder_extended_attention_mask)
         hidden_cache = try_convert(hidden_cache)
 
-        hidden_cache = self.encoder(
+        encoder_outputs = self.encoder(
             hidden_states=hidden_cache,
             attention_mask=encoder_extended_attention_mask,
-            return_type=ReturnType.turbo_transformers,
-            output=hidden_cache)
-
+            return_type=ReturnType.turbo_transformers)
+        sequence_output = encoder_outputs[0]
         self.seq_pool = SequencePool(PoolingMap[pooling_type])
-        output = self.seq_pool(input_tensor=hidden_cache,
-                               return_type=return_type,
-                               output_tensor=output)
-        return output, convert_returns_as_type(hidden_cache, return_type)
+        output = self.seq_pool(input_tensor=encoder_outputs[0],
+                               return_type=return_type)
+        pooler_output = self.pooler(output, return_type)
+        return (
+            convert_returns_as_type(sequence_output, return_type),
+            pooler_output,
+        ) + encoder_outputs[1:]
 
     @staticmethod
     def from_torch(model: TorchRobertaModel,
@@ -141,4 +145,5 @@ class RobertaModel:
         ):
             model.to(device)
         encoder = BertEncoder.from_torch(model.encoder)
-        return RobertaModel(model.embeddings, encoder, model.config)
+        pooler = BertPooler.from_torch(model.pooler)
+        return RobertaModel(model.embeddings, encoder, pooler, model.config)

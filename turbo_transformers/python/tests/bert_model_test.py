@@ -41,10 +41,7 @@ class TestBertModel(unittest.TestCase):
         self.turbo_model = turbo_transformers.BertModel.from_torch(
             self.torch_model, self.test_device)
 
-        # self.turbo_pooler_model = turbo_transformers.BertModelWithPooler.from_torch(
-        #     self.torch_model, self.test_device)
-
-    def check_torch_and_turbo(self, use_cuda, use_pooler):
+    def check_torch_and_turbo(self, use_cuda):
         self.init_data(use_cuda)
         num_iter = 1
         device_name = "GPU" if use_cuda else "CPU"
@@ -66,24 +63,6 @@ class TestBertModel(unittest.TestCase):
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'BertModel TurboTransformer({device_name}) QPS {turbo_qps}')
 
-        # torch_result_final = (torch_result[1]).cpu().numpy(
-        # ) if use_pooler else torch_result[0][:, 0].cpu().numpy()
-
-        # turbo_result_final = turbo_result[0].cpu().numpy()
-
-        #TODO(jiaruifang, v_cshi) check why pooler introduce more difference
-        # if use_pooler:
-        #     print(
-        #         "encode output diff: ",
-        #         numpy.max((torch_result[0][:, 0]).cpu().numpy() -
-        #                   turbo_result[1].cpu().numpy()).reshape(-1))
-        #     print(
-        #         "pooler output diff: ",
-        #         numpy.max(
-        #             (turbo_result_final - torch_result_final).reshape(-1)))
-        # (atol, rtol) = (1e-2, 1e-2) if use_pooler else (5e-3, 1e-4)
-
-        print(torch_result[0] - turbo_result[0])
         self.assertTrue(
             numpy.allclose(torch_result[0][:, 0],
                            turbo_result[0],
@@ -93,10 +72,8 @@ class TestBertModel(unittest.TestCase):
     def test_bert_model(self):
         if torch.cuda.is_available() and \
             turbo_transformers.config.is_compiled_with_cuda():
-            self.check_torch_and_turbo(use_cuda=True, use_pooler=False)
-            self.check_torch_and_turbo(use_cuda=True, use_pooler=True)
-        self.check_torch_and_turbo(use_cuda=False, use_pooler=False)
-        self.check_torch_and_turbo(use_cuda=False, use_pooler=True)
+            self.check_torch_and_turbo(use_cuda=True)
+        self.check_torch_and_turbo(use_cuda=False)
 
 
 if __name__ == '__main__':
