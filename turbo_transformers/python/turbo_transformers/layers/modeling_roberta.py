@@ -147,3 +147,4 @@ class RobertaModel:
         encoder = BertEncoder.from_torch(model.encoder)
         pooler = BertPooler.from_torch(model.pooler)
         return RobertaModel(model.embeddings, encoder, pooler, model.config)
+
