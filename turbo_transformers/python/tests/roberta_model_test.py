@@ -58,13 +58,13 @@ class TestRobertaModel(unittest.TestCase):
         print(f'RobertaModel PyTorch({device_name}) QPS {torch_qps}')
 
         turbo_model = (lambda: self.turbo_model(input_ids))
-
         with turbo_transformers.pref_guard("roberta_perf") as perf:
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'RobertaModel TurboTransformer({device_name}) QPS {turbo_qps}')
 
         torch_result_final = torch_result[0].cpu().numpy()
+
 
         turbo_result_final = turbo_result[0].cpu().numpy()
         # print(numpy.size(torch_result_final), numpy.size(turbo_result_final))
