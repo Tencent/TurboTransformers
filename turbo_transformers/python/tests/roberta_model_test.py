@@ -57,7 +57,7 @@ class TestRobertaModel(unittest.TestCase):
             test_helper.run_model(torch_model, use_cuda, num_iter)
         print(f'RobertaModel PyTorch({device_name}) QPS {torch_qps}')
 
-        turbo_model = (lambda: self.turbo_model(self.cfg, input_ids))
+        turbo_model = (lambda: self.turbo_model(input_ids))
         turbo_result, turbo_qps, turbo_time = \
             test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'RobertaModel TurboTransformer({device_name}) QPS {turbo_qps}')

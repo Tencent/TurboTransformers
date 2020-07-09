@@ -26,7 +26,8 @@ import test_helper
 class TestBertModel(unittest.TestCase):
     def init_data(self, use_cuda) -> None:
         torch.set_grad_enabled(False)
-        torch.set_num_threads(1)
+        torch.set_num_threads(4)
+        turbo_transformers.set_num_threads(4)
         self.test_device = torch.device('cuda:0') if use_cuda else \
             torch.device('cpu:0')
 
@@ -49,14 +50,14 @@ class TestBertModel(unittest.TestCase):
         device_name = "GPU" if use_cuda else "CPU"
         input_ids = torch.randint(low=0,
                                   high=self.cfg.vocab_size - 1,
-                                  size=(2, 32),
+                                  size=(1, 10),
                                   dtype=torch.long,
                                   device=self.test_device)
 
         torch_model = lambda: self.torch_model(input_ids)
         torch_result, torch_qps, torch_time = \
             test_helper.run_model(torch_model, use_cuda, num_iter)
-        print(f'BertModel Plain PyTorch({device_name}) QPS {torch_qps}')
+        print(f'BertModel PyTorch({device_name}) QPS {torch_qps}')
 
         turbo_model = (
             lambda: self.turbo_pooler_model(input_ids)) if use_pooler else (

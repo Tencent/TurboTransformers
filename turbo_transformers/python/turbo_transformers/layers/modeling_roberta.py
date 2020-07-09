@@ -26,6 +26,7 @@ import enum
 from .utils import try_convert, convert2tt_tensor, to_param_dict_convert_tt, to_param_dict, create_empty_if_none, AnyTensor, get_head_mask, get_extended_attention_mask
 from transformers.modeling_roberta import RobertaModel as TorchRobertaModel
 from transformers.modeling_roberta import RobertaEmbeddings as TorchRobertaEmbeddings
+from transformers.modeling_roberta import RobertaConfig
 from transformers.modeling_bert import BertEncoder as TorchBertEncoder
 from .modeling_bert import BertEncoder, SequencePool
 
@@ -50,13 +51,13 @@ PoolingMap = {
 
 class RobertaModel:
     def __init__(self, embeddings: TorchRobertaEmbeddings,
-                 encoder: BertEncoder):
+                 encoder: BertEncoder, config: RobertaConfig):
+        self.config = config
         self.embeddings = embeddings
         self.encoder = encoder
         self.prepare = cxx.PrepareBertMasks()
 
     def __call__(self,
-                 config,
                  input_ids: AnyTensor,
                  attention_mask: Optional[torch.Tensor] = None,
                  token_type_ids: Optional[torch.Tensor] = None,
@@ -67,7 +68,6 @@ class RobertaModel:
                  hidden_cache: Optional[AnyTensor] = None,
                  output: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None):
-        self.config = config
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError(
                 "You cannot specify both input_ids and inputs_embeds at the same time"
@@ -141,4 +141,4 @@ class RobertaModel:
         ):
             model.to(device)
         encoder = BertEncoder.from_torch(model.encoder)
-        return RobertaModel(model.embeddings, encoder)
+        return RobertaModel(model.embeddings, encoder, model.config)
