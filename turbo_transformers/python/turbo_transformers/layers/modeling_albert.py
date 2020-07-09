@@ -26,6 +26,7 @@ from transformers.modeling_albert import AlbertAttention as TorchAlbertAttention
 from transformers.modeling_albert import AlbertLayer as TorchAlbertLayer
 from transformers.modeling_albert import AlbertLayerGroup as TorchAlbertLayerGroup
 from transformers.modeling_albert import AlbertModel as TorchAlbertModel
+from transformers.modeling_albert import AlbertConfig
 import torch
 from .utils import get_head_mask
 from .utils import try_convert, convert2tt_tensor, to_param_dict_convert_tt, to_param_dict, create_empty_if_none, AnyTensor, get_head_mask, get_extended_attention_mask
@@ -236,12 +237,12 @@ class AlbertTransformer:
     https://github.com/huggingface/transformers/blob/58cca47c16149e43d1b516623d59e3c5d97f695e/src/transformers/modeling_albert.py#L316
     """
     def __init__(self, embedding_hidden_mapping_in: nn.Linear,
-                 albert_layer_groups: AlbertLayerGroup):
+                 albert_layer_groups: AlbertLayerGroup, config: AlbertConfig):
+        self.config = config
         self.embedding_hidden_mapping_in = embedding_hidden_mapping_in
         self.albert_layer_groups = albert_layer_groups
 
     def __call__(self,
-                 config,
                  hidden_states: AnyTensor,
                  attention_mask: AnyTensor,
                  head_mask: AnyTensor = None,
@@ -249,7 +250,6 @@ class AlbertTransformer:
                  output_hidden_states: bool = False,
                  return_type: Optional[ReturnType] = ReturnType.TORCH,
                  output: Optional[cxx.Tensor] = None):
-        self.config = config
         output = create_empty_if_none(output)
         hidden_states = self.embedding_hidden_mapping_in(hidden_states)
         all_attentions = ()
@@ -300,7 +300,7 @@ class AlbertTransformer:
         ]
         return AlbertTransformer(
             torch_transformer_model.embedding_hidden_mapping_in,
-            albert_layer_groups)
+            albert_layer_groups, torch_transformer_model.config)
 
 
 class AlbertModel:
@@ -309,14 +309,15 @@ class AlbertModel:
     https://github.com/huggingface/transformers/blob/master/src/transformers/modeling_albert.py#L442
     """
     def __init__(self, embeddings: TorchAlbertEmbeddings,
-                 encoder: AlbertTransformer, pooler: nn.Linear):
+                 encoder: AlbertTransformer, pooler: nn.Linear,
+                 config: AlbertConfig):
+        self.config = config
         self.embeddings = embeddings
         self.encoder = encoder
         self.pooler = pooler
         self.pooler_activation = nn.Tanh()
 
     def __call__(self,
-                 config,
                  input_ids=None,
                  attention_mask: Optional[AnyTensor] = None,
                  token_type_ids: Optional[AnyTensor] = None,
@@ -327,7 +328,6 @@ class AlbertModel:
                  output_hidden_states=None,
                  output: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None):
-        self.config = config
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (output_hidden_states
                                 if output_hidden_states is not None else
@@ -365,7 +365,6 @@ class AlbertModel:
                                            token_type_ids=token_type_ids,
                                            inputs_embeds=inputs_embeds)
         encoder_outputs = self.encoder(
-            self.config,
             embedding_output,
             attention_mask=extended_attention_mask,
             head_mask=head_mask,
@@ -388,4 +387,5 @@ class AlbertModel:
             # AlbertEmbeddings.from_torch(torch_model.embeddings),
             torch_model.embeddings,
             AlbertTransformer.from_torch(torch_model.encoder),
-            torch_model.pooler)
+            torch_model.pooler,
+            torch_model.config)
