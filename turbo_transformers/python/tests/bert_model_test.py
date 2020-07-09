@@ -41,12 +41,12 @@ class TestBertModel(unittest.TestCase):
         self.turbo_model = turbo_transformers.BertModel.from_torch(
             self.torch_model, self.test_device)
 
-        self.turbo_pooler_model = turbo_transformers.BertModelWithPooler.from_torch(
-            self.torch_model, self.test_device)
+        # self.turbo_pooler_model = turbo_transformers.BertModelWithPooler.from_torch(
+        #     self.torch_model, self.test_device)
 
     def check_torch_and_turbo(self, use_cuda, use_pooler):
         self.init_data(use_cuda)
-        num_iter = 2
+        num_iter = 1
         device_name = "GPU" if use_cuda else "CPU"
         input_ids = torch.randint(low=0,
                                   high=self.cfg.vocab_size - 1,
@@ -59,35 +59,36 @@ class TestBertModel(unittest.TestCase):
             test_helper.run_model(torch_model, use_cuda, num_iter)
         print(f'BertModel PyTorch({device_name}) QPS {torch_qps}')
 
-        turbo_model = (
-            lambda: self.turbo_pooler_model(input_ids)) if use_pooler else (
-                lambda: self.turbo_model(input_ids))
-        turbo_result, turbo_qps, turbo_time = \
-            test_helper.run_model(turbo_model, use_cuda, num_iter)
+        turbo_model = (lambda: self.turbo_model(input_ids))
+
+        with turbo_transformers.pref_guard("bert_perf") as perf:
+            turbo_result, turbo_qps, turbo_time = \
+                test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'BertModel TurboTransformer({device_name}) QPS {turbo_qps}')
 
-        torch_result_final = (torch_result[1]).cpu().numpy(
-        ) if use_pooler else torch_result[0][:, 0].cpu().numpy()
+        # torch_result_final = (torch_result[1]).cpu().numpy(
+        # ) if use_pooler else torch_result[0][:, 0].cpu().numpy()
 
-        turbo_result_final = turbo_result[0].cpu().numpy()
+        # turbo_result_final = turbo_result[0].cpu().numpy()
 
         #TODO(jiaruifang, v_cshi) check why pooler introduce more difference
-        if use_pooler:
-            print(
-                "encode output diff: ",
-                numpy.max((torch_result[0][:, 0]).cpu().numpy() -
-                          turbo_result[1].cpu().numpy()).reshape(-1))
-            print(
-                "pooler output diff: ",
-                numpy.max(
-                    (turbo_result_final - torch_result_final).reshape(-1)))
-        (atol, rtol) = (1e-2, 1e-2) if use_pooler else (5e-3, 1e-4)
+        # if use_pooler:
+        #     print(
+        #         "encode output diff: ",
+        #         numpy.max((torch_result[0][:, 0]).cpu().numpy() -
+        #                   turbo_result[1].cpu().numpy()).reshape(-1))
+        #     print(
+        #         "pooler output diff: ",
+        #         numpy.max(
+        #             (turbo_result_final - torch_result_final).reshape(-1)))
+        # (atol, rtol) = (1e-2, 1e-2) if use_pooler else (5e-3, 1e-4)
 
+        print(torch_result[0] - turbo_result[0])
         self.assertTrue(
-            numpy.allclose(torch_result_final,
-                           turbo_result_final,
-                           atol=atol,
-                           rtol=rtol))
+            numpy.allclose(torch_result[0][:, 0],
+                           turbo_result[0],
+                           atol=1e-3,
+                           rtol=1e-3))
 
     def test_bert_model(self):
         if torch.cuda.is_available() and \

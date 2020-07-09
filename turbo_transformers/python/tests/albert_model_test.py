@@ -62,12 +62,12 @@ def create_test(batch_size, seq_length):
                 f"AlbertLayer \"({batch_size},{seq_length:03})\" ",
                 f"{device} TurboTransform QPS,  {turbo_qps}, time, {turbo_time}"
             )
-
             torch_model = lambda: self.torch_model(input_ids=self.input_tensor,
                                                    attention_mask=None,
                                                    head_mask=None)
-            torch_result, torch_qps, torch_time = \
-                test_helper.run_model(torch_model, use_cuda, num_iter)
+            with turbo_transformers.pref_guard("albert_perf") as perf:
+                torch_result, torch_qps, torch_time = \
+                    test_helper.run_model(torch_model, use_cuda, num_iter)
 
             print(f"AlbertModel \"({batch_size},{seq_length:03})\" ",
                   f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")

@@ -275,9 +275,6 @@ class AlbertTransformer:
                 return_type=ReturnType.turbo_transformers)
             hidden_states = layer_group_output[0]
 
-            # hidden_states_debug = convert_returns_as_type(layer_group_output[0], ReturnType.TORCH)
-            # print(f"hidden_states_debug layer {i}", hidden_states)
-            # hidden_states = try_convert(hidden_states)
             if output_attentions:
                 all_attentions = all_attentions + layer_group_output[-1]
 

@@ -22,20 +22,31 @@
 #include "turbo_transformers/layers/kernels/mat_mul.h"
 #include "turbo_transformers/layers/kernels/softmax.h"
 #include "turbo_transformers/layers/kernels/transpose.h"
+#ifdef WITH_PERFTOOLS
+#include "turbo_transformers/core/profiler.h"
+#endif
 
 namespace turbo_transformers {
 namespace layers {
 
 void BertIntermediate::operator()(const core::Tensor& input_tensor,
                                   core::Tensor* output_tensor) const {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile("BertIntermediate", input_tensor.device_type());
+#endif
   output_tensor->Reshape<float>(
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(1)},
-      input_tensor.device_type(), input_tensor.device_id());
+      input_tensor.device_type(), input_tensor.device_id(),
+      "BertIntermediate/Reshape");
 
   kernels::MatMul(input_tensor, false, dense_weight_, false, 1.0, output_tensor,
-                  0.0);
-  kernels::AddBiasAct<float, kernels::ActivationType::Gelu>(dense_bias_,
-                                                            output_tensor);
+                  0.0, "BertIntermediate/MatMul");
+  kernels::AddBiasAct<float, kernels::ActivationType::Gelu>(
+      dense_bias_, output_tensor, "BertIntermediate/AddBiasAct");
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile("BertIntermediate");
+#endif
 }
 
 void BertIntermediate::EnforceShapeAndType() const {
