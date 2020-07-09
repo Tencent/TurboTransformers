@@ -58,6 +58,8 @@ class BertEmbeddings(cxx.BERTEmbedding):
     @staticmethod
     def from_torch(bert_embedding: TorchBertEmbeddings) -> 'BertEmbeddings':
         params = to_param_dict_convert_tt(bert_embedding)
+        # for k, v in bert_embedding.named_parameters():
+        #     print(k)
         return BertEmbeddings(params['word_embeddings.weight'],
                               params['position_embeddings.weight'],
                               params['token_type_embeddings.weight'],
@@ -140,7 +142,7 @@ class BertOutput(cxx.BertOutput):
 class BertAttention(cxx.BertAttention):
     def __call__(self,
                  input_tensor: AnyTensor,
-                 attention_mask: AnyTensor,
+                 attention_mask: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None,
                  is_trans_weight: Optional[cxx.Tensor] = False):
@@ -151,7 +153,7 @@ class BertAttention(cxx.BertAttention):
         return (context_layer, attention_probs)
         """
         input_tensor = try_convert(input_tensor)
-        attention_mask = try_convert(attention_mask)
+        attention_mask = try_convert(create_empty_if_none(attention_mask))
         output = create_empty_if_none(output)
         attn_probs = cxx.Tensor.create_empty()
         super(BertAttention,
@@ -215,7 +217,7 @@ class BertLayer:
 
     def __call__(self,
                  hidden_states: AnyTensor,
-                 attention_mask: AnyTensor,
+                 attention_mask: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None,
                  attention_output: Optional[cxx.Tensor] = None,
                  intermediate_output: Optional[cxx.Tensor] = None,
@@ -256,7 +258,7 @@ class BertEncoder:
 
     def __call__(self,
                  hidden_states: AnyTensor,
-                 attention_mask: AnyTensor,
+                 attention_mask: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None,
                  attention_output: Optional[cxx.Tensor] = None,
                  intermediate_output: Optional[cxx.Tensor] = None,

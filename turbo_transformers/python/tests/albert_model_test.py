@@ -24,30 +24,6 @@ sys.path.append(os.path.dirname(__file__))
 import test_helper
 
 
-def get_head_mask(head_mask,
-                  num_hidden_layers: int,
-                  is_attention_chunked: bool = False):
-    """
-    # Prepare head mask if needed
-    # 1.0 in head_mask indicate we keep the head
-    attention_probs has shape bsz x n_heads x N x N
-    Arguments:
-        head_mask: torch.Tensor or None: has shape [num_heads] or [num_hidden_layers x num_heads]
-        num_hidden_layers: int
-    Returns:
-            Tensor of shape shape [num_hidden_layers x batch x num_heads x seq_length x seq_length]
-            or list with [None] for each layer
-    """
-    if head_mask is not None:
-        head_mask = self._convert_head_mask_to_5d(head_mask, num_hidden_layers)
-        if is_attention_chunked is True:
-            head_mask = head_mask.unsqueeze(-1)
-    else:
-        head_mask = [None] * num_hidden_layers
-
-    return head_mask
-
-
 def create_test(batch_size, seq_length):
     class TestAlbertModel(unittest.TestCase):
         def init_data(self, use_cuda: bool) -> None:
@@ -76,11 +52,9 @@ def create_test(batch_size, seq_length):
         def check_torch_and_turbo(self, use_cuda):
             self.init_data(use_cuda=use_cuda)
             device = "GPU" if use_cuda else "CPU"
-            num_iter = 2
-            turbo_model = lambda: self.turbo_model(self.cfg,
-                                                   self.input_tensor,
-                                                   attention_mask=None,
-                                                   head_mask=None)
+            num_iter = 1
+            turbo_model = lambda: self.turbo_model(
+                self.input_tensor, attention_mask=None, head_mask=None)
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
 
