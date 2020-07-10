@@ -54,7 +54,7 @@ def run_model(model,
         }))
 
 
-def generate_onnx_model(model: str, filename: str, seq_len: int,
+def generate_onnx_model(model_name: str, filename: str, seq_len: int,
                         batch_size: int, backend: str):
     import transformers
     import torch
@@ -62,10 +62,20 @@ def generate_onnx_model(model: str, filename: str, seq_len: int,
 
     test_device = torch.device('cuda:0') if backend == "GPU" else torch.device(
         'cpu:0')
-
     torch.set_grad_enabled(False)
-    model_id = "bert-base-uncased"
-    model = transformers.BertModel.from_pretrained(model_id)
+
+    if model_name == "bert":
+        cfg = transformers.BertConfig()
+        model = transformers.BertModel(cfg)
+    elif model_name == "albert":
+        cfg = transformers.AlbertConfig()
+        model = transformers.AlbertModel(cfg)
+    elif model_name == "roberta":
+        cfg = transformers.RobertaConfig()
+        model = transformers.RobertaModel(cfg)
+    else:
+        raise (f"benchmark does not support {model_name}")
+
     model.eval()
     model.to(test_device)
 
@@ -82,7 +92,7 @@ def generate_onnx_model(model: str, filename: str, seq_len: int,
 
 
 def onnxruntime_benchmark_creator(backend: str):
-    def _impl_(model: str,
+    def _impl_(model_name: str,
                seq_len: int,
                batch_size: int,
                n: int,
@@ -92,7 +102,7 @@ def onnxruntime_benchmark_creator(backend: str):
         temp_fn = "/tmp/temp_onnx.model"
         p = multiprocessing.Pool(1)
         vocab_size = p.apply(generate_onnx_model,
-                             args=(model, temp_fn, seq_len, batch_size,
+                             args=(model_name, temp_fn, seq_len, batch_size,
                                    backend))
         p.close()
         import contexttimer

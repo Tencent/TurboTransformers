@@ -14,7 +14,7 @@
 turbo-transformers Benchmark Utils
 
 Usage:
-    benchmark <model> --seq_len=<int> [--framework=<f>] [--batch_size=<int>] [-n <int>]
+    benchmark <model_name> --seq_len=<int> [--framework=<f>] [--batch_size=<int>] [-n <int>]
 
 Options:
     --framework=<f>      The framework to test in (torch, torch_jit, turbo-transformers,
@@ -30,8 +30,8 @@ import os
 import docopt
 
 
-def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
-                                 n: int):
+def benchmark_turbo_transformers(model_name: str, seq_len: int,
+                                 batch_size: int, n: int):
     import torch
     import transformers
     import contexttimer
@@ -43,24 +43,39 @@ def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
         return
     test_device = torch.device('cuda:0')
 
-    model_id = "bert-base-uncased"
-    model = transformers.BertModel.from_pretrained(
-        model_id)  # type: transformers.BertModel
-    model.to(test_device)
-    model.eval()
+    if model_name == "bert":
+        cfg = transformers.BertConfig()
+        model = transformers.BertModel(cfg)
+        model.to(test_device)
+        model.eval()
+        model = turbo_transformers.BertModel.from_torch(model)
+    elif model_name == "albert":
+        cfg = transformers.AlbertConfig()
+        model = transformers.AlbertModel(cfg)
+        model.to(test_device)
+        model.eval()
+        model = turbo_transformers.AlbertModel.from_torch(model)
+    elif model_name == "roberta":
+        cfg = transformers.RobertaConfig()
+        model = transformers.RobertaModel(cfg)
+        model.to(test_device)
+        model.eval()
+        model = turbo_transformers.RobertaModel.from_torch(model)
+    else:
+        raise (f"benchmark does not support {model_name}")
+
     cfg = model.config  # type: transformers.BertConfig
     input_ids = torch.randint(low=0,
                               high=cfg.vocab_size - 1,
                               size=(batch_size, seq_len),
                               dtype=torch.long,
                               device=test_device)
-    model = turbo_transformers.BertModel.from_torch(model)
 
     benchmark_helper.run_model(lambda: model(input_ids), True, n, batch_size,
                                seq_len, "turbo")
 
 
-def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
+def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int):
     import torch
     import transformers
     import contexttimer
@@ -73,9 +88,17 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int):
 
     torch.set_grad_enabled(False)
 
-    model_id = "bert-base-uncased"
-    model = transformers.BertModel.from_pretrained(
-        model_id)  # type: transformers.BertModel
+    if model_name == "bert":
+        cfg = transformers.BertConfig()
+        model = transformers.BertModel(cfg)
+    elif model_name == "albert":
+        cfg = transformers.AlbertConfig()
+        model = transformers.AlbertModel(cfg)
+    elif model_name == "roberta":
+        cfg = transformers.RobertaConfig()
+        model = transformers.RobertaModel(cfg)
+    else:
+        raise (f"benchmark does not support {model_name}")
     model.eval()
 
     model.to(test_device)
@@ -94,7 +117,7 @@ def main():
     import benchmark_helper
     args = docopt.docopt(__doc__)
     kwargs = {
-        'model': args['<model>'],
+        'model_name': args['<model_name>'],
         'seq_len': int(args['--seq_len']),
         'batch_size': int(args['--batch_size']),
         'n': int(args['-n']),

@@ -158,11 +158,14 @@ Users can link turbo-transformers to your code through add_subdirectory.
 ## Performance
 [BERT Benchmark Results](./docs/bert.md)
 
+[ALBERT Benchmark Results](./docs/albert.md)
+
 [Transformer Docoder Results](./docs/decoder.md)
 
-[How to know hotspots of your code](./docs/profiler.md)
 
 ## How to contribute new models
+[How to know hotspots of your code](./docs/profiler.md)
+
 [How to add a new layer](./turbo_transformers/layers/README.md)
 
 
@@ -178,10 +181,10 @@ BSD 3-Clause License
 The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
 
 ## History
-1. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
-2. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
-3. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
-4. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
+1. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
+2. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
+3. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
+4. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
 
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
