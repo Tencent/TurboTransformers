@@ -22,10 +22,10 @@ namespace kernels {
 namespace {
 
 template <typename T, ActivationType ActType>
-__inline__ __device__ T ActvationOp(const T& x);
+__inline__ __device__ T ActivationOp(const T& x);
 
 template <>
-__inline__ __device__ float ActvationOp<float, ActivationType::Gelu>(
+__inline__ __device__ float ActivationOp<float, ActivationType::Gelu>(
     const float& x) {
   float cdf =
       0.5f *
@@ -34,13 +34,13 @@ __inline__ __device__ float ActvationOp<float, ActivationType::Gelu>(
 }
 
 template <>
-__inline__ __device__ float ActvationOp<float, ActivationType::Tanh>(
+__inline__ __device__ float ActivationOp<float, ActivationType::Tanh>(
     const float& x) {
   return tanhf(x);
 }
 
 template <>
-__inline__ __device__ float ActvationOp<float, ActivationType::Relu>(
+__inline__ __device__ float ActivationOp<float, ActivationType::Relu>(
     const float& x) {
   return (x > 0) ? x : 0;
 }
@@ -62,7 +62,7 @@ static __global__ void add_bias_act(const T* bias, int batch_size,
       reg_bias = bias[offset];
       row_id = blockIdx.x;
       val = out[offset + row_id * feature_dim] + reg_bias;
-      out[offset + row_id * feature_dim] = ActvationOp<T, ActType>(val);
+      out[offset + row_id * feature_dim] = ActivationOp<T, ActType>(val);
     }
   }
 }
