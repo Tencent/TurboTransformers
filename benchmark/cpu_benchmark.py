@@ -14,7 +14,7 @@
 turbo-transformers Benchmark Utils
 
 Usage:
-    benchmark <model> --seq_len=<int> [--framework=<f>] [--batch_size=<int>] [-n <int>] [--num_threads=<int>]
+    benchmark <model_name> --seq_len=<int> [--framework=<f>] [--batch_size=<int>] [-n <int>] [--num_threads=<int>]
 
 Options:
     --framework=<f>      The framework to test in (torch, torch_jit, turbo-transformers,
@@ -31,8 +31,8 @@ import os
 import docopt
 
 
-def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
-                                 n: int, num_threads: int):
+def benchmark_turbo_transformers(model_name: str, seq_len: int,
+                                 batch_size: int, n: int, num_threads: int):
     import torch
     import transformers
     import contexttimer
@@ -41,9 +41,17 @@ def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
     import benchmark_helper
     turbo_transformers.set_num_threads(num_threads)
 
-    model_id = "bert-base-uncased"
-    model = transformers.BertModel.from_pretrained(
-        model_id)  # type: transformers.BertModel
+    if model_name == "bert":
+        cfg = transformers.BertConfig()
+        model = transformers.BertModel(cfg)
+    elif model_name == "albert":
+        cfg = transformers.AlbertConfig()
+        model = transformers.AlbertModel(cfg)
+    elif model_name == "roberta":
+        cfg = transformers.RobertaConfig()
+        model = transformers.RobertaModel(cfg)
+    else:
+        raise (f"benchmark does not support {model_name}")
     model.eval()
 
     cfg = model.config  # type: transformers.BertConfig
@@ -56,7 +64,7 @@ def benchmark_turbo_transformers(model: str, seq_len: int, batch_size: int,
                                seq_len, "turbo", num_threads)
 
 
-def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int,
+def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
                     num_threads: int):
     import torch
     import transformers
@@ -65,9 +73,17 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int,
     torch.set_num_threads(num_threads)
     torch.set_grad_enabled(False)
 
-    model_id = "bert-base-uncased"
-    model = transformers.BertModel.from_pretrained(
-        model_id)  # type: transformers.BertModel
+    if model_name == "bert":
+        cfg = transformers.BertConfig()
+        model = transformers.BertModel(cfg)
+    elif model_name == "albert":
+        cfg = transformers.AlbertConfig()
+        model = transformers.AlbertModel(cfg)
+    elif model_name == "roberta":
+        cfg = transformers.RobertaConfig()
+        model = transformers.RobertaModel(cfg)
+    else:
+        raise (f"benchmark does not support {model_name}")
     model.eval()
     cfg = model.config  # type: transformers.BertConfig
     input_ids = torch.randint(low=0,
@@ -78,15 +94,24 @@ def benchmark_torch(model: str, seq_len: int, batch_size: int, n: int,
                                seq_len, "torch", num_threads)
 
 
-def benchmark_torch_jit(model: str, seq_len: int, batch_size: int, n: int,
+def benchmark_torch_jit(model_name: str, seq_len: int, batch_size: int, n: int,
                         num_threads: int):
     import transformers
     import contexttimer
     import torch.jit
     torch.set_num_threads(num_threads)
     torch.set_grad_enabled(False)
-    model = transformers.BertModel.from_pretrained(
-        model)  # type: transformers.BertModel
+    if model_name == "bert":
+        cfg = transformers.BertConfig()
+        model = transformers.BertModel(cfg)
+    elif model_name == "albert":
+        cfg = transformers.AlbertConfig()
+        model = transformers.AlbertModel(cfg)
+    elif model_name == "roberta":
+        cfg = transformers.RobertaConfig()
+        model = transformers.RobertaModel(cfg)
+    else:
+        raise (f"benchmark does not support {model_name}")
     model.eval()
     cfg = model.config  # type: transformers.BertConfig
     input_ids = torch.randint(low=0,
@@ -117,7 +142,7 @@ def benchmark_torch_jit(model: str, seq_len: int, batch_size: int, n: int,
 def main():
     args = docopt.docopt(__doc__)
     kwargs = {
-        'model': args['<model>'],
+        'model_name': args['<model_name>'],
         'seq_len': int(args['--seq_len']),
         'batch_size': int(args['--batch_size']),
         'n': int(args['-n']),
