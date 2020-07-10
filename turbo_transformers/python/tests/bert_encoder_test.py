@@ -61,11 +61,11 @@ class TestBertEncoder(unittest.TestCase):
         self.num_iter = 2
 
         turbo_bert_layer_result = None
-        turbo_model = lambda: self.turbo_bert_encoder(
-            self.input_tensor,
-            self.attention_mask,
-            output=turbo_bert_layer_result,
-            return_type=turbo_transformers.ReturnType.turbo_transformers)
+        turbo_model = lambda: self.turbo_bert_encoder(self.input_tensor,
+                                                      self.attention_mask,
+                                                      output_attentions=True,
+                                                      output_hidden_states=True
+                                                      )
 
         turbo_bert_layer_result, turbo_qps, turbo_time_consume = \
             test_helper.run_model(turbo_model, use_cuda, self.num_iter)
@@ -73,12 +73,17 @@ class TestBertEncoder(unittest.TestCase):
         print(f"BertEncoder TurboTransform QPS, {turbo_qps}, ",
               f"Time Cost, {turbo_time_consume}")
 
-        turbo_bert_layer_result = self.turbo_bert_encoder(
-            self.input_tensor, self.attention_mask)
+        # turbo_bert_layer_result = self.turbo_bert_encoder(
+        #     self.input_tensor,
+        #     self.attention_mask,
+        #     output_attentions = True,
+        #     output_hidden_states = False)
 
         torch_model = lambda: self.torch_encoder_layer(
-            self.input_tensor, self.attention_mask, [None] * self.cfg.
-            num_hidden_layers)
+            self.input_tensor,
+            self.attention_mask, [None] * self.cfg.num_hidden_layers,
+            output_attentions=True,
+            output_hidden_states=True)
 
         torch_bert_layer_result, torch_qps, torch_time_consume = \
             test_helper.run_model(torch_model, use_cuda, self.num_iter)
@@ -86,8 +91,21 @@ class TestBertEncoder(unittest.TestCase):
         print(f"BertEncoder Torch QPS, {torch_qps}, ",
               f"Time Cost, {torch_time_consume}")
 
-        diff = torch.abs(torch_bert_layer_result[0] - turbo_bert_layer_result)
+        diff = torch.abs(torch_bert_layer_result[0] -
+                         turbo_bert_layer_result[0])
         self.assertTrue(torch.max(diff) < 1e-3)
+
+        # Note we did not print the last hidden_states, because it is the same as output
+        # print(len(torch_bert_layer_result[1]), len(turbo_bert_layer_result[1]))
+        for a, b in zip(torch_bert_layer_result[1],
+                        turbo_bert_layer_result[1]):
+            diff = torch.abs(a - b)
+            self.assertTrue(torch.max(diff) < 1e-3)
+
+        for a, b in zip(torch_bert_layer_result[2],
+                        turbo_bert_layer_result[2]):
+            diff = torch.abs(a - b)
+            self.assertTrue(torch.max(diff) < 1e-3)
 
     def test_embedding(self):
         self.check_torch_and_turbo(use_cuda=False)

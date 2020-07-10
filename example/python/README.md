@@ -18,15 +18,14 @@ model_id = "your_saved_model" directory
 cd /workspace
 python tools/convert_huggingface_bert_tf_to_npz.py bert-based-uncased /workspace/bert_tf.npz
 ```
-update the corresponding line in cpu(gpu)_example.py
+update the corresponding line in bert_example.py
 ```
-tt_model = turbo_transformers.BertModelWithPooler.from_npz(
+tt_model = turbo_transformers.BertModel.from_npz(
     '/workspace/bert_tf.npz', cfg)
 ```
 ### run examples
 ```
-python cpu_example.py
-python gpu_example.py
+python bert_example.py
 ```
 
 ### How to customized your post-processing layers after BERT encoder

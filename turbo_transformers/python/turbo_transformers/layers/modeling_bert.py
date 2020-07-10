@@ -36,7 +36,7 @@ import numpy as np
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
     'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType',
-    'BertPooler', 'BertModelWithPooler'
+    'BertPooler'
 ]
 
 
@@ -143,8 +143,9 @@ class BertAttention(cxx.BertAttention):
     def __call__(self,
                  input_tensor: AnyTensor,
                  attention_mask: Optional[AnyTensor] = None,
+                 head_mask: Optional[AnyTensor] = None,
+                 output_attentions: Optional[bool] = False,
                  return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None,
                  is_trans_weight: Optional[cxx.Tensor] = False):
         """
         implement BertSelfAttention in
@@ -152,16 +153,19 @@ class BertAttention(cxx.BertAttention):
         self.output_attentions always true
         return (context_layer, attention_probs)
         """
+        assert (head_mask is None)
         input_tensor = try_convert(input_tensor)
         attention_mask = try_convert(create_empty_if_none(attention_mask))
-        output = create_empty_if_none(output)
+        context_layer = cxx.Tensor.create_empty()
         attn_probs = cxx.Tensor.create_empty()
         super(BertAttention,
-              self).__call__(input_tensor, attention_mask, output, attn_probs,
-                             is_trans_weight)
-        return convert_returns_as_type(output,
-                                       return_type), convert_returns_as_type(
-                                           attn_probs, return_type)
+              self).__call__(input_tensor, attention_mask, context_layer,
+                             attn_probs, is_trans_weight)
+        outputs = (convert_returns_as_type(context_layer, return_type),
+                   convert_returns_as_type(attn_probs, ReturnType.TORCH)
+                   ) if output_attentions else (convert_returns_as_type(
+                       context_layer, return_type), )
+        return outputs
 
     @staticmethod
     def from_torch(attention: TorchBertAttention):
@@ -218,24 +222,25 @@ class BertLayer:
     def __call__(self,
                  hidden_states: AnyTensor,
                  attention_mask: Optional[AnyTensor] = None,
-                 return_type: Optional[ReturnType] = None,
-                 attention_output: Optional[cxx.Tensor] = None,
-                 intermediate_output: Optional[cxx.Tensor] = None,
-                 output: Optional[cxx.Tensor] = None):
-        attention_output, attn = self.attention(
+                 head_mask: Optional[AnyTensor] = None,
+                 output_attentions=False,
+                 return_type: Optional[ReturnType] = None):
+        self_attention_outputs = self.attention(
             hidden_states,
             attention_mask,
-            return_type=ReturnType.turbo_transformers,
-            output=attention_output)
+            head_mask,
+            output_attentions=output_attentions,
+            return_type=ReturnType.turbo_transformers)
+        attention_output = self_attention_outputs[0]
+        outputs = self_attention_outputs[1:]
+
         intermediate_output = self.intermediate(
-            attention_output,
-            return_type=ReturnType.turbo_transformers,
-            output=intermediate_output)
-        return self.output(intermediate_output,
-                           attention_output,
-                           return_type=return_type,
-                           output=output), convert_returns_as_type(
-                               attn, return_type)
+            attention_output, return_type=ReturnType.turbo_transformers)
+        layer_output = self.output(intermediate_output,
+                                   attention_output,
+                                   return_type=return_type)
+        outputs = (layer_output, ) + outputs
+        return outputs
 
     @staticmethod
     def from_torch(layer: TorchBertLayer):
@@ -259,28 +264,41 @@ class BertEncoder:
     def __call__(self,
                  hidden_states: AnyTensor,
                  attention_mask: Optional[AnyTensor] = None,
-                 return_type: Optional[ReturnType] = None,
-                 attention_output: Optional[cxx.Tensor] = None,
-                 intermediate_output: Optional[cxx.Tensor] = None,
-                 output: Optional[cxx.Tensor] = None):
-        attention_output = create_empty_if_none(attention_output)
-        intermediate_output = create_empty_if_none(intermediate_output)
-        output = create_empty_if_none(output)
-        first = True
+                 head_mask: Optional[AnyTensor] = None,
+                 output_attentions: Optional[bool] = False,
+                 output_hidden_states: Optional[bool] = False,
+                 return_type: Optional[ReturnType] = None):
+        all_hidden_states = ()
+        all_attentions = ()
+        hidden_states = try_convert(hidden_states)
         for l in self.layer:
-            if first:
-                input_states = hidden_states
-                first = False
-            else:
-                input_states = output
+            layer_outputs = l(hidden_states=hidden_states,
+                              attention_mask=attention_mask,
+                              output_attentions=output_attentions,
+                              return_type=ReturnType.turbo_transformers)
+            if output_hidden_states:
+                all_hidden_states = all_hidden_states + (
+                    convert_returns_as_type(hidden_states, ReturnType.TORCH), )
 
-            output, _ = l(hidden_states=input_states,
-                          attention_mask=attention_mask,
-                          return_type=ReturnType.turbo_transformers,
-                          attention_output=attention_output,
-                          intermediate_output=intermediate_output,
-                          output=output)
-        return convert_returns_as_type(output, return_type)
+            hidden_states = layer_outputs[0]
+            if output_attentions:
+                all_attentions = all_attentions + (layer_outputs[1], )
+
+        outputs = (convert_returns_as_type(hidden_states, return_type), )
+        # Add last layer
+        if output_hidden_states:
+            # TODO(jiaruifang)two return value use the same memory space, that is not supported in dlpack.
+            # So we do not append the last hidden_state at the buttom of all_hidden_states,
+            # User should use outputs[0] if necessary
+            # all_hidden_states = all_hidden_states + (convert_returns_as_type(hidden_states, ReturnType.TORCH),)
+            pass
+
+        if output_hidden_states:
+            outputs = outputs + (all_hidden_states, )
+        if output_attentions:
+            outputs = outputs + (all_attentions, )
+
+        return outputs
 
     @staticmethod
     def from_torch(encoder: TorchBertEncoder):
@@ -324,78 +342,6 @@ PoolingMap = {
 }
 
 
-class BertModel:
-    def __init__(self, embeddings: BertEmbeddings, encoder: BertEncoder):
-        self.embeddings = embeddings
-        self.encoder = encoder
-        self.prepare = cxx.PrepareBertMasks()
-
-    def __call__(self,
-                 inputs: AnyTensor,
-                 attention_masks: Optional[AnyTensor] = None,
-                 token_type_ids: Optional[AnyTensor] = None,
-                 position_ids: Optional[AnyTensor] = None,
-                 pooling_type: PoolingType = PoolingType.FIRST,
-                 hidden_cache: Optional[AnyTensor] = None,
-                 output: Optional[AnyTensor] = None,
-                 return_type: Optional[ReturnType] = None):
-        attention_masks = try_convert(create_empty_if_none(attention_masks))
-        token_type_ids = try_convert(create_empty_if_none(token_type_ids))
-        position_ids = try_convert(create_empty_if_none(position_ids))
-        inputs = try_convert(inputs)
-        extended_attention_masks = cxx.Tensor.create_empty()
-        output = create_empty_if_none(output)
-        hidden_cache = create_empty_if_none(hidden_cache)
-
-        self.prepare(inputs, attention_masks, token_type_ids, position_ids,
-                     extended_attention_masks)
-
-        hidden_cache = self.embeddings(
-            inputs,
-            position_ids=position_ids,
-            token_type_ids=token_type_ids,
-            output=hidden_cache,
-            return_type=ReturnType.turbo_transformers)
-
-        hidden_cache = self.encoder(hidden_states=hidden_cache,
-                                    attention_mask=extended_attention_masks,
-                                    return_type=ReturnType.turbo_transformers,
-                                    output=hidden_cache)
-
-        self.seq_pool = SequencePool(PoolingMap[pooling_type])
-        output = self.seq_pool(input_tensor=hidden_cache,
-                               return_type=return_type,
-                               output_tensor=output)
-        return output, convert_returns_as_type(hidden_cache, return_type)
-
-    @staticmethod
-    def from_torch(model: TorchBertModel,
-                   device: Optional[torch.device] = None):
-        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
-        ):
-            model.to(device)
-        embeddings = BertEmbeddings.from_torch(model.embeddings)
-        encoder = BertEncoder.from_torch(model.encoder)
-        return BertModel(embeddings, encoder)
-
-    @staticmethod
-    def from_pretrained(model_id_or_path: str,
-                        device: Optional[torch.device] = None):
-        torch_model = TorchBertModel.from_pretrained(model_id_or_path)
-        model = BertModel.from_torch(torch_model, device)
-        model.config = torch_model.config
-        model._torch_model = torch_model  # prevent destroy torch model.
-        return model
-
-    @staticmethod
-    def from_npz(file_name: str, config,
-                 device: Optional[torch.device] = None):
-        embeddings = BertEmbeddings.from_npz(file_name)
-        encoder = BertEncoder.from_npz(file_name, config.num_hidden_layers,
-                                       config.num_attention_heads)
-        return BertModel(embeddings, encoder)
-
-
 class BertPooler(cxx.BertPooler):
     def __call__(self,
                  input_tensor: AnyTensor,
@@ -421,33 +367,48 @@ class BertPooler(cxx.BertPooler):
                           try_convert(f['pooler.dense.bias']))
 
 
-class BertModelWithPooler:
-    def __init__(self, bertmodel: BertModel, pooler: BertPooler):
-        self.bertmodel = bertmodel
-        self.pooler = pooler
+class BertModelNoPooler:
+    def __init__(self, embeddings: BertEmbeddings, encoder: BertEncoder):
+        self.embeddings = embeddings
+        self.encoder = encoder
+        self.prepare = cxx.PrepareBertMasks()
 
-    def __call__(self,
-                 inputs: AnyTensor,
-                 attention_masks: Optional[AnyTensor] = None,
-                 token_type_ids: Optional[AnyTensor] = None,
-                 position_ids: Optional[AnyTensor] = None,
-                 pooling_type: PoolingType = PoolingType.FIRST,
-                 hidden_cache: Optional[AnyTensor] = None,
-                 pooler_output: Optional[AnyTensor] = None,
-                 return_type: Optional[ReturnType] = None):
-        encoder_output, hidden_cache = self.bertmodel(
+    def __call__(
+            self,
+            inputs: AnyTensor,
+            attention_masks: Optional[AnyTensor] = None,
+            token_type_ids: Optional[AnyTensor] = None,
+            position_ids: Optional[AnyTensor] = None,
+            head_mask: Optional[AnyTensor] = None,
+            inputs_embeds: Optional[AnyTensor] = None,
+            output_attentions: Optional[bool] = None,
+            output_hidden_states: Optional[bool] = None,
+            pooling_type: PoolingType = PoolingType.
+            FIRST,  #the following parameters are exclusive for turbo
+            return_type: Optional[ReturnType] = None):
+
+        attention_masks = try_convert(create_empty_if_none(attention_masks))
+        token_type_ids = try_convert(create_empty_if_none(token_type_ids))
+        position_ids = try_convert(create_empty_if_none(position_ids))
+        inputs = try_convert(inputs)
+        extended_attention_masks = cxx.Tensor.create_empty()
+
+        self.prepare(inputs, attention_masks, token_type_ids, position_ids,
+                     extended_attention_masks)
+
+        hidden_cache = self.embeddings(
             inputs,
-            attention_masks,
-            token_type_ids,
-            position_ids,
-            pooling_type,
-            hidden_cache,
-            output=None,
+            position_ids=position_ids,
+            token_type_ids=token_type_ids,
             return_type=ReturnType.turbo_transformers)
-        pooler_output = self.pooler(encoder_output, return_type, pooler_output)
-        return pooler_output, convert_returns_as_type(
-            encoder_output,
-            return_type), convert_returns_as_type(hidden_cache, return_type)
+
+        encoder_outputs = self.encoder(
+            hidden_states=hidden_cache,
+            attention_mask=extended_attention_masks,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_type=return_type)
+        return encoder_outputs
 
     @staticmethod
     def from_torch(model: TorchBertModel,
@@ -457,15 +418,13 @@ class BertModelWithPooler:
             model.to(device)
         embeddings = BertEmbeddings.from_torch(model.embeddings)
         encoder = BertEncoder.from_torch(model.encoder)
-        bertmodel = BertModel(embeddings, encoder)
-        pooler = BertPooler.from_torch(model.pooler)
-        return BertModelWithPooler(bertmodel, pooler)
+        return BertModelNoPooler(embeddings, encoder, pooler)
 
     @staticmethod
     def from_pretrained(model_id_or_path: str,
                         device: Optional[torch.device] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
-        model = BertModelWithPooler.from_torch(torch_model, device)
+        model = BertModelNoPooler.from_torch(torch_model, device)
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model
@@ -473,6 +432,77 @@ class BertModelWithPooler:
     @staticmethod
     def from_npz(file_name: str, config,
                  device: Optional[torch.device] = None):
-        model = BertModel.from_npz(file_name, config)
+        embeddings = BertEmbeddings.from_npz(file_name)
+        encoder = BertEncoder.from_npz(file_name, config.num_hidden_layers,
+                                       config.num_attention_heads)
+        return BertModelNoPooler(embeddings, encoder)
+
+
+class BertModel:
+    def __init__(self, bertmodel_nopooler: BertModelNoPooler,
+                 pooler: BertPooler):
+        self.bertmodel_nopooler = bertmodel_nopooler
+        self.pooler = pooler
+
+    def __call__(self,
+                 inputs: AnyTensor,
+                 attention_masks: Optional[AnyTensor] = None,
+                 token_type_ids: Optional[AnyTensor] = None,
+                 position_ids: Optional[AnyTensor] = None,
+                 head_mask: Optional[AnyTensor] = None,
+                 inputs_embeds: Optional[AnyTensor] = None,
+                 output_attentions: Optional[bool] = None,
+                 output_hidden_states: Optional[bool] = None,
+                 pooling_type: PoolingType = PoolingType.FIRST,
+                 pooler_output: Optional[AnyTensor] = None,
+                 return_type: Optional[ReturnType] = None):
+        encoder_outputs = self.bertmodel_nopooler(
+            inputs,
+            attention_masks,
+            token_type_ids,
+            position_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            pooling_type=pooling_type,
+            return_type=ReturnType.turbo_transformers)
+
+        sequence_output = encoder_outputs[0]
+        self.seq_pool = SequencePool(PoolingMap[pooling_type])
+        sequence_output = self.seq_pool(
+            input_tensor=sequence_output,
+            return_type=ReturnType.turbo_transformers)
+        pooler_output = self.pooler(sequence_output, return_type,
+                                    pooler_output)
+        return (
+            convert_returns_as_type(sequence_output, return_type),
+            pooler_output,
+        ) + encoder_outputs[1:]
+
+    @staticmethod
+    def from_torch(model: TorchBertModel,
+                   device: Optional[torch.device] = None):
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
+        ):
+            model.to(device)
+        embeddings = BertEmbeddings.from_torch(model.embeddings)
+        encoder = BertEncoder.from_torch(model.encoder)
+        bertmodel_nopooler = BertModelNoPooler(embeddings, encoder)
+        pooler = BertPooler.from_torch(model.pooler)
+        return BertModel(bertmodel_nopooler, pooler)
+
+    @staticmethod
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
+        torch_model = TorchBertModel.from_pretrained(model_id_or_path)
+        model = BertModel.from_torch(torch_model, device)
+        model.config = torch_model.config
+        model._torch_model = torch_model  # prevent destroy torch model.
+        return model
+
+    @staticmethod
+    def from_npz(file_name: str, config,
+                 device: Optional[torch.device] = None):
+        model = BertModelNoPooler.from_npz(file_name, config)
         pooler = BertPooler.from_npz(file_name)
-        return BertModelWithPooler(model, pooler)
+        return BertModel(model, pooler)
