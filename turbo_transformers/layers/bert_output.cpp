@@ -19,6 +19,9 @@
 #include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
 #include "turbo_transformers/layers/kernels/mat_mul.h"
+#ifdef WITH_PERFTOOLS
+#include "turbo_transformers/core/profiler.h"
+#endif
 
 namespace turbo_transformers {
 namespace layers {
@@ -26,6 +29,10 @@ namespace layers {
 void BertOutput::operator()(const core::Tensor &hidden_states,
                             const core::Tensor &input_tensor,
                             core::Tensor *output_tensor) const {
+#ifdef WITH_PERFTOOLS
+  auto &profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile("BertOutput", input_tensor.device_type());
+#endif
   TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(input_tensor.device_ctx(),
                                                     hidden_states.device_ctx()),
                 true,
@@ -33,12 +40,16 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
                 "the same device type and device id.");
   output_tensor->Reshape<float>(
       {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(1)},
-      hidden_states.device_type(), hidden_states.device_id());
+      hidden_states.device_type(), hidden_states.device_id(),
+      "BertOutput/Reshape");
   kernels::MatMul(hidden_states, false, dense_weight_, false, 1.0,
-                  output_tensor, 0.0);
-  kernels::AddBiasLayerNorm<float>(input_tensor, dense_bias_,
-                                   layer_norm_weight_, layer_norm_bias_,
-                                   output_tensor);
+                  output_tensor, 0.0, "BertOutput/MatMul");
+  kernels::AddBiasLayerNorm<float>(
+      input_tensor, dense_bias_, layer_norm_weight_, layer_norm_bias_,
+      output_tensor, 1e-12, "BertOutput/AddBiasLayerNorm");
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile("BertOutput");
+#endif
 }
 
 void BertOutput::EnforceShapeAndType() const {

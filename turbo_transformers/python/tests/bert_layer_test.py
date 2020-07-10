@@ -63,14 +63,14 @@ def create_test(batch_size, seq_length):
             num_iter = 2
             device = "GPU" if use_cuda else "CPU"
             torch_model = lambda: self.torch_bert_layer(
-                self.input_tensor, self.attention_mask)
+                self.input_tensor, self.attention_mask, output_attentions=True)
             torch_bert_layer_result, torch_qps, torch_time = \
                 test_helper.run_model(torch_model, use_cuda, num_iter)
             print(f"BertLayer \"({batch_size},{seq_length:03})\" ",
                   f"{device} Torch QPS,  {torch_qps}, time, {torch_time}")
 
             turbo_model = lambda: self.turbo_bert_layer(
-                self.input_tensor, self.attention_mask)
+                self.input_tensor, self.attention_mask, output_attentions=True)
             turbo_bert_layer_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
             print(
@@ -84,6 +84,11 @@ def create_test(batch_size, seq_length):
                 torch.max(
                     torch.abs(torch_bert_layer_result[0] -
                               turbo_bert_layer_result[0])) < tolerate_error)
+
+            self.assertTrue(
+                torch.max(
+                    torch.abs(torch_bert_layer_result[1] -
+                              turbo_bert_layer_result[1])) < tolerate_error)
             with open(fname, "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {torch_qps}, {turbo_qps}\n"

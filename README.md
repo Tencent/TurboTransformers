@@ -24,6 +24,43 @@ The following table is a comparison of TurboTransformers and related work.
 | pytorch (CPU/GPU) | Medium/Medium | No | Yes | Easy |
 | **turbo-transformers (CPU/GPU)** | **Fastest/Fastest** | **No** | **Yes** | **Easy** |
 
+### Supported Models
+
+* [BERT](https://arxiv.org/abs/1810.04805)
+* [ALBERT](https://arxiv.org/abs/1909.11942)
+* [Roberta](https://arxiv.org/abs/1907.11692)
+* [Transformer Decoder](https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py).
+
+### Boost BERT Inference in 2 Line of Python Code
+```python
+import torch
+import transformers
+import turbo_transformers
+
+if __name__ == "__main__":
+    turbo_transformers.set_num_threads(4)
+    torch.set_num_threads(4)
+    model_id = "bert-base-uncased"
+    model = transformers.BertModel.from_pretrained(model_id)
+    model.eval()
+    cfg = model.config
+
+    input_ids = torch.tensor(
+        ([12166, 10699, 16752, 4454], [5342, 16471, 817, 16022]),
+        dtype=torch.long)
+    position_ids = torch.tensor(([1, 0, 0, 0], [1, 1, 1, 0]), dtype=torch.long)
+    segment_ids = torch.tensor(([1, 1, 1, 0], [1, 0, 0, 0]), dtype=torch.long)
+    torch.set_grad_enabled(False)
+    torch_res = model(
+        input_ids, position_ids=position_ids, token_type_ids=segment_ids
+    )  # sequence_output, pooled_output, (hidden_states), (attentions)
+    torch_seqence_output = torch_res[0][:, 0, :]
+    tt_model = turbo_transformers.BertModel.from_torch(model)
+    res = tt_model(
+        input_ids, position_ids=position_ids,
+        token_type_ids=segment_ids)  # pooled_output, sequence_output
+    tt_seqence_output = res[0]
+```
 
 ### Installation on CPU
 ```
@@ -108,17 +145,15 @@ In particular, we consider that most of the pre-trained models are in pytorch fo
 
 <img width="700" height="150" src="./images/pretrainmodelload.jpg" alt="pretrained">
 
-#### Bert Examples
+### Examples
 ##### python APIs
-Refer to examples in [./example/python](./example/python "python").
+Refer to examples of supported models in [./example/python](./example/python "python").
+[TurboNLP/Translate-Demo](https://github.com/TurboNLP/Translate-Demo "translate") shows a demo of applying TurboTransformer in Translatetion Task.
 Since the user of BERT acceleration always requires a customized post-processing process for the task, we provide an example of how to write a sequence classification application.
 ##### C++ APIs
 Refer to [./example/cpp](./example/cpp "C ++") for an example.
 Our example provides the GPU and two CPU multi-thread calling methods. One is to do one BERT inference using multiple threads; the other is to do multiple BERT inference, each of which using one thread.
 Users can link turbo-transformers to your code through add_subdirectory.
-
-#### Decoder Examples
-[TurboNLP/Translate-Demo](https://github.com/TurboNLP/Translate-Demo "translate") shows a demo of applying TurboTransformer in Translatetion Task.
 
 ## Performance
 [BERT Benchmark Results](./docs/bert.md)
@@ -127,7 +162,7 @@ Users can link turbo-transformers to your code through add_subdirectory.
 
 [How to know hotspots of your code](./docs/profiler.md)
 
-#### How to contribute new models
+## How to contribute new models
 [How to add a new layer](./turbo_transformers/layers/README.md)
 
 
@@ -144,9 +179,11 @@ The diff mainly comes from Bert Output Layer. We use a approximate GELU algorith
 
 ## History
 1. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
-2. June 2020 v0.2.1, TurboTransformers add BLIS as a BLAS option. Better performance on AMD CPU.
-3. June 2020 v0.3.0, TurboTransformers adds support for Transformer Decoder on CPU/GPU.
+2. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
+3. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
+4. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
 
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
-Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.
+1. Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.
+2. 加入QQ Group, Name: TurboTransformers, Number : 1109315167.
