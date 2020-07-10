@@ -44,18 +44,20 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
     if model_name == "bert":
         cfg = transformers.BertConfig()
         model = transformers.BertModel(cfg)
+        model.eval()
         model = turbo_transformers.BertModel.from_torch(model)
     elif model_name == "albert":
         cfg = transformers.AlbertConfig()
         model = transformers.AlbertModel(cfg)
+        model.eval()
         model = turbo_transformers.AlbertModel.from_torch(model)
     elif model_name == "roberta":
         cfg = transformers.RobertaConfig()
         model = transformers.RobertaModel(cfg)
+        model.eval()
         model = turbo_transformers.RobertaModel.from_torch(model)
     else:
         raise (f"benchmark does not support {model_name}")
-    model.eval()
 
     cfg = model.config  # type: transformers.BertConfig
     input_ids = torch.randint(low=0,
