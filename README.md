@@ -158,11 +158,14 @@ Users can link turbo-transformers to your code through add_subdirectory.
 ## Performance
 [BERT Benchmark Results](./docs/bert.md)
 
+[ALBERT Benchmark Results](./docs/albert.md)
+
 [Transformer Docoder Results](./docs/decoder.md)
 
-[How to know hotspots of your code](./docs/profiler.md)
 
 ## How to contribute new models
+[How to know hotspots of your code](./docs/profiler.md)
+
 [How to add a new layer](./turbo_transformers/layers/README.md)
 
 
