@@ -35,9 +35,10 @@ def create_test(batch_size, seq_length):
                 turbo_transformers.set_num_threads(4)
 
             torch.set_grad_enabled(False)
-            cfg = BertConfig(attention_probs_dropout_prob=0.0,
-                             hidden_dropout_prob=0.0)
-            torch_attention = BertAttention(cfg)
+            self.cfg = BertConfig(attention_probs_dropout_prob=0.0,
+                                  hidden_dropout_prob=0.0)
+            self.cfg.output_attentions = True
+            torch_attention = BertAttention(self.cfg)
             torch_attention.eval()
             if use_cuda:
                 torch_attention.to(test_device)
@@ -49,7 +50,8 @@ def create_test(batch_size, seq_length):
             turbo_decoder_attention = turbo_transformers.MultiHeadedAttention.from_torch(
                 torch_attention, is_trans_weight=False)
 
-            hidden_size = cfg.hidden_size
+
+            hidden_size = self.cfg.hidden_size
             input_tensor = torch.rand(size=(batch_size, seq_length,
                                             hidden_size),
                                       dtype=torch.float32,
@@ -65,14 +67,22 @@ def create_test(batch_size, seq_length):
             torch_attention, turbo_attention, turbo_decoder_attention, input_tensor, attention_mask = \
                 self.init_data(use_cuda)
             device = "GPU" if use_cuda else "CPU"
-            torch_model = lambda: torch_attention(input_tensor, attention_mask)
+            torch_model = lambda: torch_attention(input_tensor,
+                                                  attention_mask,
+                                                  output_attentions=self.cfg.
+                                                  output_attentions)
             torch_attention_result, torch_qps, torch_time_consume = \
-                test_helper.run_model(torch_model, use_cuda, num_iter)
+                test_helper.run_model(torch_model, use_cuda, num_iter, use_profile=False)
             print(
                 f"BertAttention \"({batch_size},{seq_length:03})\" ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
-            turbo_model = lambda: turbo_attention(input_tensor, attention_mask)
+
+            turbo_model = lambda: turbo_attention(input_tensor,
+                                                  attention_mask,
+                                                  output_attentions=self.cfg.
+                                                  output_attentions)
+
             turbo_attention_result, turbo_qps, turbo_time_consume = \
                 test_helper.run_model(turbo_model, use_cuda,
                                       num_iter)
@@ -85,6 +95,12 @@ def create_test(batch_size, seq_length):
                 torch.max(
                     torch.abs(torch_attention_result[0] -
                               turbo_attention_result[0])) < (
+                                  1e-3 if use_cuda else 1e-4))
+
+            self.assertTrue(
+                torch.max(
+                    torch.abs(torch_attention_result[1] -
+                              turbo_attention_result[1])) < (
                                   1e-3 if use_cuda else 1e-4))
 
             turbo_multiheaded_model = lambda: turbo_decoder_attention(

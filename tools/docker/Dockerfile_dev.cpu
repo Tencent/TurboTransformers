@@ -1,5 +1,6 @@
 # Build ONNX Runtime for benchmark
 FROM continuumio/miniconda3 as OnnxRTBuilder
+
 RUN apt-get update && apt-get install -y gfortran build-essential
 RUN /opt/conda/bin/conda install mklml cmake curl git numpy -c anaconda
 RUN mkdir /src && cd /src/ && git clone -v https://github.com/microsoft/onnxruntime.git &&\
@@ -26,7 +27,7 @@ RUN /opt/conda/bin/conda install pytorch==1.4.0  cpuonly -c pytorch && \
     /opt/conda/bin/conda install curl conda-verify conda-build mkl-include cmake -c anaconda &&  \
     /opt/conda/bin/conda install make cmake git graphviz gperftools git-lfs docopt -c conda-forge && \
     /opt/conda/bin/conda clean -afy
-
+RUN pip --no-cache-dir install contexttimer future transformers==3.0.2 docopt
 COPY --from=OnnxRTBuilder /src/onnxruntime/build/Linux/Release/dist/onnxruntime-*.whl \
     /opt/
 RUN pip install /opt/onnxruntime-*.whl

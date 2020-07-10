@@ -19,7 +19,6 @@ import torch
 import os
 
 from onmt.modules.multi_headed_attn import MultiHeadedAttention
-# from my_multi_headed_attn import MultiHeadedAttention
 
 sys.path.append(os.path.dirname(__file__))
 import test_helper
