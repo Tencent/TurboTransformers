@@ -186,6 +186,7 @@ The diff mainly comes from Bert Output Layer. We use a approximate GELU algorith
 3. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
 4. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
 
+
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
 1. Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.

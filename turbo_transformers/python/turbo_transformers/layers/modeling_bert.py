@@ -58,8 +58,6 @@ class BertEmbeddings(cxx.BERTEmbedding):
     @staticmethod
     def from_torch(bert_embedding: TorchBertEmbeddings) -> 'BertEmbeddings':
         params = to_param_dict_convert_tt(bert_embedding)
-        # for k, v in bert_embedding.named_parameters():
-        #     print(k)
         return BertEmbeddings(params['word_embeddings.weight'],
                               params['position_embeddings.weight'],
                               params['token_type_embeddings.weight'],
@@ -166,6 +164,7 @@ class BertAttention(cxx.BertAttention):
                    ) if output_attentions else (convert_returns_as_type(
                        context_layer, return_type), )
         return outputs
+
 
     @staticmethod
     def from_torch(attention: TorchBertAttention):
@@ -300,6 +299,7 @@ class BertEncoder:
 
         return outputs
 
+
     @staticmethod
     def from_torch(encoder: TorchBertEncoder):
         layer = [
@@ -373,6 +373,7 @@ class BertModelNoPooler:
         self.encoder = encoder
         self.prepare = cxx.PrepareBertMasks()
 
+
     def __call__(
             self,
             inputs: AnyTensor,
@@ -386,7 +387,6 @@ class BertModelNoPooler:
             pooling_type: PoolingType = PoolingType.
             FIRST,  #the following parameters are exclusive for turbo
             return_type: Optional[ReturnType] = None):
-
         attention_masks = try_convert(create_empty_if_none(attention_masks))
         token_type_ids = try_convert(create_empty_if_none(token_type_ids))
         position_ids = try_convert(create_empty_if_none(position_ids))
@@ -435,6 +435,7 @@ class BertModelNoPooler:
         embeddings = BertEmbeddings.from_npz(file_name)
         encoder = BertEncoder.from_npz(file_name, config.num_hidden_layers,
                                        config.num_attention_heads)
+
         return BertModelNoPooler(embeddings, encoder)
 
 

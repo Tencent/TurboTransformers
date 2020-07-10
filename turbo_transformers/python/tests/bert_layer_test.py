@@ -89,6 +89,7 @@ def create_test(batch_size, seq_length):
                 torch.max(
                     torch.abs(torch_bert_layer_result[1] -
                               turbo_bert_layer_result[1])) < tolerate_error)
+
             with open(fname, "a") as fh:
                 fh.write(
                     f"\"({batch_size},{seq_length:03})\", {torch_qps}, {turbo_qps}\n"

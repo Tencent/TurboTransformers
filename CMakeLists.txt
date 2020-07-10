@@ -23,6 +23,7 @@ set(CMAKE_C_FLAGS "-Wall")
 
 set(TURBO_TRANSFORMERS_VERSION 0.3.1)
 
+
 option(WITH_PROFILER  "Compile with profiler" OFF)
 option(WITH_GPU       "Build with GPU"          OFF)
 option(WITH_MODULE_BENCHMAKR       "Catch2 unitest with benchmarking"          ON)
