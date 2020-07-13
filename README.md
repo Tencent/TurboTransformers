@@ -62,7 +62,11 @@ if __name__ == "__main__":
     tt_seqence_output = res[0]
 ```
 
-### Installation on CPU
+### Installation
+Note that the building scripts only applie to specific OS and software (Pytorch, OpenNMT, transformers, etc.) versions.
+Please adjust them according to your needs.
+
+#### CPU
 ```
 git clone https://github.com/Tencent/TurboTransformers --recursive
 ```
@@ -108,7 +112,7 @@ sh tool/build_conda_package.sh
 ```
 docker pull thufeifeibear/turbo_transformers:0.3.2-cpu-dev
 ```
-### Installation on GPU
+#### GPU
 ```
 git clone https://github.com/Tencent/TurboTransformers --recursive
 ```

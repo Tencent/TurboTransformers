@@ -21,7 +21,7 @@ if [ -z $BUILD_TYPE ]; then
   BUILD_TYPE=release
 fi
 
-CUDA_VERSION=10.0
+CUDA_VERSION=10.1
 DOCKER_BASE=${CUDA_VERSION}-cudnn7-devel-ubuntu18.04
 PYTORCH_VERSION=1.5.0
 sed 's#IMAGE_BASE#nvidia/cuda:'${DOCKER_BASE}'#g' ./docker/Dockerfile_${BUILD_TYPE}.gpu |
