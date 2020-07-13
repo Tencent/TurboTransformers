@@ -59,7 +59,6 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
     else:
         raise (f"benchmark does not support {model_name}")
 
-    cfg = model.config  # type: transformers.BertConfig
     input_ids = torch.randint(low=0,
                               high=cfg.vocab_size - 1,
                               size=(batch_size, seq_len),
@@ -89,7 +88,6 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
     else:
         raise (f"benchmark does not support {model_name}")
     model.eval()
-    cfg = model.config  # type: transformers.BertConfig
     input_ids = torch.randint(low=0,
                               high=cfg.vocab_size - 1,
                               size=(batch_size, seq_len),
@@ -117,7 +115,6 @@ def benchmark_torch_jit(model_name: str, seq_len: int, batch_size: int, n: int,
     else:
         raise (f"benchmark does not support {model_name}")
     model.eval()
-    cfg = model.config  # type: transformers.BertConfig
     input_ids = torch.randint(low=0,
                               high=cfg.vocab_size - 1,
                               size=(batch_size, seq_len),
