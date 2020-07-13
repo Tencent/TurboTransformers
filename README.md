@@ -31,7 +31,7 @@ The following table is a comparison of TurboTransformers and related work.
 * [Roberta](https://arxiv.org/abs/1907.11692)
 * [Transformer Decoder](https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py).
 
-### Boost BERT Inference in 2 Line of Python Code
+### Boost BERT Inference in 2 Lines of Python Code
 ```python
 import torch
 import transformers
@@ -106,7 +106,7 @@ sh tool/build_conda_package.sh
 
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
 ```
-docker pull thufeifeibear/turbo_transformers:0.3.0-cpu-dev
+docker pull thufeifeibear/turbo_transformers:0.3.1-cpu-dev
 ```
 ### Installation on GPU
 ```
@@ -167,7 +167,6 @@ Users can link turbo-transformers to your code through add_subdirectory.
 [How to know hotspots of your code](./docs/profiler.md)
 
 [How to add a new layer](./turbo_transformers/layers/README.md)
-
 
 ## TODO
 Currently (June 2020), In the near futuer, we will add support for other models (Albert [Work In Progress], GPT2) and low-precision floating point (CPU int8, GPU FP16).

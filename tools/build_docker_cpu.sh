@@ -23,4 +23,4 @@ if [ -z $BUILD_TYPE ]; then
 fi
 
 docker build ${EXTRA_ARGS} \
-  -t thufeifeibear/turbo_transformers:${VERSION}-${BUILD_TYPE} -f ./docker/Dockerfile_${BUILD_TYPE}.cpu .
+  -t thufeifeibear/turbo_transformers:${VERSION}-cpu-${BUILD_TYPE} -f ./docker/Dockerfile_${BUILD_TYPE}.cpu .
