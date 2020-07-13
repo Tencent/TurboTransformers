@@ -164,7 +164,7 @@ class BertAttention(cxx.BertAttention):
                    ) if output_attentions else (convert_returns_as_type(
                        context_layer, return_type), )
         return outputs
-
+      
     @staticmethod
     def from_torch(attention: TorchBertAttention):
         params = {k: v for k, v in attention.named_parameters()}
@@ -297,7 +297,7 @@ class BertEncoder:
             outputs = outputs + (all_attentions, )
 
         return outputs
-
+      
     @staticmethod
     def from_torch(encoder: TorchBertEncoder):
         layer = [
@@ -432,9 +432,7 @@ class BertModelNoPooler:
         embeddings = BertEmbeddings.from_npz(file_name)
         encoder = BertEncoder.from_npz(file_name, config.num_hidden_layers,
                                        config.num_attention_heads)
-
         return BertModelNoPooler(embeddings, encoder)
-
 
 class BertModel:
     def __init__(self, bertmodel_nopooler: BertModelNoPooler,
