@@ -66,7 +66,7 @@ def test(loadtype: LoadType):
     res = tt_model(
         input_ids, position_ids=position_ids,
         token_type_ids=segment_ids)  # sequence_output, pooled_output
-    print("turbo bert sequence output:", res[0], res[0].size())
+    print("turbo bert sequence output:", res[0][:, 0, :])
     print("turbo bert pooler output: ", res[1])  # pooled_output
     # assert (torch.max(torch.abs(tt_seqence_output - torch_seqence_output)) <
     #         0.1)
