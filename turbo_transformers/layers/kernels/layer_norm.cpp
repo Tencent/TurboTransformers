@@ -131,6 +131,14 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
   int64_t m = input_tensor.numel() / n;
   // TODO(florianzhao): Check the dim of bias_tensor, gamma_tensor, beta_tensor,
   // out_tensor
+  TT_ENFORCE_EQ(input_tensor.shape(-1), gamma_tensor.shape(0),
+                "AddBiasLayerNorm input_tensor.shape(-1) should be the same as gamma_tensor.shape(0)");
+  TT_ENFORCE_EQ(input_tensor.shape(-1), beta_tensor.shape(0),
+                "AddBiasLayerNorm input_tensor.shape(-1) should be the same as beta_tensor.shape(0)");
+  TT_ENFORCE_EQ(input_tensor.shape(-1), bias_tensor.shape(0),
+                "AddBiasLayerNorm input_tensor.shape(-1) should be the same as bias_tensor.shape(0)");
+  TT_ENFORCE(common::is_same_shape(input_tensor, *out_tensor),
+             "The shape of the input_tensor and out_tensor is not equal.");
   if (input_tensor.device_type() == kDLCPU) {
 #pragma omp parallel for
     for (int64_t batch_idx = 0; batch_idx < m; ++batch_idx) {

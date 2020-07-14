@@ -58,6 +58,7 @@ TEST_CASE("softmax-gpu-2Dmask-test") {
       }
 }
 
+
 TEST_CASE("softmax-gpu-3Dmask-test") {
   int64_t num_attention_heads = 12;
 
@@ -87,7 +88,6 @@ TEST_CASE("softmax-gpu-3Dmask-test") {
         REQUIRE(common::CheckResultOfCPUAndGPU<float>(qk_buf_cpu, qk_buf_gpu));
       }
 }
-
 #endif
 
 }  // namespace kernels
