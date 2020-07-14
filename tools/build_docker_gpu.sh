@@ -17,12 +17,16 @@ set -xe
 VERSION=$(cat ../CMakeLists.txt | grep TURBO_TRANSFORMERS_VERSION | \
     sed 's#set(TURBO_TRANSFORMERS_VERSION ##g' | sed 's#)##g')
 
-CUDA_VERSION=10.0
+if [ -z $BUILD_TYPE ]; then
+  BUILD_TYPE=release
+fi
+
+CUDA_VERSION=10.1
 DOCKER_BASE=${CUDA_VERSION}-cudnn7-devel-ubuntu18.04
 PYTORCH_VERSION=1.5.0
-sed 's#IMAGE_BASE#nvidia/cuda:'${DOCKER_BASE}'#g' ./docker/Dockerfile_dev.gpu |
+sed 's#IMAGE_BASE#nvidia/cuda:'${DOCKER_BASE}'#g' ./docker/Dockerfile_${BUILD_TYPE}.gpu |
 sed 's#CUDA_VERSION#'${CUDA_VERSION}'#g'         |
 sed 's#PYTORCH_VERSION#'${PYTORCH_VERSION}'#g'    > Dockerfile.gpu
 
 docker build ${EXTRA_ARGS} \
-  -t thufeifeibear/turbo_transformers:${VERSION}-cuda${DOCKER_BASE}-gpu-dev -f Dockerfile.gpu  .
+  -t thufeifeibear/turbo_transformers:${VERSION}-cuda${DOCKER_BASE}-gpu-${BUILD_TYPE} -f Dockerfile.gpu  .

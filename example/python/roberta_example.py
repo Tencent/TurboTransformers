@@ -45,14 +45,14 @@ def test(use_cuda):
                               device=test_device)
 
     torch_result = torch_model(input_ids)
-    torch_result_final = torch_result[0][:, 0].cpu().numpy()
+    torch_result_final = torch_result[0].cpu().numpy()
 
     turbo_result = turbo_model(input_ids)
     turbo_result_final = turbo_result[0].cpu().numpy()
 
     # See the differences
     # print(numpy.size(torch_result_final), numpy.size(turbo_result_final))
-    # print(torch_result_final - turbo_result_final)
+    print(torch_result_final - turbo_result_final)
     assert (numpy.allclose(torch_result_final,
                            turbo_result_final,
                            atol=1e-3,

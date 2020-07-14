@@ -81,7 +81,6 @@ TEST_CASE("softmax-gpu-3Dmask-test") {
             common::CreateAndFillRandomForCPUGPUTensors<float>(
                 {batch_size, 1, from_seq, to_seq});
 
-
         ApplyMaskAndSoftmax(&qk_buf_gpu, attr_mask_gpu, scaler);
 
         ApplyMaskAndSoftmax(&qk_buf_cpu, attr_mask_cpu, scaler);
@@ -89,8 +88,6 @@ TEST_CASE("softmax-gpu-3Dmask-test") {
         REQUIRE(common::CheckResultOfCPUAndGPU<float>(qk_buf_cpu, qk_buf_gpu));
       }
 }
-
-
 #endif
 
 }  // namespace kernels

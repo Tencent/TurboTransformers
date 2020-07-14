@@ -64,7 +64,7 @@ class TestBertModel(unittest.TestCase):
         print(f'BertModel TurboTransformer({device_name}) QPS {turbo_qps}')
 
         self.assertTrue(
-            numpy.allclose(torch_result[0][:, 0].cpu(),
+            numpy.allclose(torch_result[0].cpu(),
                            turbo_result[0].cpu(),
                            atol=1e-3,
                            rtol=1e-3))
