@@ -82,6 +82,7 @@ def test(loadtype: LoadType, use_cuda: bool):
             input_ids, position_ids=position_ids,
             token_type_ids=segment_ids)  # sequence_output, pooled_output
     end_time = time.time()
+
     print("turbo bert sequence output:", res[0][:, 0, :])
     print("turbo bert pooler output: ", res[1])  # pooled_output
     print("\nturbo time consum: {}".format(end_time - start_time))
