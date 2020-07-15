@@ -35,7 +35,6 @@ def test(loadtype: LoadType, use_cuda: bool):
     cfg = model.config
     # use 4 threads for computing
     turbo_transformers.set_num_threads(4)
-    torch.set_num_threads(4)
 
     input_ids = torch.tensor(
         ([12166, 10699, 16752, 4454], [5342, 16471, 817, 16022]),
