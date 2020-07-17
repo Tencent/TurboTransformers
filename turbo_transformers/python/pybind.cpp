@@ -30,6 +30,7 @@
 #include "turbo_transformers/layers/positionwise_ffn.h"
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
+#include "turbo_transformers/layers/fused_ops.h"
 
 namespace turbo_transformers {
 namespace python {
@@ -213,6 +214,12 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
             std::move(layer_norm_weight), std::move(layer_norm_bias));
       }))
       .def("__call__", &layers::PositionwiseFeedForward::operator());
+
+  py::class_<layers::FusedAddBiasGELU>(m, "FusedAddBiasGELU")
+      .def(py::init([](core::Tensor &dense_bias) -> layers::FusedAddBiasGELU * {
+        return new layers::FusedAddBiasGELU(std::move(dense_bias));
+      }))
+      .def("__call__", &layers::FusedAddBiasGELU::operator());
 }
 
 }  // namespace python

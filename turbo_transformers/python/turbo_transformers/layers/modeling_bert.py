@@ -36,7 +36,7 @@ import numpy as np
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
     'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType',
-    'BertPooler'
+    'BertPooler', 'QBertIntermediate'
 ]
 
 
@@ -507,3 +507,19 @@ class BertModel:
         model = BertModelNoPooler.from_npz(file_name, config)
         pooler = BertPooler.from_npz(file_name)
         return BertModel(model, pooler)
+
+class QBertIntermediate:
+    def __init__(self, intermediate):
+        # assert intermediate.intermediate_act_fn is gelu
+        self.bias_act = cxx.FusedAddBiasGELU(convert2tt_tensor(intermediate.dense.bias))
+        self.qlinear = torch.quantization.quantize_dynamic(intermediate).dense
+        self.qlinear.set_weight_bias(self.qlinear.weight(), None)
+    def __call__(self, input_tensor):
+        if not isinstance(input_tensor, torch.Tensor):
+            input_tensor = convert_returns_as_type(input_tensor, ReturnType.TORCH)
+        output = convert2tt_tensor(self.qlinear(input_tensor))
+        self.bias_act(output)
+        return convert_returns_as_type(output, ReturnType.TORCH)
+    @staticmethod
+    def from_torch(intermediate):
+        return QBertIntermediate(intermediate)
