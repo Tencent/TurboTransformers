@@ -16,6 +16,7 @@
 #include "loguru.hpp"
 #include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
+#include "turbo_transformers/layers/kernels/embedding.h"
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #include "turbo_transformers/layers/kernels/gpu_embedding_kernel.h"
@@ -23,57 +24,6 @@
 
 namespace turbo_transformers {
 namespace layers {
-
-template <bool Add>
-static void LookupEmbedding(core::Tensor &out_tensor,
-                            const core::Tensor &embedding_table,
-                            const core::Tensor &ids_tensor) {
-  TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(
-                    out_tensor.device_ctx(), embedding_table.device_ctx()),
-                true,
-                "The out_tensor and embedding_table should have the same "
-                "device type and device id.");
-
-  TT_ENFORCE_EQ(kernels::common::is_same_device_ctx(out_tensor.device_ctx(),
-                                                    ids_tensor.device_ctx()),
-                true,
-                "The out_tensor and ids_tensor should have the same device "
-                "type and device id.");
-
-  const float *embedding = embedding_table.data<float>();
-  const int64_t *ids = ids_tensor.data<int64_t>();
-  auto *out = out_tensor.mutableData<float>();
-  auto num_ids = ids_tensor.numel();
-  auto hidden_size = embedding_table.shape(1);
-  auto vocab_size = embedding_table.shape(0);
-  if (out_tensor.device_type() == kDLCPU) {
-#pragma omp parallel for
-    for (int64_t i = 0; i < num_ids; ++i) {
-      int64_t id = ids[i];
-      TT_ENFORCE_LT(id, vocab_size, "embedding id out of index");
-      auto dst = out + i * hidden_size;
-      auto src = embedding + id * hidden_size;
-      if (Add) {
-#pragma omp simd
-        for (int64_t j = 0; j < hidden_size; ++j) {
-          dst[j] += src[j];
-        }
-      } else {
-        std::copy(src, src + hidden_size, dst);
-      }
-    }
-  } else if (out_tensor.device_type() == kDLGPU) {
-#ifdef TT_WITH_CUDA
-    auto &cuda_ctx = core::CUDADeviceContext::GetInstance();
-    kernels::GPULookupKernel<Add>(out, embedding, ids, vocab_size, hidden_size,
-                                  num_ids, cuda_ctx.stream());
-#else
-    TT_THROW("The current code is not compiled with CUDA.");
-#endif
-  } else {
-    TT_THROW("device_type is not supported");
-  }
-}
 
 void BERTEmbedding::operator()(const core::Tensor &input_ids,
                                const core::Tensor &position_ids,
@@ -102,13 +52,13 @@ void BERTEmbedding::operator()(const core::Tensor &input_ids,
   output_tensor->Reshape<float>({batch_size, seq_length, hidden_size},
                                 input_ids.device_type(), input_ids.device_id());
   LOG_S(3) << "Look up word embedding";
-  LookupEmbedding</*Add=*/false>(*output_tensor, word_embedings_, input_ids);
+  kernels::LookupEmbedding</*Add=*/false>(output_tensor, word_embedings_, input_ids);
   LOG_S(3) << "Look up token type embedding";
-  LookupEmbedding</*Add=*/true>(*output_tensor, token_type_embeddings_,
-                                token_type_ids);
+  kernels::LookupEmbedding</*Add=*/true>(output_tensor, token_type_embeddings_,
+                                         token_type_ids);
   LOG_S(3) << "Look up token position embedding";
-  LookupEmbedding</*Add=*/true>(*output_tensor, position_embeddings_,
-                                position_ids);
+  kernels::LookupEmbedding</*Add=*/true>(output_tensor, position_embeddings_,
+                                         position_ids);
 
   kernels::LayerNorm<float>(layer_norm_weights_, layer_norm_bias_,
                             output_tensor);

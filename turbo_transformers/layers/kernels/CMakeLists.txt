@@ -13,7 +13,7 @@
 
 add_library(tt_kernels OBJECT
         layer_norm.cpp softmax.cpp transpose.cpp activation.cpp
-        common.cpp seq_pool.cpp mat_mul.cpp utils.cpp)
+        common.cpp seq_pool.cpp mat_mul.cpp embedding.cpp utils.cpp)
 target_link_libraries(tt_kernels PUBLIC tt_core)
 
 if (WITH_GPU)
@@ -30,6 +30,7 @@ endif()
 
 add_executable(tt_kernels_test
         activation_test.cpp
+        embedding_test.cpp
         softmax_test.cpp
         transpose_test.cpp
         layer_norm_test.cpp
