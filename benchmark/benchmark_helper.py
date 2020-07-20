@@ -54,6 +54,56 @@ def run_model(model,
         }))
 
 
+def run_random_model(model, use_cuda, num_iter, max_seq_len, min_seq_len,
+                     framework_name, thread_num, cfg):
+    import torch
+    import contexttimer
+    import json
+    import random
+    # no warm-up, its for fix-length input.
+    test_device = torch.device('cuda:0') if use_cuda else torch.device('cpu:0')
+    request_list = []
+    # make sure all benchmarking runtimes are using the same random distribution.
+    random.seed(0)
+    for i in range(num_iter):
+        generated_seq_len = random.randint(min_seq_len, max_seq_len)
+        input_ids = torch.randint(low=0,
+                                  high=cfg.vocab_size - 1,
+                                  size=(1, generated_seq_len),
+                                  dtype=torch.long,
+                                  device=test_device)
+        request_list.append(input_ids)
+
+    if use_cuda:
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        start.record()
+
+    with contexttimer.Timer() as t:
+        for request in request_list:
+            model(request)
+
+    if not use_cuda:
+        qps = num_iter / t.elapsed
+        time_consume = t.elapsed
+    else:
+        end.record()
+        torch.cuda.synchronize()
+        torch_elapsed = start.elapsed_time(end) / 1e3
+        qps = num_iter / torch_elapsed
+        time_consume = torch_elapsed
+    print(
+        json.dumps({
+            "QPS": qps,
+            "elapsed": time_consume,
+            "n": num_iter,
+            "max_seq_len": max_seq_len,
+            "min_seq_len": min_seq_len,
+            "framework": framework_name,
+            "thread_num": thread_num,
+        }))
+
+
 def generate_onnx_model(model_name: str, filename: str, seq_len: int,
                         batch_size: int, backend: str):
     import transformers
