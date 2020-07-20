@@ -20,11 +20,22 @@ namespace turbo_transformers {
 using BlasInt = MKL_INT;
 }
 
-#else
+#elif defined(TT_BLAS_USE_OPENBLAS) || defined(TT_BLAS_USE_BLIS)
 #include "cblas.h"
+#if defined(TT_BLAS_USE_OPENBLAS)
+
 namespace turbo_transformers {
 using BlasInt = blasint;
 }  // namespace turbo_transformers
+#elif defined(TT_BLAS_USE_BLIS)
+#include <unistd.h>
+
+namespace turbo_transformers {
+using BlasInt = f77_int;
+}  // namespace turbo_transformers
+
+using blasint = turbo_transformers::BlasInt;
+#endif
 
 extern "C" {
 void cblas_sgemm_batch(const CBLAS_ORDER Layout,
@@ -39,5 +50,5 @@ void cblas_sgemm_batch(const CBLAS_ORDER Layout,
                        const blasint* group_size);
 void vsTanh(blasint N, const float* in, float* out);
 }
-
+#else
 #endif

@@ -123,7 +123,6 @@ TEST_CASE("matmul-gpu-test") {
   check_cpu_gpu_res(false);
 }
 #endif
-
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers

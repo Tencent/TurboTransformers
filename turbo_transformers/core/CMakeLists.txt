@@ -22,6 +22,7 @@ add_library(tt_core
             tensor.cpp
             config.cpp
             profiler.cpp
+            allocator.cpp
         )
 target_link_libraries(tt_core PUBLIC
         absl::stacktrace
@@ -41,21 +42,22 @@ if (${BLAS_PROVIDER} STREQUAL "mkl")
 elseif (${BLAS_PROVIDER} STREQUAL "openblas")
     target_link_libraries(tt_core PUBLIC OpenBlas::OpenBlas PUBLIC Eigen3::Eigen)
     target_compile_definitions(tt_core PUBLIC -DTT_BLAS_USE_OPENBLAS)
+elseif (${BLAS_PROVIDER} STREQUAL "blis")
+    target_link_libraries(tt_core PUBLIC blis Eigen3::Eigen)
+    target_compile_definitions(tt_core PUBLIC -DTT_BLAS_USE_BLIS)
 endif ()
 
 
 if (WITH_GPU)
-    target_sources(tt_core PRIVATE cuda_device_context.cpp cuda_allocator.cpp)
+    target_sources(tt_core PRIVATE cuda_device_context.cpp)
     target_link_libraries(tt_core PUBLIC cudart cuda cublas)
 endif()
-if (WITH_PROFILER)
-    target_link_libraries(tt_core gperftools::profiler)
-endif ()
 
 add_executable(tt_core_test
         enforce_test.cpp
         device_context_test.cpp
         tensor_test.cpp
+        allocator_test.cpp
         fp16_test.cpp)
 target_link_libraries(tt_core_test catch2_test_main tt_core)
 add_test(NAME tt_core_test  COMMAND tt_core_test)

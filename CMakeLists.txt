@@ -11,7 +11,7 @@
 # permissions and limitations under the License.
 # See the AUTHORS file for names of contributors.
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
 cmake_policy(SET CMP0079 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
@@ -21,11 +21,11 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-Wall")
 set(CMAKE_C_FLAGS "-Wall")
 
-set(TURBO_TRANSFORMERS_VERSION 0.2.0)
+set(TURBO_TRANSFORMERS_VERSION 0.3.2)
 
-option(WITH_PROFILER  "Compile with gperftools" OFF)
+option(WITH_PROFILER  "Compile with profiler" OFF)
 option(WITH_GPU       "Build with GPU"          OFF)
-option(WITH_MODULE_BENCHMAKR       "Build with GPU"          ON)
+option(WITH_MODULE_BENCHMAKR       "Catch2 unitest with benchmarking"          ON)
 
 
 if (WITH_GPU)
@@ -42,14 +42,12 @@ if(WITH_GPU)
 endif()
 
 set(MKLROOT "/opt/intel/mkl" CACHE PATH "The mkl library root")
-set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl]")
+set(BLAS_PROVIDER "mkl" CACHE STRING "Set the blas provider library, in [openblas, mkl, blis]")
 if (${BLAS_PROVIDER} STREQUAL "mkl")
     find_package(MKL REQUIRED)
 endif()
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL Intel)
-    message(STATUS "Fast Transformer is built with a intel compiler!")
-    add_definitions(-D__USE_INTEL_COMPILER__)
-endif ()
+
+message(STATUS "Blas provider is ${BLAS_PROVIDER}")
 
 add_subdirectory(3rd)
 include_directories(3rd/FP16/include)
@@ -65,12 +63,9 @@ else ()
     message(WARNING "OpenMP is not supported")
 endif ()
 
-message(STATUS "Blas provider is ${BLAS_PROVIDER}")
 
 if (WITH_PROFILER)
-    find_package(Gperftools REQUIRED)
-    include_directories(${GPERFTOOLS_INCLUDE_DIR})
-    add_definitions(-DWITH_GPERFTOOLS)
+    add_definitions(-DWITH_PERFTOOLS)
 endif ()
 
 IF (UNIX AND NOT APPLE)

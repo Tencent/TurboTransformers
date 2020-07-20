@@ -62,36 +62,36 @@ struct ArrayMaxFunc {
 template <int BlockDim, int K>
 __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
                                      const int batch_size, const int head_num,
-                                     const int seq_len, const float scaler) {
-  using CubBlockReduce = cub::BlockReduce<Array<float, K>, BlockDim>;
-  __shared__ typename CubBlockReduce::TempStorage temp_storage;
+                                     const int from_seq_len,
+                                     const int to_seq_len, const float scaler,
+                                     bool is_2D) {
+  __shared__ typename cub::BlockReduce<Array<float, K>, BlockDim>::TempStorage
+      temp_storage;
   __shared__ float s_sum[K], s_max[K];
   float tmp[K];
-  int qk_offset = blockIdx.x * K * seq_len;
+  int qk_offset = blockIdx.x * K * to_seq_len;
 
-  int batch_id = (blockIdx.x * K) / (head_num * seq_len);
-  int mask_offset = batch_id * seq_len;
-  float mask_val =
-      threadIdx.x < seq_len ? attr_mask[threadIdx.x + mask_offset] : 0.0f;
-
+  float mask_val = 0.;
   for (int i = 0; i < K; ++i) {
-    float qk = threadIdx.x < seq_len
-                   ? qk_buf_[threadIdx.x + qk_offset + seq_len * i]
+    float qk = threadIdx.x < to_seq_len
+                   ? qk_buf_[threadIdx.x + qk_offset + to_seq_len * i]
                    : 0.0f;
-    int next_batch_id =
-        i == 0 ? batch_id : (blockIdx.x * K + i) / (head_num * seq_len);
-    if (batch_id != next_batch_id) {
-      batch_id = next_batch_id;
-      mask_val = threadIdx.x < seq_len
-                     ? attr_mask[threadIdx.x + batch_id * seq_len]
-                     : 0.0f;
+    if (attr_mask != nullptr) {
+      int batch_id = (blockIdx.x * K + i) / (head_num * from_seq_len);
+      int from_seq_id = (blockIdx.x * K + i) % from_seq_len;
+      mask_val = attr_mask[threadIdx.x +
+                           (is_2D ? (batch_id * to_seq_len)
+                                  : (batch_id * from_seq_len + from_seq_id) *
+                                        to_seq_len)];
+    } else {
+      mask_val = 0.0f;
     }
     // mask_val = (1.0f - mask_val) * -10000.0f;
-    tmp[i] = threadIdx.x < seq_len ? (qk * scaler + mask_val) : -1e20f;
+    tmp[i] = threadIdx.x < to_seq_len ? (qk * scaler + mask_val) : -1e20f;
   }
 
   Array<float, K> max_val =
-      CubBlockReduce(temp_storage)
+      cub::BlockReduce<Array<float, K>, BlockDim>(temp_storage)
           .Reduce(Array<float, K>(tmp), ArrayMaxFunc<float, K>());
 
   if (threadIdx.x == 0) {
@@ -103,11 +103,11 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
 
   float qk_tmp[K];
   for (int i = 0; i < K; ++i) {
-    qk_tmp[i] = threadIdx.x < seq_len ? __expf((tmp[i] - s_max[i])) : 0.0f;
+    qk_tmp[i] = threadIdx.x < to_seq_len ? __expf((tmp[i] - s_max[i])) : 0.0f;
   }
 
   Array<float, K> sum_val =
-      CubBlockReduce(temp_storage)
+      cub::BlockReduce<Array<float, K>, BlockDim>(temp_storage)
           .Reduce(Array<float, K>(qk_tmp), ArrayAddFunc<float, K>());
 
   if (threadIdx.x == 0) {
@@ -117,9 +117,10 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
   }
   __syncthreads();
 
-  if (threadIdx.x < seq_len) {
+  if (threadIdx.x < to_seq_len) {
     for (int i = 0; i < K; ++i) {
-      qk_buf_[threadIdx.x + qk_offset + seq_len * i] = (qk_tmp[i] / s_sum[i]);
+      qk_buf_[threadIdx.x + qk_offset + to_seq_len * i] =
+          (qk_tmp[i] / s_sum[i]);
     }
   }
 }
@@ -178,22 +179,23 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
 
 template <>
 void GPUSoftmaxMask(float* qk_buf, const float* attr_mask, int64_t batch_size,
-                    int64_t head_num, int64_t seq_len, float scale,
-                    cudaStream_t stream) {
+                    int64_t head_num, int64_t from_seq_len, int64_t to_seq_len,
+                    float scale, bool is_2D, cudaStream_t stream) {
   dim3 block, grid;
-  int high_dim_size = batch_size * head_num * seq_len;
+  int high_dim_size = batch_size * head_num * from_seq_len;
   const int OneRowPerThreadBlock = 1;
   const int RowsPerThreadBlock = 2;
   int row_per_thread_block = OneRowPerThreadBlock;
-  if ((head_num * seq_len) % RowsPerThreadBlock == 0) {
+  if ((head_num * from_seq_len) % RowsPerThreadBlock == 0) {
     row_per_thread_block = RowsPerThreadBlock;
   }
   // block size must be 32x, so warp reduce can work
-  block.x = (seq_len + 31) / 32 * 32;
+  block.x = (to_seq_len + 31) / 32 * 32;
   grid.x = high_dim_size / row_per_thread_block;
   // Because there are many function templates, the compilation speed may be
   // slow.
-  RUN_KERNEL(qk_buf, attr_mask, batch_size, head_num, seq_len, scale);
+  RUN_KERNEL(qk_buf, attr_mask, batch_size, head_num, from_seq_len, to_seq_len,
+             scale, is_2D);
 }
 #undef RUN_KERNEL
 #undef SOFTMAX_KERNEL_CASE

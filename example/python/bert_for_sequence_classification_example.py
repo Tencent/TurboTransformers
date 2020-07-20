@@ -25,6 +25,8 @@ import torch
 from typing import Optional
 
 
+#TODO(jiarufang) developed under v0.1.0, after that not tested.
+#Contact me if you find it is wrong.
 class BertForSequenceClassification:  # create a new class for speeding up
     def __init__(
             self, bertmodel, classifier
@@ -39,16 +41,13 @@ class BertForSequenceClassification:  # create a new class for speeding up
             token_type_ids=None,
             position_ids=None,
             pooling_type=PoolingType.FIRST,
-            hidden_cache=None,
-            output=None,
             return_type=None):
-        pooler_output, _ = self.bert(inputs,
-                                     attention_masks,
-                                     token_type_ids,
-                                     position_ids,
-                                     pooling_type,
-                                     hidden_cache,
-                                     return_type=ReturnType.TORCH)
+        pooler_output, _, _ = self.bert(inputs,
+                                        attention_masks,
+                                        token_type_ids,
+                                        position_ids,
+                                        pooling_type,
+                                        return_type=ReturnType.TORCH)
         logits = self.classifier(
             pooler_output
         )  # It's the output of classifier, if User want to output the other type, he can define them after that.
@@ -61,8 +60,7 @@ class BertForSequenceClassification:  # create a new class for speeding up
         if device is not None and 'cuda' in device.type and torch.cuda.is_available(
         ):
             model.to(device)
-        bertmodel = turbo_transformers.BertModelWithPooler.from_torch(
-            model.bert)
+        bertmodel = turbo_transformers.BertModel.from_torch(model.bert)
         # We can copy the following code and do not change it
         # Notice: classifier is the class member of BertForSequenceClassification. If user define the other class member,
         # they need modify it here.

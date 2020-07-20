@@ -21,10 +21,10 @@ namespace turbo_transformers {
 namespace core {
 
 CUDADeviceContext::CUDADeviceContext() {
-  cudaStreamCreate(&stream_);
-  cublasCreate(&handle_);
-  cublasSetStream(handle_, stream_);
-  cudaGetDeviceProperties(&device_prop_, 0);
+  TT_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
+  TT_ENFORCE_CUDA_SUCCESS(cublasCreate(&handle_));
+  TT_ENFORCE_CUDA_SUCCESS(cublasSetStream(handle_, stream_));
+  TT_ENFORCE_CUDA_SUCCESS(cudaGetDeviceProperties(&device_prop_, 0));
 }
 
 void CUDADeviceContext::Wait() const {

@@ -11,19 +11,6 @@
 # permissions and limitations under the License.
 # See the AUTHORS file for names of contributors.
 
-# Copyright (C) 2020 THL A29 Limited, a Tencent company.
-# All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may
-# not use this file except in compliance with the License. You may
-# obtain a copy of the License at
-# https://opensource.org/licenses/BSD-3-Clause
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# permissions and limitations under the License.
-# See the AUTHORS file for names of contributors.
-
 import turbo_transformers
 
 import unittest
@@ -68,7 +55,6 @@ def create_shape_test(batch_size: int, seq_length: int):
 
         def check_torch_and_turbo(self, use_cuda):
             self.init_data(use_cuda)
-            sio = io.StringIO()
             num_iter = 2
             device = "GPU" if use_cuda else "CPU"
 
@@ -76,27 +62,20 @@ def create_shape_test(batch_size: int, seq_length: int):
                                                      self.attention_output)
             torch_result, torch_qps, torch_time = \
                 test_helper.run_model(torch_model, use_cuda, num_iter)
-            print(f'Bert Output Plain PyTorch({device}) QPS {torch_qps}',
-                  file=sio)
+            print(f'Bert Output Plain PyTorch({device}) QPS {torch_qps}')
 
             turbo_model = lambda: self.turbo_bertout(self.intermediate_output,
                                                      self.attention_output)
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
             print(
-                f'Bert Output Plain TurboTransformer({device}) QPS {turbo_qps}',
-                file=sio)
+                f'Bert Output Plain TurboTransformer({device}) QPS {turbo_qps}'
+            )
 
             # cuda version precision is lower due to tensor-core
             self.assertTrue(
                 torch.max(torch.abs(torch_result - turbo_result)) < 1e-2
                 if use_cuda else 1e-4)
-
-            sio.seek(0)
-            with open(f"gpu_bert_output_qps_{batch_size}_{seq_length:03}.txt",
-                      "w") as of:
-                for line in sio:
-                    print(line.strip(), file=of)
 
         def test_bertout(self):
             self.check_torch_and_turbo(use_cuda=False)
