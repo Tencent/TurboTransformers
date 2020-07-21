@@ -13,6 +13,7 @@
 # See the AUTHORS file for names of contributors.
 
 set -e
+# onnxrt does not work well for albert
 FRAMEWORKS=("turbo-transformers" "torch")
 # pip install onnxruntime-gpu before benchmarking onnxrt
 # FRAMEWORKS=("onnxruntime")
