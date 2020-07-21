@@ -22,7 +22,7 @@ COPY --from=PProfBuilder /go/bin/pprof /bin/pprof
 # Try to install deps by anaconda
 # NOTE:  1. MKL is installed with pytorch.
 #           turbo-transformers will use the same MKL from PyTorch
-RUN /opt/conda/bin/conda install pytorch==1.4.0  cpuonly -c pytorch && \
+RUN /opt/conda/bin/conda install pytorch==1.5.0  cpuonly -c pytorch && \
     pip install OpenNMT-py==1.1.1 && \
     /opt/conda/bin/conda install curl conda-verify conda-build mkl-include cmake -c anaconda &&  \
     /opt/conda/bin/conda install make cmake git graphviz gperftools git-lfs docopt -c conda-forge && \
@@ -36,3 +36,7 @@ RUN apt-get update && apt-get install -y g++ && rm -rf /var/lib/apt/lists/*
 # OnnxRuntime needs libpython*.so
 # see issue https://github.com/microsoft/onnxruntime/issues/2058
 ENV LD_LIBRARY_PATH /opt/conda/lib
+
+# build turbo
+RUN mkdir -p /src && cd /src && git clone https://github.com/Tencent/TurboTransformers.git --recursive && cd ./TurboTransformers && \
+    sh ./tools/build_and_run_unittests.sh $PWD -DWITH_GPU=OFF

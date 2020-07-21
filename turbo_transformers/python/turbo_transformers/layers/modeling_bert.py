@@ -164,8 +164,7 @@ class BertAttention(cxx.BertAttention):
                    ) if output_attentions else (convert_returns_as_type(
                        context_layer, return_type), )
         return outputs
-
-
+      
     @staticmethod
     def from_torch(attention: TorchBertAttention):
         params = {k: v for k, v in attention.named_parameters()}
@@ -298,8 +297,7 @@ class BertEncoder:
             outputs = outputs + (all_attentions, )
 
         return outputs
-
-
+      
     @staticmethod
     def from_torch(encoder: TorchBertEncoder):
         layer = [
@@ -373,7 +371,6 @@ class BertModelNoPooler:
         self.encoder = encoder
         self.prepare = cxx.PrepareBertMasks()
 
-
     def __call__(
             self,
             inputs: AnyTensor,
@@ -435,9 +432,7 @@ class BertModelNoPooler:
         embeddings = BertEmbeddings.from_npz(file_name)
         encoder = BertEncoder.from_npz(file_name, config.num_hidden_layers,
                                        config.num_attention_heads)
-
         return BertModelNoPooler(embeddings, encoder)
-
 
 class BertModel:
     def __init__(self, bertmodel_nopooler: BertModelNoPooler,
@@ -470,10 +465,10 @@ class BertModel:
 
         sequence_output = encoder_outputs[0]
         self.seq_pool = SequencePool(PoolingMap[pooling_type])
-        sequence_output = self.seq_pool(
+        sequence_pool_output = self.seq_pool(
             input_tensor=sequence_output,
             return_type=ReturnType.turbo_transformers)
-        pooler_output = self.pooler(sequence_output, return_type,
+        pooler_output = self.pooler(sequence_pool_output, return_type,
                                     pooler_output)
         return (
             convert_returns_as_type(sequence_output, return_type),

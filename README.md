@@ -3,8 +3,6 @@
 
 <center>*Make transformers serving fast by adding a turbo to your inference engine!*</center>
 
-### Background
-Transformer is the most critical alogrithm innovation in the NLP field in recent years. It brings higher model accuracy while introduces more calculations. The efficient deployment of online Transformer-based services faces enormous challenges. In order to make the costly Transformer online service more efficient, the WeChat AI open-sourced a Transformer inference acceleration tool called TurboTransformers, which has the following characteristics.
 1. Supporting both Transformers Encoder and Decoder.
 2. Excellent CPU / GPU performance. For Intel multi-core CPU and NVIDIA GPU hardware platforms, TurboTransformers can fully utilize all levels of computing power of the hardware. It has achieved better performance over pytorch / tensorflow and current mainstream optimization engines (such as onnxruntime-mkldnn / onnxruntime-gpu, torch JIT, NVIDIA faster transformers) on a variety of CPU and GPU hardware. See the detailed benchmark results below.
 3. Tailored to the characteristics of NLP inference tasks. Unlike the CV task, the input dimensions of the NLP inference task always change. The traditional approach is zero padding or truncation to a fixed length, which introduces additional zero padding computational overhead. Besides, some frameworks such as onnxruntime, tensorRT, and torchlib need to preprocess the compuatation-graph according to the input size in advance for the best performance, which is not suitable for NLP tasks with varying sizes. TurboTransformers can support variable-length input sequence processing without preprocessing.
@@ -31,7 +29,7 @@ The following table is a comparison of TurboTransformers and related work.
 * [Roberta](https://arxiv.org/abs/1907.11692)
 * [Transformer Decoder](https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py).
 
-### Boost BERT Inference in 2 Line of Python Code
+### Boost BERT Inference in 2 Lines of Python Code
 ```python
 import torch
 import transformers
@@ -62,7 +60,11 @@ if __name__ == "__main__":
     tt_seqence_output = res[0]
 ```
 
-### Installation on CPU
+### Installation
+Note that the building scripts only applie to specific OS and software (Pytorch, OpenNMT, transformers, etc.) versions.
+Please adjust them according to your needs.
+
+#### CPU
 ```
 git clone https://github.com/Tencent/TurboTransformers --recursive
 ```
@@ -106,9 +108,9 @@ sh tool/build_conda_package.sh
 
 *We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
 ```
-docker pull thufeifeibear/turbo_transformers:0.3.0-cpu-dev
+docker pull thufeifeibear/turbo_transformers_cpu:latest
 ```
-### Installation on GPU
+#### GPU
 ```
 git clone https://github.com/Tencent/TurboTransformers --recursive
 ```
@@ -133,7 +135,7 @@ bash gpu_run_benchmark.sh
 ```
 We also prepared a docker image containing GPU version of TurboTransformers.
 ```
-docker pull thufeifeibear/turbo_transformers:0.3.0-cuda10.0-cudnn7-devel-ubuntu18.04-gpu-dev
+docker pull thufeifeibear/turbo_transformers_gpu:latest
 ```
 
 ### Usage
