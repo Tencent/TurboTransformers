@@ -32,7 +32,7 @@ void LookupEmbedding(core::Tensor *out_tensor,
                      const std::string name) {
 #ifdef WITH_PERFTOOLS
   auto &profile_ctx = core::Profiler::GetInstance();
-  profile_ctx.start_profile(name, bias_tensor.device_type());
+  profile_ctx.start_profile(name, ids_tensor.device_type());
 #endif
   TT_ENFORCE_EQ(common::is_same_device_ctx(
                     out_tensor->device_ctx(), embedding_table.device_ctx()),
@@ -80,7 +80,7 @@ void LookupEmbedding(core::Tensor *out_tensor,
     TT_THROW("device_type is not supported");
   }
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile(name, bias_tensor.device_type());
+  profile_ctx.end_profile(name, ids_tensor.device_type());
 #endif
 }
 
