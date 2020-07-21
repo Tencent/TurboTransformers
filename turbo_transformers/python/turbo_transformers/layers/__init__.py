@@ -12,7 +12,7 @@
 # See the AUTHORS file for names of contributors.
 
 from .modeling_bert import BertEmbeddings, BertIntermediate, BertOutput, BertAttention, BertLayer, SequencePool, \
-    BertEncoder, BertModel, PoolingType, BertPooler, QBertIntermediate
+    BertEncoder, BertModel, PoolingType, BertPooler, QBertIntermediate, QBertOutput
 
 from .modeling_albert import AlbertEmbeddings, AlbertAttention, AlbertLayer, AlbertTransformer, AlbertModel
 from .modeling_decoder import MultiHeadedAttention, PositionwiseFeedForward, TransformerDecoderLayer, TransformerDecoder
@@ -27,5 +27,5 @@ __all__ = [
     'PositionwiseFeedForward', 'AlbertLayer', 'AlbertEmbeddings',
     'AlbertAttention', 'AlbertTransformer', 'AlbertModel',
     'PositionwiseFeedForward', 'TransformerDecoderLayer', 'TransformerDecoder',
-    'RobertaModel', 'QBertIntermediate'
+    'RobertaModel', 'QBertIntermediate', 'QBertOutput'
 ]

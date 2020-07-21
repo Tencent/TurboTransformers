@@ -8,26 +8,27 @@ model = transformers.BertModel.from_pretrained('bert-base-uncased')
 model.eval()
 torch.set_grad_enabled(False)
 
-intermediate = torch.quantization.quantize_dynamic(model.encoder.layer[0].intermediate)
-qintermediate = turbo_transformers.QBertIntermediate.from_torch(model.encoder.layer[0].intermediate)
+bertoutput = torch.quantization.quantize_dynamic(model.encoder.layer[0].output)
+qbertoutput = turbo_transformers.QBertOutput.from_torch(model.encoder.layer[0].output)
 
 
 lens = [10,20,40,60,80,100,200,300]
 loops = 1000
 
 for l in lens:
+    hidden = torch.rand(1, l, 3072)
     input = torch.rand(1, l, 768)
     print("seq length =", l)
 
     start = time.time()
     for i in range(loops):
-        res = intermediate(input)
+        res = bertoutput(hidden, input)
     end = time.time()
     print("torch int8 layer IPS =", l*loops/(end-start))
 
     start = time.time()
     for i in range(loops):
-        res2 = qintermediate(input)
+        res2 = qbertoutput(hidden, input)
     end = time.time()
     print("turbo int8 layer IPS =", l*loops/(end-start))
 

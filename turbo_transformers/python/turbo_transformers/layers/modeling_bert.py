@@ -36,7 +36,7 @@ import numpy as np
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
     'BertLayer', 'BertEncoder', 'SequencePool', 'BertModel', 'PoolingType',
-    'BertPooler', 'QBertIntermediate'
+    'BertPooler', 'QBertIntermediate', 'QBertOutput'
 ]
 
 
@@ -523,3 +523,22 @@ class QBertIntermediate:
     @staticmethod
     def from_torch(intermediate):
         return QBertIntermediate(intermediate)
+
+class QBertOutput:
+    def __init__(self, bert_output):
+        self.bias_layernorm = cxx.FusedAddBiasLayerNorm(
+            convert2tt_tensor(bert_output.dense.bias),
+            convert2tt_tensor(bert_output.LayerNorm.weight),
+            convert2tt_tensor(bert_output.LayerNorm.bias))
+        self.qlinear = torch.quantization.quantize_dynamic(bert_output).dense
+        self.qlinear.set_weight_bias(self.qlinear.weight(), None)
+    def __call__(self, intermediate_output, attention_output):
+        if not isinstance(intermediate_output, torch.Tensor):
+            intermediate_output = convert_returns_as_type(intermediate_output, ReturnType.TORCH)
+        output = convert2tt_tensor(self.qlinear(intermediate_output))
+        self.bias_layernorm(convert2tt_tensor(attention_output), output)
+        return convert_returns_as_type(output, ReturnType.TORCH)
+
+    @staticmethod
+    def from_torch(bert_output):
+        return QBertOutput(bert_output)

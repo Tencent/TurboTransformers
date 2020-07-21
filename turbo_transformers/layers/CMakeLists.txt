@@ -24,7 +24,8 @@ add_library(tt_layers OBJECT
         albert_layer.cpp
         multi_headed_attention.cpp
         positionwise_ffn.cpp
-        fused_ops.cpp
+        addbias_act.cpp
+        addbias_layernorm.cpp
         )
 
 target_link_libraries(tt_layers PUBLIC tt_core tt_kernels)
