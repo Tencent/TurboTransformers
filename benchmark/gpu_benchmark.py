@@ -14,14 +14,17 @@
 turbo-transformers Benchmark Utils
 
 Usage:
-    benchmark <model_name> --seq_len=<int> [--framework=<f>] [--batch_size=<int>] [-n <int>]
+    benchmark <model_name> [--seq_len=<int>] [--framework=<f>] [--batch_size=<int>] [-n <int>] [--enable-random] [--min_seq_len=<int>] [--max_seq_len=<int>]
 
 Options:
     --framework=<f>      The framework to test in (torch, torch_jit, turbo-transformers,
                             onnxruntime-cpu, onnxruntime-mkldnn) [default: turbo-transformers].
-    --seq_len=<int>      The sequence length.
+    --seq_len=<int>      The sequence length [default: 10].
     --batch_size=<int>   The batch size [default: 1].
     -n <int>             The iteration count [default: 10000].
+    --enable-random      Enable request cache.
+    --min_seq_len=<int>  Minimal sequence length generated when enable random [default: 5]
+    --max_seq_len=<int>  Maximal sequence length generated when enable random [default: 50]
 """
 
 import json
@@ -31,7 +34,8 @@ import docopt
 
 
 def benchmark_turbo_transformers(model_name: str, seq_len: int,
-                                 batch_size: int, n: int):
+                                 batch_size: int, n: int, enable_random: bool,
+                                 max_seq_len: int, min_seq_len: int):
     import torch
     import transformers
     import contexttimer
@@ -43,6 +47,7 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
         return
     test_device = torch.device('cuda:0')
 
+    cfg = None
     if model_name == "bert":
         cfg = transformers.BertConfig()
         model = transformers.BertModel(cfg)
@@ -64,18 +69,22 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
     else:
         raise (f"benchmark does not support {model_name}")
 
-    cfg = model.config  # type: transformers.BertConfig
-    input_ids = torch.randint(low=0,
-                              high=cfg.vocab_size - 1,
-                              size=(batch_size, seq_len),
-                              dtype=torch.long,
-                              device=test_device)
+    if enable_random:
+        benchmark_helper.run_random_model(model, True, n, max_seq_len,
+                                          min_seq_len, "turbo", 1, cfg)
+    else:
+        input_ids = torch.randint(low=0,
+                                  high=cfg.vocab_size - 1,
+                                  size=(batch_size, seq_len),
+                                  dtype=torch.long,
+                                  device=test_device)
 
-    benchmark_helper.run_model(lambda: model(input_ids), True, n, batch_size,
-                               seq_len, "turbo")
+        benchmark_helper.run_model(lambda: model(input_ids), True, n,
+                                   batch_size, seq_len, "turbo")
 
 
-def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int):
+def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
+                    enable_random: bool, max_seq_len: int, min_seq_len: int):
     import torch
     import transformers
     import contexttimer
@@ -88,6 +97,7 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int):
 
     torch.set_grad_enabled(False)
 
+    cfg = None
     if model_name == "bert":
         cfg = transformers.BertConfig()
         model = transformers.BertModel(cfg)
@@ -103,14 +113,18 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int):
 
     model.to(test_device)
 
-    cfg = model.config  # type: transformers.BertConfig
-    input_ids = torch.randint(low=0,
-                              high=cfg.vocab_size - 1,
-                              size=(batch_size, seq_len),
-                              dtype=torch.long,
-                              device=test_device)
-    benchmark_helper.run_model(lambda: model(input_ids), True, n, batch_size,
-                               seq_len, "torch")
+    # cfg = model.config  # type: transformers.BertConfig
+    if enable_random:
+        benchmark_helper.run_random_model(model, True, n, max_seq_len,
+                                          min_seq_len, "torch", 1, cfg)
+    else:
+        input_ids = torch.randint(low=0,
+                                  high=cfg.vocab_size - 1,
+                                  size=(batch_size, seq_len),
+                                  dtype=torch.long,
+                                  device=test_device)
+        benchmark_helper.run_model(lambda: model(input_ids), True, n,
+                                   batch_size, seq_len, "torch")
 
 
 def main():
@@ -121,6 +135,9 @@ def main():
         'seq_len': int(args['--seq_len']),
         'batch_size': int(args['--batch_size']),
         'n': int(args['-n']),
+        'enable_random': True if args['--enable-random'] else False,
+        'min_seq_len': int(args['--min_seq_len']),
+        'max_seq_len': int(args['--max_seq_len'])
     }
 
     if args['--framework'] == 'turbo-transformers':

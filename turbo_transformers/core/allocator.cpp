@@ -39,9 +39,12 @@ struct BadAlloc : public std::exception {
 #ifdef TT_WITH_CUDA
 static void *cuda_alloc(size_t sz) {
   void *device_mem;
-  try {
-    TT_ENFORCE_CUDA_SUCCESS(cudaMalloc((void **)&(device_mem), sz));
-  } catch (...) {
+  // try {
+  //   cudaMalloc((void **)&(device_mem), sz);
+  // } catch (...) {
+  //   throw BadAlloc("cudaMalloc failed.");
+  // }
+  if (cudaMalloc((void **)&(device_mem), sz) != cudaSuccess) {
     throw BadAlloc("cudaMalloc failed.");
   }
   return device_mem;
@@ -130,6 +133,11 @@ struct Allocator::BestFitAllocatorImpl {
 };  // struct Allocator::BestFitAllocatorImpl
 
 struct Allocator::CachingAllocatorImpl {
+#ifdef TT_WITH_CUDA
+  CachingAllocatorImpl() : cub_allocator(unsigned(8)) {}
+  // : cub_allocator(unsigned(8), unsigned(3), unsigned(7),
+  //                 size_t(6 * 1024 * 1024 - 1)) {}
+#endif
   void *alloc(size_t size, DLDeviceType dev) {
     void *data = nullptr;
     if (dev == kDLCPU) {
@@ -176,6 +184,15 @@ struct Allocator::CachingAllocatorImpl {
  private:
 #ifdef TT_WITH_CUDA
   cub::CachingDeviceAllocator cub_allocator;
+  /*
+  (  unsigned int   bin_growth,
+    unsigned int   min_bin = 1,
+    unsigned int   max_bin = INVALID_BIN,
+    size_t   max_cached_bytes = INVALID_SIZE,
+    bool   skip_cleanup = false,
+    bool   debug = false
+  )
+   */
 #endif
 };  // struct Allocator::CachingAllocatorImpl
 
