@@ -247,7 +247,6 @@ def onnxruntime_benchmark_creator(backend: str):
             device=backend,
             graph_optimization_level=onnxruntime.GraphOptimizationLevel.
             ORT_ENABLE_ALL)
-
         # Prepare a torch bert model to check correctness if benchmarking bert
         if model_name == "bert":
             import transformers
@@ -364,5 +363,6 @@ def onnxruntime_benchmark_creator(backend: str):
                         "framework": f"onnx_rt_{backend}",
                         "n_threads": num_threads
                     }))
+
 
     return _impl_
