@@ -17,10 +17,6 @@
 #include "turbo_transformers/layers/kernels/common.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
 #include "turbo_transformers/layers/kernels/embedding.h"
-#ifdef TT_WITH_CUDA
-#include "turbo_transformers/core/cuda_device_context.h"
-#include "turbo_transformers/layers/kernels/gpu_embedding_kernel.h"
-#endif
 
 namespace turbo_transformers {
 namespace layers {
