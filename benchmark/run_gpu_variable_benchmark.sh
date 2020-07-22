@@ -27,7 +27,7 @@ for max_seq_len in ${MAX_SEQ_LEN[*]}
 do
   for framework in ${FRAMEWORKS[*]}
   do
-    python gpu_benchmark.py ${MODEL} \
+    python benchmark.py ${MODEL} \
               --enable-random \
               --min_seq_len=5  \
               --max_seq_len=${max_seq_len}  \

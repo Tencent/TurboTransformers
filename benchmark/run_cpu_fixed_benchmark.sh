@@ -27,7 +27,7 @@ do
     do
       for framework in ${FRAMEWORKS[*]}
       do
-        env OMP_WAIT_POLICY=ACTIVE OMP_NUM_THREADS=${n_th} python cpu_benchmark.py ${MODEL} --seq_len=${seq_len} --batch_size=${batch_size}\
+        env OMP_WAIT_POLICY=ACTIVE OMP_NUM_THREADS=${n_th} python benchmark.py ${MODEL} --seq_len=${seq_len} --batch_size=${batch_size}\
             -n ${N} --framework=${framework} --num_threads=${n_th}
       done
     done
