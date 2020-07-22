@@ -23,7 +23,6 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
     import contexttimer
     import turbo_transformers
     import benchmark_helper
-    turbo_transformers.set_num_threads(num_threads)
     test_device = torch.device('cuda:0') if use_gpu else torch.device('cpu:0')
     if use_gpu:
         print("using GPU")
@@ -52,6 +51,7 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
     else:
         raise (f"benchmark does not support {model_name}")
 
+    turbo_transformers.set_num_threads(num_threads)
     if enable_random:
         benchmark_helper.run_variable_model(model, use_gpu, n, max_seq_len,
                                             min_seq_len, "turbo", 1, cfg)
