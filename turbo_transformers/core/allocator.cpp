@@ -134,9 +134,9 @@ struct Allocator::BestFitAllocatorImpl {
 
 struct Allocator::CachingAllocatorImpl {
 #ifdef TT_WITH_CUDA
-  CachingAllocatorImpl()
-      : cub_allocator(unsigned(8), unsigned(3), unsigned(7),
-                      size_t(6 * 1024 * 1024 - 1)) {}
+  CachingAllocatorImpl() : cub_allocator(unsigned(8)) {}
+  // : cub_allocator(unsigned(8), unsigned(3), unsigned(7),
+  //                 size_t(6 * 1024 * 1024 - 1)) {}
 #endif
   void *alloc(size_t size, DLDeviceType dev) {
     void *data = nullptr;

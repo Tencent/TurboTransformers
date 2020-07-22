@@ -11,6 +11,8 @@
 # permissions and limitations under the License.
 # See the AUTHORS file for names of contributors.
 
+enable_latency_plot = 1
+
 
 def run_model(model,
               use_cuda,
@@ -81,35 +83,72 @@ def run_random_model(model, use_cuda, num_iter, max_seq_len, min_seq_len,
                                   dtype=torch.long,
                                   device=test_device)
         request_list.append(input_ids)
+    if enable_latency_plot:
+        # warm-up
+        import time
+        print(f"dump results to {framework_name}_latency.txt")
+        with open(f"{framework_name}_latency.txt", "w") as of:
+            result_list = []
+            model(
+                torch.randint(low=0,
+                              high=cfg.vocab_size - 1,
+                              size=(1, max_seq_len),
+                              dtype=torch.long,
+                              device=test_device))
+            for request in request_list:
+                if use_cuda:
+                    start = torch.cuda.Event(enable_timing=True)
+                    end = torch.cuda.Event(enable_timing=True)
+                    start.record()
 
-    if use_cuda:
-        start = torch.cuda.Event(enable_timing=True)
-        end = torch.cuda.Event(enable_timing=True)
-        start.record()
+                with contexttimer.Timer() as t:
+                    model(request)
 
-    with contexttimer.Timer() as t:
-        for request in request_list:
-            model(request)
-
-    if not use_cuda:
-        qps = num_iter / t.elapsed
-        time_consume = t.elapsed
+                if not use_cuda:
+                    qps = num_iter / t.elapsed
+                    time_consume = t.elapsed
+                else:
+                    end.record()
+                    torch.cuda.synchronize()
+                    torch_elapsed = start.elapsed_time(end) / 1e3
+                    qps = num_iter / torch_elapsed
+                    time_consume = torch_elapsed
+                result_list.append([len(request.view(-1)), time_consume])
+            elapse = 0.
+            result_list = sorted(result_list, key=lambda s: s[0])
+            for item in result_list:
+                of.write(f"{item[0]}, {item[1]}\n")
+                elapse += item[1]
+            print(f"elapsed {elapse}  QPS {num_iter/elapse}")
     else:
-        end.record()
-        torch.cuda.synchronize()
-        torch_elapsed = start.elapsed_time(end) / 1e3
-        qps = num_iter / torch_elapsed
-        time_consume = torch_elapsed
-    print(
-        json.dumps({
-            "QPS": qps,
-            "elapsed": time_consume,
-            "n": num_iter,
-            "max_seq_len": max_seq_len,
-            "min_seq_len": min_seq_len,
-            "framework": framework_name,
-            "thread_num": thread_num,
-        }))
+        if use_cuda:
+            start = torch.cuda.Event(enable_timing=True)
+            end = torch.cuda.Event(enable_timing=True)
+            start.record()
+
+        with contexttimer.Timer() as t:
+            for request in request_list:
+                model(request)
+
+        if not use_cuda:
+            qps = num_iter / t.elapsed
+            time_consume = t.elapsed
+        else:
+            end.record()
+            torch.cuda.synchronize()
+            torch_elapsed = start.elapsed_time(end) / 1e3
+            qps = num_iter / torch_elapsed
+            time_consume = torch_elapsed
+        print(
+            json.dumps({
+                "QPS": qps,
+                "elapsed": time_consume,
+                "n": num_iter,
+                "max_seq_len": max_seq_len,
+                "min_seq_len": min_seq_len,
+                "framework": framework_name,
+                "thread_num": thread_num,
+            }))
 
 
 def generate_onnx_model(model_name: str,
@@ -217,7 +256,6 @@ def onnxruntime_benchmark_creator(backend: str):
             torch_model = transformers.BertModel.from_pretrained(
                 "bert-base-uncased")
 
-            # torch_model = transformers.BertModel(cfg)
             if enable_random:
                 input_ids = numpy.random.randint(low=0,
                                                  high=cfg.vocab_size - 1,
@@ -245,24 +283,56 @@ def onnxruntime_benchmark_creator(backend: str):
                                                  dtype=numpy.int64)
                 request_list.append(input_ids)
 
-            if use_cuda:
-                start = torch.cuda.Event(enable_timing=True)
-                end = torch.cuda.Event(enable_timing=True)
-                start.record()
+            if enable_latency_plot:
+                import time
+                print(f"dump results to onnxrt_latency.txt")
+                result_list = []
+                with open(f"onnxrt_latency.txt", "w") as of:
+                    for request in request_list:
+                        if use_cuda:
+                            start = torch.cuda.Event(enable_timing=True)
+                            end = torch.cuda.Event(enable_timing=True)
+                            start.record()
 
-            with contexttimer.Timer() as t:
-                for request in request_list:
-                    model.run(inputs=[request])
+                        with contexttimer.Timer() as t:
+                            model.run(inputs=[request])
 
-            if not use_cuda:
-                qps = n / t.elapsed
-                time_consume = t.elapsed
+                        if not use_cuda:
+                            qps = n / t.elapsed
+                            time_consume = t.elapsed
+                        else:
+                            end.record()
+                            torch.cuda.synchronize()
+                            torch_elapsed = start.elapsed_time(end) / 1e3
+                            qps = n / torch_elapsed
+                            time_consume = torch_elapsed
+                        result_list.append(
+                            [len(request.flatten()), time_consume])
+                    elapse = 0.
+                    result_list = sorted(result_list, key=lambda s: s[0])
+                    for item in result_list:
+                        of.write(f"{item[0]}, {item[1]}\n")
+                        elapse += item[1]
+                    print(f"elapsed {elapse} QPS {n/elapse}")
             else:
-                end.record()
-                torch.cuda.synchronize()
-                torch_elapsed = start.elapsed_time(end) / 1e3
-                qps = n / torch_elapsed
-                time_consume = torch_elapsed
+                if use_cuda:
+                    start = torch.cuda.Event(enable_timing=True)
+                    end = torch.cuda.Event(enable_timing=True)
+                    start.record()
+
+                with contexttimer.Timer() as t:
+                    for request in request_list:
+                        model.run(inputs=[request])
+
+                if not use_cuda:
+                    qps = n / t.elapsed
+                    time_consume = t.elapsed
+                else:
+                    end.record()
+                    torch.cuda.synchronize()
+                    torch_elapsed = start.elapsed_time(end) / 1e3
+                    qps = n / torch_elapsed
+                    time_consume = torch_elapsed
         else:
             input_ids = numpy.random.randint(low=0,
                                              high=vocab_size - 1,
@@ -272,27 +342,27 @@ def onnxruntime_benchmark_creator(backend: str):
                 for _ in range(n):
                     model.run(inputs=[input_ids])
 
-        if enable_random:
-            print(
-                json.dumps({
-                    "QPS": qps,
-                    "elapsed": time_consume,
-                    "n": n,
-                    "max_seq_len": max_seq_len,
-                    "min_seq_len": min_seq_len,
-                    "framework": f"onnx_rt_{backend}",
-                    "thread_num": num_threads,
-                }))
-        else:
-            print(
-                json.dumps({
-                    "QPS": n / t.elapsed,
-                    "elapsed": t.elapsed,
-                    "n": n,
-                    "batch_size": batch_size,
-                    "seq_len": seq_len,
-                    "framework": f"onnx_rt_{backend}",
-                    "n_threads": num_threads
-                }))
+            if enable_random:
+                print(
+                    json.dumps({
+                        "QPS": qps,
+                        "elapsed": time_consume,
+                        "n": n,
+                        "max_seq_len": max_seq_len,
+                        "min_seq_len": min_seq_len,
+                        "framework": f"onnx_rt_{backend}",
+                        "thread_num": num_threads,
+                    }))
+            else:
+                print(
+                    json.dumps({
+                        "QPS": n / t.elapsed,
+                        "elapsed": t.elapsed,
+                        "n": n,
+                        "batch_size": batch_size,
+                        "seq_len": seq_len,
+                        "framework": f"onnx_rt_{backend}",
+                        "n_threads": num_threads
+                    }))
 
     return _impl_

@@ -116,7 +116,7 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
     # cfg = model.config  # type: transformers.BertConfig
     if enable_random:
         benchmark_helper.run_random_model(model, True, n, max_seq_len,
-                                          min_seq_len, 1, "torch", cfg)
+                                          min_seq_len, "torch", 1, cfg)
     else:
         input_ids = torch.randint(low=0,
                                   high=cfg.vocab_size - 1,
