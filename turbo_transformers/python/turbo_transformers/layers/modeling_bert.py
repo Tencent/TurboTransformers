@@ -533,7 +533,33 @@ class QBertOutput:
         output = convert2tt_tensor(self.qlinear(intermediate_output))
         self.bias_layernorm(convert2tt_tensor(attention_output), output)
         return convert_returns_as_type(output, ReturnType.TORCH)
-
     @staticmethod
     def from_torch(bert_output):
         return QBertOutput(bert_output)
+
+class QBertLayer:
+    def __init__(self, bert_layer):
+        self.attention = BertAttention.from_torch(bert_layer.attention)
+        self.intermediate = QBertIntermediate.from_torch(bert_layer.intermediate)
+        self.output = QBertOutput.from_torch(bert_layer.output)
+    def __call__(self,
+                 hidden_states,
+                 attention_mask=None,
+                 head_mask=None,
+                 output_attentions=False):
+        self_attention_outputs = self.attention(
+            hidden_states,
+            attention_mask,
+            head_mask,
+            output_attentions=output_attentions,
+            return_type=ReturnType.TORCH)
+        attention_output = self_attention_outputs[0]
+        outputs = self_attention_outputs[1:]
+
+        intermediate_output = self.intermediate(attention_output)
+        layer_output = self.output(intermediate_output, attention_output)
+        outputs = (layer_output, ) + outputs
+        return outputs
+    @staticmethod
+    def from_torch(bert_layer):
+        return QBertLayer(bert_layer)
