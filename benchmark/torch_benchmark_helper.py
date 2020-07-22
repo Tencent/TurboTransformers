@@ -28,6 +28,7 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
     else:
         print("using CPU")
     torch.set_grad_enabled(False)
+    torch.set_num_threads(num_threads)
 
     cfg = None
     if model_name == "bert":
@@ -47,7 +48,8 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
     # cfg = model.config  # type: transformers.BertConfig
     if enable_random:
         benchmark_helper.run_variable_model(model, use_gpu, n, max_seq_len,
-                                            min_seq_len, "torch", 1, cfg)
+                                            min_seq_len, "torch", num_threads,
+                                            cfg)
     else:
         input_ids = torch.randint(low=0,
                                   high=cfg.vocab_size - 1,

@@ -54,7 +54,8 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
     turbo_transformers.set_num_threads(num_threads)
     if enable_random:
         benchmark_helper.run_variable_model(model, use_gpu, n, max_seq_len,
-                                            min_seq_len, "turbo", 1, cfg)
+                                            min_seq_len, "turbo", num_threads,
+                                            cfg)
     else:
         input_ids = torch.randint(low=0,
                                   high=cfg.vocab_size - 1,

@@ -20,7 +20,7 @@ def run_model(model,
               batch_size,
               seq_len,
               framework_name,
-              thread_num=1):
+              num_threads=1):
     # warm up
     import torch
     import contexttimer
@@ -57,21 +57,13 @@ def run_model(model,
 
 
 def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
-                       framework_name, thread_num, cfg):
+                       framework_name, num_threads, cfg):
     import torch
     import contexttimer
     import json
     import random
     test_device = torch.device('cuda:0') if use_gpu else torch.device('cpu:0')
-    # warm-up using the longest sequence
-    # TODO(jiaruifang) We know recommend you to run warm-up before inference.
-    # In the future we will refactor allocator so as to not avoid warm-up
-    input_ids = torch.randint(low=0,
-                              high=cfg.vocab_size - 1,
-                              size=(1, max_seq_len),
-                              dtype=torch.long,
-                              device=test_device)
-    model(input_ids)
+
     request_list = []
     # make sure all benchmarking runtimes are using the same random distribution.
     random.seed(0)
@@ -83,18 +75,21 @@ def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
                                   dtype=torch.long,
                                   device=test_device)
         request_list.append(input_ids)
+
+    # warm-up using the longest sequence
+    # TODO(jiaruifang) We know recommend you to run warm-up before inference.
+    # In the future we will refactor allocator so as to not avoid warm-up
+    input_ids = torch.randint(low=0,
+                              high=cfg.vocab_size - 1,
+                              size=(1, max_seq_len),
+                              dtype=torch.long,
+                              device=test_device)
+    model(input_ids)
     if enable_latency_plot:
-        # warm-up
         import time
-        print(f"dump results to {framework_name}_latency.txt")
-        with open(f"{framework_name}_latency.txt", "w") as of:
+        print(f"dump results to {framework_name}_latency_{num_threads}.txt")
+        with open(f"{framework_name}_latency_{num_threads}.txt", "w") as of:
             result_list = []
-            # model(
-            #     torch.randint(low=0,
-            #                   high=cfg.vocab_size - 1,
-            #                   size=(1, max_seq_len),
-            #                   dtype=torch.long,
-            #                   device=test_device))
             for request in request_list:
                 if use_gpu:
                     start = torch.cuda.Event(enable_timing=True)
@@ -113,6 +108,7 @@ def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
                     torch_elapsed = start.elapsed_time(end) / 1e3
                     qps = num_iter / torch_elapsed
                     time_consume = torch_elapsed
+                print('.', end='', flush=True)
                 result_list.append([len(request.view(-1)), time_consume])
             elapse = 0.
             result_list = sorted(result_list, key=lambda s: s[0])
