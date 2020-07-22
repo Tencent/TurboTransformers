@@ -13,7 +13,7 @@ qbertlayer = turbo_transformers.QBertLayer.from_torch(bertlayer)
 torchqbertlayer = torch.quantization.quantize_dynamic(bertlayer)
 
 lens = [10,20,40,60,80,100,200,300]
-loops = 10
+loops = 100
 
 for l in lens:
     input_tensor = torch.rand((1, l, 768))
@@ -26,19 +26,19 @@ for l in lens:
     for i in range(loops):
         res = bertlayer(input_tensor, attention_mask, output_attentions=True)
     end = time.time()
-    print("torch fp32 layer IPS =", l*loops/(end-start))
+    print("torch fp32 layer QPS =", loops/(end-start))
 
     start = time.time()
     for i in range(loops):
         res2 = qbertlayer(input_tensor, attention_mask, output_attentions=True)
     end = time.time()
-    print("turbo fp32+int8 layer IPS =", l*loops/(end-start))
+    print("turbo fp32+int8 layer QPS =", loops/(end-start))
 
     start = time.time()
     for i in range(loops):
         res3 = torchqbertlayer(input_tensor, attention_mask, output_attentions=True)
     end = time.time()
-    print("torch int8 layer IPS =", l*loops/(end-start))
+    print("torch int8 layer QPS =", loops/(end-start))
 
 print("max error against torch fp32 = ", max(
     torch.max(torch.abs(res[0]-res2[0])), 
