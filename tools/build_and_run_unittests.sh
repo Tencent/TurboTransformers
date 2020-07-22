@@ -25,5 +25,4 @@ BUILD_PATH=/tmp/build
 bash ${SRC_ROOT}/tools/compile.sh ${SRC_ROOT} ${WITH_GPU} ${BUILD_PATH}
 python3 -m pip install -r ${SRC_ROOT}/requirements.txt
 cd ${BUILD_PATH}
-ctest -V -R albert_layer
-#ctest --output-on-failure
+ctest --output-on-failure

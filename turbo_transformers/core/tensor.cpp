@@ -29,7 +29,7 @@ static void DLManagedTensorDeletor(DLManagedTensor *self) {
         self->dl_tensor.ctx.device_type == kDLGPU) {
       // free(self->dl_tensor.data);
       Allocator &allocator = Allocator::GetInstance();
-      allocator.free(self->dl_tensor.data, "bestfit",
+      allocator.free(self->dl_tensor.data, "cub",
                      self->dl_tensor.ctx.device_type);
     }
   }
@@ -63,7 +63,7 @@ DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
   if (device == kDLCPU || device == kDLGPU) {
     size_t size = numel * (bits / 8);
     Allocator &allocator = Allocator::GetInstance();
-    newTensor->dl_tensor.data = allocator.allocate(size, "bestfit", device);
+    newTensor->dl_tensor.data = allocator.allocate(size, "cub", device);
   } else {
     TT_THROW("only cpu and gpu are supported!");
   }
