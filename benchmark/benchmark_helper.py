@@ -96,7 +96,6 @@ def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
             #                   dtype=torch.long,
             #                   device=test_device))
             for request in request_list:
-                model(request)  #TODO warmup
                 if use_gpu:
                     start = torch.cuda.Event(enable_timing=True)
                     end = torch.cuda.Event(enable_timing=True)
