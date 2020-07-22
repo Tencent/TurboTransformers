@@ -25,7 +25,12 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
     import benchmark_helper
     turbo_transformers.set_num_threads(num_threads)
     test_device = torch.device('cuda:0') if use_gpu else torch.device('cpu:0')
+    if use_gpu:
+        print("using GPU")
+    else:
+        print("using CPU")
     cfg = None
+    torch.set_grad_enabled(False)
     if model_name == "bert":
         cfg = transformers.BertConfig()
         model = transformers.BertModel(cfg)
@@ -48,8 +53,8 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
         raise (f"benchmark does not support {model_name}")
 
     if enable_random:
-        benchmark_helper.run_random_model(model, use_gpu, n, max_seq_len,
-                                          min_seq_len, "turbo", 1, cfg)
+        benchmark_helper.run_variable_model(model, use_gpu, n, max_seq_len,
+                                            min_seq_len, "turbo", 1, cfg)
     else:
         input_ids = torch.randint(low=0,
                                   high=cfg.vocab_size - 1,
@@ -57,5 +62,5 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
                                   dtype=torch.long,
                                   device=test_device)
 
-        benchmark_helper.run_model(lambda: model(input_ids), True, n,
+        benchmark_helper.run_model(lambda: model(input_ids), use_gpu, n,
                                    batch_size, seq_len, "turbo")

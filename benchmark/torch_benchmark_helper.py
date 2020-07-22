@@ -23,7 +23,10 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
     import benchmark_helper
 
     test_device = torch.device('cuda:0') if use_gpu else torch.device('cpu:0')
-
+    if use_gpu:
+        print("using GPU")
+    else:
+        print("using CPU")
     torch.set_grad_enabled(False)
 
     cfg = None
@@ -43,13 +46,13 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
 
     # cfg = model.config  # type: transformers.BertConfig
     if enable_random:
-        benchmark_helper.run_random_model(model, use_gpu, n, max_seq_len,
-                                          min_seq_len, "torch", 1, cfg)
+        benchmark_helper.run_variable_model(model, use_gpu, n, max_seq_len,
+                                            min_seq_len, "torch", 1, cfg)
     else:
         input_ids = torch.randint(low=0,
                                   high=cfg.vocab_size - 1,
                                   size=(batch_size, seq_len),
                                   dtype=torch.long,
                                   device=test_device)
-        benchmark_helper.run_model(lambda: model(input_ids), True, n,
+        benchmark_helper.run_model(lambda: model(input_ids), use_gpu, n,
                                    batch_size, seq_len, "torch")

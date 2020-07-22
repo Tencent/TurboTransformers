@@ -10,12 +10,17 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 # See the AUTHORS file for names of contributors.
+import json
+import os
+
+import docopt
 
 __all__ = ['benchmark_torch_jit']
 
 
 def benchmark_torch_jit(model_name: str, seq_len: int, batch_size: int, n: int,
-                        num_threads: int):
+                        enable_random: bool, max_seq_len: int,
+                        min_seq_len: int, num_threads: int, use_gpu: bool):
     import transformers
     import contexttimer
     import torch.jit

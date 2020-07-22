@@ -36,6 +36,7 @@ import docopt
 from turbo_benchmark_helper import benchmark_turbo_transformers
 from torch_benchmark_helper import benchmark_torch
 from jit_benchmark_helper import benchmark_torch_jit
+from onnx_benchmark_helper import onnxruntime_benchmark_creator
 
 
 def main():
@@ -50,7 +51,7 @@ def main():
         'min_seq_len': int(args['--min_seq_len']),
         'max_seq_len': int(args['--max_seq_len']),
         'num_threads': int(args['--num_threads']),
-        'use_gpu': args['--use_gpu']
+        'use_gpu': True if args['--use_gpu'] else False
     }
 
     if args['--framework'] == 'turbo-transformers':
@@ -60,9 +61,9 @@ def main():
     elif args['--framework'] == 'torch_jit':
         benchmark_torch_jit(**kwargs)
     elif args['--framework'] == 'onnxruntime-gpu':
-        benchmark_helper.onnxruntime_benchmark_creator('GPU')(**kwargs)
+        onnxruntime_benchmark_creator('GPU')(**kwargs)
     elif args['--framework'] == 'onnxruntime-cpu':
-        benchmark_helper.onnxruntime_benchmark_creator('CPU')(**kwargs)
+        onnxruntime_benchmark_creator('CPU')(**kwargs)
     else:
         raise RuntimeError(f"Not supportted framework {args['--framework']}")
 
