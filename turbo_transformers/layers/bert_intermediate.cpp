@@ -53,7 +53,7 @@ void BertIntermediate::EnforceShapeAndType() const {
   TT_ENFORCE_EQ(dense_weight_.n_dim(), 2, "dense weight must be matrix");
   TT_ENFORCE_EQ(dense_bias_.n_dim(), 1, "dense bias must be vector");
   TT_ENFORCE_EQ(dense_weight_.shape(1), dense_bias_.shape(0),
-                "weight and bias shape mismatch %d, %d", dense_weight_.shape(0),
+                "weight and bias shape mismatch %d, %d", dense_weight_.shape(1),
                 dense_bias_.shape(0));
 
   if (loguru::current_verbosity_cutoff() >= 3) {

@@ -186,13 +186,13 @@ struct BertModel::Impl {
     if (poistion_ids.size() != 0) {
       TT_ENFORCE_EQ(
           poistion_ids.size(), static_cast<size_t>(batch_size),
-          "Position ids should have the same batch size as ibout ids");
+          "Position ids should have the same batch size as input ids");
       PadTensor(poistion_ids, batch_size, max_seq_len, static_cast<int64_t>(0),
                 device_type_, &positionIds);
     }
     if (segment_ids.size() != 0) {
       TT_ENFORCE_EQ(segment_ids.size(), static_cast<size_t>(batch_size),
-                    "Segment ids should have the same batch size as ibout ids");
+                    "Segment ids should have the same batch size as input ids");
       PadTensor(segment_ids, batch_size, max_seq_len, static_cast<int64_t>(0),
                 device_type_, &seqType);
     }
