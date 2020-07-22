@@ -13,9 +13,6 @@
 
 #include "turbo_transformers/layers/addbias_act.h"
 #include "turbo_transformers/layers/kernels/activation.h"
-#ifdef WITH_PERFTOOLS
-#include "turbo_transformers/core/profiler.h"
-#endif
 
 namespace turbo_transformers {
 namespace layers {

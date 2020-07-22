@@ -13,9 +13,6 @@
 
 #include "turbo_transformers/layers/addbias_layernorm.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
-#ifdef WITH_PERFTOOLS
-#include "turbo_transformers/core/profiler.h"
-#endif
 
 namespace turbo_transformers {
 namespace layers {
