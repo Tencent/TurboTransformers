@@ -23,13 +23,13 @@ for l in lens:
     for i in range(loops):
         res = intermediate(input)
     end = time.time()
-    print("torch int8 layer IPS =", l*loops/(end-start))
+    print("torch int8 layer QPS =", loops/(end-start))
 
     start = time.time()
     for i in range(loops):
         res2 = qintermediate(input)
     end = time.time()
-    print("turbo int8 layer IPS =", l*loops/(end-start))
+    print("turbo int8 layer QPS =", loops/(end-start))
 
 assert torch.max(torch.abs(res-res2)) < 1e-3
 print("ok")
