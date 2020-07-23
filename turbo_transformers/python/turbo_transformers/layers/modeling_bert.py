@@ -439,17 +439,21 @@ class BertModelNoPooler:
         return BertModelNoPooler(embeddings, encoder)
 
 
+AnyModel = Union[onnxruntime.backend.backend_rep.
+                 OnnxRuntimeBackendRep, BertModelNoPooler]
+
+
 class BertModel:
     def __init__(self,
-                 bertmodel_nopooler: BertModelNoPooler,
-                 pooler: BertPooler,
+                 model: AnyModel,
+                 pooler: Optional[BertPooler] = None,
                  backend="onnxrt"):
         # TODO type of bertmodel_nopooler is (onnx and torch)
         self.backend = backend
         if backend == "onnxrt":
-            self.onnxmodel = bertmodel_nopooler
+            self.onnxmodel = model
         elif backend == "turbo":
-            self.bertmodel_nopooler = bertmodel_nopooler
+            self.bertmodel_nopooler = model
             self.pooler = pooler
             self.backend = "turbo"
 
@@ -503,10 +507,25 @@ class BertModel:
     @staticmethod
     def from_torch(model: TorchBertModel,
                    device: Optional[torch.device] = None,
-                   backend: Optional[str] = "onnxrt"):
+                   backend: Optional[str] = None):
+        """
+        Args:
+            model : a PyTorch Bert Model
+            device : cpu or GPU
+            backend : a string to indicates kernel provides
+            Four options. [onnxrt-cpu, onnxrt-gpu, turbo-cpu, turbo-gpu]
+        """
+        use_gpu = False
         if device is not None and 'cuda' in device.type and torch.cuda.is_available(
         ):
             model.to(device)
+            if backend is None:
+                backend = "turbo"  # On GPU turbo is faster
+            use_gpu = True
+        else:
+            if backend is None:
+                backend = "onnxrt"  # On CPU onnxrt is faster
+
         if backend == "turbo":
             embeddings = BertEmbeddings.from_torch(model.embeddings)
             encoder = BertEncoder.from_torch(model.encoder)
@@ -514,12 +533,6 @@ class BertModel:
             pooler = BertPooler.from_torch(model.pooler)
             return BertModel(bertmodel_nopooler, pooler, "turbo")
         elif backend == "onnxrt":
-            # input_ids = torch.randint(low=0,
-            #                         high=model.config.vocab_size - 1,
-            #                         size=(1, 60),
-            #                         dtype=torch.long,
-            #                         device=device)
-            # Generate dummy inputs to the model. Adjust if neccessary
             inputs = {
                 'input_ids':
                 torch.randint(32, [2, 32], dtype=torch.long).to(
@@ -531,16 +544,14 @@ class BertModel:
                 torch.ones([2, 32],
                            dtype=torch.long).to(device),  # dummy list of ones
             }
-            onnx_model_path = "/tmp/temp_onnx.model"
+            onnx_model_path = "/tmp/temp_turbo_onnx.model"
             with open(onnx_model_path, 'wb') as outf:
                 torch.onnx.export(
                     model=model,
-                    # args=(input_ids, ),
                     args=(inputs['input_ids'], inputs['attention_mask'],
                           inputs['token_type_ids']
                           ),  # model input (or a tuple for multiple inputs)
                     f=outf,
-                    # input_names=['input'],
                     input_names=[
                         'input_ids', 'attention_mask', 'token_type_ids'
                     ],
@@ -554,13 +565,13 @@ class BertModel:
                 raise RuntimeError(
                     f"onnxruntime does not support CPU, recompile it!")
 
-            num_threads = "8"
-            os.environ['OMP_NUM_THREADS'] = str(num_threads)
-            os.environ['MKL_NUM_THREADS'] = str(num_threads)
+            # num_threads = "8"
+            # os.environ['OMP_NUM_THREADS'] = str(num_threads)
+            # os.environ['MKL_NUM_THREADS'] = str(num_threads)
             onnx_model = onnx.load_model(f=onnx_model_path)
             onnx_model = onnxruntime.backend.prepare(
                 model=onnx_model,
-                device='CPU',
+                device='GPU' if use_gpu else "CPU",
                 graph_optimization_level=onnxruntime.GraphOptimizationLevel.
                 ORT_ENABLE_ALL)
             return BertModel(onnx_model, None, "onnxrt")
