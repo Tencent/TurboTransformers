@@ -28,7 +28,7 @@ do
   do
     for framework in ${FRAMEWORKS[*]}
     do
-      python gpu_benchmark.py ${MODEL} --seq_len=${seq_len} --batch_size=${batch_size}\
+      python benchmark.py ${MODEL} --seq_len=${seq_len} --batch_size=${batch_size}\
           -n ${N} --framework=${framework}
     done
   done

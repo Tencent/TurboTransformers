@@ -1,4 +1,3 @@
-#!/bin/bash
 # Copyright (C) 2020 THL A29 Limited, a Tencent company.
 # All rights reserved.
 # Licensed under the BSD 3-Clause License (the "License"); you may
@@ -13,23 +12,28 @@
 # See the AUTHORS file for names of contributors.
 
 set -e
-NUM_THREADS=(4 8)
-FRAMEWORKS=("torch" "torch_jit" "turbo-transformers" "onnxruntime-cpu")
-SEQ_LEN=(10 20 40 60 80 100 120 200 300 400 500)
-BATCH_SIZE=(1 2)
+# Turbo is designed for variable-length input
+# This script benchmarks turbo using a list of request with variable lengths
+# FRAMEWORKS=("turbo-transformers" "torch" "onnxruntime")
+FRAMEWORKS=("turbo-transformers" "torch")
+# Note Onnx doese not supports Albert
+# FRAMEWORKS=("onnxruntime")
+
+MAX_SEQ_LEN=(500)
+
 N=150
-MODEL="bert"
-for n_th in ${NUM_THREADS[*]}
+MODEL="albert"
+for max_seq_len in ${MAX_SEQ_LEN[*]}
 do
-  for batch_size in ${BATCH_SIZE[*]}
+  for framework in ${FRAMEWORKS[*]}
   do
-    for seq_len in ${SEQ_LEN[*]}
-    do
-      for framework in ${FRAMEWORKS[*]}
-      do
-        env OMP_WAIT_POLICY=ACTIVE OMP_NUM_THREADS=${n_th} python cpu_benchmark.py ${MODEL} --seq_len=${seq_len} --batch_size=${batch_size}\
-            -n ${N} --framework=${framework} --num_threads=${n_th}
-      done
-    done
+    python benchmark.py ${MODEL} \
+              --enable-random \
+              --min_seq_len=5  \
+              --max_seq_len=${max_seq_len}  \
+              --batch_size=1 \
+              -n ${N} \
+              --framework=${framework} \
+              --use_gpu
   done
 done
