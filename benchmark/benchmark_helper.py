@@ -52,7 +52,7 @@ def run_model(model,
             "batch_size": batch_size,
             "seq_len": seq_len,
             "framework": framework_name,
-            "thread_num": thread_num,
+            "thread_num": num_threads,
         }))
 
 
@@ -143,5 +143,5 @@ def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
                 "max_seq_len": max_seq_len,
                 "min_seq_len": min_seq_len,
                 "framework": framework_name,
-                "thread_num": thread_num,
+                "thread_num": num_iter,
             }))

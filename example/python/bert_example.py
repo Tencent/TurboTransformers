@@ -39,13 +39,13 @@ def test(loadtype: LoadType, use_cuda: bool):
     input_ids = torch.tensor(
         ([12166, 10699, 16752, 4454], [5342, 16471, 817, 16022]),
         dtype=torch.long)
-    position_ids = torch.tensor(([1, 0, 0, 0], [1, 1, 1, 0]), dtype=torch.long)
+    # position_ids = torch.tensor(([1, 0, 0, 0], [1, 1, 1, 0]), dtype=torch.long)
     segment_ids = torch.tensor(([1, 1, 1, 0], [1, 0, 0, 0]), dtype=torch.long)
 
     start_time = time.time()
     for _ in range(10):
         torch_res = model(
-            input_ids, position_ids=position_ids, token_type_ids=segment_ids
+            input_ids, token_type_ids=segment_ids
         )  # sequence_output, pooled_output, (hidden_states), (attentions)
     end_time = time.time()
     print("\ntorch time consum: {}".format(end_time - start_time))
@@ -79,7 +79,7 @@ def test(loadtype: LoadType, use_cuda: bool):
     start_time = time.time()
     for _ in range(10):
         res = tt_model(
-            input_ids, position_ids=position_ids,
+            input_ids,
             token_type_ids=segment_ids)  # sequence_output, pooled_output
     end_time = time.time()
 
