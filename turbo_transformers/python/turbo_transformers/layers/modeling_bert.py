@@ -579,7 +579,7 @@ class BertModel:
     @staticmethod
     def from_pretrained(model_id_or_path: str,
                         device: Optional[torch.device] = None,
-                        backend: Optional[str] = "onnxrt"):
+                        backend: Optional[str] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
         model = BertModel.from_torch(torch_model, device, backend)
         model.config = torch_model.config
