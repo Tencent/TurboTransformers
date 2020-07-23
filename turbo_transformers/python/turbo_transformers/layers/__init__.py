@@ -12,7 +12,8 @@
 # See the AUTHORS file for names of contributors.
 
 from .modeling_bert import BertEmbeddings, BertIntermediate, BertOutput, BertAttention, BertLayer, SequencePool, \
-    BertEncoder, BertModel, PoolingType, BertPooler, QBertIntermediate, QBertOutput, QBertLayer
+    BertEncoder, BertModel, PoolingType, BertPooler
+from .qmodeling_bert import QBertIntermediate, QBertOutput, QBertLayer
 
 from .modeling_albert import AlbertEmbeddings, AlbertAttention, AlbertLayer, AlbertTransformer, AlbertModel
 from .modeling_decoder import MultiHeadedAttention, PositionwiseFeedForward, TransformerDecoderLayer, TransformerDecoder
