@@ -22,7 +22,7 @@ FRAMEWORKS=("turbo-transformers" "torch")
 MAX_SEQ_LEN=(500)
 
 N=150
-MODEL="albert"
+MODEL="bert"
 for max_seq_len in ${MAX_SEQ_LEN[*]}
 do
   for framework in ${FRAMEWORKS[*]}

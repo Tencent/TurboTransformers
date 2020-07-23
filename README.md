@@ -186,10 +186,11 @@ BSD 3-Clause License
 The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
 
 ## History
-1. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
-2. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
-3. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
-4. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
+1. July 2020 v0.4.0, TurboTransformers use onnxruntime as cpu backend.
+2. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
+3. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
+4. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
+5. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
 
 
 ## Contact us

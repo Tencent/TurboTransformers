@@ -516,8 +516,10 @@ class BertModel:
             Four options. [onnxrt-cpu, onnxrt-gpu, turbo-cpu, turbo-gpu]
         """
         use_gpu = False
-        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
-        ):
+        if device is None:
+            device = model.device
+        # may need to move to GPU explicitly
+        if 'cuda' in device.type and torch.cuda.is_available():
             model.to(device)
             if backend is None:
                 backend = "turbo"  # On GPU turbo is faster
