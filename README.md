@@ -26,12 +26,13 @@ The following table is a comparison of TurboTransformers and related work.
 | **turbo-transformers (CPU/GPU)** | **Fastest/Fastest** | **No** | **Yes** | **Easy** |
 
 ### Supported Models
+We currenly support the following transformer models.
 
-* [BERT](https://arxiv.org/abs/1810.04805)
-* [ALBERT](https://arxiv.org/abs/1909.11942)
-* [Roberta](https://arxiv.org/abs/1907.11692)
-* [Transformer Decoder](https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py).
-* [GPT2](https://www.ceid.upatras.gr/webpages/faculty/zaro/teaching/alg-ds/PRESENTATIONS/PAPERS/2019-Radford-et-al_Language-Models-Are-Unsupervised-Multitask-%20Learners.pdf).
+* [BERT](https://arxiv.org/abs/1810.04805) [Python](./example/python/bert_example.py) [C++](./example/python/bert_example.cpp)
+* [ALBERT](https://arxiv.org/abs/1909.11942) [Python](./example/python/albert_example.py)
+* [Roberta](https://arxiv.org/abs/1907.11692) [Python](./example/python/roberta_example.py)
+* [Transformer Decoder](https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py) [Python](https://github.com/TurboNLP/Translate-Demo)
+* [GPT2](https://www.ceid.upatras.gr/webpages/faculty/zaro/teaching/alg-ds/PRESENTATIONS/PAPERS/2019-Radford-et-al_Language-Models-Are-Unsupervised-Multitask-%20Learners.pdf) [Python](./example/python/gpt2_example.py)
 
 ### Boost BERT Inference in 2 Lines of Python Code
 ```python
@@ -170,9 +171,9 @@ Users can link turbo-transformers to your code through add_subdirectory.
 
 
 ## How to contribute new models
-[How to know hotspots of your code](./docs/profiler.md)
+[How to know hotspots of your code?](./docs/profiler.md)
 
-[How to add a new layer](./turbo_transformers/layers/README.md)
+[How to add a new layer?](./turbo_transformers/layers/README.md)
 
 
 ## TODO
