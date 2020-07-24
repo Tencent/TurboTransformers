@@ -18,6 +18,7 @@ from .qmodeling_bert import QBertIntermediate, QBertOutput, QBertLayer
 from .modeling_albert import AlbertEmbeddings, AlbertAttention, AlbertLayer, AlbertTransformer, AlbertModel
 from .modeling_decoder import MultiHeadedAttention, PositionwiseFeedForward, TransformerDecoderLayer, TransformerDecoder
 from .modeling_roberta import RobertaModel
+from .modeling_gpt2 import GPT2Model
 
 from .return_type import ReturnType
 
@@ -28,5 +29,6 @@ __all__ = [
     'PositionwiseFeedForward', 'AlbertLayer', 'AlbertEmbeddings',
     'AlbertAttention', 'AlbertTransformer', 'AlbertModel',
     'PositionwiseFeedForward', 'TransformerDecoderLayer', 'TransformerDecoder',
-    'RobertaModel', 'QBertIntermediate', 'QBertOutput', 'QBertLayer'
+    'RobertaModel', 'QBertIntermediate', 'QBertOutput', 'QBertLayer',
+    'GPT2Model'
 ]
