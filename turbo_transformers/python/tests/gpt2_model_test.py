@@ -55,7 +55,6 @@ class TestGPT2Model(unittest.TestCase):
         torch_result, torch_qps, torch_time = \
             test_helper.run_model(torch_model, use_cuda, num_iter)
         print(f'GPT2Model PyTorch({device_name}) QPS {torch_qps}')
-        print("inputs", input_ids)
 
         turbo_model = (lambda: self.turbo_model(input_ids))
 

@@ -186,4 +186,4 @@ class GPT2Model:
     @staticmethod
     def from_npz(file_name: str, config,
                  device: Optional[torch.device] = None):
-        raise ("Not Implemented from_npz")
+        raise NotImplementedError
