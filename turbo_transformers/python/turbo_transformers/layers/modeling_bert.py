@@ -32,6 +32,10 @@ from transformers.modeling_bert import BertPooler as TorchBertPooler
 
 import enum
 import numpy as np
+import onnx
+import onnxruntime
+import onnxruntime.backend
+import os
 
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
@@ -164,7 +168,7 @@ class BertAttention(cxx.BertAttention):
                    ) if output_attentions else (convert_returns_as_type(
                        context_layer, return_type), )
         return outputs
-      
+
     @staticmethod
     def from_torch(attention: TorchBertAttention):
         params = {k: v for k, v in attention.named_parameters()}
@@ -297,7 +301,7 @@ class BertEncoder:
             outputs = outputs + (all_attentions, )
 
         return outputs
-      
+
     @staticmethod
     def from_torch(encoder: TorchBertEncoder):
         layer = [
@@ -434,11 +438,24 @@ class BertModelNoPooler:
                                        config.num_attention_heads)
         return BertModelNoPooler(embeddings, encoder)
 
+
+AnyModel = Union[onnxruntime.backend.backend_rep.
+                 OnnxRuntimeBackendRep, BertModelNoPooler]
+
+
 class BertModel:
-    def __init__(self, bertmodel_nopooler: BertModelNoPooler,
-                 pooler: BertPooler):
-        self.bertmodel_nopooler = bertmodel_nopooler
-        self.pooler = pooler
+    def __init__(self,
+                 model: AnyModel,
+                 pooler: Optional[BertPooler] = None,
+                 backend="onnxrt"):
+        # TODO type of bertmodel_nopooler is (onnx and torch)
+        self.backend = backend
+        if backend == "onnxrt":
+            self.onnxmodel = model
+        elif backend == "turbo":
+            self.bertmodel_nopooler = model
+            self.pooler = pooler
+            self.backend = "turbo"
 
     def __call__(self,
                  inputs: AnyTensor,
@@ -452,46 +469,121 @@ class BertModel:
                  pooling_type: PoolingType = PoolingType.FIRST,
                  pooler_output: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None):
-        encoder_outputs = self.bertmodel_nopooler(
-            inputs,
-            attention_masks,
-            token_type_ids,
-            position_ids,
-            inputs_embeds=inputs_embeds,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            pooling_type=pooling_type,
-            return_type=ReturnType.turbo_transformers)
+        if self.backend == "turbo":
+            encoder_outputs = self.bertmodel_nopooler(
+                inputs,
+                attention_masks,
+                token_type_ids,
+                position_ids,
+                inputs_embeds=inputs_embeds,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states,
+                pooling_type=pooling_type,
+                return_type=ReturnType.turbo_transformers)
 
-        sequence_output = encoder_outputs[0]
-        self.seq_pool = SequencePool(PoolingMap[pooling_type])
-        sequence_pool_output = self.seq_pool(
-            input_tensor=sequence_output,
-            return_type=ReturnType.turbo_transformers)
-        pooler_output = self.pooler(sequence_pool_output, return_type,
-                                    pooler_output)
-        return (
-            convert_returns_as_type(sequence_output, return_type),
-            pooler_output,
-        ) + encoder_outputs[1:]
+            sequence_output = encoder_outputs[0]
+            self.seq_pool = SequencePool(PoolingMap[pooling_type])
+            sequence_pool_output = self.seq_pool(
+                input_tensor=sequence_output,
+                return_type=ReturnType.turbo_transformers)
+            pooler_output = self.pooler(sequence_pool_output, return_type,
+                                        pooler_output)
+            return (
+                convert_returns_as_type(sequence_output, return_type),
+                pooler_output,
+            ) + encoder_outputs[1:]
+        elif self.backend == "onnxrt":
+            if attention_masks is None:
+                attention_masks = np.ones(inputs.size(), dtype=np.int64)
+            else:
+                attention_masks = attention_masks.cpu().numpy()
+            if token_type_ids is None:
+                token_type_ids = np.zeros(inputs.size(), dtype=np.int64)
+            else:
+                token_type_ids = token_type_ids.cpu().numpy()
+            data = [inputs.cpu().numpy(), attention_masks, token_type_ids]
+            return self.onnxmodel.run(inputs=data)
 
     @staticmethod
     def from_torch(model: TorchBertModel,
-                   device: Optional[torch.device] = None):
-        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
-        ):
+                   device: Optional[torch.device] = None,
+                   backend: Optional[str] = None):
+        """
+        Args:
+            model : a PyTorch Bert Model
+            device : cpu or GPU
+            backend : a string to indicates kernel provides
+            Four options. [onnxrt-cpu, onnxrt-gpu, turbo-cpu, turbo-gpu]
+        """
+        use_gpu = False
+        if device is None:
+            device = model.device
+        # may need to move to GPU explicitly
+        if 'cuda' in device.type and torch.cuda.is_available():
             model.to(device)
-        embeddings = BertEmbeddings.from_torch(model.embeddings)
-        encoder = BertEncoder.from_torch(model.encoder)
-        bertmodel_nopooler = BertModelNoPooler(embeddings, encoder)
-        pooler = BertPooler.from_torch(model.pooler)
-        return BertModel(bertmodel_nopooler, pooler)
+            if backend is None:
+                backend = "turbo"  # On GPU turbo is faster
+            use_gpu = True
+        else:
+            if backend is None:
+                backend = "onnxrt"  # On CPU onnxrt is faster
+
+        if backend == "turbo":
+            embeddings = BertEmbeddings.from_torch(model.embeddings)
+            encoder = BertEncoder.from_torch(model.encoder)
+            bertmodel_nopooler = BertModelNoPooler(embeddings, encoder)
+            pooler = BertPooler.from_torch(model.pooler)
+            return BertModel(bertmodel_nopooler, pooler, "turbo")
+        elif backend == "onnxrt":
+            inputs = {
+                'input_ids':
+                torch.randint(32, [2, 32], dtype=torch.long).to(
+                    device),  # list of numerical ids for the tokenised text
+                'attention_mask':
+                torch.ones([2, 32],
+                           dtype=torch.long).to(device),  # dummy list of ones
+                'token_type_ids':
+                torch.ones([2, 32],
+                           dtype=torch.long).to(device),  # dummy list of ones
+            }
+            onnx_model_path = "/tmp/temp_turbo_onnx.model"
+            with open(onnx_model_path, 'wb') as outf:
+                torch.onnx.export(
+                    model=model,
+                    args=(inputs['input_ids'], inputs['attention_mask'],
+                          inputs['token_type_ids']
+                          ),  # model input (or a tuple for multiple inputs)
+                    f=outf,
+                    input_names=[
+                        'input_ids', 'attention_mask', 'token_type_ids'
+                    ],
+                    output_names=['output'],
+                    dynamic_axes={
+                        'input_ids': [0, 1],
+                        'attention_mask': [0, 1],
+                        'token_type_ids': [0, 1]
+                    })
+            if not onnxruntime.backend.supports_device("CPU"):
+                raise RuntimeError(
+                    f"onnxruntime does not support CPU, recompile it!")
+
+            # num_threads = "8"
+            # os.environ['OMP_NUM_THREADS'] = str(num_threads)
+            # os.environ['MKL_NUM_THREADS'] = str(num_threads)
+            onnx_model = onnx.load_model(f=onnx_model_path)
+            onnx_model = onnxruntime.backend.prepare(
+                model=onnx_model,
+                device='GPU' if use_gpu else "CPU",
+                graph_optimization_level=onnxruntime.GraphOptimizationLevel.
+                ORT_ENABLE_ALL)
+            return BertModel(onnx_model, None, "onnxrt")
 
     @staticmethod
     def from_pretrained(model_id_or_path: str,
-                        device: Optional[torch.device] = None):
+                        device: Optional[torch.device] = None,
+                        backend: Optional[str] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
-        model = BertModel.from_torch(torch_model, device)
+        model = BertModel.from_torch(torch_model, device, backend)
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model

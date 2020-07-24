@@ -3,14 +3,15 @@
 
 <center>Make transformers serving fast by adding a turbo to your inference engine!</center>
 
-### Background
 Transformer is the most critical alogrithm innovation in the NLP field in recent years. It brings higher model accuracy while introduces more calculations. The efficient deployment of online Transformer-based services faces enormous challenges. In order to make the costly Transformer online service more efficient, the WeChat AI open-sourced a Transformer inference acceleration tool called TurboTransformers, which has the following characteristics.
 1. Supporting both Transformers Encoder and Decoder.
-2. Excellent CPU / GPU performance. For Intel multi-core CPU and NVIDIA GPU hardware platforms, TurboTransformers can fully utilize all levels of computing power of the hardware. It has achieved better performance over pytorch / tensorflow and current mainstream optimization engines (such as onnxruntime-mkldnn / onnxruntime-gpu, torch JIT, NVIDIA faster transformers) on a variety of CPU and GPU hardware. See the detailed benchmark results below.
+2. Excellent CPU / GPU performance. For Intel multi-core CPU and NVIDIA GPU hardware platforms, TurboTransformers can fully utilize all levels of computing power of the hardware. It has achieved better performance over pytorch / tensorflow and current mainstream optimization engines (such as TensorRT, torch JIT, NVIDIA faster transformers) on a variety of CPU and GPU hardware. See the detailed benchmark results below.
 3. Tailored to the characteristics of NLP inference tasks. Unlike the CV task, the input dimensions of the NLP inference task always change. The traditional approach is zero padding or truncation to a fixed length, which introduces additional zero padding computational overhead. Besides, some frameworks such as onnxruntime, tensorRT, and torchlib need to preprocess the compuatation-graph according to the input size in advance for the best performance, which is not suitable for NLP tasks with varying sizes. TurboTransformers can support variable-length input sequence processing without preprocessing.
 4. A simpler method of use. TurboTransformers supports python and C++ interface for calling. It can be used as an acceleration plug-in for pytorch. In the Transformer task, the end-to-end acceleration effect obtained by adding a few lines of python code.
 
-TurboTransformers has been applied to multiple online BERT service scenarios in Tencent. For example, It brings 1.88x acceleration to the WeChat FAQ service, 2.11x acceleration to the public cloud sentiment analysis service, and 13.6x acceleration to the QQ recommendation system.
+TurboTransformers has been applied to multiple online BERT service scenarios in Tencent.
+For example, It brings 1.88x acceleration to the WeChat FAQ service, 2.11x acceleration to the public cloud sentiment analysis service, and 13.6x acceleration to the QQ recommendation system.
+Moreover, it have already been applied to build services such as Chitchating, Searching and Recommandation.
 
 The following table is a comparison of TurboTransformers and related work.
 
@@ -19,7 +20,7 @@ The following table is a comparison of TurboTransformers and related work.
 | pytorch JIT (CPU) |  Fast |  Yes  | No  | Hard   |
 | TensorRT (GPU) | Fast | Yes  | No  | Hard  |
 | tf-Faster Transformers (GPU) | Fast  | Yes  | No  | Hard  |
-| ONNX-runtime (CPU/GPU) | Fast/Fast | Yes  | No  | Easy  |
+| ONNX-runtime (CPU/GPU) | Fastest/Fast | No  | No  | Easy  |
 | tensorflow-1.x (CPU/GPU) | Slow/Medium | Yes | No | Easy |
 | pytorch (CPU/GPU) | Medium/Medium | No | Yes | Easy |
 | **turbo-transformers (CPU/GPU)** | **Fastest/Fastest** | **No** | **Yes** | **Easy** |
@@ -30,6 +31,7 @@ The following table is a comparison of TurboTransformers and related work.
 * [ALBERT](https://arxiv.org/abs/1909.11942)
 * [Roberta](https://arxiv.org/abs/1907.11692)
 * [Transformer Decoder](https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py).
+* [GPT2](https://www.ceid.upatras.gr/webpages/faculty/zaro/teaching/alg-ds/PRESENTATIONS/PAPERS/2019-Radford-et-al_Language-Models-Are-Unsupervised-Multitask-%20Learners.pdf).
 
 ### Boost BERT Inference in 2 Lines of Python Code
 ```python
@@ -73,9 +75,9 @@ git clone https://github.com/Tencent/TurboTransformers --recursive
 1. build docker images and containers on your machine.
 ```
 sh tools/build_docker_cpu.sh
-# optional:
-If you want to compare the performance of onnxrt-mkldnn during benchmark, you need to set BUILD_TYPE=dev to compile onnxruntime into the docker image, as follows
+# optional: If you want to compare the performance of onnxrt-mkldnn during benchmark, you need to set BUILD_TYPE=dev to compile onnxruntime into the docker image, as follows
 env BUILD_TYPE=dev sh tools/build_docker_cpu.sh
+docker run -it --rm --name=turbort -v $PWD:/workspace your_image_name /bin/bash
 ```
 
 2. Install turbo in docker
@@ -174,7 +176,7 @@ Users can link turbo-transformers to your code through add_subdirectory.
 
 
 ## TODO
-Currently (June 2020), In the near futuer, we will add support for other models (Albert [Work In Progress], GPT2) and low-precision floating point (CPU int8, GPU FP16).
+Currently (June 2020), In the near futuer, we will add support for low-precision models (CPU int8, GPU FP16).
 **Looking forwards to your contribution!**
 
 ## Lisence
@@ -185,10 +187,11 @@ BSD 3-Clause License
 The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
 
 ## History
-1. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
-2. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
-3. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
-4. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
+1. July 2020 v0.4.0, TurboTransformers use onnxruntime as cpu backend, supports GPT2.
+2. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
+3. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
+4. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
+5. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
 
 
 ## Contact us

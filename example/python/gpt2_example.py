@@ -15,6 +15,7 @@ import transformers
 import turbo_transformers
 import enum
 import time
+import numpy
 
 
 class LoadType(enum.Enum):
@@ -24,8 +25,8 @@ class LoadType(enum.Enum):
 
 
 def test(loadtype: LoadType, use_cuda: bool):
-    model_id = "bert-base-uncased"
-    model = transformers.BertModel.from_pretrained(model_id)
+    cfg = transformers.GPT2Config()
+    model = transformers.GPT2Model(cfg)
     model.eval()
     torch.set_grad_enabled(False)
 
@@ -39,57 +40,28 @@ def test(loadtype: LoadType, use_cuda: bool):
     input_ids = torch.tensor(
         ([12166, 10699, 16752, 4454], [5342, 16471, 817, 16022]),
         dtype=torch.long)
-    # position_ids = torch.tensor(([1, 0, 0, 0], [1, 1, 1, 0]), dtype=torch.long)
-    segment_ids = torch.tensor(([1, 1, 1, 0], [1, 0, 0, 0]), dtype=torch.long)
 
     start_time = time.time()
     for _ in range(10):
-        torch_res = model(
-            input_ids, token_type_ids=segment_ids
-        )  # sequence_output, pooled_output, (hidden_states), (attentions)
+        torch_res = model(input_ids)
     end_time = time.time()
     print("\ntorch time consum: {}".format(end_time - start_time))
-    print("torch bert sequence output: ",
-          torch_res[0][:, 0, :])  #get the first sequence
-    print("torch bert pooler output: ", torch_res[1])  # pooled_output
 
     # there are three ways to load pretrained model.
     if loadtype is LoadType.PYTORCH:
         # 1, from a PyTorch model, which has loaded a pretrained model
-        tt_model = turbo_transformers.BertModel.from_torch(model, test_device)
-    elif loadtype is LoadType.PRETRAINED:
-        # 2. directly load from checkpoint (torch saved model)
-        tt_model = turbo_transformers.BertModel.from_pretrained(
-            model_id, test_device)
-    elif loadtype is LoadType.NPZ:
-        # 3. load model from npz
-        if len(sys.argv) == 2:
-            try:
-                print(sys.argv[1])
-                in_file = sys.argv[1]
-            except:
-                sys.exit("ERROR. can not open ", sys.argv[1])
-        else:
-            in_file = "/workspace/bert_torch.npz"
-        tt_model = turbo_transformers.BertModel.from_npz(
-            in_file, cfg, test_device)
+        tt_model = turbo_transformers.GPT2Model.from_torch(model, test_device)
     else:
         raise ("LoadType is not supported")
 
     start_time = time.time()
     for _ in range(10):
-        res = tt_model(
-            input_ids,
-            token_type_ids=segment_ids)  # sequence_output, pooled_output
+        res = tt_model(input_ids)  # sequence_output, pooled_output
     end_time = time.time()
 
-    print("turbo bert sequence output:", res[0][:, 0, :])
-    print("turbo bert pooler output: ", res[1])  # pooled_output
     print("\nturbo time consum: {}".format(end_time - start_time))
-    # assert (torch.max(torch.abs(tt_seqence_output - torch_seqence_output)) <
-    #         0.1)
+    assert (numpy.max(numpy.abs(res[0] - torch_res[0].cpu().numpy())) < 0.1)
 
 
 if __name__ == "__main__":
-    test(LoadType.PYTORCH, False)
-    # test(LoadType.PRETRAINED, False)
+    test(LoadType.PYTORCH, use_cuda=False)

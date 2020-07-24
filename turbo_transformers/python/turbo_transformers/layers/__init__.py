@@ -13,10 +13,12 @@
 
 from .modeling_bert import BertEmbeddings, BertIntermediate, BertOutput, BertAttention, BertLayer, SequencePool, \
     BertEncoder, BertModel, PoolingType, BertPooler
+from .qmodeling_bert import QBertIntermediate, QBertOutput, QBertLayer, QBertEncoder, QBertModel
 
 from .modeling_albert import AlbertEmbeddings, AlbertAttention, AlbertLayer, AlbertTransformer, AlbertModel
 from .modeling_decoder import MultiHeadedAttention, PositionwiseFeedForward, TransformerDecoderLayer, TransformerDecoder
 from .modeling_roberta import RobertaModel
+from .modeling_gpt2 import GPT2Model
 
 from .return_type import ReturnType
 
@@ -27,5 +29,6 @@ __all__ = [
     'PositionwiseFeedForward', 'AlbertLayer', 'AlbertEmbeddings',
     'AlbertAttention', 'AlbertTransformer', 'AlbertModel',
     'PositionwiseFeedForward', 'TransformerDecoderLayer', 'TransformerDecoder',
-    'RobertaModel'
+    'RobertaModel', 'QBertIntermediate', 'QBertOutput', 'QBertLayer',
+    'QBertEncoder', 'QBertModel', 'GPT2Model'
 ]
