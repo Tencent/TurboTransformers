@@ -99,7 +99,6 @@ class GPT2Model:
             raise ("Not Implemented GPT2 on Turbo Backend")
 
         if backend == "onnxrt":
-            print("Inside from_torch")
             # TODO(jiaruifang) Figure out the meaning of GPT2
             enable_past_input = False
 
