@@ -28,11 +28,13 @@ The following table is a comparison of TurboTransformers and related work.
 ### Supported Models
 We currenly support the following transformer models.
 
+
 * [BERT](https://arxiv.org/abs/1810.04805) [[Python]](./example/python/bert_example.py) [[C++]](./example/python/bert_example.cpp)
 * [ALBERT](https://arxiv.org/abs/1909.11942) [[Python]](./example/python/albert_example.py)
 * [Roberta](https://arxiv.org/abs/1907.11692) [[Python]](./example/python/roberta_example.py)
 * [Transformer Decoder](https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py) [[Python]](https://github.com/TurboNLP/Translate-Demo)
 * [GPT2](https://www.ceid.upatras.gr/webpages/faculty/zaro/teaching/alg-ds/PRESENTATIONS/PAPERS/2019-Radford-et-al_Language-Models-Are-Unsupervised-Multitask-%20Learners.pdf) [[Python]](./example/python/gpt2_example.py)
+
 
 ### Boost BERT Inference in 2 Lines of Python Code
 ```python
@@ -190,6 +192,7 @@ The diff mainly comes from Bert Output Layer. We use a approximate GELU algorith
 Download PyTorch version to 1.1.0 will improve Turbo's Performance.
 
 ## History
+
 1. July 2020 v0.4.0, TurboTransformers used onnxruntime as cpu backend, supports GPT2. Anded a Quantized BERT.
 2. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
 3. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.

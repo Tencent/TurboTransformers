@@ -15,12 +15,9 @@
 
 #include "loguru.hpp"
 #include "turbo_transformers/layers/kernels/common.h"
-#include "turbo_transformers/layers/kernels/layer_norm.h"
 #include "turbo_transformers/layers/kernels/embedding.h"
-#ifdef TT_WITH_CUDA
-#include "turbo_transformers/core/cuda_device_context.h"
-#include "turbo_transformers/layers/kernels/gpu_embedding_kernel.h"
-#endif
+#include "turbo_transformers/layers/kernels/layer_norm.h"
+
 
 namespace turbo_transformers {
 namespace layers {
@@ -52,7 +49,10 @@ void BERTEmbedding::operator()(const core::Tensor &input_ids,
   output_tensor->Reshape<float>({batch_size, seq_length, hidden_size},
                                 input_ids.device_type(), input_ids.device_id());
   LOG_S(3) << "Look up word embedding";
-  kernels::LookupEmbedding</*Add=*/false>(output_tensor, word_embedings_, input_ids);
+
+  kernels::LookupEmbedding</*Add=*/false>(output_tensor, word_embedings_,
+                                          input_ids);
+
   LOG_S(3) << "Look up token type embedding";
   kernels::LookupEmbedding</*Add=*/true>(output_tensor, token_type_embeddings_,
                                          token_type_ids);

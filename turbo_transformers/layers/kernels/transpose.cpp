@@ -83,6 +83,10 @@ void TransposeForScore(core::Tensor* output, const core::Tensor& input,
   auto& profile_ctx = core::Profiler::GetInstance();
   profile_ctx.start_profile(name, input.device_type());
 #endif
+  TT_ENFORCE_EQ(input.n_dim(), 4, "input should be a 4-D tensor");
+  TT_ENFORCE_GE(output->n_dim(), 3, "output tensor dim should be greater than 3");
+  TT_ENFORCE_EQ(input.numel(), output->numel(),
+                "input.numel() and output.numel() should be the same");
   if (input.device_type() == kDLCPU && output->device_type() == kDLCPU) {
     TransposeForScoreImpl(output->mutableData<float>(), input.data<float>(),
                           output->shape(0), output->shape(1), input.shape(1),

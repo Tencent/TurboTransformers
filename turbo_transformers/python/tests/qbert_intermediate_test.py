@@ -4,7 +4,9 @@ import turbo_transformers
 from turbo_transformers.layers.utils import convert2tt_tensor, try_convert, convert_returns_as_type, ReturnType
 import time
 
-model = transformers.BertModel.from_pretrained('bert-base-uncased')
+
+cfg = transformers.BertConfig()
+model = transformers.BertModel(cfg)
 model.eval()
 torch.set_grad_enabled(False)
 
@@ -13,7 +15,7 @@ qintermediate = turbo_transformers.QBertIntermediate.from_torch(model.encoder.la
 
 
 lens = [10,20,40,60,80,100,200,300]
-loops = 1000
+loops = 1
 
 for l in lens:
     input = torch.rand(1, l, 768)
@@ -32,4 +34,4 @@ for l in lens:
     print("turbo int8 layer QPS =", loops/(end-start))
 
 assert torch.max(torch.abs(res-res2)) < 1e-3
-print("ok")
+
