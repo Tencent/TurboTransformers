@@ -31,6 +31,7 @@ The following table is a comparison of TurboTransformers and related work.
 * [ALBERT](https://arxiv.org/abs/1909.11942)
 * [Roberta](https://arxiv.org/abs/1907.11692)
 * [Transformer Decoder](https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py).
+* [GPT2](https://www.ceid.upatras.gr/webpages/faculty/zaro/teaching/alg-ds/PRESENTATIONS/PAPERS/2019-Radford-et-al_Language-Models-Are-Unsupervised-Multitask-%20Learners.pdf).
 
 ### Boost BERT Inference in 2 Lines of Python Code
 ```python
@@ -74,9 +75,9 @@ git clone https://github.com/Tencent/TurboTransformers --recursive
 1. build docker images and containers on your machine.
 ```
 sh tools/build_docker_cpu.sh
-# optional:
-If you want to compare the performance of onnxrt-mkldnn during benchmark, you need to set BUILD_TYPE=dev to compile onnxruntime into the docker image, as follows
+# optional: If you want to compare the performance of onnxrt-mkldnn during benchmark, you need to set BUILD_TYPE=dev to compile onnxruntime into the docker image, as follows
 env BUILD_TYPE=dev sh tools/build_docker_cpu.sh
+docker run -it --rm --name=turbort -v $PWD:/workspace your_image_name /bin/bash
 ```
 
 2. Install turbo in docker
@@ -175,7 +176,7 @@ Users can link turbo-transformers to your code through add_subdirectory.
 
 
 ## TODO
-Currently (June 2020), In the near futuer, we will add support for other models (GPT2) and low-precision floating point (CPU int8, GPU FP16).
+Currently (June 2020), In the near futuer, we will add support for low-precision models (CPU int8, GPU FP16).
 **Looking forwards to your contribution!**
 
 ## Lisence
@@ -186,7 +187,7 @@ BSD 3-Clause License
 The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
 
 ## History
-1. July 2020 v0.4.0, TurboTransformers use onnxruntime as cpu backend.
+1. July 2020 v0.4.0, TurboTransformers use onnxruntime as cpu backend, supports GPT2.
 2. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
 3. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
 4. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
