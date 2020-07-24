@@ -32,7 +32,7 @@ We currenly support the following transformer models.
 * [ALBERT](https://arxiv.org/abs/1909.11942) [[Python]](./example/python/albert_example.py)
 * [Roberta](https://arxiv.org/abs/1907.11692) [[Python]](./example/python/roberta_example.py)
 * [Transformer Decoder](https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py) [[Python]](https://github.com/TurboNLP/Translate-Demo)
-* [GPT2](https://www.ceid.upatras.gr/webpages/faculty/zaro/teaching/alg-ds/PRESENTATIONS/PAPERS/2019-Radford-et-al_Language-Models-Are-Unsupervised-Multitask-%20Learners.pdf) [Python](./example/python/gpt2_example.py)
+* [GPT2](https://www.ceid.upatras.gr/webpages/faculty/zaro/teaching/alg-ds/PRESENTATIONS/PAPERS/2019-Radford-et-al_Language-Models-Are-Unsupervised-Multitask-%20Learners.pdf) [[Python]](./example/python/gpt2_example.py)
 
 ### Boost BERT Inference in 2 Lines of Python Code
 ```python
@@ -187,7 +187,7 @@ BSD 3-Clause License
 1. The results of Turbo Transformers may be different from the results of PyTorch after 2 digits behind the decimal point.
 The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
 2. Turbo and PyTorch share the same MKL. MKL of PyTorch 1.5.0 may slow in Turbo. Reasons needs to be determined.
-Download PyTorch version to 1.1.0 will improve Turbo's Performance/.
+Download PyTorch version to 1.1.0 will improve Turbo's Performance.
 
 ## History
 1. July 2020 v0.4.0, TurboTransformers used onnxruntime as cpu backend, supports GPT2. Anded a Quantized BERT.
