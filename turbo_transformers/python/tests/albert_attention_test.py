@@ -106,7 +106,7 @@ def create_test(batch_size, seq_length):
 with open(fname, "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 for batch_size in [1, 2]:
-    for seq_length in [10, 16, 20, 24, 40, 48, 60, 64, 80, 100, 120, 128]:
+    for seq_length in [16]:
         create_test(batch_size, seq_length)
 
 if __name__ == '__main__':
