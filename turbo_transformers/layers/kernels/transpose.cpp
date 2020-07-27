@@ -84,7 +84,8 @@ void TransposeForScore(core::Tensor* output, const core::Tensor& input,
   profile_ctx.start_profile(name, input.device_type());
 #endif
   TT_ENFORCE_EQ(input.n_dim(), 4, "input should be a 4-D tensor");
-  TT_ENFORCE_GE(output->n_dim(), 3, "output tensor dim should be greater than 3");
+  TT_ENFORCE_GE(output->n_dim(), 3,
+                "output tensor dim should be greater than 3");
   TT_ENFORCE_EQ(input.numel(), output->numel(),
                 "input.numel() and output.numel() should be the same");
   if (input.device_type() == kDLCPU && output->device_type() == kDLCPU) {
@@ -158,9 +159,6 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
   TT_ENFORCE_EQ(output_tensor->n_dim(), 5,
                 "output_tensor should be (weight_num, batch_size, seq_length, "
                 "num_attention_heads, size_per_head)");
-  // TT_ENFORCE_EQ(bias_tensor.n_dim(), 1,
-  //               "output_tensor should be (weight_num * num_attention_heads, "
-  //               "size_per_head)");
 
   auto batch_size = output_tensor->shape(1);
   auto seq_length = output_tensor->shape(3);
@@ -219,6 +217,102 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
     GPUSplitAddBiasTransposeForScore<float>(
         input, bias, output, batch_size, seq_length, weight_num,
         num_attention_heads, width, cuda_ctx.stream());
+#endif
+  } else {
+    TT_THROW("device_type is not supported");
+  }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, input_tensor.device_type());
+#endif
+}
+
+// input_tensor: 4D array (batch_size, seq_length, 3, head_num * size_per_head)
+void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
+                                   const core::Tensor& bias_tensor,
+                                   core::Tensor& q_out_tensor,
+                                   core::Tensor& k_out_tensor,
+                                   core::Tensor& v_out_tensor,
+                                   const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, input_tensor.device_type());
+#endif
+
+  TT_ENFORCE_EQ(input_tensor.n_dim(), 4,
+                "output_tensor should be (batch_size, seq_length, "
+                "num_attention_heads * size_per_head)");
+
+  auto batch_size = input_tensor.shape(0);
+  auto seq_length = input_tensor.shape(1);
+  auto weight_num = 3;
+  auto num_attention_heads = q_out_tensor.shape(1);
+  auto width = input_tensor.shape(3) / num_attention_heads;
+  auto input = input_tensor.data<float>();
+  auto bias = bias_tensor.data<float>();
+  auto q_out = q_out_tensor.mutableData<float>();
+  auto k_out = k_out_tensor.mutableData<float>();
+  auto v_out = v_out_tensor.mutableData<float>();
+
+  TT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
+                                           bias_tensor.device_ctx()),
+                true,
+                "SplitAddBiasTransposeForScore: input_tensor and bias_tensor "
+                "should have the same device type and device id.");
+  TT_ENFORCE_EQ(common::is_same_device_ctx(input_tensor.device_ctx(),
+                                           q_out_tensor.device_ctx()),
+                true,
+                "SplitAddBiasTransposeForScore: input_tensor and q_out_tensor "
+                "should have the same device type and device id.");
+
+  if (q_out_tensor.device_type() == kDLCPU &&
+      input_tensor.device_type() == kDLCPU &&
+      bias_tensor.device_type() == kDLCPU) {
+#pragma omp parallel for
+    for (int64_t idx = 0; idx < batch_size * weight_num * seq_length; ++idx) {
+      auto batch_idx = idx / (seq_length * weight_num);
+      auto seq_idx = idx / weight_num % seq_length;
+      auto weight_idx = idx % weight_num;
+
+      for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
+        auto* src_ptr =
+            input +
+            batch_idx *
+                (seq_length * weight_num * num_attention_heads * width) +
+            seq_idx * weight_num * num_attention_heads * width +
+            weight_idx * (num_attention_heads * width) + head_idx * width;
+        float* dst_ptr = nullptr;
+        switch (weight_idx) {
+          case 0:
+            dst_ptr = q_out +
+                      batch_idx * (num_attention_heads * seq_length * width) +
+                      head_idx * seq_length * width + seq_idx * width;
+            break;
+          case 1:
+            dst_ptr = k_out +
+                      batch_idx * (num_attention_heads * seq_length * width) +
+                      head_idx * seq_length * width + seq_idx * width;
+            break;
+          case 2:
+            dst_ptr = v_out +
+                      batch_idx * (num_attention_heads * seq_length * width) +
+                      head_idx * seq_length * width + seq_idx * width;
+            break;
+          default:
+            break;
+        }
+        auto* bias_ptr =
+            bias + weight_idx * width * num_attention_heads + head_idx * width;
+#pragma omp simd
+        for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
+          dst_ptr[width_idx] = src_ptr[width_idx] + bias_ptr[width_idx];
+        }
+      }
+    }  // end for
+  } else if (q_out_tensor.device_type() == kDLGPU &&
+             input_tensor.device_type() == kDLGPU &&
+             bias_tensor.device_type() == kDLGPU) {
+#ifdef TT_WITH_CUDA
+    TT_THROW("Not implemented!");
 #endif
   } else {
     TT_THROW("device_type is not supported");
