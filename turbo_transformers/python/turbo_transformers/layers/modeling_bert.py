@@ -502,7 +502,10 @@ class BertModel:
             else:
                 token_type_ids = token_type_ids.cpu().numpy()
             data = [inputs.cpu().numpy(), attention_masks, token_type_ids]
-            return self.onnxmodel.run(inputs=data)
+            outputs = self.onnxmodel.run(inputs=data)
+            for idx, item in enumerate(outputs):
+                outputs[idx] = torch.tensor(item, device=inputs.device)
+            return outputs
 
     @staticmethod
     def from_torch(model: TorchBertModel,

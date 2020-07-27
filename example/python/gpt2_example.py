@@ -60,7 +60,8 @@ def test(loadtype: LoadType, use_cuda: bool):
     end_time = time.time()
 
     print("\nturbo time consum: {}".format(end_time - start_time))
-    assert (numpy.max(numpy.abs(res[0] - torch_res[0].cpu().numpy())) < 0.1)
+    assert (numpy.max(
+        numpy.abs(res[0].cpu().numpy() - torch_res[0].cpu().numpy())) < 0.1)
 
 
 if __name__ == "__main__":

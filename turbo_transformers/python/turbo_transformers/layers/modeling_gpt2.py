@@ -44,7 +44,7 @@ class GPT2Model:
 
     def __call__(
             self,
-            input_ids=None,
+            input_ids,
             past_key_values=None,
             attention_mask=None,
             token_type_ids=None,
@@ -69,7 +69,10 @@ class GPT2Model:
             # else:
             #     token_type_ids = token_type_ids.cpu().numpy()
             data = [input_ids.cpu().numpy()]
-            return self.onnxmodel.run(inputs=data)
+            outputs = self.onnxmodel.run(inputs=data)
+            for idx, item in enumerate(outputs):
+                outputs[idx] = torch.tensor(item, device=input_ids.device)
+            return outputs
 
     @staticmethod
     def from_torch(model: TorchGPT2Model,

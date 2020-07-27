@@ -105,7 +105,7 @@ def create_test(batch_size, seq_length):
 with open("albert_layer_res.txt", "w") as fh:
     fh.write(", torch, turbo_transformers\n")
 for batch_size in [1, 2]:
-    for seq_length in [10, 60, 120]:
+    for seq_length in [10]:
         create_test(batch_size, seq_length)
 
 if __name__ == '__main__':

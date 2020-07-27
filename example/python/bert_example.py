@@ -56,7 +56,10 @@ def test(loadtype: LoadType, use_cuda: bool):
     # there are three ways to load pretrained model.
     if loadtype is LoadType.PYTORCH:
         # 1, from a PyTorch model, which has loaded a pretrained model
-        tt_model = turbo_transformers.BertModel.from_torch(model, test_device)
+        # note that you can choose "turbo" or "onnxrt" as backend
+        # "turbo" is a hand-crafted implementation and optimized with OMP.
+        tt_model = turbo_transformers.BertModel.from_torch(
+            model, test_device, "onnxrt")
     elif loadtype is LoadType.PRETRAINED:
         # 2. directly load from checkpoint (torch saved model)
         tt_model = turbo_transformers.BertModel.from_pretrained(
@@ -86,8 +89,7 @@ def test(loadtype: LoadType, use_cuda: bool):
     print("turbo bert sequence output:", res[0][:, 0, :])
     print("turbo bert pooler output: ", res[1])  # pooled_output
     print("\nturbo time consum: {}".format(end_time - start_time))
-    # assert (torch.max(torch.abs(tt_seqence_output - torch_seqence_output)) <
-    #         0.1)
+    assert (torch.max(torch.abs(res[0] - torch_res[0])) < 0.2)
 
 
 if __name__ == "__main__":
