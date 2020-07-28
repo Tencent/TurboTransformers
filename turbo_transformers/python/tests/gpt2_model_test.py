@@ -64,7 +64,7 @@ class TestGPT2Model(unittest.TestCase):
 
         self.assertTrue(
             numpy.allclose(torch_result[0].cpu(),
-                           turbo_result[0],
+                           turbo_result[0].cpu(),
                            atol=1e-3,
                            rtol=1e-3))
 

@@ -12,7 +12,6 @@
 # See the AUTHORS file for names of contributors.
 
 contexttimer
-onnxruntime
 onnx
 future
 transformers==3.0.2
