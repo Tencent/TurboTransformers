@@ -211,18 +211,18 @@ struct BertModel::Impl {
       layer(hidden, extendedAttentionMask, &attOut, &intermediateOut, &hidden);
     }
 
-    core::Tensor poolingOutput(nullptr);
-    layers::SequencePool(static_cast<layers::types::PoolType>(pooling))(
-        hidden, &poolingOutput);
     std::vector<float> vec;
     if (use_pooler) {
       core::Tensor output(nullptr);
+      core::Tensor poolingOutput(nullptr);
+      layers::SequencePool(static_cast<layers::types::PoolType>(pooling))(
+          hidden, &poolingOutput);
       (*pooler_)(poolingOutput, &output);
       vec.resize(output.numel());
       core::Copy(output, vec);
     } else {
-      vec.resize(poolingOutput.numel());
-      core::Copy(poolingOutput, vec);
+      vec.resize(hidden.numel());
+      core::Copy(hidden, vec);
     }
 
     return vec;
