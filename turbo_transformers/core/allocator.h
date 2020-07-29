@@ -14,13 +14,13 @@
 #pragma once
 #include <memory.h>
 
+#include <iostream>
 #include <map>
 #include <memory>
 #include <unordered_map>
+
 #include "macros.h"
 #include "turbo_transformers/core/memory.h"
-
-#include <iostream>
 
 namespace turbo_transformers {
 namespace core {
@@ -57,8 +57,8 @@ class StaticAllocator {
     return instance;
   }
 
-  void *allocate(std::string name);
-  void reserve(int64_t size);
+  void *allocate(std::string name, DLDeviceType dev = kDLCPU);
+  void reserve(int64_t size, DLDeviceType dev = kDLCPU);
   void schedule(std::unordered_map<std::string, int64_t> *offset_dict) {
     // deep copy
     offset_dict_->clear();
@@ -81,7 +81,7 @@ class StaticAllocator {
   std::unique_ptr<std::unordered_map<std::string, int64_t>> offset_dict_;
 };
 
-extern void reserve_api(int64_t size);
+extern void reserve_api(int64_t size, bool use_gpu);
 
 extern void schedule_api(std::unordered_map<std::string, int64_t> &offset_dict);
 

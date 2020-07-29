@@ -229,21 +229,36 @@ void Allocator::free(void *memory, const std::string &strategy,
   }
 }
 
-void *StaticAllocator::allocate(std::string name) {
+void *StaticAllocator::allocate(std::string name, DLDeviceType dev) {
   auto it = offset_dict_->find(name);
   if (it != offset_dict_->end()) {
     auto offset = it->second;
-    return static_cast<void *>(static_cast<uint8_t *>(buff_) + offset);
+    if (dev == kDLCPU) {
+      return static_cast<void *>(static_cast<uint8_t *>(buff_) + offset);
+    } else {
+      return static_cast<void *>(static_cast<uint8_t *>(gpu_buff_) + offset);
+    }
   } else {
     TT_THROW("allocate %s failed", name.c_str());
   }
 }
 
-void StaticAllocator::reserve(int64_t size) {
-  if (buff_ != nullptr) {
-    free_impl(buff_, kDLCPU);
+void StaticAllocator::reserve(int64_t size, DLDeviceType dev) {
+  if (dev == kDLCPU) {
+    if (buff_ != nullptr) {
+      free_impl(buff_, dev);
+    }
+    buff_ = static_cast<void *>(allocate_impl(size, dev));
+  } else if (dev == kDLGPU) {
+    std::cerr << "begin reserve gpu mem" << std::endl;
+    if (gpu_buff_ != nullptr) {
+      free_impl(gpu_buff_, dev);
+    }
+    gpu_buff_ = static_cast<void *>(allocate_impl(size, dev));
+    std::cerr << "finish reserve gpu mem" << std::endl;
+  } else {
+    TT_THROW("reserve failed %d", dev);
   }
-  buff_ = static_cast<void *>(allocate_impl(size, kDLCPU));
 }
 
 StaticAllocator::StaticAllocator()
@@ -251,9 +266,13 @@ StaticAllocator::StaticAllocator()
 
 StaticAllocator::~StaticAllocator() = default;
 
-void reserve_api(int64_t size) {
+void reserve_api(int64_t size, bool use_gpu) {
   auto &static_allocator = StaticAllocator::GetInstance();
-  static_allocator.reserve(static_cast<int64_t>(size));
+  DLDeviceType dev = kDLCPU;
+  if (use_gpu) {
+    dev = kDLGPU;
+  }
+  static_allocator.reserve(static_cast<int64_t>(size), dev);
 }
 
 void schedule_api(std::unordered_map<std::string, int64_t> &offset_dict) {

@@ -32,6 +32,7 @@ class TestBertModel(unittest.TestCase):
             torch.device('cpu:0')
 
         self.cfg = BertConfig()
+        # self.cfg.num_hidden_layers = 1
         self.torch_model = BertModel(self.cfg)
         self.torch_model.eval()
 
@@ -75,7 +76,7 @@ class TestBertModel(unittest.TestCase):
         if torch.cuda.is_available() and \
             turbo_transformers.config.is_compiled_with_cuda():
             self.check_torch_and_turbo(use_cuda=True)
-        self.check_torch_and_turbo(use_cuda=False)
+        # self.check_torch_and_turbo(use_cuda=False)
 
 
 if __name__ == '__main__':

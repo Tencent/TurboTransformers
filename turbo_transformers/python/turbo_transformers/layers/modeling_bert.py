@@ -473,7 +473,7 @@ class BertModel:
             # TODO, now we use a static memalloc,
             # which reserve a memory space 2GB in this case before serving.
             # in future dynamic allocate for each independent inference.
-            cxx.mem_reserve(2 * 1024 * 1024 * 1024)
+            cxx.mem_reserve(512 * 1024 * 1024, True)
 
     def __call__(self,
                  inputs: AnyTensor,
@@ -489,15 +489,28 @@ class BertModel:
                  return_type: Optional[ReturnType] = None):
         if self.backend == "turbo":
             # PreSchedule memory for all intermediate tensors
+            import time
+            time_start = time.time()
             tur = get_bert_tensor_usage_record(inputs.shape[0],
                                                inputs.shape[1],
                                                self.config.num_attention_heads,
                                                self.config.hidden_size,
                                                self.config.num_hidden_layers)
+            time_end = time.time()
+            tur_cost = time_end - time_start
+
+            time_start = time.time()
             offset_dict, total_consumption = greedy_by_size_offset_calculation(
                 tur, False)
-            cxx.mem_schedule(offset_dict)
+            time_end = time.time()
+            offset_cost = time_end - time_start
 
+            time_start = time.time()
+            cxx.mem_schedule(offset_dict)
+            time_end = time.time()
+            schl_cost = time_end - time_start
+
+            time_start = time.time()
             encoder_outputs = self.bertmodel_nopooler(
                 inputs,
                 attention_masks,
@@ -516,6 +529,11 @@ class BertModel:
                 return_type=ReturnType.turbo_transformers)
             pooler_output = self.pooler(sequence_pool_output, return_type,
                                         pooler_output)
+            time_end = time.time()
+            rt_cost = time_end - time_start
+            print(
+                f"BertModel tur {tur_cost}, offset {offset_cost}, schl {schl_cost}, rt {rt_cost}\n"
+            )
             return (
                 convert_returns_as_type(sequence_output, return_type),
                 pooler_output,

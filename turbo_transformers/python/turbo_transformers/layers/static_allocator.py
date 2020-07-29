@@ -22,18 +22,23 @@ def greedy_by_size_offset_calculation(usage_recorders, show_detail=False):
         input: usage_recorders (name, start_op, end_op, size)
         show_detail: show debug info
     @return
-        offset on the memory space for each tensor
+        offset on the memory space for each tensor (name, offset)
     """
     usage_recorders = sorted(usage_recorders,
                              key=lambda tup: tup[3],
                              reverse=True)
     recorders_size = len(usage_recorders)
-    # offset = np.zeros(recorders_size, dtype = np.int32)
     offset = {}
 
     total_consumption = 0
     # name, first_op, last, size, offset
     ordered_allocated_ids = []
+
+    # TODO(jiaruifang) O(N) which is very time-consuming for 12-layer bert,
+    # which consists of too many operators.
+    # However, we should only calculate offsets for one layer.
+    # The other layers should reuse the same space.
+    # rewrite this function into C++ code may help.
     for t in usage_recorders:
         t_name = t[0]
         t_size = t[3]
@@ -59,6 +64,7 @@ def greedy_by_size_offset_calculation(usage_recorders, show_detail=False):
         total_consumption = max(total_consumption, best_offset + t_size)
         t = (*t, best_offset)
         ordered_allocated_ids.append(t)
+        #TODO(jiaruifang) time consuming part
         ordered_allocated_ids = sorted(ordered_allocated_ids,
                                        key=lambda elem: elem[4])
 

@@ -107,7 +107,7 @@ DLManagedTensor *NewDLPackTensorStatic(const std::vector<int64_t> &shape_list,
   if (device == kDLCPU || device == kDLGPU) {
     // static allocator
     StaticAllocator &allocator = StaticAllocator::GetInstance();
-    newTensor->dl_tensor.data = allocator.allocate(name);
+    newTensor->dl_tensor.data = allocator.allocate(name, device);
   } else {
     TT_THROW("only cpu and gpu are supported!");
   }

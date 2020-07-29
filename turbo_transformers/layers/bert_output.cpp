@@ -38,7 +38,6 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
                 true,
                 "BertOutput: The input_tensor and hidden_states should have "
                 "the same device type and device id.");
-  bool flag = true;
   // if(idx < 11) flag = false;
   output_tensor->Reshape<float>(
       {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(1)},

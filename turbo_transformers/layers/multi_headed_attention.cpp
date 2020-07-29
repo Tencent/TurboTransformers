@@ -44,7 +44,7 @@ void MultiHeadedAttention::operator()(
                             query_tensor.device_type());
 #endif
   std::lock_guard<std::mutex> g(mutex_);
-  bool use_static_mem_allocator = false;
+  bool use_static_mem_allocator = true;
   TT_ENFORCE_EQ(key_tensor.n_dim(), 3,
                 "The key_tensor should be a matrix with shape [batch_size, "
                 "key_seq_len, hidden_size].");
