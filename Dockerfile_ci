@@ -10,10 +10,9 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     conda update -y conda && \
     conda install pytorch==1.5.0 cudatoolkit=10.0 && \
     pip install OpenNMT-py && \
-    pip install onnxruntime-gpu==1.4.0 && \
+    pip install onnxruntime==1.4.0 && \
     conda install curl conda-verify conda-build mkl-include cmake -c anaconda && \
-    conda install git git-lfs docopt -c conda-forge  && \
-    conda clean -afy
+    conda install git git-lfs docopt -c conda-forge
 
 ADD ./ /workspace/
 ENTRYPOINT ["bash", "/workspace/tools/ci_check.sh", "/workspace"]
