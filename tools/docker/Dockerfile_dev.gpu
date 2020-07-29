@@ -5,8 +5,8 @@ RUN apt-get update && \
 
 ENV PATH=/opt/miniconda3/bin:${PATH} CONDA_PREFIX=/opt/miniconda3
 RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py37_4.8.3-Linux-x86_64.sh && \
-    bash Miniconda3-latest-Linux-x86_64.sh -p /opt/miniconda3 -b && \
-    rm Miniconda3-latest-Linux-x86_64.sh && \
+    bash Miniconda3-py37_4.8.3-Linux-x86_64.sh -p /opt/miniconda3 -b && \
+    rm Miniconda3-py37_4.8.3-Linux-x86_64.sh && \
     conda update -y conda && \
     conda install pytorch=PYTORCH_VERSION cudatoolkit=CUDA_VERSION -c pytorch && \
     conda install curl conda-verify conda-build mkl-include cmake -c anaconda && \

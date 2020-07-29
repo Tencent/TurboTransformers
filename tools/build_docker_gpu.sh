@@ -28,5 +28,5 @@ sed 's#IMAGE_BASE#nvidia/cuda:'${DOCKER_BASE}'#g' ./docker/Dockerfile_${BUILD_TY
 sed 's#CUDA_VERSION#'${CUDA_VERSION}'#g'         |
 sed 's#PYTORCH_VERSION#'${PYTORCH_VERSION}'#g'    > Dockerfile.gpu
 
-docker build ${EXTRA_ARGS} \
+docker build ${EXTRA_ARGS} -t thufeifeibear/turbo_transformers_gpu:latest \
   -t thufeifeibear/turbo_transformers:${VERSION}-cuda${DOCKER_BASE}-gpu-${BUILD_TYPE} -f Dockerfile.gpu  .
