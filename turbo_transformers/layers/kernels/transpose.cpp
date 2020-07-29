@@ -312,7 +312,10 @@ void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
              input_tensor.device_type() == kDLGPU &&
              bias_tensor.device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
-    TT_THROW("Not implemented!");
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUSplitAddBiasTransposeForScoreThreeOutput<float>(
+        input, bias, batch_size, seq_length, weight_num, num_attention_heads,
+        width, cuda_ctx.stream(), q_out, k_out, v_out);
 #endif
   } else {
     TT_THROW("device_type is not supported");
