@@ -59,8 +59,7 @@ def get_bert_tensor_usage_record(batch_size,
 
         start_idx += 9
     TUR_list = []
-    print("tensor_name\t start_op, end_op, size")
+    # print("tensor_name\t start_op, end_op, size")
     for item in TUR_dict.items():
-        print(item)
         TUR_list.append((item[0], *item[1]))
     return TUR_list

@@ -233,7 +233,6 @@ void *StaticAllocator::allocate(std::string name) {
   auto it = offset_dict_->find(name);
   if (it != offset_dict_->end()) {
     auto offset = it->second;
-    std::cerr << "static allocate " << name << " @ " << offset << std::endl;
     return static_cast<void *>(static_cast<uint8_t *>(buff_) + offset);
   } else {
     TT_THROW("allocate %s failed", name.c_str());
@@ -251,11 +250,6 @@ StaticAllocator::StaticAllocator()
     : offset_dict_(new std::unordered_map<std::string, int64_t>()) {}
 
 StaticAllocator::~StaticAllocator() = default;
-//  {
-//   if (offset_dict_ != nullptr) {
-//     delete offset_dict_;
-//   }
-// }
 
 void reserve_api(int64_t size) {
   auto &static_allocator = StaticAllocator::GetInstance();

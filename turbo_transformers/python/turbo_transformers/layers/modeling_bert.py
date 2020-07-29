@@ -461,7 +461,6 @@ class BertModel:
                  pooler: Optional[BertPooler] = None,
                  backend="onnxrt",
                  config=None):
-        # TODO type of bertmodel_nopooler is (onnx and torch)
         self.backend = backend
         self.config = config
         if backend == "onnxrt":
@@ -471,7 +470,9 @@ class BertModel:
             self.pooler = pooler
             self.backend = "turbo"
 
-            # TODO static
+            # TODO, now we use a static memalloc,
+            # which reserve a memory space 2GB in this case before serving.
+            # in future dynamic allocate for each independent inference.
             cxx.mem_reserve(2 * 1024 * 1024 * 1024)
 
     def __call__(self,
@@ -494,7 +495,7 @@ class BertModel:
                                                self.config.hidden_size,
                                                self.config.num_hidden_layers)
             offset_dict, total_consumption = greedy_by_size_offset_calculation(
-                tur, True)
+                tur, False)
             cxx.mem_schedule(offset_dict)
 
             encoder_outputs = self.bertmodel_nopooler(

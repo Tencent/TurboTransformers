@@ -60,19 +60,12 @@ class StaticAllocator {
   void *allocate(std::string name);
   void reserve(int64_t size);
   void schedule(std::unordered_map<std::string, int64_t> *offset_dict) {
-    // if (offset_dict_ != nullptr) {
-    //   delete offset_dict_;
-    // }
-    // offset_dict_ = new std::unordered_map<std::string, int64_t>();
-    // offset_dict_->insert(offset_dict->begin(), offset_dict->end());
-    // offset_dict_ = std::make_shared<std::unordered_map<std::string,
-    // int64_t>>(offset_dict);
-    // for debug
     // deep copy
     offset_dict_->clear();
     offset_dict_->insert(offset_dict->begin(), offset_dict->end());
-    show_offset_dict();
+    // show_offset_dict();
   }
+
   void show_offset_dict() const {
     std::cerr << "begin show offset dict" << std::endl;
     for (auto it = offset_dict_->begin(); it != offset_dict_->end(); ++it) {
@@ -84,7 +77,7 @@ class StaticAllocator {
  private:
   StaticAllocator();
   void *buff_;
-  // std::unordered_map<std::string, int64_t>* offset_dict_;
+  void *gpu_buff_;
   std::unique_ptr<std::unordered_map<std::string, int64_t>> offset_dict_;
 };
 

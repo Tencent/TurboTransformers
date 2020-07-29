@@ -33,6 +33,8 @@
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
 
+#include "turbo_transformers/core/allocator.h"
+
 namespace turbo_transformers {
 namespace python {
 
