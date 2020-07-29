@@ -41,8 +41,8 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
   // if(idx < 11) flag = false;
   output_tensor->Reshape<float>(
       {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(1)},
-      hidden_states.device_type(), hidden_states.device_id(),
-      std::to_string(idx) + "_layer_output", true);
+      hidden_states.device_type(), hidden_states.device_id(), "layer_output",
+      true);
 
   kernels::MatMul(hidden_states, false, dense_weight_, false, 1.0,
                   output_tensor, 0.0, "BertOutput/MatMul");

@@ -39,7 +39,7 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
   output_tensor->Reshape<float>(
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(1)},
       input_tensor.device_type(), input_tensor.device_id(),
-      std::to_string(idx) + "_intermediate_output", true);
+      "intermediate_output", true);
 
   kernels::MatMul(input_tensor, false, dense_weight_, false, 1.0, output_tensor,
                   0.0, "BertIntermediate/MatMul");
