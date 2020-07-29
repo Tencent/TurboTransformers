@@ -28,7 +28,8 @@ class BertIntermediate {
   }
 
   void EnforceShapeAndType() const;
-  void operator()(const core::Tensor& input_tensor, core::Tensor* output) const;
+  void operator()(const core::Tensor& input_tensor, core::Tensor* output,
+                  int64_t idx = 0) const;
 
  private:
   core::Tensor dense_weight_;

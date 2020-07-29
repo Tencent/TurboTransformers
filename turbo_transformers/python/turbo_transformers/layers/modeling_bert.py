@@ -83,10 +83,11 @@ class BertIntermediate(cxx.BertIntermediate):
     def __call__(self,
                  input_tensor: AnyTensor,
                  return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
+                 output: Optional[cxx.Tensor] = None,
+                 idx: Optional[int] = None):
         input_tensor = try_convert(input_tensor)
         output = create_empty_if_none(output)
-        super(BertIntermediate, self).__call__(input_tensor, output)
+        super(BertIntermediate, self).__call__(input_tensor, output, idx)
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
@@ -113,12 +114,13 @@ class BertOutput(cxx.BertOutput):
                  intermediate_output: AnyTensor,
                  attention_output: AnyTensor,
                  return_type: Optional[ReturnType] = None,
-                 output: Optional[cxx.Tensor] = None):
+                 output: Optional[cxx.Tensor] = None,
+                 idx: Optional[int] = None):
         intermediate_output = try_convert(intermediate_output)
         attention_output = try_convert(attention_output)
         output = create_empty_if_none(output)
         super(BertOutput, self).__call__(intermediate_output, attention_output,
-                                         output)
+                                         output, idx)
         return convert_returns_as_type(output, return_type)
 
     @staticmethod
@@ -148,7 +150,8 @@ class BertAttention(cxx.BertAttention):
                  head_mask: Optional[AnyTensor] = None,
                  output_attentions: Optional[bool] = False,
                  return_type: Optional[ReturnType] = None,
-                 is_trans_weight: Optional[cxx.Tensor] = False):
+                 is_trans_weight: Optional[cxx.Tensor] = False,
+                 idx: Optional[int] = None):
         """
         implement BertSelfAttention in
         https://github.com/huggingface/transformers/blob/master/src/transformers/modeling_bert.py#L183
@@ -162,7 +165,7 @@ class BertAttention(cxx.BertAttention):
         attn_probs = cxx.Tensor.create_empty()
         super(BertAttention,
               self).__call__(input_tensor, attention_mask, context_layer,
-                             attn_probs, is_trans_weight)
+                             attn_probs, is_trans_weight, idx)
         outputs = (convert_returns_as_type(context_layer, return_type),
                    convert_returns_as_type(attn_probs, ReturnType.TORCH)
                    ) if output_attentions else (convert_returns_as_type(
@@ -226,21 +229,26 @@ class BertLayer:
                  attention_mask: Optional[AnyTensor] = None,
                  head_mask: Optional[AnyTensor] = None,
                  output_attentions=False,
-                 return_type: Optional[ReturnType] = None):
+                 return_type: Optional[ReturnType] = None,
+                 idx: Optional[int] = None):
         self_attention_outputs = self.attention(
             hidden_states,
             attention_mask,
             head_mask,
             output_attentions=output_attentions,
-            return_type=ReturnType.turbo_transformers)
+            return_type=ReturnType.turbo_transformers,
+            idx=idx)
         attention_output = self_attention_outputs[0]
         outputs = self_attention_outputs[1:]
 
         intermediate_output = self.intermediate(
-            attention_output, return_type=ReturnType.turbo_transformers)
+            attention_output,
+            return_type=ReturnType.turbo_transformers,
+            idx=idx)
         layer_output = self.output(intermediate_output,
                                    attention_output,
-                                   return_type=return_type)
+                                   return_type=return_type,
+                                   idx=idx)
         outputs = (layer_output, ) + outputs
         return outputs
 
@@ -273,11 +281,12 @@ class BertEncoder:
         all_hidden_states = ()
         all_attentions = ()
         hidden_states = try_convert(hidden_states)
-        for l in self.layer:
+        for idx, l in enumerate(self.layer):
             layer_outputs = l(hidden_states=hidden_states,
                               attention_mask=attention_mask,
                               output_attentions=output_attentions,
-                              return_type=ReturnType.turbo_transformers)
+                              return_type=ReturnType.turbo_transformers,
+                              idx=idx)
             if output_hidden_states:
                 all_hidden_states = all_hidden_states + (
                     convert_returns_as_type(hidden_states, ReturnType.TORCH), )
@@ -442,20 +451,28 @@ class BertModelNoPooler:
 AnyModel = Union[onnxruntime.backend.backend_rep.
                  OnnxRuntimeBackendRep, BertModelNoPooler]
 
+from .bert_tensor_usage import get_bert_tensor_usage_record
+from .static_allocator import greedy_by_size_offset_calculation
+
 
 class BertModel:
     def __init__(self,
                  model: AnyModel,
                  pooler: Optional[BertPooler] = None,
-                 backend="onnxrt"):
+                 backend="onnxrt",
+                 config=None):
         # TODO type of bertmodel_nopooler is (onnx and torch)
         self.backend = backend
+        self.config = config
         if backend == "onnxrt":
             self.onnxmodel = model
         elif backend == "turbo":
             self.bertmodel_nopooler = model
             self.pooler = pooler
             self.backend = "turbo"
+
+            # TODO static
+            cxx.mem_reserve(2 * 1024 * 1024 * 1024)
 
     def __call__(self,
                  inputs: AnyTensor,
@@ -470,6 +487,16 @@ class BertModel:
                  pooler_output: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None):
         if self.backend == "turbo":
+            # PreSchedule memory for all intermediate tensors
+            tur = get_bert_tensor_usage_record(inputs.shape[0],
+                                               inputs.shape[1],
+                                               self.config.num_attention_heads,
+                                               self.config.hidden_size,
+                                               self.config.num_hidden_layers)
+            offset_dict, total_consumption = greedy_by_size_offset_calculation(
+                tur, True)
+            cxx.mem_schedule(offset_dict)
+
             encoder_outputs = self.bertmodel_nopooler(
                 inputs,
                 attention_masks,
@@ -536,7 +563,7 @@ class BertModel:
             encoder = BertEncoder.from_torch(model.encoder)
             bertmodel_nopooler = BertModelNoPooler(embeddings, encoder)
             pooler = BertPooler.from_torch(model.pooler)
-            return BertModel(bertmodel_nopooler, pooler, "turbo")
+            return BertModel(bertmodel_nopooler, pooler, "turbo", model.config)
         elif backend == "onnxrt":
             inputs = {
                 'input_ids':
@@ -579,7 +606,7 @@ class BertModel:
                 device='GPU' if use_gpu else "CPU",
                 graph_optimization_level=onnxruntime.GraphOptimizationLevel.
                 ORT_ENABLE_ALL)
-            return BertModel(onnx_model, None, "onnxrt")
+            return BertModel(onnx_model, None, "onnxrt", model.config)
 
     @staticmethod
     def from_pretrained(model_id_or_path: str,

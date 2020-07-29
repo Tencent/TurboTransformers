@@ -22,6 +22,9 @@ from .modeling_gpt2 import GPT2Model
 
 from .return_type import ReturnType
 
+from .bert_tensor_usage import get_bert_tensor_usage_record
+from .static_allocator import greedy_by_size_offset_calculation
+
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
     'BertLayer', 'BertEncoder', 'BertModel', 'ReturnType', 'BertPooler',
@@ -31,5 +34,4 @@ __all__ = [
     'PositionwiseFeedForward', 'TransformerDecoderLayer', 'TransformerDecoder',
     'RobertaModel', 'QBertIntermediate', 'QBertOutput', 'QBertLayer',
     'QBertEncoder', 'QBertModel', 'GPT2Model'
-
 ]

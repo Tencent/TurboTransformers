@@ -42,8 +42,8 @@ class BertAttention : public MultiHeadedAttention {
 
   void operator()(const core::Tensor &input_tensor,
                   const core::Tensor &attention_mask, core::Tensor *output,
-                  core::Tensor *attn = nullptr,
-                  bool is_trans_weight = false) const;
+                  core::Tensor *attn = nullptr, bool is_trans_weight = false,
+                  int64_t idx = 0) const;
 };
 
 }  // namespace layers

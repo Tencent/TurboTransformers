@@ -79,8 +79,8 @@ class MultiHeadedAttention {
                   core::Tensor* att_score,
                   std::unordered_map<std::string, core::Tensor*> layer_cache,
                   bool pre_layernorm = false, bool post_layernorm = false,
-                  bool post_add_input = false,
-                  bool is_trans_weight = false) const;
+                  bool post_add_input = false, bool is_trans_weight = false,
+                  int64_t idx = 0) const;
 
  private:
   core::Tensor k_weight_;

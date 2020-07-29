@@ -34,9 +34,9 @@ def create_test(batch_size, seq_length):
                 turbo_transformers.set_num_threads(4)
 
             torch.set_grad_enabled(False)
-            self.cfg = BertConfig()
+            self.config = BertConfig()
 
-            self.torch_intermediate = BertIntermediate(self.cfg)
+            self.torch_intermediate = BertIntermediate(self.config)
             if torch.cuda.is_available():
                 self.torch_intermediate.to(self.test_device)
             self.torch_intermediate.eval()
@@ -48,7 +48,7 @@ def create_test(batch_size, seq_length):
             self.init_data(use_cuda=use_cuda)
             device = "GPU" if use_cuda else "CPU"
             num_iter = 2
-            hidden_size = self.cfg.hidden_size
+            hidden_size = self.config.hidden_size
             input_tensor = torch.rand(size=(batch_size, seq_length,
                                             hidden_size),
                                       dtype=torch.float32,

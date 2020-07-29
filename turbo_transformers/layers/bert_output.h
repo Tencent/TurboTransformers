@@ -32,7 +32,8 @@ class BertOutput {
   void EnforceShapeAndType() const;
 
   void operator()(const core::Tensor &hidden_states,
-                  const core::Tensor &input_tensor, core::Tensor *output) const;
+                  const core::Tensor &input_tensor, core::Tensor *output,
+                  int64_t idx = 0) const;
 
  private:
   core::Tensor dense_weight_;

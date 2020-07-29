@@ -229,5 +229,43 @@ void Allocator::free(void *memory, const std::string &strategy,
   }
 }
 
+void *StaticAllocator::allocate(std::string name) {
+  auto it = offset_dict_->find(name);
+  if (it != offset_dict_->end()) {
+    auto offset = it->second;
+    std::cerr << "static allocate " << name << " @ " << offset << std::endl;
+    return static_cast<void *>(static_cast<uint8_t *>(buff_) + offset);
+  } else {
+    TT_THROW("allocate %s failed", name.c_str());
+  }
+}
+
+void StaticAllocator::reserve(int64_t size) {
+  if (buff_ != nullptr) {
+    free_impl(buff_, kDLCPU);
+  }
+  buff_ = static_cast<void *>(allocate_impl(size, kDLCPU));
+}
+
+StaticAllocator::StaticAllocator()
+    : offset_dict_(new std::unordered_map<std::string, int64_t>()) {}
+
+StaticAllocator::~StaticAllocator() = default;
+//  {
+//   if (offset_dict_ != nullptr) {
+//     delete offset_dict_;
+//   }
+// }
+
+void reserve_api(int64_t size) {
+  auto &static_allocator = StaticAllocator::GetInstance();
+  static_allocator.reserve(static_cast<int64_t>(size));
+}
+
+void schedule_api(std::unordered_map<std::string, int64_t> &offset_dict) {
+  auto &static_allocator = StaticAllocator::GetInstance();
+  static_allocator.schedule(&offset_dict);
+}
+
 }  // namespace core
 }  // namespace turbo_transformers

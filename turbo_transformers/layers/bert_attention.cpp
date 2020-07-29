@@ -29,7 +29,7 @@ namespace layers {
 void BertAttention::operator()(const core::Tensor& input_tensor,
                                const core::Tensor& attention_mask,
                                core::Tensor* output, core::Tensor* attn,
-                               bool is_trans_weight) const {
+                               bool is_trans_weight, int64_t idx) const {
   std::unordered_map<std::string, core::Tensor*> dummy{};
   core::Tensor* attn_ptr;
   if (attn == nullptr) {
@@ -40,7 +40,7 @@ void BertAttention::operator()(const core::Tensor& input_tensor,
   MultiHeadedAttention::operator()(
       input_tensor, input_tensor, input_tensor, attention_mask, "self", output,
       attn_ptr, dummy, false /* pre_layernorm */, true /* post_layernorm */,
-      false /* post_add_input */, is_trans_weight /* is_trans_weight */);
+      false /* post_add_input */, is_trans_weight /* is_trans_weight */, idx);
   if (attn == nullptr) {
     delete attn_ptr;
   }

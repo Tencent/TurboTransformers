@@ -28,7 +28,7 @@ namespace layers {
 
 void BertOutput::operator()(const core::Tensor &hidden_states,
                             const core::Tensor &input_tensor,
-                            core::Tensor *output_tensor) const {
+                            core::Tensor *output_tensor, int64_t idx) const {
 #ifdef WITH_PERFTOOLS
   auto &profile_ctx = core::Profiler::GetInstance();
   profile_ctx.start_profile("BertOutput", input_tensor.device_type());
@@ -38,10 +38,13 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
                 true,
                 "BertOutput: The input_tensor and hidden_states should have "
                 "the same device type and device id.");
+  bool flag = true;
+  // if(idx < 11) flag = false;
   output_tensor->Reshape<float>(
       {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(1)},
       hidden_states.device_type(), hidden_states.device_id(),
-      "BertOutput/Reshape");
+      std::to_string(idx) + "_layer_output", true);
+
   kernels::MatMul(hidden_states, false, dense_weight_, false, 1.0,
                   output_tensor, 0.0, "BertOutput/MatMul");
   kernels::AddBiasLayerNorm<float>(

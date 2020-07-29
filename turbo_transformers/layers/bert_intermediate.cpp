@@ -30,7 +30,8 @@ namespace turbo_transformers {
 namespace layers {
 
 void BertIntermediate::operator()(const core::Tensor& input_tensor,
-                                  core::Tensor* output_tensor) const {
+                                  core::Tensor* output_tensor,
+                                  int64_t idx) const {
 #ifdef WITH_PERFTOOLS
   auto& profile_ctx = core::Profiler::GetInstance();
   profile_ctx.start_profile("BertIntermediate", input_tensor.device_type());
@@ -38,7 +39,7 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
   output_tensor->Reshape<float>(
       {input_tensor.shape(0), input_tensor.shape(1), dense_weight_.shape(1)},
       input_tensor.device_type(), input_tensor.device_id(),
-      "BertIntermediate/Reshape");
+      std::to_string(idx) + "_intermediate_output", true);
 
   kernels::MatMul(input_tensor, false, dense_weight_, false, 1.0, output_tensor,
                   0.0, "BertIntermediate/MatMul");

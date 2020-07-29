@@ -39,7 +39,7 @@ class TestBertModel(unittest.TestCase):
             self.torch_model.to(self.test_device)
 
         self.turbo_model = turbo_transformers.BertModel.from_torch(
-            self.torch_model, self.test_device)
+            self.torch_model, self.test_device, "turbo")
 
     def check_torch_and_turbo(self, use_cuda):
         self.init_data(use_cuda)
@@ -63,9 +63,11 @@ class TestBertModel(unittest.TestCase):
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'BertModel TurboTransformer({device_name}) QPS {turbo_qps}')
 
+        print(torch_result[0].cpu())
+        print(turbo_result[0].cpu())
         self.assertTrue(
             numpy.allclose(torch_result[0].cpu(),
-                           turbo_result[0],
+                           turbo_result[0].cpu(),
                            atol=1e-3,
                            rtol=1e-3))
 

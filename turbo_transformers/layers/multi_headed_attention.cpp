@@ -37,7 +37,7 @@ void MultiHeadedAttention::operator()(
     const std::string& attn_type, core::Tensor* output, core::Tensor* att_score,
     std::unordered_map<std::string, core::Tensor*> layer_cache,
     bool pre_layernorm, bool post_layernorm, bool post_add_input,
-    bool is_trans_weight) const {
+    bool is_trans_weight, int64_t idx) const {
 #ifdef WITH_PERFTOOLS
   auto& profile_ctx = core::Profiler::GetInstance();
   profile_ctx.start_profile("MultiHeadedAttention_" + attn_type,
@@ -199,8 +199,10 @@ void MultiHeadedAttention::operator()(
       }
     }  // else
   } else if (attn_type == "self") {
+    // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
     qkv_out1.Reshape<float>({batch_size, query_seq_length, 3, hidden_size},
-                            devtype, devid, "self/qkv_out1/Reshape");
+                            devtype, devid, std::to_string(idx) + "_qkv_out1",
+                            true);
     if (pre_layernorm) {
       core::Tensor layernormed_query(nullptr);
       layernormed_query.Reshape<float>(
@@ -215,15 +217,16 @@ void MultiHeadedAttention::operator()(
       kernels::MatMul(query_tensor, false, qkv_weight_, is_trans_weight, 1.0,
                       &qkv_out1, 0.0, "self/gemm012_fused");
     }
+    // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
     q_out.Reshape<float>(
         {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-        devtype, devid, "self/q_out/Reshape");
+        devtype, devid, std::to_string(idx) + "_q", true);
     k_out.Reshape<float>(
         {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-        devtype, devid, "self/k_out/Reshape");
+        devtype, devid, std::to_string(idx) + "_k", true);
     v_out.Reshape<float>(
         {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-        devtype, devid, "self/v_out/Reshape");
+        devtype, devid, std::to_string(idx) + "_v", true);
 
     kernels::SplitAddBiasTransposeForScore(
         qkv_out1, qkv_bias_, q_out, k_out, v_out,
@@ -262,10 +265,11 @@ void MultiHeadedAttention::operator()(
   // 2) Calculate and scale scores.
   key_seq_length = k_ptr->shape(
       2);  // update for self type attn, since it will concat with cache.
+  // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
   att_score->Reshape<float>(
       {batch_size, num_attention_heads_, query_seq_length,
        key_seq_length},  // query_seq_length = from_seq_Len
-      devtype, devid, "batch_gemm3/Reshape");
+      devtype, devid, std::to_string(idx) + "_attn_score", true);
 
   const float scaler = 1.0f / std::sqrt(static_cast<float>(size_per_head));
   kernels::BatchMatMul(*q_ptr, false, *k_ptr, true, scaler, att_score, 0.0,
@@ -280,23 +284,24 @@ void MultiHeadedAttention::operator()(
 
   // context_original = torch.matmul(drop_attn, value)
   core::Tensor context_layer(nullptr);
+  // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
   context_layer.Reshape<float>(
       {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-      devtype, devid, "ApplyMaskAndSoftmax/Reshape");
+      devtype, devid, std::to_string(idx) + "_context_layer", true);
 
   kernels::BatchMatMul(*att_score, false, *v_ptr, false, 1.0, &context_layer,
                        0.0, "batch_gemm4");
   // context = unshape(context_original)
   core::Tensor self_attr_out(nullptr);
-
+  // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
   self_attr_out.Reshape<float>(
       {batch_size, query_seq_length, num_attention_heads_ * size_per_head},
-      devtype, devid, "batch_gemm4/Reshape");
+      devtype, devid, std::to_string(idx) + "_self_attr_out", true);
   kernels::TransposeForScore(&self_attr_out, context_layer,
                              "TransposeForScore");
-  // output = self.final_linear(context)
+  // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
   output->Reshape<float>({batch_size, query_seq_length, hidden_size}, devtype,
-                         devid, "gemm5/Reshape");
+                         devid, std::to_string(idx) + "_attn_output", true);
 
   kernels::MatMul(self_attr_out, false, dense_weight_, is_trans_weight, 1.0,
                   output, 0.0, "gemm5");

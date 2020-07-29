@@ -20,6 +20,8 @@
 #include "macros.h"
 #include "turbo_transformers/core/memory.h"
 
+#include <iostream>
+
 namespace turbo_transformers {
 namespace core {
 
@@ -45,6 +47,50 @@ class Allocator {
 
   DISABLE_COPY_AND_ASSIGN(Allocator);
 };
+
+class StaticAllocator {
+ public:
+  ~StaticAllocator();
+
+  static StaticAllocator &GetInstance() {
+    static StaticAllocator instance;
+    return instance;
+  }
+
+  void *allocate(std::string name);
+  void reserve(int64_t size);
+  void schedule(std::unordered_map<std::string, int64_t> *offset_dict) {
+    // if (offset_dict_ != nullptr) {
+    //   delete offset_dict_;
+    // }
+    // offset_dict_ = new std::unordered_map<std::string, int64_t>();
+    // offset_dict_->insert(offset_dict->begin(), offset_dict->end());
+    // offset_dict_ = std::make_shared<std::unordered_map<std::string,
+    // int64_t>>(offset_dict);
+    // for debug
+    // deep copy
+    offset_dict_->clear();
+    offset_dict_->insert(offset_dict->begin(), offset_dict->end());
+    show_offset_dict();
+  }
+  void show_offset_dict() const {
+    std::cerr << "begin show offset dict" << std::endl;
+    for (auto it = offset_dict_->begin(); it != offset_dict_->end(); ++it) {
+      std::cerr << it->first << ", " << it->second << std::endl;
+    }
+    std::cerr << "end show offset dict" << std::endl;
+  }
+
+ private:
+  StaticAllocator();
+  void *buff_;
+  // std::unordered_map<std::string, int64_t>* offset_dict_;
+  std::unique_ptr<std::unordered_map<std::string, int64_t>> offset_dict_;
+};
+
+extern void reserve_api(int64_t size);
+
+extern void schedule_api(std::unordered_map<std::string, int64_t> &offset_dict);
 
 }  // namespace core
 }  // namespace turbo_transformers
