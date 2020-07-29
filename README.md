@@ -190,6 +190,7 @@ BSD 3-Clause License
 The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
 2. Turbo and PyTorch share the same MKL. MKL of PyTorch 1.5.0 may slow in Turbo. Reasons needs to be determined.
 Download PyTorch version to 1.1.0 will improve Turbo's Performance.
+3. onnxruntime-cpu==1.4.0 and onnxruntime-gpu==1.3.0 can not work simultaneously.
 
 ## History
 
