@@ -56,8 +56,15 @@ def run_model(model,
         }))
 
 
-def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
-                       framework_name, num_threads, cfg):
+def run_variable_model(model,
+                       use_gpu,
+                       num_iter,
+                       max_seq_len,
+                       min_seq_len,
+                       framework_name,
+                       num_threads,
+                       cfg,
+                       use_warmup=True):
     import torch
     import contexttimer
     import json
@@ -79,12 +86,13 @@ def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
     # warm-up using the longest sequence
     # TODO(jiaruifang) We know recommend you to run warm-up before inference.
     # In the future we will refactor allocator so as to not avoid warm-up
-    input_ids = torch.randint(low=0,
-                              high=cfg.vocab_size - 1,
-                              size=(1, max_seq_len),
-                              dtype=torch.long,
-                              device=test_device)
-    model(input_ids)
+    if use_warmup:
+        input_ids = torch.randint(low=0,
+                                  high=cfg.vocab_size - 1,
+                                  size=(1, 20),
+                                  dtype=torch.long,
+                                  device=test_device)
+        model(input_ids)
     if enable_latency_plot:
         import time
         print(f"dump results to {framework_name}_latency_{num_threads}.txt")
