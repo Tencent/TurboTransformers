@@ -105,4 +105,6 @@ torch_model = TorchBertForSequenceClassification.from_pretrained(model_id)
 # torch_result holds the returned logits from original Transformers model
 torch_result = torch_model(**inputs)[0]
 print(turbo_result)
+# tensor([[0.2716, 0.0318]], grad_fn=<AddmmBackward>)
 print(torch_result) # torch_result and turbo_result should hold the same logits
+# tensor([[0.2716, 0.0318]], grad_fn=<AddmmBackward>)
