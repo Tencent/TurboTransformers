@@ -19,46 +19,51 @@ from turbo_transformers import ReturnType
 # import the class of the acceleration model. here is the example of BertForSequenceClassification.
 from transformers.modeling_bert import BertModel as TorchBertModel
 from transformers import BertTokenizer
-from transformers.modeling_bert import BertForSequenceClassification as TorchBertForSequenceClassification
+from transformers.modeling_bert import (
+    BertForSequenceClassification as TorchBertForSequenceClassification,
+)
 import os
 import torch
 from typing import Optional
 
 
-#TODO(jiarufang) developed under v0.1.0, after that not tested.
-#Contact me if you find it is wrong.
+# TODO(jiarufang) developed under v0.1.0, after that not tested.
+# Contact me if you find it is wrong.
 class BertForSequenceClassification:  # create a new class for speeding up
     def __init__(
-            self, bertmodel, classifier
+        self, bertmodel, classifier
     ):  # the realization of the init function（we can just copy it）
         self.bert = bertmodel
         self.classifier = classifier
 
     def __call__(
-            self,  # the realization of the call function（we can just copy it）
-            inputs,
-            attention_masks=None,
-            token_type_ids=None,
-            position_ids=None,
-            pooling_type=PoolingType.FIRST,
-            return_type=None):
-        pooler_output, _, _ = self.bert(inputs,
-                                        attention_masks,
-                                        token_type_ids,
-                                        position_ids,
-                                        pooling_type,
-                                        return_type=ReturnType.TORCH)
+        self,  # the realization of the call function（we can just copy it）
+        input_ids,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        pooling_type=PoolingType.FIRST,
+        return_type=None,
+    ):
+        bert_outputs = self.bert(
+            input_ids,
+            attention_mask,
+            token_type_ids,
+            position_ids,
+            pooling_type,
+            return_type=ReturnType.TORCH,
+        )
+        pooled_output = bert_outputs[1]
         logits = self.classifier(
-            pooler_output
+            pooled_output
         )  # It's the output of classifier, if User want to output the other type, he can define them after that.
         return logits
 
     @staticmethod
     def from_torch(
-            model: TorchBertModel,  # from_torch函数实现
-            device: Optional[torch.device] = None):
-        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
-        ):
+        model: TorchBertModel, device: Optional[torch.device] = None  # from_torch函数实现
+    ):
+        if device is not None and "cuda" in device.type and torch.cuda.is_available():
             model.to(device)
         bertmodel = turbo_transformers.BertModel.from_torch(model.bert)
         # We can copy the following code and do not change it
@@ -67,11 +72,11 @@ class BertForSequenceClassification:  # create a new class for speeding up
         return BertForSequenceClassification(bertmodel, model.classifier)
 
     @staticmethod
-    def from_pretrained(model_id_or_path: str,
-                        device: Optional[torch.device] = None):
+    def from_pretrained(model_id_or_path: str, device: Optional[torch.device] = None):
         # First, Use the function of from_pretrained to load the model you trained.
         torch_model = TorchBertForSequenceClassification.from_pretrained(
-            model_id_or_path)
+            model_id_or_path
+        )
         # Then, Use the init function of the acceleration model to get it.
         model = BertForSequenceClassification.from_torch(torch_model, device)
         model._torch_model = torch_model  # prevent destroy torch model.
@@ -82,18 +87,22 @@ class BertForSequenceClassification:  # create a new class for speeding up
 turbo_transformers.set_num_threads(4)
 
 model_id = os.path.join(
-    os.path.dirname(__file__),
-    'test-seq-classification-model')  # the model of huggingface's path
-tokenizer = BertTokenizer.from_pretrained(
-    model_id)  # the initialization of tokenizer
+    os.path.dirname(__file__), "bert_model"
+)  # the model of huggingface's path
+tokenizer = BertTokenizer.from_pretrained(model_id)  # the initialization of tokenizer
 turbo_model = BertForSequenceClassification.from_pretrained(
-    model_id,
-    torch.device('cpu:0'))  # the initialization of the acceleration model
+    model_id, torch.device("cpu:0")
+)  # the initialization of the acceleration model
 
 # predict after loading the model
-input_ids = torch.tensor(
-    tokenizer.encode('测试一下bert模型的性能和精度是不是符合要求?',
-                     add_special_tokens=True)).unsqueeze(0)
-torch_result = turbo_model(input_ids)
-print(torch_result)
-# tensor([[ 0.1451, -0.0373]], grad_fn=<AddmmBackward>)
+
+text = "Sample input text"
+inputs = tokenizer.encode_plus(text, add_special_tokens=True, return_tensors="pt")
+# turbo_result holds the returned logits from TurboTransformers model
+turbo_result = turbo_model(**inputs)
+
+torch_model = TorchBertForSequenceClassification.from_pretrained(model_id)
+# torch_result holds the returned logits from original Transformers model
+torch_result = torch_model(**inputs)[0]
+print(turbo_result)
+print(torch_result) # torch_result and turbo_result should hold the same logits
