@@ -25,9 +25,6 @@ from transformers import GPT2Model as TorchGPT2Model
 
 import enum
 import numpy as np
-import onnx
-import onnxruntime
-import onnxruntime.backend
 import os
 
 __all__ = ['GPT2Model']
@@ -44,7 +41,7 @@ class GPT2Model:
 
     def __call__(
             self,
-            input_ids=None,
+            input_ids,
             past_key_values=None,
             attention_mask=None,
             token_type_ids=None,
@@ -69,7 +66,10 @@ class GPT2Model:
             # else:
             #     token_type_ids = token_type_ids.cpu().numpy()
             data = [input_ids.cpu().numpy()]
-            return self.onnxmodel.run(inputs=data)
+            outputs = self.onnxmodel.run(inputs=data)
+            for idx, item in enumerate(outputs):
+                outputs[idx] = torch.tensor(item, device=input_ids.device)
+            return outputs
 
     @staticmethod
     def from_torch(model: TorchGPT2Model,
@@ -99,6 +99,9 @@ class GPT2Model:
             raise ("Not Implemented GPT2 on Turbo Backend")
 
         if backend == "onnxrt":
+            import onnx
+            import onnxruntime
+            import onnxruntime.backend
             # TODO(jiaruifang) Figure out the meaning of GPT2
             enable_past_input = False
 
@@ -158,12 +161,6 @@ class GPT2Model:
                               opset_version=11,
                               do_constant_folding=True,
                               verbose=False)
-
-            if not use_gpu and not onnxruntime.backend.supports_device("CPU"):
-                raise RuntimeError(f"onnxruntime does not support CPU")
-            if use_gpu and not onnxruntime.backend.supports_device("GPU"):
-                raise RuntimeError(f"onnxruntime does not support GPU")
-
             onnx_model = onnx.load_model(f=onnx_model_path)
             onnx_model = onnxruntime.backend.prepare(
                 model=onnx_model,

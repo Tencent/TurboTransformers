@@ -14,7 +14,7 @@ qbertoutput = turbo_transformers.QBertOutput.from_torch(model.encoder.layer[0].o
 
 
 lens = [10,20,40,60,80,100,200,300]
-loops = 10
+loops = 1
 
 for l in lens:
     hidden = torch.rand(1, l, 3072)
@@ -34,4 +34,3 @@ for l in lens:
     print("turbo int8 layer QPS =", loops/(end-start))
 
 assert torch.max(torch.abs(res-res2)) < 1e-3
-print("ok")

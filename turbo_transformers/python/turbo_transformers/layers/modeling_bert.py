@@ -32,9 +32,6 @@ from transformers.modeling_bert import BertPooler as TorchBertPooler
 
 import enum
 import numpy as np
-import onnx
-import onnxruntime
-import onnxruntime.backend
 import os
 
 __all__ = [
@@ -439,15 +436,8 @@ class BertModelNoPooler:
         return BertModelNoPooler(embeddings, encoder)
 
 
-AnyModel = Union[onnxruntime.backend.backend_rep.
-                 OnnxRuntimeBackendRep, BertModelNoPooler]
-
-
 class BertModel:
-    def __init__(self,
-                 model: AnyModel,
-                 pooler: Optional[BertPooler] = None,
-                 backend="onnxrt"):
+    def __init__(self, model, pooler=None, backend="onnxrt"):
         # TODO type of bertmodel_nopooler is (onnx and torch)
         self.backend = backend
         if backend == "onnxrt":
@@ -502,7 +492,10 @@ class BertModel:
             else:
                 token_type_ids = token_type_ids.cpu().numpy()
             data = [inputs.cpu().numpy(), attention_masks, token_type_ids]
-            return self.onnxmodel.run(inputs=data)
+            outputs = self.onnxmodel.run(inputs=data)
+            for idx, item in enumerate(outputs):
+                outputs[idx] = torch.tensor(item, device=inputs.device)
+            return outputs
 
     @staticmethod
     def from_torch(model: TorchBertModel,
@@ -535,6 +528,9 @@ class BertModel:
             pooler = BertPooler.from_torch(model.pooler)
             return BertModel(bertmodel_nopooler, pooler, "turbo")
         elif backend == "onnxrt":
+            import onnx
+            import onnxruntime
+            import onnxruntime.backend
             inputs = {
                 'input_ids':
                 torch.randint(32, [2, 32], dtype=torch.long).to(
@@ -563,10 +559,6 @@ class BertModel:
                         'attention_mask': [0, 1],
                         'token_type_ids': [0, 1]
                     })
-            if not onnxruntime.backend.supports_device("CPU"):
-                raise RuntimeError(
-                    f"onnxruntime does not support CPU, recompile it!")
-
             # num_threads = "8"
             # os.environ['OMP_NUM_THREADS'] = str(num_threads)
             # os.environ['MKL_NUM_THREADS'] = str(num_threads)

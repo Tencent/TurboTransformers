@@ -25,8 +25,8 @@ class LoadType(enum.Enum):
 
 
 def test(loadtype: LoadType, use_cuda: bool):
-    cfg = transformers.GPT2Config()
-    model = transformers.GPT2Model(cfg)
+    cfg = transformers.AlbertConfig()
+    model = transformers.AlbertModel(cfg)
     model.eval()
     torch.set_grad_enabled(False)
 
@@ -40,7 +40,7 @@ def test(loadtype: LoadType, use_cuda: bool):
     input_ids = torch.tensor(
         ([12166, 10699, 16752, 4454], [5342, 16471, 817, 16022]),
         dtype=torch.long)
-
+    model.to(test_device)
     start_time = time.time()
     for _ in range(10):
         torch_res = model(input_ids)
@@ -50,7 +50,7 @@ def test(loadtype: LoadType, use_cuda: bool):
     # there are three ways to load pretrained model.
     if loadtype is LoadType.PYTORCH:
         # 1, from a PyTorch model, which has loaded a pretrained model
-        tt_model = turbo_transformers.GPT2Model.from_torch(model, test_device)
+        tt_model = turbo_transformers.AlbertModel.from_torch(model)
     else:
         raise ("LoadType is not supported")
 
