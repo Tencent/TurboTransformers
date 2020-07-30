@@ -76,3 +76,10 @@ def greedy_by_size_offset_calculation(usage_recorders, show_detail=False):
           total_consumption)
 
     return offset, total_consumption
+
+
+if __name__ == "__main__":
+    from bert_tensor_usage import get_bert_tensor_usage_record
+    tur = get_bert_tensor_usage_record(1, 10, 1)
+    print(tur)
+    greedy_by_size_offset_calculation(tur, True)
