@@ -61,7 +61,6 @@ class QBertLayer:
             return_type=ReturnType.TORCH)
         attention_output = self_attention_outputs[0]
         outputs = self_attention_outputs[1:]
-
         intermediate_output = self.intermediate(attention_output)
         layer_output = self.output(intermediate_output, attention_output)
         outputs = (layer_output, ) + outputs
@@ -145,4 +144,3 @@ class QBertModel:
     @staticmethod
     def from_torch(model):
         return QBertModel(model)
-

@@ -65,7 +65,7 @@ class TestBertModel(unittest.TestCase):
 
         self.assertTrue(
             numpy.allclose(torch_result[0].cpu(),
-                           turbo_result[0].cpu(),
+                           turbo_result[0],
                            atol=1e-3,
                            rtol=1e-3))
 

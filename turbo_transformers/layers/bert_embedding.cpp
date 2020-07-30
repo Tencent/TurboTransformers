@@ -18,7 +18,6 @@
 #include "turbo_transformers/layers/kernels/embedding.h"
 #include "turbo_transformers/layers/kernels/layer_norm.h"
 
-
 namespace turbo_transformers {
 namespace layers {
 

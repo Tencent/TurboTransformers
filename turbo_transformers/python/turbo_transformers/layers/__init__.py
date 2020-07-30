@@ -31,5 +31,4 @@ __all__ = [
     'PositionwiseFeedForward', 'TransformerDecoderLayer', 'TransformerDecoder',
     'RobertaModel', 'QBertIntermediate', 'QBertOutput', 'QBertLayer',
     'QBertEncoder', 'QBertModel', 'GPT2Model'
-
 ]
