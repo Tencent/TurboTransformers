@@ -280,5 +280,79 @@ void schedule_api(std::unordered_map<std::string, int64_t> &offset_dict) {
   static_allocator.schedule(&offset_dict);
 }
 
+/*
+Dynamic Allocator for variable length inputs
+ */
+void schedule_dynamic_api(
+    const std::unordered_map<std::string, int64_t> &assigned_offset,
+    const std::unordered_map<std::string, int64_t> &assigned_trunk,
+    const std::vector<int64_t> &trunk_info) {
+  auto &dynamica_allocator = DynamicAllocator::GetInstance();
+  dynamica_allocator.schedule(assigned_offset, assigned_trunk, trunk_info);
+}
+
+// The following coe is time consumming
+void DynamicAllocator::schedule(
+    const std::unordered_map<std::string, int64_t> &assigned_offset,
+    const std::unordered_map<std::string, int64_t> &assigned_trunk,
+    const std::vector<int64_t> trunk_info) {
+  // deep copy schedule plan
+  trunk_info_->clear();
+  assigned_offset_->clear();
+  assigned_trunk_->clear();
+
+  assigned_offset_->insert(assigned_offset.begin(), assigned_offset.end());
+  assigned_trunk_->insert(assigned_trunk.begin(), assigned_trunk.end());
+  trunk_info_->assign(trunk_info.begin(), trunk_info.end());
+
+  // TODO(jiaruifang) for debug
+  // show_offset_dict();
+
+  int Ntrunk = trunk_info.size();
+  int Nbuff = gpu_buff_list_.size();
+  // std::cerr << "Ntrunk, " << Ntrunk << " Nbuff, " << Nbuff << std::endl;
+  // reallocate memory
+  for (int i = Nbuff; i < Ntrunk; ++i) {
+    // std::cerr << "allocate " << i << std::endl;
+    gpu_buff_list_.push_back(allocate_impl(trunk_info_->at(i), kDLGPU));
+  }
+  // free memory
+  int i = Nbuff - 1;
+  while (i > Ntrunk) {
+    // std::cerr << "free " << i << std::endl;
+    free_impl(gpu_buff_list_[i], kDLGPU);
+    gpu_buff_list_.pop_back();
+    i--;
+  }
+}
+
+void *DynamicAllocator::allocate(std::string name, DLDeviceType dev) {
+  auto offset_it = assigned_offset_->find(name);
+  if (offset_it != assigned_offset_->end()) {
+    auto offset = offset_it->second;
+    auto trunk_id_it = assigned_trunk_->find(name);
+    if (trunk_id_it != assigned_trunk_->end()) {
+      auto trunk_id = trunk_id_it->second;
+      if (dev == kDLGPU) {
+        // std::cerr << "DynamicAllocator allocate @ Trunk " << trunk_id << "
+        // offset "<< offset << std::endl;
+        return static_cast<void *>(
+            static_cast<uint8_t *>(gpu_buff_list_[trunk_id]) + offset);
+      } else {
+        TT_THROW("DynamicAllocator allocator dose not support CPU.");
+      }
+    }
+  } else {
+    TT_THROW("allocate %s failed", name.c_str());
+  }
+}
+
+DynamicAllocator::DynamicAllocator()
+    : trunk_info_(new std::vector<int64_t>()),
+      assigned_offset_(new std::unordered_map<std::string, int64_t>()),
+      assigned_trunk_(new std::unordered_map<std::string, int64_t>()) {}
+
+DynamicAllocator::~DynamicAllocator() = default;
+
 }  // namespace core
 }  // namespace turbo_transformers

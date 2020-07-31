@@ -453,6 +453,7 @@ AnyModel = Union[onnxruntime.backend.backend_rep.
 
 from .bert_tensor_usage import get_bert_tensor_usage_record
 from .static_allocator import greedy_by_size_offset_calculation
+from .dynamic_allocator import trunked_greedy_by_size_offset_calculation
 
 
 class BertModel:
@@ -470,10 +471,12 @@ class BertModel:
             self.pooler = pooler
             self.backend = "turbo"
 
+            self.use_static_allcator = False
             # TODO, now we use a static memalloc,
             # which reserve a memory space 2GB in this case before serving.
             # in future dynamic allocate for each independent inference.
-            cxx.mem_reserve(512 * 1024 * 1024, True)
+            if self.use_static_allcator:
+                cxx.mem_reserve(512 * 1024 * 1024, True)
 
     def __call__(self,
                  inputs: AnyTensor,
@@ -499,16 +502,31 @@ class BertModel:
             time_end = time.time()
             tur_cost = time_end - time_start
 
-            time_start = time.time()
-            offset_dict, total_consumption = greedy_by_size_offset_calculation(
-                tur, False)
-            time_end = time.time()
-            offset_cost = time_end - time_start
+            if self.use_static_allcator:
+                time_start = time.time()
+                offset_dict, total_consumption = greedy_by_size_offset_calculation(
+                    tur, False)
+                time_end = time.time()
+                offset_cost = time_end - time_start
 
-            time_start = time.time()
-            cxx.mem_schedule(offset_dict)
-            time_end = time.time()
-            schl_cost = time_end - time_start
+                time_start = time.time()
+                cxx.mem_schedule(offset_dict)
+                time_end = time.time()
+                schl_cost = time_end - time_start
+            else:
+                time_start = time.time()
+                assigned_offset, assigned_trunk, trunk_info = trunked_greedy_by_size_offset_calculation(
+                    tur, False)
+                time_end = time.time()
+                offset_cost = time_end - time_start
+                # TODO(jiaruifang) scheduler needs information on
+                # 1. how many trunks, and size of each trunk
+                # 2. trunk id, and offset for each tensor
+                time_start = time.time()
+                cxx.dynamic_mem_schedule(assigned_offset, assigned_trunk,
+                                         trunk_info)
+                time_end = time.time()
+                schl_cost = time_end - time_start
 
             time_start = time.time()
             encoder_outputs = self.bertmodel_nopooler(
@@ -521,7 +539,6 @@ class BertModel:
                 output_hidden_states=output_hidden_states,
                 pooling_type=pooling_type,
                 return_type=ReturnType.turbo_transformers)
-
             sequence_output = encoder_outputs[0]
             self.seq_pool = SequencePool(PoolingMap[pooling_type])
             sequence_pool_output = self.seq_pool(

@@ -44,7 +44,7 @@ void MultiHeadedAttention::operator()(
                             query_tensor.device_type());
 #endif
   std::lock_guard<std::mutex> g(mutex_);
-  bool use_static_mem_allocator = true;
+  unsigned allocate_plan = 2;
   TT_ENFORCE_EQ(key_tensor.n_dim(), 3,
                 "The key_tensor should be a matrix with shape [batch_size, "
                 "key_seq_len, hidden_size].");
@@ -201,8 +201,7 @@ void MultiHeadedAttention::operator()(
   } else if (attn_type == "self") {
     // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
     qkv_out1.Reshape<float>({batch_size, query_seq_length, 3, hidden_size},
-                            devtype, devid, "qkv_out1",
-                            use_static_mem_allocator);
+                            devtype, devid, "qkv_out1", allocate_plan);
     if (pre_layernorm) {
       core::Tensor layernormed_query(nullptr);
       layernormed_query.Reshape<float>(
@@ -220,13 +219,13 @@ void MultiHeadedAttention::operator()(
     // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
     q_out.Reshape<float>(
         {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-        devtype, devid, "q", use_static_mem_allocator);
+        devtype, devid, "q", allocate_plan);
     k_out.Reshape<float>(
         {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-        devtype, devid, "k", use_static_mem_allocator);
+        devtype, devid, "k", allocate_plan);
     v_out.Reshape<float>(
         {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-        devtype, devid, "v", use_static_mem_allocator);
+        devtype, devid, "v", allocate_plan);
 
     kernels::SplitAddBiasTransposeForScore(
         qkv_out1, qkv_bias_, q_out, k_out, v_out,
@@ -269,7 +268,7 @@ void MultiHeadedAttention::operator()(
   att_score->Reshape<float>(
       {batch_size, num_attention_heads_, query_seq_length,
        key_seq_length},  // query_seq_length = from_seq_Len
-      devtype, devid, "attn_score", use_static_mem_allocator);
+      devtype, devid, "attn_score", allocate_plan);
 
   const float scaler = 1.0f / std::sqrt(static_cast<float>(size_per_head));
   kernels::BatchMatMul(*q_ptr, false, *k_ptr, true, scaler, att_score, 0.0,
@@ -287,7 +286,7 @@ void MultiHeadedAttention::operator()(
   // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
   context_layer.Reshape<float>(
       {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-      devtype, devid, "context_layer", use_static_mem_allocator);
+      devtype, devid, "context_layer", allocate_plan);
 
   kernels::BatchMatMul(*att_score, false, *v_ptr, false, 1.0, &context_layer,
                        0.0, "batch_gemm4");
@@ -296,12 +295,12 @@ void MultiHeadedAttention::operator()(
   // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
   self_attr_out.Reshape<float>(
       {batch_size, query_seq_length, num_attention_heads_ * size_per_head},
-      devtype, devid, "self_attr_out", use_static_mem_allocator);
+      devtype, devid, "self_attr_out", allocate_plan);
   kernels::TransposeForScore(&self_attr_out, context_layer,
                              "TransposeForScore");
   // TODO(jiaruifang) mem opt. use offset to indicate start addr of mem
   output->Reshape<float>({batch_size, query_seq_length, hidden_size}, devtype,
-                         devid, "attn_output", use_static_mem_allocator);
+                         devid, "attn_output", allocate_plan);
 
   kernels::MatMul(self_attr_out, false, dense_weight_, is_trans_weight, 1.0,
                   output, 0.0, "gemm5");

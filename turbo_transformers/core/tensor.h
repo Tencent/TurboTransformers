@@ -108,20 +108,31 @@ extern DLManagedTensor *NewDLPackTensorStatic(
     const std::vector<int64_t> &shape_list, DLDeviceType device, int device_id,
     uint8_t data_type_code, size_t bits, size_t lanes, std::string &name);
 
+// use static memory allocator to allocate memory
+extern DLManagedTensor *NewDLPackTensorDynamic(
+    const std::vector<int64_t> &shape_list, DLDeviceType device, int device_id,
+    uint8_t data_type_code, size_t bits, size_t lanes, std::string &name);
+
 template <typename T>
 inline DLManagedTensor *NewDLPackTensorT(const std::vector<int64_t> &shape_list,
                                          DLDeviceType device = kDLCPU,
                                          int device_id = 0,
-                                         bool use_static_allocator = false,
+                                         unsigned allocate_flag = 0,
                                          std::string name = "") {
-  if (!use_static_allocator) {
+  if (allocate_flag == 0) {
     return NewDLPackTensor(shape_list, device, device_id,
                            details::DataTypeTrait<T>::DLPackTypeCode,
                            sizeof(T) * 8, 1);
-  } else {
+  } else if (allocate_flag == 1) {
     return NewDLPackTensorStatic(shape_list, device, device_id,
                                  details::DataTypeTrait<T>::DLPackTypeCode,
                                  sizeof(T) * 8, 1, name);
+  } else if (allocate_flag == 2) {
+    return NewDLPackTensorDynamic(shape_list, device, device_id,
+                                  details::DataTypeTrait<T>::DLPackTypeCode,
+                                  sizeof(T) * 8, 1, name);
+  } else {
+    TT_THROW("allocate_flag %d dose not support", allocate_flag);
   }
 }
 
@@ -167,7 +178,7 @@ class Tensor {
   template <typename T>
   T *Reshape(std::vector<int64_t> shape_list, DLDeviceType device_type,
              int device_id, std::string name = "Reshape",
-             bool use_static_allocator = false) {
+             unsigned allocate_flag = 0) {
     // if Need Realloc
 #ifdef WITH_PERFTOOLS
     auto &profile_ctx = core::Profiler::GetInstance();
@@ -175,7 +186,7 @@ class Tensor {
 #endif
     if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
       tensor_ = details::DLManagedTensorPtr(NewDLPackTensorT<T>(
-          shape_list, device_type, device_id, use_static_allocator, name));
+          shape_list, device_type, device_id, allocate_flag, name));
     }
 #ifdef WITH_PERFTOOLS
     profile_ctx.end_profile(name, device_type);

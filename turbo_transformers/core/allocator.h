@@ -85,5 +85,55 @@ extern void reserve_api(int64_t size, bool use_gpu);
 
 extern void schedule_api(std::unordered_map<std::string, int64_t> &offset_dict);
 
+/*
+Dynamic Allocator for variable length inputs
+ */
+
+class DynamicAllocator {
+ public:
+  ~DynamicAllocator();
+
+  static DynamicAllocator &GetInstance() {
+    static DynamicAllocator instance;
+    return instance;
+  }
+
+  void *allocate(std::string name, DLDeviceType dev = kDLGPU);
+  void schedule(const std::unordered_map<std::string, int64_t> &assigned_offset,
+                const std::unordered_map<std::string, int64_t> &assigned_trunk,
+                const std::vector<int64_t> trunk_info);
+
+  void show_offset_dict() const {
+    std::cerr << "Lets see assigned_offset" << std::endl;
+    for (auto it = assigned_offset_->begin(); it != assigned_offset_->end();
+         ++it) {
+      std::cerr << it->first << ", " << it->second << std::endl;
+    }
+
+    std::cerr << "Lets see assigned_trunk_" << std::endl;
+    for (auto it = assigned_trunk_->begin(); it != assigned_trunk_->end();
+         ++it) {
+      std::cerr << it->first << ", " << it->second << std::endl;
+    }
+
+    std::cerr << "Lets see trunk_info_" << std::endl;
+    for (auto it = trunk_info_->begin(); it != trunk_info_->end(); ++it) {
+      std::cerr << *it << std::endl;
+    }
+  }
+
+ private:
+  DynamicAllocator();
+  std::vector<void *> gpu_buff_list_;
+  std::unique_ptr<std::vector<int64_t>> trunk_info_;
+  std::unique_ptr<std::unordered_map<std::string, int64_t>> assigned_offset_;
+  std::unique_ptr<std::unordered_map<std::string, int64_t>> assigned_trunk_;
+};
+
+extern void schedule_dynamic_api(
+    const std::unordered_map<std::string, int64_t> &assigned_offset,
+    const std::unordered_map<std::string, int64_t> &assigned_trunk,
+    const std::vector<int64_t> &trunk_info);
+
 }  // namespace core
 }  // namespace turbo_transformers
