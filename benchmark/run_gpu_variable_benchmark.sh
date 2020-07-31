@@ -15,8 +15,8 @@ set -e
 # Turbo is designed for variable-length input
 # This script benchmarks turbo using a list of request with variable lengths
 # FRAMEWORKS=("turbo-transformers" "torch" "onnxruntime")
-FRAMEWORKS=("turbo-transformers")
-# FRAMEWORKS=("torch")
+# FRAMEWORKS=("turbo-transformers")
+FRAMEWORKS=("torch")
 # Note Onnx doese not supports Albert
 # FRAMEWORKS=("onnxruntime")
 
@@ -25,7 +25,6 @@ MAX_SEQ_LEN=(500)
 N=150
 MODEL="bert"
 
-python monitor.py &
 for max_seq_len in ${MAX_SEQ_LEN[*]}
 do
   for framework in ${FRAMEWORKS[*]}

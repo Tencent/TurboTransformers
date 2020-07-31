@@ -105,13 +105,6 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
     assigned_trunk = {}
 
     time_start = time.time()
-    # the following code is too time consuming.
-    # .core cost 0.007505655288696289
-    # > debug total_consumption 1206771212 used_consumption 1166640336 percent 0.9667452491400665
-    # BertModel tur 6.198883056640625e-06,
-    # offset 0.007884740829467773,
-    # schl 0.00044608116149902344,
-    # rt 0.0020194053649902344
     for i in range(len(gTrunkList._trunks)):
         gTrunkList._trunks[i]._tensor_list = []
 
@@ -129,17 +122,49 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
                 is_assigned = True
                 break
 
+        # init new trunk, trunk id should be assigned after delete useless trunk
         if is_assigned is False:
-            trunk_size = max(DEFAULT_TRUNK_SIZE, math.ceil(t_size * K_SCALE))
+            trunk_size = max(DEFAULT_TRUNK_SIZE,
+                             math.ceil((t_size * K_SCALE + 31) // 32 * 32))
             trunk = Trunk(trunk_size)
             trunk._tensor_list.append((*t, 0))  #offset @ 0
             gTrunkList.appendTrunk(trunk)
 
-            assigned_trunk[t_name] = len(gTrunkList._trunks) - 1
+            # TODO
+            trunk_id = len(gTrunkList._trunks) - 1
+            assigned_trunk[t_name] = trunk_id
             assigned_offset[t_name] = 0
+
     time_end = time.time()
     core_cost = time_end - time_start
-    print(f"core cost {core_cost}")
+
+    used_consumption = 0
+    total_consumption = 0
+    delete_trunk_list = []
+
+    # find trunk not used -> delete_trunk_list
+    for trunk_id, trunk in enumerate(gTrunkList._trunks):
+        max_end_offset = 0
+        for elem in trunk._tensor_list:
+            max_end_offset = max(elem[4] + elem[3],
+                                 max_end_offset)  # offset + size
+        # print("trunk id", trunk_id, " usage ",
+        #       max_end_offset / gTrunkList._trunks[trunk_id]._size)
+        used_consumption += max_end_offset
+        if max_end_offset == 0:
+            delete_trunk_list.insert(0, trunk_id)
+        else:
+            total_consumption += gTrunkList._trunks[trunk_id]._size
+
+    # delete
+    for id in delete_trunk_list:
+        gTrunkList._trunks.pop(id)
+
+    # adjust trunk ids
+    for trunk_id, trunk in enumerate(gTrunkList._trunks):
+        for tensor in trunk._tensor_list:
+            tensor_name = tensor[0]
+            assigned_trunk[tensor_name] = trunk_id
 
     if show_detail:
         print("=====allocation plan====")
@@ -153,26 +178,6 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
                   assigned_offset[t_name])
         print("=====allocation plan====")
 
-    used_consumption = 0
-    total_consumption = 0
-    delete_trunk_list = []
-
-    for trunk_id, trunk in enumerate(gTrunkList._trunks):
-        max_end_offset = 0
-        for elem in trunk._tensor_list:
-            # offset + size
-            max_end_offset = max(elem[4] + elem[3], max_end_offset)
-        # print("trunk id", trunk_id, " usage ",
-        #       max_end_offset / gTrunkList._trunks[trunk_id]._size)
-        used_consumption += max_end_offset
-        if max_end_offset == 0:
-            delete_trunk_list.insert(0, trunk_id)
-        else:
-            total_consumption += gTrunkList._trunks[trunk_id]._size
-    for id in delete_trunk_list:
-        gTrunkList._trunks.pop(id)
-        print(f"delete {id}")
-
     print(
         f"> debug total_consumption {total_consumption} used_consumption {used_consumption} percent {used_consumption/total_consumption}"
     )
@@ -182,8 +187,8 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
 if __name__ == "__main__":
     from bert_tensor_usage import get_bert_tensor_usage_record
 
-    for length in [128, 6, 999, 1024, 2]:
-        print(f"allocate {length}")
+    for length in [417, 475]:
+        print(f"begin schedule for allocate {length}")
         tur = get_bert_tensor_usage_record(1, length, 1)
         trunked_greedy_by_size_offset_calculation(tur, True)
         print("\n\n")

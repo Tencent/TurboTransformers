@@ -105,15 +105,11 @@ class DynamicAllocator {
 
   void show_offset_dict() const {
     std::cerr << "Lets see assigned_offset" << std::endl;
-    for (auto it = assigned_offset_->begin(); it != assigned_offset_->end();
-         ++it) {
-      std::cerr << it->first << ", " << it->second << std::endl;
-    }
-
-    std::cerr << "Lets see assigned_trunk_" << std::endl;
-    for (auto it = assigned_trunk_->begin(); it != assigned_trunk_->end();
-         ++it) {
-      std::cerr << it->first << ", " << it->second << std::endl;
+    for (auto offset_it = assigned_offset_->begin();
+         offset_it != assigned_offset_->end(); ++offset_it) {
+      auto trunk_it = assigned_trunk_->find(offset_it->first);
+      std::cerr << offset_it->first << ", " << trunk_it->second << ", "
+                << offset_it->second << std::endl;
     }
 
     std::cerr << "Lets see trunk_info_" << std::endl;
@@ -125,6 +121,7 @@ class DynamicAllocator {
  private:
   DynamicAllocator();
   std::vector<void *> gpu_buff_list_;
+  std::vector<size_t> gpu_mem_size_;
   std::unique_ptr<std::vector<int64_t>> trunk_info_;
   std::unique_ptr<std::unordered_map<std::string, int64_t>> assigned_offset_;
   std::unique_ptr<std::unordered_map<std::string, int64_t>> assigned_trunk_;

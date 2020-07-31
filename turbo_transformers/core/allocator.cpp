@@ -310,19 +310,32 @@ void DynamicAllocator::schedule(
 
   int Ntrunk = trunk_info.size();
   int Nbuff = gpu_buff_list_.size();
-  // std::cerr << "Ntrunk, " << Ntrunk << " Nbuff, " << Nbuff << std::endl;
+  // std::cerr << "Ntrunk, " << Ntrunk << " Nbuff, " << Nbuff << " gpu_mem_size_
+  // "<<gpu_mem_size_.size() << std::endl;
+
+  // update existing trunk, existing trunk may smaller than request
+  // because you allocate new trunks and delete old trunks
+  for (int i = 0; i < Nbuff && i < Ntrunk; ++i) {
+    if (gpu_mem_size_[i] < trunk_info[i]) {
+      free_impl(gpu_buff_list_[i], kDLGPU);
+      gpu_buff_list_[i] =
+          allocate_impl(static_cast<size_t>(trunk_info_->at(i)), kDLGPU);
+      gpu_mem_size_[i] = static_cast<size_t>(trunk_info_->at(i));
+    }
+  }
   // reallocate memory
   for (int i = Nbuff; i < Ntrunk; ++i) {
-    // std::cerr << "allocate " << i << std::endl;
-    gpu_buff_list_.push_back(allocate_impl(trunk_info_->at(i), kDLGPU));
+    // std::cerr << "allocate " << static_cast<size_t>(trunk_info_->at(i)) << "
+    // @ trunk" << i << std::endl;
+    gpu_buff_list_.push_back(
+        allocate_impl(static_cast<size_t>(trunk_info_->at(i)), kDLGPU));
+    gpu_mem_size_.push_back(trunk_info_->at(i));
   }
-  // free memory
-  int i = Nbuff - 1;
-  while (i > Ntrunk) {
-    // std::cerr << "free " << i << std::endl;
+  for (int i = Nbuff - 1; i >= Ntrunk; --i) {
+    // std::cerr << "free trunk" << i << std::endl;
     free_impl(gpu_buff_list_[i], kDLGPU);
     gpu_buff_list_.pop_back();
-    i--;
+    gpu_mem_size_.pop_back();
   }
 }
 
