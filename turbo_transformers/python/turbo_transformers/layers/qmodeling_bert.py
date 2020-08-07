@@ -103,11 +103,57 @@ class QBertEncoder:
         return QBertEncoder(layers)
 
 class QBertModel:
-    def __init__(self, model):
-        self.embeddings = BertEmbeddings.from_torch(model.embeddings)
-        self.encoder = QBertEncoder.from_torch(model.encoder)
-        self.pooler = BertPooler.from_torch(model.pooler)
-        self.prepare = cxx.PrepareBertMasks()
+    def __init__(self, model, backend='onnxrt'):
+        if backend == 'turbo':
+            self.backend = 'turbo'
+            self.embeddings = BertEmbeddings.from_torch(model.embeddings)
+            self.encoder = QBertEncoder.from_torch(model.encoder)
+            self.pooler = BertPooler.from_torch(model.pooler)
+            self.prepare = cxx.PrepareBertMasks()
+        else:
+            # using https://github.com/microsoft/onnxruntime/tree/master/onnxruntime/python/tools/transformers
+            self.backend = 'onnxrt'
+            dummy_input = {'input_ids':      torch.ones(1,128, dtype=torch.int64),
+                           'attention_mask': torch.ones(1,128, dtype=torch.int64),
+                           'token_type_ids': torch.ones(1,128, dtype=torch.int64)}
+            symbolic_names = {0: 'batch_size', 1: 'max_seq_len'}
+            onnx_model_path = "/tmp/temp_turbo_onnx.model"
+            onnx_opt_model_path = "/tmp/temp_turbo_onnx_opt.model"
+            quantized_model_path = "/tmp/temp_turbo_onnx_q.model"
+            # (1) export to onnx fp32 model
+            with open(onnx_model_path, 'wb') as f:
+                torch.onnx.export(model, (dummy_input['input_ids'], dummy_input['attention_mask'], dummy_input['token_type_ids']),
+                                  f, input_names=['input_ids', 'attention_mask', 'token_type_ids'], output_names=['output'],
+                                  opset_version=11,
+                                  dynamic_axes={'input_ids': symbolic_names, 'attention_mask': symbolic_names, 'token_type_ids': symbolic_names})
+            # (2) optimize the fp32 model
+            from onnxruntime_tools import optimizer
+            from onnxruntime_tools.transformers.onnx_model_bert import BertOptimizationOptions
+            opt_options = BertOptimizationOptions('bert')
+            opt_options.enable_embed_layer_norm = False
+            opt_model = optimizer.optimize_model(
+                onnx_model_path,
+                'bert', 
+                num_heads=model.config.num_attention_heads,
+                hidden_size=model.config.hidden_size,
+                optimization_options=opt_options)
+            opt_model.save_model_to_file(onnx_opt_model_path)
+            # (3) quantize the model
+            from onnxruntime.quantization import quantize, QuantizationMode
+            import onnx
+            import onnxruntime
+            import onnxruntime.backend
+            opt_model = onnx.load(onnx_opt_model_path)
+            quantized_onnx_model = quantize(opt_model, quantization_mode=QuantizationMode.IntegerOps, symmetric_weight=True, force_fusions=True)
+            onnx.save(quantized_onnx_model, quantized_model_path)
+            sess_options = onnxruntime.SessionOptions()
+            sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+            self.session = onnxruntime.InferenceSession(quantized_model_path, sess_options)
+            # self.onnx_model = onnxruntime.backend.prepare(
+            #     model=quantized_onnx_model,
+            #     device="CPU",
+            #     graph_optimization_level=onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL)
+
     def __call__(self, inputs,
                  attention_masks = None,
                  token_type_ids = None,
@@ -118,30 +164,48 @@ class QBertModel:
                  output_hidden_states = None,
                  pooling_type = PoolingType.FIRST,
                  pooler_output = None):
-        attention_masks = try_convert(create_empty_if_none(attention_masks))
-        token_type_ids = try_convert(create_empty_if_none(token_type_ids))
-        position_ids = try_convert(create_empty_if_none(position_ids))
-        inputs = try_convert(inputs)
-        extended_attention_masks = cxx.Tensor.create_empty()
-        self.prepare(inputs, attention_masks, token_type_ids, position_ids, extended_attention_masks)
-        hidden_cache = self.embeddings(
-            inputs,
-            position_ids=position_ids,
-            token_type_ids=token_type_ids,
-            return_type=ReturnType.TORCH)
-        encoder_outputs = self.encoder(
-            hidden_states=hidden_cache,
-            attention_mask=extended_attention_masks,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states)
-        sequence_output = encoder_outputs[0]
-        self.seq_pool = SequencePool(PoolingMap[pooling_type])
-        sequence_pool_output = self.seq_pool(
-            input_tensor=sequence_output,
-            return_type=ReturnType.TORCH)
-        pooler_output = self.pooler(sequence_pool_output, ReturnType.TORCH,
-                                    pooler_output)
-        return (sequence_output, pooler_output, ) + encoder_outputs[1:]
+        if self.backend == 'turbo':
+            attention_masks = try_convert(create_empty_if_none(attention_masks))
+            token_type_ids = try_convert(create_empty_if_none(token_type_ids))
+            position_ids = try_convert(create_empty_if_none(position_ids))
+            inputs = try_convert(inputs)
+            extended_attention_masks = cxx.Tensor.create_empty()
+            self.prepare(inputs, attention_masks, token_type_ids, position_ids, extended_attention_masks)
+            hidden_cache = self.embeddings(
+                inputs,
+                position_ids=position_ids,
+                token_type_ids=token_type_ids,
+                return_type=ReturnType.TORCH)
+            encoder_outputs = self.encoder(
+                hidden_states=hidden_cache,
+                attention_mask=extended_attention_masks,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states)
+            sequence_output = encoder_outputs[0]
+            self.seq_pool = SequencePool(PoolingMap[pooling_type])
+            sequence_pool_output = self.seq_pool(
+                input_tensor=sequence_output,
+                return_type=ReturnType.TORCH)
+            pooler_output = self.pooler(sequence_pool_output, ReturnType.TORCH,
+                                        pooler_output)
+            return (sequence_output, pooler_output, ) + encoder_outputs[1:]
+        else:
+            if attention_masks is None:
+                attention_masks = np.ones(inputs.size(), dtype=np.int64)
+            else:
+                attention_masks = attention_masks.cpu().numpy()
+            if token_type_ids is None:
+                token_type_ids = np.zeros(inputs.size(), dtype=np.int64)
+            else:
+                token_type_ids = token_type_ids.cpu().numpy()
+            ort_inputs = {'input_ids': inputs.cpu().numpy(), 
+                          'attention_mask': attention_masks, 
+                          'token_type_ids': token_type_ids}
+            outputs = self.session.run(None, ort_inputs)
+            for idx, item in enumerate(outputs):
+                outputs[idx] = torch.tensor(item, device=inputs.device)
+            return tuple(outputs)
+
     @staticmethod
-    def from_torch(model):
-        return QBertModel(model)
+    def from_torch(model, backend='onnxrt'):
+        return QBertModel(model, backend)
