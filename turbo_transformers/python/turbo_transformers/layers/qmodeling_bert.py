@@ -1,5 +1,6 @@
 import turbo_transformers.turbo_transformers_cxx as cxx
 import torch
+import numpy as np
 from .return_type import convert_returns_as_type, ReturnType
 from .utils import try_convert, convert2tt_tensor, to_param_dict_convert_tt, to_param_dict, create_empty_if_none, AnyTensor
 from .modeling_bert import BertAttention, BertEmbeddings, BertEncoder, BertPooler, SequencePool, PoolingType, PoolingMap
@@ -102,6 +103,46 @@ class QBertEncoder:
         layers = [QBertLayer.from_torch(bert_layer) for bert_layer in encoder.layer]
         return QBertEncoder(layers)
 
+def _build_onnxrt_session(model):
+    # using https://github.com/microsoft/onnxruntime/tree/master/onnxruntime/python/tools/transformers
+    dummy_input = {'input_ids':      torch.ones(1,128, dtype=torch.int64),
+                   'attention_mask': torch.ones(1,128, dtype=torch.int64),
+                   'token_type_ids': torch.ones(1,128, dtype=torch.int64)}
+    symbolic_names = {0: 'batch_size', 1: 'max_seq_len'}
+    onnx_model_path = "/tmp/temp_turbo_onnx.model"
+    onnx_opt_model_path = "/tmp/temp_turbo_onnx_opt.model"
+    quantized_model_path = "/tmp/temp_turbo_onnx_q.model"
+    # (1) export to onnx fp32 model
+    with open(onnx_model_path, 'wb') as f:
+        torch.onnx.export(model, (dummy_input['input_ids'], dummy_input['attention_mask'], dummy_input['token_type_ids']),
+                          f, input_names=['input_ids', 'attention_mask', 'token_type_ids'], output_names=['output'],
+                          opset_version=11,
+                          dynamic_axes={'input_ids': symbolic_names, 'attention_mask': symbolic_names, 'token_type_ids': symbolic_names})
+    # (2) optimize the fp32 model
+    from onnxruntime_tools import optimizer
+    from onnxruntime_tools.transformers.onnx_model_bert import BertOptimizationOptions
+    opt_options = BertOptimizationOptions('bert')
+    opt_options.enable_embed_layer_norm = False
+    opt_model = optimizer.optimize_model(
+        onnx_model_path,
+        'bert', 
+        num_heads=model.config.num_attention_heads,
+        hidden_size=model.config.hidden_size,
+        optimization_options=opt_options)
+    opt_model.save_model_to_file(onnx_opt_model_path)
+    # (3) quantize the model
+    from onnxruntime.quantization import quantize, QuantizationMode
+    import onnx
+    import onnxruntime
+    import onnxruntime.backend
+    opt_model = onnx.load(onnx_opt_model_path)
+    quantized_onnx_model = quantize(opt_model, quantization_mode=QuantizationMode.IntegerOps, symmetric_weight=True, force_fusions=True)
+    onnx.save(quantized_onnx_model, quantized_model_path)
+    sess_options = onnxruntime.SessionOptions()
+    sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+    return onnxruntime.InferenceSession(quantized_model_path, sess_options)
+
+
 class QBertModel:
     def __init__(self, model, backend='onnxrt'):
         if backend == 'turbo':
@@ -111,48 +152,8 @@ class QBertModel:
             self.pooler = BertPooler.from_torch(model.pooler)
             self.prepare = cxx.PrepareBertMasks()
         else:
-            # using https://github.com/microsoft/onnxruntime/tree/master/onnxruntime/python/tools/transformers
             self.backend = 'onnxrt'
-            dummy_input = {'input_ids':      torch.ones(1,128, dtype=torch.int64),
-                           'attention_mask': torch.ones(1,128, dtype=torch.int64),
-                           'token_type_ids': torch.ones(1,128, dtype=torch.int64)}
-            symbolic_names = {0: 'batch_size', 1: 'max_seq_len'}
-            onnx_model_path = "/tmp/temp_turbo_onnx.model"
-            onnx_opt_model_path = "/tmp/temp_turbo_onnx_opt.model"
-            quantized_model_path = "/tmp/temp_turbo_onnx_q.model"
-            # (1) export to onnx fp32 model
-            with open(onnx_model_path, 'wb') as f:
-                torch.onnx.export(model, (dummy_input['input_ids'], dummy_input['attention_mask'], dummy_input['token_type_ids']),
-                                  f, input_names=['input_ids', 'attention_mask', 'token_type_ids'], output_names=['output'],
-                                  opset_version=11,
-                                  dynamic_axes={'input_ids': symbolic_names, 'attention_mask': symbolic_names, 'token_type_ids': symbolic_names})
-            # (2) optimize the fp32 model
-            from onnxruntime_tools import optimizer
-            from onnxruntime_tools.transformers.onnx_model_bert import BertOptimizationOptions
-            opt_options = BertOptimizationOptions('bert')
-            opt_options.enable_embed_layer_norm = False
-            opt_model = optimizer.optimize_model(
-                onnx_model_path,
-                'bert', 
-                num_heads=model.config.num_attention_heads,
-                hidden_size=model.config.hidden_size,
-                optimization_options=opt_options)
-            opt_model.save_model_to_file(onnx_opt_model_path)
-            # (3) quantize the model
-            from onnxruntime.quantization import quantize, QuantizationMode
-            import onnx
-            import onnxruntime
-            import onnxruntime.backend
-            opt_model = onnx.load(onnx_opt_model_path)
-            quantized_onnx_model = quantize(opt_model, quantization_mode=QuantizationMode.IntegerOps, symmetric_weight=True, force_fusions=True)
-            onnx.save(quantized_onnx_model, quantized_model_path)
-            sess_options = onnxruntime.SessionOptions()
-            sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-            self.session = onnxruntime.InferenceSession(quantized_model_path, sess_options)
-            # self.onnx_model = onnxruntime.backend.prepare(
-            #     model=quantized_onnx_model,
-            #     device="CPU",
-            #     graph_optimization_level=onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL)
+            self.session = _build_onnxrt_session(model)
 
     def __call__(self, inputs,
                  attention_masks = None,
