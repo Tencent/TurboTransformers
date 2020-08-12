@@ -213,6 +213,8 @@ void *Allocator::allocate(size_t size, const std::string &strategy,
     return bestfit_allocator_->alloc(size, dev);
   } else if ("cub" == strategy) {
     return caching_allocator_->alloc(size, dev);
+  } else if ("naive" == strategy) {
+    return allocate_impl(size, dev);
   }
   return nullptr;
 }
@@ -226,6 +228,8 @@ void Allocator::free(void *memory, const std::string &strategy,
     bestfit_allocator_->free(memory, dev);
   } else if ("cub" == strategy) {
     caching_allocator_->free(memory, dev);
+  } else if ("naive" == strategy) {
+    return free_impl(memory, dev);
   }
 }
 

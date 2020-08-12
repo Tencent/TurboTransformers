@@ -72,14 +72,19 @@ def greedy_by_size_offset_calculation(usage_recorders, show_detail=False):
         print("tensor_id, offset")
         for item in offset.items():
             print(item[0], item[1])
-    print("> greedy_by_size_offset_calculation total_consumption, ",
-          total_consumption)
+    total_consumption = total_consumption / 1024 / 1024
+    print(
+        f"greedy_by_size_offset_calculation footprint {total_consumption} MB")
 
     return offset, total_consumption
 
 
 if __name__ == "__main__":
     from bert_tensor_usage import get_bert_tensor_usage_record
-    tur = get_bert_tensor_usage_record(1, 10, 1)
-    print(tur)
+    tur = get_bert_tensor_usage_record(20, 512)
+    # print(tur)
+    greedy_by_size_offset_calculation(tur, True)
+
+    tur = get_bert_tensor_usage_record(1, 20)
+    # print(tur)
     greedy_by_size_offset_calculation(tur, True)
