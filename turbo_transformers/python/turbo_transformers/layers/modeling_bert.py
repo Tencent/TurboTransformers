@@ -515,7 +515,7 @@ class BertModel:
                 schl_cost = time_end - time_start
             else:
                 time_start = time.time()
-                assigned_offset, assigned_trunk, trunk_info = trunked_greedy_by_size_offset_calculation(
+                assigned_offset, assigned_trunk, trunk_info, _ = trunked_greedy_by_size_offset_calculation(
                     tur, False)
                 time_end = time.time()
                 offset_cost = time_end - time_start
@@ -548,8 +548,9 @@ class BertModel:
                                         pooler_output)
             time_end = time.time()
             rt_cost = time_end - time_start
+            ratio = (offset_cost + schl_cost + tur_cost) / rt_cost
             print(
-                f"BertModel tur {tur_cost}, offset {offset_cost}, schl {schl_cost}, rt {rt_cost}\n"
+                f"BertModel tur {tur_cost}, offset {offset_cost}, schl {schl_cost}, rt {rt_cost}, ratio {ratio}\n"
             )
             return (
                 convert_returns_as_type(sequence_output, return_type),

@@ -103,6 +103,7 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
     recorders_size = len(usage_recorders)
     assigned_offset = {}
     assigned_trunk = {}
+    new_allocate_size = 0
 
     time_start = time.time()
     for i in range(len(gTrunkList._trunks)):
@@ -126,6 +127,7 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
         if is_assigned is False:
             trunk_size = max(DEFAULT_TRUNK_SIZE,
                              math.ceil((t_size * K_SCALE + 31) // 32 * 32))
+            new_allocate_size += trunk_size
             trunk = Trunk(trunk_size)
             trunk._tensor_list.append((*t, 0))  #offset @ 0
             gTrunkList.appendTrunk(trunk)
@@ -174,21 +176,25 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
         print("tensor name \t offset")
         for t in assigned_offset.items():
             t_name = t[0]
-            print(t_name, assigned_trunk[t_name], assigned_trunk[t_name],
-                  assigned_offset[t_name])
+            print(t_name, assigned_trunk[t_name], assigned_offset[t_name])
         print("=====allocation plan====")
 
+    used_consumption = used_consumption / 1024 / 1024
+    total_consumption = total_consumption / 1024 / 1024
+    new_allocate_size = new_allocate_size / 1024 / 1024
     print(
-        f"> debug total_consumption {total_consumption} used_consumption {used_consumption} percent {used_consumption/total_consumption}"
+        f"> debug total_consumption {total_consumption} MB used_consumption {used_consumption} MB percent {used_consumption/total_consumption}"
     )
-    return assigned_offset, assigned_trunk, gTrunkList.getInfo()
+    return assigned_offset, assigned_trunk, gTrunkList.getInfo(), (
+        total_consumption, new_allocate_size)
 
 
 if __name__ == "__main__":
     from bert_tensor_usage import get_bert_tensor_usage_record
 
-    for length in [417, 475]:
+    for length in [200, 240]:
         print(f"begin schedule for allocate {length}")
         tur = get_bert_tensor_usage_record(1, length, 1)
+        print(tur[4])
         trunked_greedy_by_size_offset_calculation(tur, True)
         print("\n\n")
