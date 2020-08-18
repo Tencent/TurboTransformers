@@ -63,7 +63,8 @@ class StaticAllocator {
 
 extern void reserve_api(int64_t size, bool use_gpu);
 
-extern void schedule_api(std::unordered_map<std::string, int64_t> &offset_dict);
+extern void static_schedule_api(
+    std::unordered_map<std::string, int64_t> &offset_dict);
 
 /*
 Dynamic Allocator for variable length inputs
@@ -77,11 +78,23 @@ class DynamicAllocator {
     static DynamicAllocator instance;
     return instance;
   }
+  bool isCached(const std::string &name) const {
+    auto it = assigned_trunk_->find(name);
+    if (it != assigned_trunk_->end() and isOpen()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
 
-  void *allocate(std::string name, DLDeviceType dev = kDLGPU);
+  bool isOpen() const { return is_open_; }
+  void Open() { is_open_ = true; }
+  void Off() { is_open_ = false; }
+  void *allocate(std::string name, DLDeviceType dev);
   void schedule(const std::unordered_map<std::string, int64_t> &assigned_offset,
                 const std::unordered_map<std::string, int64_t> &assigned_trunk,
-                const std::vector<int64_t> trunk_info);
+                const std::vector<int64_t> trunk_info,
+                const std::string &dev_str);
 
   void show_offset_dict() const {
     std::cerr << "Lets see assigned_offset" << std::endl;
@@ -99,9 +112,13 @@ class DynamicAllocator {
   }
 
  private:
+  bool is_open_;
   DynamicAllocator();
   std::vector<void *> gpu_buff_list_;
+  std::vector<void *> cpu_buff_list_;
   std::vector<size_t> gpu_mem_size_;
+  std::vector<size_t> cpu_mem_size_;
+
   std::unique_ptr<std::vector<int64_t>> trunk_info_;
   std::unique_ptr<std::unordered_map<std::string, int64_t>> assigned_offset_;
   std::unique_ptr<std::unordered_map<std::string, int64_t>> assigned_trunk_;
@@ -110,7 +127,7 @@ class DynamicAllocator {
 extern void schedule_dynamic_api(
     const std::unordered_map<std::string, int64_t> &assigned_offset,
     const std::unordered_map<std::string, int64_t> &assigned_trunk,
-    const std::vector<int64_t> &trunk_info);
+    const std::vector<int64_t> &trunk_info, const std::string &dev_str);
 
 }  // namespace core
 }  // namespace turbo_transformers

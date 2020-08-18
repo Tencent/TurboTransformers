@@ -60,7 +60,8 @@ void reserve_api(int64_t size, bool use_gpu) {
   static_allocator.reserve(static_cast<int64_t>(size), dev);
 }
 
-void schedule_api(std::unordered_map<std::string, int64_t> &offset_dict) {
+void static_schedule_api(
+    std::unordered_map<std::string, int64_t> &offset_dict) {
   auto &static_allocator = StaticAllocator::GetInstance();
   static_allocator.schedule(&offset_dict);
 }
@@ -71,16 +72,32 @@ Dynamic Allocator for variable length inputs
 void schedule_dynamic_api(
     const std::unordered_map<std::string, int64_t> &assigned_offset,
     const std::unordered_map<std::string, int64_t> &assigned_trunk,
-    const std::vector<int64_t> &trunk_info) {
+    const std::vector<int64_t> &trunk_info, const std::string &dev_str) {
   auto &dynamica_allocator = DynamicAllocator::GetInstance();
-  dynamica_allocator.schedule(assigned_offset, assigned_trunk, trunk_info);
+  dynamica_allocator.Open();
+  dynamica_allocator.schedule(assigned_offset, assigned_trunk, trunk_info,
+                              dev_str);
 }
 
 // The following coe is time consumming
 void DynamicAllocator::schedule(
     const std::unordered_map<std::string, int64_t> &assigned_offset,
     const std::unordered_map<std::string, int64_t> &assigned_trunk,
-    const std::vector<int64_t> trunk_info) {
+    const std::vector<int64_t> trunk_info, const std::string &dev_str) {
+  DLDeviceType dev_type;
+  std::vector<void *> *xpu_buff_list;
+  std::vector<size_t> *xpu_mem_size;
+  if (dev_str == "GPU") {
+    dev_type = kDLGPU;
+    xpu_buff_list = &gpu_buff_list_;
+    xpu_mem_size = &gpu_mem_size_;
+  } else if (dev_str == "CPU") {
+    dev_type = kDLCPU;
+    xpu_buff_list = &cpu_buff_list_;
+    xpu_mem_size = &cpu_mem_size_;
+  } else {
+    TT_THROW("DynamicAllocator dose not support %s", dev_str.c_str());
+  }
   // deep copy schedule plan
   trunk_info_->clear();
   assigned_offset_->clear();
@@ -91,27 +108,27 @@ void DynamicAllocator::schedule(
   trunk_info_->assign(trunk_info.begin(), trunk_info.end());
 
   int Ntrunk = trunk_info.size();
-  int Nbuff = gpu_buff_list_.size();
+  int Nbuff = xpu_buff_list->size();
   // update existing trunk, which may be smaller than request
   // because you allocate new trunks and delete old trunks
   for (int i = 0; i < Nbuff && i < Ntrunk; ++i) {
-    if (gpu_mem_size_[i] < trunk_info[i]) {
-      free_impl(gpu_buff_list_[i], kDLGPU);
-      gpu_buff_list_[i] =
-          allocate_impl(static_cast<size_t>(trunk_info_->at(i)), kDLGPU);
-      gpu_mem_size_[i] = static_cast<size_t>(trunk_info_->at(i));
+    if ((*xpu_mem_size)[i] < trunk_info[i]) {
+      free_impl((*xpu_buff_list)[i], dev_type);
+      (*xpu_buff_list)[i] =
+          allocate_impl(static_cast<size_t>(trunk_info_->at(i)), dev_type);
+      (*xpu_mem_size)[i] = static_cast<size_t>(trunk_info_->at(i));
     }
   }
   // reallocate memory
   for (int i = Nbuff; i < Ntrunk; ++i) {
-    gpu_buff_list_.push_back(
-        allocate_impl(static_cast<size_t>(trunk_info_->at(i)), kDLGPU));
-    gpu_mem_size_.push_back(trunk_info_->at(i));
+    xpu_buff_list->push_back(
+        allocate_impl(static_cast<size_t>(trunk_info_->at(i)), dev_type));
+    (*xpu_mem_size).push_back(trunk_info_->at(i));
   }
   for (int i = Nbuff - 1; i >= Ntrunk; --i) {
-    free_impl(gpu_buff_list_[i], kDLGPU);
-    gpu_buff_list_.pop_back();
-    gpu_mem_size_.pop_back();
+    free_impl((*xpu_buff_list)[i], dev_type);
+    xpu_buff_list->pop_back();
+    (*xpu_mem_size).pop_back();
   }
 }
 
@@ -122,11 +139,12 @@ void *DynamicAllocator::allocate(std::string name, DLDeviceType dev) {
     auto trunk_id_it = assigned_trunk_->find(name);
     if (trunk_id_it != assigned_trunk_->end()) {
       auto trunk_id = trunk_id_it->second;
-      if (dev == kDLGPU) {
+      if (kDLCPU == dev) {
+        return static_cast<void *>(
+            static_cast<uint8_t *>(cpu_buff_list_[trunk_id]) + offset);
+      } else if (kDLGPU == dev) {
         return static_cast<void *>(
             static_cast<uint8_t *>(gpu_buff_list_[trunk_id]) + offset);
-      } else {
-        TT_THROW("DynamicAllocator allocator dose not support CPU.");
       }
     }
   } else {
@@ -137,7 +155,8 @@ void *DynamicAllocator::allocate(std::string name, DLDeviceType dev) {
 DynamicAllocator::DynamicAllocator()
     : trunk_info_(new std::vector<int64_t>()),
       assigned_offset_(new std::unordered_map<std::string, int64_t>()),
-      assigned_trunk_(new std::unordered_map<std::string, int64_t>()) {}
+      assigned_trunk_(new std::unordered_map<std::string, int64_t>()),
+      is_open_(false) {}
 
 DynamicAllocator::~DynamicAllocator() = default;
 

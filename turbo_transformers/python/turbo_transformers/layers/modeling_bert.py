@@ -30,6 +30,10 @@ from transformers.modeling_bert import BertEncoder as TorchBertEncoder
 from transformers.modeling_bert import BertModel as TorchBertModel
 from transformers.modeling_bert import BertPooler as TorchBertPooler
 
+from .bert_tensor_usage import get_bert_tensor_usage_record
+from .static_allocator import greedy_by_size_offset_calculation
+from .dynamic_allocator import trunked_greedy_by_size_offset_calculation
+
 import enum
 import numpy as np
 import os
@@ -437,15 +441,21 @@ class BertModelNoPooler:
 
 
 class BertModel:
-    def __init__(self, model, pooler=None, backend="onnxrt"):
+    # @params:
+    # pooler is used for turbo backend only
+    # config is used for memory optizations
+    def __init__(self, model, pooler=None, backend="onnxrt", config=None):
         # TODO type of bertmodel_nopooler is (onnx and torch)
         self.backend = backend
         if backend == "onnxrt":
             self.onnxmodel = model
         elif backend == "turbo":
+            self.config = config
             self.bertmodel_nopooler = model
             self.pooler = pooler
             self.backend = "turbo"
+            # use a hand-crafted opt for variable-length input
+            self.use_memory_opt = True
 
     def __call__(self,
                  inputs: AnyTensor,
@@ -460,6 +470,17 @@ class BertModel:
                  pooler_output: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None):
         if self.backend == "turbo":
+            if self.use_memory_opt:
+                tur = get_bert_tensor_usage_record(
+                    inputs.shape[0], inputs.shape[1],
+                    self.config.num_attention_heads, self.config.hidden_size,
+                    self.config.num_hidden_layers)
+                assigned_offset, assigned_trunk, trunk_info, _ = trunked_greedy_by_size_offset_calculation(
+                    tur, False)
+                cxx.dynamic_mem_schedule(
+                    assigned_offset, assigned_trunk, trunk_info,
+                    "GPU" if 'cuda' in inputs.device.type else "CPU")
+
             encoder_outputs = self.bertmodel_nopooler(
                 inputs,
                 attention_masks,
@@ -526,7 +547,7 @@ class BertModel:
             encoder = BertEncoder.from_torch(model.encoder)
             bertmodel_nopooler = BertModelNoPooler(embeddings, encoder)
             pooler = BertPooler.from_torch(model.pooler)
-            return BertModel(bertmodel_nopooler, pooler, "turbo")
+            return BertModel(bertmodel_nopooler, pooler, "turbo", model.config)
         elif backend == "onnxrt":
             import onnx
             import onnxruntime
@@ -575,7 +596,8 @@ class BertModel:
                         device: Optional[torch.device] = None,
                         backend: Optional[str] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
-        model = BertModel.from_torch(torch_model, device, backend)
+        model = BertModel.from_torch(torch_model, device, backend,
+                                     model.config)
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model

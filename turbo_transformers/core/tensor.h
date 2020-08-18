@@ -24,6 +24,7 @@
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/core/half.h"
 #include "turbo_transformers/core/memory.h"
+#include "turbo_transformers/core/model_aware_allocator.h"
 #ifdef WITH_PERFTOOLS
 #include "turbo_transformers/core/profiler.h"
 #endif
@@ -103,13 +104,33 @@ extern DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
                                         uint8_t data_type_code, size_t bits,
                                         size_t lanes);
 
+// use static memory allocator to allocate memory
+extern DLManagedTensor *NewDLPackTensorStatic(
+    const std::vector<int64_t> &shape_list, DLDeviceType device, int device_id,
+    uint8_t data_type_code, size_t bits, size_t lanes, std::string &name);
+
+// use static memory allocator to allocate memory
+extern DLManagedTensor *NewDLPackTensorDynamic(
+    const std::vector<int64_t> &shape_list, DLDeviceType device, int device_id,
+    uint8_t data_type_code, size_t bits, size_t lanes, std::string &name);
+
 template <typename T>
 inline DLManagedTensor *NewDLPackTensorT(const std::vector<int64_t> &shape_list,
                                          DLDeviceType device = kDLCPU,
-                                         int device_id = 0) {
-  return NewDLPackTensor(shape_list, device, device_id,
-                         details::DataTypeTrait<T>::DLPackTypeCode,
-                         sizeof(T) * 8, 1);
+                                         int device_id = 0,
+                                         std::string name = "") {
+  DynamicAllocator &allocator = DynamicAllocator::GetInstance();
+  bool use_dynamic = allocator.isCached(name);
+  if (!use_dynamic) {
+    return NewDLPackTensor(shape_list, device, device_id,
+                           details::DataTypeTrait<T>::DLPackTypeCode,
+                           sizeof(T) * 8, 1);
+  } else if (use_dynamic) {
+    return NewDLPackTensorDynamic(shape_list, device, device_id,
+                                  details::DataTypeTrait<T>::DLPackTypeCode,
+                                  sizeof(T) * 8, 1, name);
+  }
+  return nullptr;
 }
 
 class Tensor {
@@ -153,7 +174,7 @@ class Tensor {
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
   template <typename T>
   T *Reshape(std::vector<int64_t> shape_list, DLDeviceType device_type,
-             int device_id, const std::string name = "Reshape") {
+             int device_id, std::string name = "Reshape") {
     // if Need Realloc
 #ifdef WITH_PERFTOOLS
     auto &profile_ctx = core::Profiler::GetInstance();
@@ -161,7 +182,7 @@ class Tensor {
 #endif
     if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
       tensor_ = details::DLManagedTensorPtr(
-          NewDLPackTensorT<T>(shape_list, device_type, device_id));
+          NewDLPackTensorT<T>(shape_list, device_type, device_id, name));
     }
 #ifdef WITH_PERFTOOLS
     profile_ctx.end_profile(name, device_type);
