@@ -77,7 +77,7 @@ void MultiHeadedAttention::operator()(
   auto devtype = query_tensor.device_type();
   auto devid = query_tensor.device_id();
 
-  // TODO we should caching allocate intermediate tensor.
+  // TODO we should caching allocated intermediate tensor.
   core::Tensor *q_ptr{nullptr}, *k_ptr{nullptr}, *v_ptr{nullptr};
   core::Tensor q_out{nullptr}, k_out{nullptr}, v_out{nullptr};
   core::Tensor q_out1(nullptr);
@@ -87,7 +87,6 @@ void MultiHeadedAttention::operator()(
   core::Tensor v_out2(nullptr);
   core::Tensor k_out2(nullptr);
   core::Tensor qkv_out1(nullptr);
-  core::Tensor qkv_out2(nullptr);
 
   bool layer_cache_not_none = layer_cache.size() > 0 ? true : false;
   bool memory_keys_not_none = false, memory_values_not_none = false,
@@ -218,13 +217,13 @@ void MultiHeadedAttention::operator()(
     }
     q_out.Reshape<float>(
         {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-        devtype, devid, "q/Reshape");
+        devtype, devid, "self/q/Reshape");
     k_out.Reshape<float>(
         {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-        devtype, devid, "k/Reshape");
+        devtype, devid, "self/k/Reshape");
     v_out.Reshape<float>(
         {batch_size, num_attention_heads_, query_seq_length, size_per_head},
-        devtype, devid, "v/Reshape");
+        devtype, devid, "self/v/Reshape");
 
     kernels::SplitAddBiasTransposeForScore(
         qkv_out1, qkv_bias_, q_out, k_out, v_out,
