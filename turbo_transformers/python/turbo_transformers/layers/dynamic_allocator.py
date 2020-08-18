@@ -182,9 +182,9 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
     used_consumption = used_consumption / 1024 / 1024
     total_consumption = total_consumption / 1024 / 1024
     new_allocate_size = new_allocate_size / 1024 / 1024
-    print(
-        f"> debug total_consumption {total_consumption} MB used_consumption {used_consumption} MB percent {used_consumption/total_consumption}"
-    )
+    # print(
+    #     f"> debug total_consumption {total_consumption} MB used_consumption {used_consumption} MB percent {used_consumption/total_consumption}"
+    # )
     return assigned_offset, assigned_trunk, gTrunkList.getInfo(), (
         total_consumption, new_allocate_size)
 

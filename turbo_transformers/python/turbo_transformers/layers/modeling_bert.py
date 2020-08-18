@@ -549,9 +549,9 @@ class BertModel:
             time_end = time.time()
             rt_cost = time_end - time_start
             ratio = (offset_cost + schl_cost + tur_cost) / rt_cost
-            print(
-                f"BertModel tur {tur_cost}, offset {offset_cost}, schl {schl_cost}, rt {rt_cost}, ratio {ratio}\n"
-            )
+            # print(
+            #     f"BertModel tur {tur_cost}, offset {offset_cost}, schl {schl_cost}, rt {rt_cost}, ratio {ratio}\n"
+            # )
             return (
                 convert_returns_as_type(sequence_output, return_type),
                 pooler_output,

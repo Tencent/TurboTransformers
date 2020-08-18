@@ -25,7 +25,7 @@ class LoadType(enum.Enum):
 
 def test(loadtype: LoadType, use_cuda: bool):
     cfg = transformers.BertConfig()
-    cfg.num_hidden_layers = 1
+    cfg.num_hidden_layers = 12
     model = transformers.BertModel(cfg)
     # model = transformers.BertModel.from_pretrained(model_id)
     model.eval()
@@ -57,7 +57,6 @@ def test(loadtype: LoadType, use_cuda: bool):
 
     start_time = time.time()
     for input_ids, segment_ids in zip(input_ids_list, segment_ids_list):
-        # input_ids = torch.tensor([[1, 7, 3, 9, 4, 8, 6, 3, 9, 8]],dtype=torch.long, device='cuda:0')
         model(
             input_ids
         )  # sequence_output, pooled_output, (hidden_states), (attentions)
