@@ -21,7 +21,6 @@
 #endif
 namespace turbo_transformers {
 namespace core {
-#ifdef TT_WITH_CUDA
 struct BadAlloc : public std::exception {
   explicit BadAlloc(std::string err_msg) : err_str_(err_msg) {}
 
@@ -29,7 +28,6 @@ struct BadAlloc : public std::exception {
 
   std::string err_str_;
 };
-#endif
 extern void *allocate_impl(size_t size, DLDeviceType dev);
 
 extern void free_impl(void *memory_addr, DLDeviceType dev);
