@@ -79,6 +79,7 @@ void MultiHeadedAttention::operator()(
 
   // TODO we should caching allocate intermediate tensor.
   core::Tensor *q_ptr{nullptr}, *k_ptr{nullptr}, *v_ptr{nullptr};
+  core::Tensor q_out{nullptr}, k_out{nullptr}, v_out{nullptr};
   core::Tensor q_out1(nullptr);
   core::Tensor v_out1(nullptr);
   core::Tensor k_out1(nullptr);
@@ -199,7 +200,7 @@ void MultiHeadedAttention::operator()(
       }
     }  // else
   } else if (attn_type == "self") {
-    qkv_out1.Reshape<float>({3, batch_size, query_seq_length, hidden_size},
+    qkv_out1.Reshape<float>({batch_size, query_seq_length, 3, hidden_size},
                             devtype, devid, "self/qkv_out1/Reshape");
     if (pre_layernorm) {
       core::Tensor layernormed_query(nullptr);
@@ -215,26 +216,33 @@ void MultiHeadedAttention::operator()(
       kernels::MatMul(query_tensor, false, qkv_weight_, is_trans_weight, 1.0,
                       &qkv_out1, 0.0, "self/gemm012_fused");
     }
-    qkv_out2.Reshape<float>(
-        {3, batch_size, num_attention_heads_, query_seq_length, size_per_head},
-        devtype, devid, "self/qkv_out2/Reshape");
+    q_out.Reshape<float>(
+        {batch_size, num_attention_heads_, query_seq_length, size_per_head},
+        devtype, devid, "q/Reshape");
+    k_out.Reshape<float>(
+        {batch_size, num_attention_heads_, query_seq_length, size_per_head},
+        devtype, devid, "k/Reshape");
+    v_out.Reshape<float>(
+        {batch_size, num_attention_heads_, query_seq_length, size_per_head},
+        devtype, devid, "v/Reshape");
+
     kernels::SplitAddBiasTransposeForScore(
-        &qkv_out2, qkv_out1, qkv_bias_, "self/SplitAddBiasTransposeForScore");
-    q_ptr =
-        new core::Tensor(qkv_out2[0]);  // copy temporary tensor to heap space.
+        qkv_out1, qkv_bias_, q_out, k_out, v_out,
+        "self/SplitAddBiasTransposeForScore");
+    q_ptr = &q_out;
     if (self_keys_not_none) {
-      kernels::Concat<float>(*layer_cache["self_keys"], qkv_out2[1], 2, &k_out2,
+      kernels::Concat<float>(*layer_cache["self_keys"], k_out, 2, &k_out2,
                              "self/keys/Concat");
       k_ptr = &k_out2;
     } else {
-      k_ptr = new core::Tensor(qkv_out2[1]);
+      k_ptr = &k_out;
     }
     if (self_values_not_none) {
-      kernels::Concat<float>(*layer_cache["self_values"], qkv_out2[2], 2,
-                             &v_out2, "self/values/Concat");
+      kernels::Concat<float>(*layer_cache["self_values"], v_out, 2, &v_out2,
+                             "self/values/Concat");
       v_ptr = &v_out2;
     } else {
-      v_ptr = new core::Tensor(qkv_out2[2]);
+      v_ptr = &v_out;
     }
     if (layer_cache_not_none) {
       layer_cache["self_keys"]->Reshape<float>(

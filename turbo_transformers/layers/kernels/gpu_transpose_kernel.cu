@@ -73,6 +73,66 @@ void GPUSplitAddBiasTransposeForScore(
       weight_num, size_per_head, out_data);
 }
 
+/*
+ Output transpose results into three tensors
+*/
+static __global__ void split_add_bias_transpose_for_score_3output(
+    const float* input_data, const float* bias_data, const int batch_size,
+    const int seq_len, const int head_num, const int weight_num,
+    const int size_per_head, float* q_output_data, float* k_output_data,
+    float* v_output_data) {
+  int tid = threadIdx.x;
+  int bid = blockIdx.x;
+  int idx = tid;
+  int batch_id = bid / (seq_len * weight_num * head_num);
+  int seq_id =
+      bid % (seq_len * weight_num * head_num) / (weight_num * head_num);
+  int weight_id = bid % (weight_num * head_num) / head_num;
+  int head_id = bid % head_num;
+
+  int head_num_size_per_head = head_num * size_per_head;
+  int weight_id_head_num_size_per_head = weight_id * head_num_size_per_head;
+  int head_id_size_per_head = head_id * size_per_head;
+
+  float* output_data = nullptr;
+  if (weight_id == 0) {
+    output_data = q_output_data;
+  } else if (weight_id == 1) {
+    output_data = k_output_data;
+  } else if (weight_id == 2) {
+    output_data = v_output_data;
+  }
+
+  while (idx < size_per_head) {
+    float bias_val = bias_data[weight_id_head_num_size_per_head +
+                               head_id_size_per_head + idx];
+    output_data[batch_id * seq_len * head_num_size_per_head +
+                head_id * seq_len * size_per_head + seq_id * size_per_head +
+                idx] =
+        input_data[batch_id * seq_len * weight_num * head_num_size_per_head +
+                   seq_id * weight_num * head_num_size_per_head +
+                   weight_id_head_num_size_per_head + head_id_size_per_head +
+                   idx] +
+        bias_val;
+    idx += blockDim.x;
+  }
+}
+
+template <>
+void GPUSplitAddBiasTransposeForScoreThreeOutput(
+    const float* input_data, const float* bias_data, int64_t batch_size,
+    int64_t seq_len, int64_t weight_num, int64_t num_attention_heads,
+    int64_t size_per_head, cudaStream_t stream, float* q_out_data,
+    float* k_out_data, float* v_out_data) {
+  const int n = size_per_head;
+  const int m = batch_size * seq_len * num_attention_heads * weight_num;
+  dim3 grid(m);
+  dim3 block(min(n, 1024));
+  split_add_bias_transpose_for_score_3output<<<grid, block, 0, stream>>>(
+      input_data, bias_data, batch_size, seq_len, num_attention_heads,
+      weight_num, size_per_head, q_out_data, k_out_data, v_out_data);
+}
+
 namespace {
 
 // batch, head, seq, size_per_head -> batch head seq size_per_head
