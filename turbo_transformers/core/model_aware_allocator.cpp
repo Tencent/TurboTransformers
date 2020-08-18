@@ -112,7 +112,7 @@ void DynamicAllocator::schedule(
   // update existing trunk, which may be smaller than request
   // because you allocate new trunks and delete old trunks
   for (int i = 0; i < Nbuff && i < Ntrunk; ++i) {
-    if ((*xpu_mem_size)[i] < trunk_info[i]) {
+    if ((*xpu_mem_size)[i] < static_cast<size_t>(trunk_info[i])) {
       free_impl((*xpu_buff_list)[i], dev_type);
       (*xpu_buff_list)[i] =
           allocate_impl(static_cast<size_t>(trunk_info_->at(i)), dev_type);

@@ -33,12 +33,13 @@ def get_bert_tensor_usage_record(batch_size,
     K_size = V_size = batch_size * to_seq_len * hidden_size * data_bytes
     attn_score_size = batch_size * num_head * from_seq_len * to_seq_len * data_bytes
     TUR_dict = {}
-    # aligned_id_size = (from_seq_len * batch_size + 31) // 32 * 32
-    # TUR_dict[f"PrepareBertMasks/possitionids"] = (0, 1, aligned_id_size)
-    # TUR_dict[f"PrepareBertMasks/seqids/Reshape"] = (0, 1, aligned_id_size)
-    # TUR_dict[f"PrepareBertMasks/attmask/Reshape"] = (0, 1, aligned_id_size)
-    # TUR_dict[f"PrepareBertMasks/extendedattnmask/Reshape"] = (0, 1, aligned_id_size)
-    # TUR_dict[f"BERTEmbedding/Reshape"] = (1, 2, Q_size)
+    aligned_id_size = (from_seq_len * batch_size + 31) * data_bytes // 32 * 32
+    TUR_dict[f"PrepareBertMasks/possitionids"] = (0, 1, aligned_id_size)
+    TUR_dict[f"PrepareBertMasks/seqids/Reshape"] = (0, 1, aligned_id_size)
+    TUR_dict[f"PrepareBertMasks/attmask/Reshape"] = (0, 1, aligned_id_size)
+    TUR_dict[f"PrepareBertMasks/extendedattnmask/Reshape"] = (0, 1,
+                                                              aligned_id_size)
+    TUR_dict[f"BERTEmbedding/Reshape"] = (1, 2, Q_size)
     start_idx = 0
     TUR_dict[f"self/qkv_out1/Reshape"] = (start_idx + 0, start_idx + 1,
                                           K_size + Q_size + V_size)
