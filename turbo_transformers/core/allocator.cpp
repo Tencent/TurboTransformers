@@ -15,6 +15,8 @@
 
 #include <unordered_map>
 
+#include "turbo_transformers/core/allocator_impl.h"
+
 #ifdef TT_WITH_CUDA
 #include <cuda_runtime.h>
 
@@ -27,60 +29,6 @@
 
 namespace turbo_transformers {
 namespace core {
-
-struct BadAlloc : public std::exception {
-  explicit BadAlloc(std::string err_msg) : err_str_(err_msg) {}
-
-  const char *what() const noexcept override { return err_str_.c_str(); }
-
-  std::string err_str_;
-};
-
-#ifdef TT_WITH_CUDA
-static void *cuda_alloc(size_t sz) {
-  void *device_mem;
-  // try {
-  //   cudaMalloc((void **)&(device_mem), sz);
-  // } catch (...) {
-  //   throw BadAlloc("cudaMalloc failed.");
-  // }
-  if (cudaMalloc((void **)&(device_mem), sz) != cudaSuccess) {
-    throw BadAlloc("cudaMalloc failed.");
-  }
-  return device_mem;
-}
-
-static void cuda_free(void *data) { TT_ENFORCE_CUDA_SUCCESS(cudaFree(data)); }
-#endif
-
-namespace {
-void *allocate_impl(size_t size, DLDeviceType dev) {
-  if (kDLCPU == dev) {
-    return align_alloc(size);
-  } else if (kDLGPU == dev) {
-#ifdef TT_WITH_CUDA
-    auto addr = cuda_alloc(size);
-    return addr;
-#endif
-  } else {
-    TT_THROW("Not supported devtype");
-  }
-  return nullptr;
-}
-
-void free_impl(void *memory_addr, DLDeviceType dev) {
-  if (kDLCPU == dev) {
-    free(memory_addr);
-  } else if (kDLGPU == dev) {
-#ifdef TT_WITH_CUDA
-    cuda_free(memory_addr);
-#endif
-  } else {
-    TT_THROW("Not supported devtype");
-  }
-}
-
-}  // namespace
 
 struct Allocator::BestFitAllocatorImpl {
  public:

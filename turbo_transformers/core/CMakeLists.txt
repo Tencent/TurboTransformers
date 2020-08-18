@@ -23,6 +23,8 @@ add_library(tt_core
             config.cpp
             profiler.cpp
             allocator.cpp
+            model_aware_allocator.cpp
+            allocator_impl.cpp
         )
 target_link_libraries(tt_core PUBLIC
         absl::stacktrace
