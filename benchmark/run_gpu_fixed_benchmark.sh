@@ -29,7 +29,7 @@ do
     for framework in ${FRAMEWORKS[*]}
     do
       python benchmark.py ${MODEL} --seq_len=${seq_len} --batch_size=${batch_size}\
-          -n ${N} --framework=${framework}
+          -n ${N} --framework=${framework} --use_gpu
     done
   done
 done
