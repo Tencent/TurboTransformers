@@ -4,7 +4,6 @@ import turbo_transformers
 from turbo_transformers.layers.utils import convert2tt_tensor, try_convert, convert_returns_as_type, ReturnType
 import time
 
-
 cfg = transformers.BertConfig()
 model = transformers.BertModel(cfg)
 model.eval()
@@ -34,4 +33,3 @@ for l in lens:
     print("turbo int8 layer QPS =", loops/(end-start))
 
 assert torch.max(torch.abs(res-res2)) < 1e-3
-

@@ -48,7 +48,7 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
       input_tensor, dense_bias_, layer_norm_weight_, layer_norm_bias_,
       output_tensor, 1e-12, "BertOutput/AddBiasLayerNorm");
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("BertOutput");
+  profile_ctx.end_profile("BertOutput", input_tensor.device_type());
 #endif
 }
 
