@@ -444,7 +444,12 @@ class BertModel:
     # @params:
     # pooler is used for turbo backend only
     # config is used for memory optizations
-    def __init__(self, model, pooler=None, backend="onnxrt", config=None):
+    def __init__(self,
+                 model,
+                 pooler=None,
+                 backend="onnxrt",
+                 config=None,
+                 use_memory_opt=False):
         # TODO type of bertmodel_nopooler is (onnx and torch)
         self.backend = backend
         if backend == "onnxrt":
@@ -455,7 +460,7 @@ class BertModel:
             self.pooler = pooler
             self.backend = "turbo"
             # use a hand-crafted opt for variable-length input
-            self.use_memory_opt = True
+            self.use_memory_opt = use_memory_opt
 
     def __call__(self,
                  inputs: AnyTensor,
@@ -521,18 +526,20 @@ class BertModel:
     @staticmethod
     def from_torch(model: TorchBertModel,
                    device: Optional[torch.device] = None,
-                   backend: Optional[str] = None):
+                   backend: Optional[str] = None,
+                   use_memory_opt=False):
         """
         Args:
             model : a PyTorch Bert Model
             device : cpu or GPU
             backend : a string to indicates kernel provides
             Four options. [onnxrt-cpu, onnxrt-gpu, turbo-cpu, turbo-gpu]
+            use_memory_opt [bool] whether or not use memory opt for variable length inputs.
         """
         use_gpu = False
         if device is None:
             device = model.device
-        # may need to move to GPU explicitly
+        # we may need to move to GPU explicitly
         if 'cuda' in device.type and torch.cuda.is_available():
             model.to(device)
             if backend is None:
@@ -547,7 +554,8 @@ class BertModel:
             encoder = BertEncoder.from_torch(model.encoder)
             bertmodel_nopooler = BertModelNoPooler(embeddings, encoder)
             pooler = BertPooler.from_torch(model.pooler)
-            return BertModel(bertmodel_nopooler, pooler, "turbo", model.config)
+            return BertModel(bertmodel_nopooler, pooler, "turbo", model.config,
+                             use_memory_opt)
         elif backend == "onnxrt":
             import onnx
             import onnxruntime
