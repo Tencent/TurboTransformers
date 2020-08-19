@@ -45,7 +45,7 @@ void BertIntermediate::operator()(const core::Tensor& input_tensor,
   kernels::AddBiasAct<float, kernels::ActivationType::Gelu>(
       dense_bias_, output_tensor, "BertIntermediate/AddBiasAct");
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("BertIntermediate");
+  profile_ctx.end_profile("BertIntermediate", input_tensor.device_type());
 #endif
 }
 
