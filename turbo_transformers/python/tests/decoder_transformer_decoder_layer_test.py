@@ -17,7 +17,8 @@ import sys
 import torch
 import os
 
-from onmt.decoders.transformer import TransformerDecoderLayer
+# from onmt.decoders.transformer import TransformerDecoderLayer
+from onmt_tranformer_copy import TransformerDecoderLayer
 
 sys.path.append(os.path.dirname(__file__))
 import test_helper
@@ -91,7 +92,6 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
 
             onmt_result, torch_qps, torch_time_consume = \
                 test_helper.run_model(onmt_model, use_cuda, num_iter)
-
             onmt_mid, attns, attn_align = onmt_result
 
             print(
