@@ -316,6 +316,13 @@ class PositionwiseFeedForward(cxx.PositionwiseFeedForward):
             return ffn
 
 
+class ModifiedOnmtTransformerDecoderLayer(torch.nn.Module):
+    def __init__(self, model):
+        super(ModifiedOnmtTransformerDecoderLayer, self).__init__()
+        self.model = model
+    def forward(self, *args, **kwargs):
+        return self.model.forward(*args, **kwargs)[:-1]
+
 class TransformerDecoderLayer:
     def __init__(self, self_attn: MultiHeadedAttention,
                  context_attn: MultiHeadedAttention,
@@ -330,7 +337,7 @@ class TransformerDecoderLayer:
             self.backend = 'onnxrt'
             d_model = model.layer_norm_1.normalized_shape[0]
             # trick
-            model.forward = model._forward
+            model = ModifiedOnmtTransformerDecoderLayer(model)
             dummy_input = {'input_tensor':  torch.rand(1,10,d_model, dtype=torch.float32),
                            'memory_bank':   torch.rand(1,10,d_model, dtype=torch.float32),
                            'src_pad_mask':  torch.zeros(1,1,10, dtype=torch.bool),
