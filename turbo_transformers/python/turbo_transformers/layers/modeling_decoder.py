@@ -316,15 +316,20 @@ class PositionwiseFeedForward(cxx.PositionwiseFeedForward):
             return ffn
 
 
+# The onnxruntime dose not support (FloatTensor, FloatTensor, FloatTensor or None)
+# The first two FloatTensors are kept.
 class ModifiedOnmtTransformerDecoderLayer(torch.nn.Module):
     def __init__(self, model):
         super(ModifiedOnmtTransformerDecoderLayer, self).__init__()
         self.model = model
+
     def forward(self, *args, **kwargs):
         return self.model.forward(*args, **kwargs)[:-1]
 
+
 class TransformerDecoderLayer:
-    def __init__(self, self_attn: MultiHeadedAttention,
+    def __init__(self,
+                 self_attn: MultiHeadedAttention,
                  context_attn: MultiHeadedAttention,
                  feed_forward: PositionwiseFeedForward,
                  model=None,
@@ -333,42 +338,44 @@ class TransformerDecoderLayer:
         https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py
         self_attn_type of MultiHeadedAttention should always scaled-dot
         """
-        if backend=='onnxrt':
+        if backend == 'onnxrt':
             self.backend = 'onnxrt'
             d_model = model.layer_norm_1.normalized_shape[0]
             # trick
             model = ModifiedOnmtTransformerDecoderLayer(model)
-            dummy_input = {'input_tensor':  torch.rand(1,10,d_model, dtype=torch.float32),
-                           'memory_bank':   torch.rand(1,10,d_model, dtype=torch.float32),
-                           'src_pad_mask':  torch.zeros(1,1,10, dtype=torch.bool),
-                           'dec_mask':  torch.zeros(1,1,10, dtype=torch.bool)}
+            dummy_input = {
+                'input_tensor': torch.rand(1, 10, d_model,
+                                           dtype=torch.float32),
+                'memory_bank': torch.rand(1, 10, d_model, dtype=torch.float32),
+                'src_pad_mask': torch.zeros(1, 1, 10, dtype=torch.bool),
+                'dec_mask': torch.zeros(1, 1, 10, dtype=torch.bool)
+            }
             symbolic_names = {0: 'batch_size', 1: 'max_len'}
             symbolic_names_2 = {0: 'batch_size', 2: 'max_len'}
-            onnx_model_path = "/tmp/temp_turbo_onnx.model"
-            with open(onnx_model_path, 'wb') as f:
-                torch.onnx.export(  model,
-                                    (   dummy_input['input_tensor'], 
-                                        dummy_input['memory_bank'], 
-                                        dummy_input['src_pad_mask'],
-                                        dummy_input['dec_mask']
-                                     ),
-                                    f,
-                                    input_names=['input_tensor', 
-                                            'memory_bank', 
-                                            'src_pad_mask', 
-                                            'dec_mask'], 
-                                    output_names=['output'],
-                                    opset_version=11,
-                                    dynamic_axes={  'input_tensor': symbolic_names, 
-                                                    'memory_bank': symbolic_names, 
-                                                    'src_pad_mask': symbolic_names_2, 
-                                                    'dec_mask': symbolic_names_2}
-                )
+            self.onnx_model_path = "/tmp/temp_turbo_onnx.model"
+            with open(self.onnx_model_path, 'wb') as f:
+                torch.onnx.export(
+                    model,
+                    (dummy_input['input_tensor'], dummy_input['memory_bank'],
+                     dummy_input['src_pad_mask'], dummy_input['dec_mask']),
+                    f,
+                    input_names=[
+                        'input_tensor', 'memory_bank', 'src_pad_mask',
+                        'dec_mask'
+                    ],
+                    output_names=['output'],
+                    opset_version=11,
+                    dynamic_axes={
+                        'input_tensor': symbolic_names,
+                        'memory_bank': symbolic_names,
+                        'src_pad_mask': symbolic_names_2,
+                        'dec_mask': symbolic_names_2
+                    })
             import onnxruntime
             sess_options = onnxruntime.SessionOptions()
             sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-            self.session = onnxruntime.InferenceSession(onnx_model_path, sess_options)
-
+            self.session = onnxruntime.InferenceSession(
+                self.onnx_model_path, sess_options)
         else:
             self.backend = 'turbo'
             self.self_attn = self_attn
@@ -378,6 +385,25 @@ class TransformerDecoderLayer:
             if not isinstance(context_attn, MultiHeadedAttention):
                 raise "context_attn should be of type MultiHeadedAttention"
             self.feed_forward = feed_forward
+
+    def quantize_dynamic(self):
+        assert self.backend == 'onnxrt'
+        from onnxruntime.quantization import quantize, QuantizationMode
+        import onnx
+        import onnxruntime
+        import onnxruntime.backend
+        opt_model = onnx.load(self.onnx_model_path)
+        quantized_onnx_model = quantize(
+            opt_model,
+            quantization_mode=QuantizationMode.IntegerOps,
+            symmetric_weight=True,
+            force_fusions=True)
+        quantized_model_path = "/tmp/temp_turbo_onnx_q.model"
+        onnx.save(quantized_onnx_model, quantized_model_path)
+        sess_options = onnxruntime.SessionOptions()
+        sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        self.session = onnxruntime.InferenceSession(quantized_model_path,
+                                                    sess_options)
 
     def __call__(self,
                  input_tensor: torch.Tensor,
@@ -407,30 +433,36 @@ class TransformerDecoderLayer:
             * top_attns ``(batch_size, T, src_len)``  or None
             * attn_align None
         """
-        if self.backend=='onnxrt':
+        if self.backend == 'onnxrt':
             if step is None:
                 if not future:
                     tgt_len = tgt_pad_mask.size(-1)
-                    future_mask_numpy = np.ones(shape = (tgt_len, tgt_len), dtype = np.float32)
+                    future_mask_numpy = np.ones(shape=(tgt_len, tgt_len),
+                                                dtype=np.float32)
                     future_mask_numpy = np.triu(future_mask_numpy)
                     # TODO(jiaruifang) move to GPU if use cuda
-                    future_mask = torch.tensor(future_mask_numpy, device = input_tensor.device).view(1, tgt_len, tgt_len)
+                    future_mask = torch.tensor(
+                        future_mask_numpy,
+                        device=input_tensor.device).view(1, tgt_len, tgt_len)
                     dec_mask = torch.gt(tgt_pad_mask + future_mask, 0)
                 else:  # only mask padding, result mask in (B, 1, T)
                     dec_mask = tgt_pad_mask
             else:
+                # init a dummy dec_mask
                 dec_mask = torch.zeros(input_tensor.size(0),
-                                            1,
-                                            input_tensor.size(1),
-                                            dtype=torch.float32,
-                                            device=input_tensor.device).bool()
-            ort_inputs = {'input_tensor':   input_tensor.cpu().numpy(), 
-                        'memory_bank':    memory_bank.cpu().numpy(), 
-                        'src_pad_mask':   src_pad_mask.cpu().numpy(),
-                        'dec_mask':       dec_mask.cpu().numpy()
-                        }
+                                       1,
+                                       input_tensor.size(1),
+                                       dtype=torch.float32,
+                                       device=input_tensor.device).bool()
+
+            ort_inputs = {
+                'input_tensor': input_tensor.cpu().numpy(),
+                'memory_bank': memory_bank.cpu().numpy(),
+                'src_pad_mask': src_pad_mask.cpu().numpy(),
+                'dec_mask': dec_mask.cpu().numpy()
+            }
             return self.session.run(None, ort_inputs)
-            
+
         # dec_mask = None which is no mask
         dec_mask = None
 
@@ -488,9 +520,14 @@ class TransformerDecoderLayer:
             ), None  #attn_aligned mast be None
 
     @staticmethod
-    def from_onmt(transformer_decoder_layer: OnmtTransformerDecoderLayer, backend='onnxrt'):
-        if backend=='onnxrt':
-            return TransformerDecoderLayer(None, None, None, model=transformer_decoder_layer, backend='onnxrt')
+    def from_onmt(transformer_decoder_layer: OnmtTransformerDecoderLayer,
+                  backend='onnxrt'):
+        if backend == 'onnxrt':
+            return TransformerDecoderLayer(None,
+                                           None,
+                                           None,
+                                           model=transformer_decoder_layer,
+                                           backend='onnxrt')
         params = {
             k: v
             for k, v in transformer_decoder_layer.named_parameters()
@@ -540,7 +577,10 @@ class TransformerDecoderLayer:
         feed_forward = PositionwiseFeedForward.from_onmt(
             transformer_decoder_layer.feed_forward)
 
-        return TransformerDecoderLayer(self_attn, context_attn, feed_forward, backend='turbo')
+        return TransformerDecoderLayer(self_attn,
+                                       context_attn,
+                                       feed_forward,
+                                       backend='turbo')
 
 
 class TransformerDecoder:

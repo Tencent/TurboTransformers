@@ -26,7 +26,11 @@ import test_helper
 fname = "tt_decoder_transformer_decoder_layer.txt"
 
 
-def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
+def create_test(batch_size,
+                src_length,
+                T,
+                with_quantize_dynamic=False,
+                backend="turbo"):
     class TestDecoder(unittest.TestCase):
         def init_data(self, use_cuda):
             self.test_device = torch.device('cuda:0') if use_cuda else \
@@ -46,12 +50,14 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
             if use_cuda:
                 self.onmt_decoder.to(self.test_device)
             self.turbo_decoder = turbo_transformers.TransformerDecoderLayer.from_onmt(
-                self.onmt_decoder, "onnxrt")
+                self.onmt_decoder, backend)
 
             # https://pytorch.org/docs/stable/quantization.html
             if with_quantize_dynamic and not use_cuda:
                 self.quantized_onmt_decoder = torch.quantization.quantize_dynamic(
                     self.onmt_decoder)
+                if backend == "onnxrt":
+                    self.turbo_decoder.quantize_dynamic()
 
         def check_torch_and_turbo(self, use_cuda, num_iter=1):
             deivce_type = "GPU" if use_cuda else "CPU"
@@ -98,6 +104,30 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                 f"ONMT Deocder {info} ",
                 f"{deivce_type} QPS, {torch_qps}, time, {torch_time_consume}")
 
+            turbo_model = lambda: self.turbo_decoder(self.inputs,
+                                                     self.memory_bank,
+                                                     self.src_pad_mask,
+                                                     self.tgt_pad_mask,
+                                                     layer_cache=None,
+                                                     step=step,
+                                                     future=False)
+
+            with turbo_transformers.pref_guard(info) as perf:
+                turbo_result, turbo_qps, turbo_time_consume = \
+                    test_helper.run_model(turbo_model, use_cuda, num_iter)
+
+            turbo_mid = torch.FloatTensor(turbo_result[0])
+            turbo_attns = torch.FloatTensor(turbo_result[1])
+
+            print(
+                f"Turbo Deocder {info} ",
+                f"{deivce_type} QPS, {turbo_qps}, time, {turbo_time_consume}")
+
+            # TODO(jiaruifang) why FP16 error is so large?
+            err = 0.5 if backend == "onnxrt" else 1e-3
+            self.assertTrue(torch.max(torch.abs(onmt_mid - turbo_mid)) < err)
+            self.assertTrue(torch.max(torch.abs(attns - turbo_attns)) < err)
+
             if with_quantize_dynamic and not use_cuda:
                 quantized_onmt_model = lambda: self.quantized_onmt_decoder(
                     self.inputs,
@@ -118,41 +148,11 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
                     f"{deivce_type} QPS, {quantized_torch_qps}, time, {quantized_torch_time_consume}"
                 )
 
-                # print(onmt_mid)
-                # print(quantized_onmt_mid)
-
-                # self.assertTrue(
-                #     torch.max(torch.abs(onmt_mid -
-                #                         quantized_onmt_mid)) < (1e-3 if use_cuda else 1e-4))
-                # self.assertTrue(
-                #     torch.max(torch.abs(attns - quantized_attns)) < (
-                #         1e-3 if use_cuda else 1e-4))
-
-            turbo_model = lambda: self.turbo_decoder(self.inputs,
-                                                     self.memory_bank,
-                                                     self.src_pad_mask,
-                                                     self.tgt_pad_mask,
-                                                     layer_cache=None,
-                                                     step=step,
-                                                     future=False)
-
-            with turbo_transformers.pref_guard(info) as perf:
-                turbo_result, turbo_qps, turbo_time_consume = \
-                    test_helper.run_model(turbo_model, use_cuda, num_iter)
-
-            turbo_mid = torch.FloatTensor(turbo_result[0])
-            turbo_attns = torch.FloatTensor(turbo_result[1])
-
-            print(
-                f"Turbo Deocder {info} ",
-                f"{deivce_type} QPS, {turbo_qps}, time, {turbo_time_consume}")
-
-            # self.assertTrue(
-            #     torch.max(torch.abs(onmt_mid -
-            #                         turbo_mid)) < (1e-3 if use_cuda else 1e-4))
-            # self.assertTrue(
-            #     torch.max(torch.abs(attns - turbo_attns)) < (
-            #         1e-3 if use_cuda else 1e-4))
+                # compare ort quantized and torch quantized
+                self.assertTrue(
+                    torch.max(torch.abs(quantized_onmt_mid -
+                                        turbo_mid)) < 1e-1)
+                return
 
             if with_quantize_dynamic and not use_cuda:
                 with open(fname, "a") as fh:
@@ -176,12 +176,16 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
 with open(fname, "w") as fh:
     fh.write(", torch, *q_torch, turbo_transformers\n")
 
-# for quantize in [True]:
-#     for batch_size in [4]:
-#         for src_length in [10, 20, 40, 60, 80, 100]:
-#             for T in range(10, src_length, 10):
-#                 create_test(batch_size, src_length, T, quantize)
-create_test(1, 10, 10, True)
-create_test(1, 30, 20, True)
+#quantize test
+for batch_size in [4]:
+    for src_length in [10, 20, 40, 60, 80, 100]:
+        for T in range(10, src_length, 10):
+            create_test(batch_size, src_length, T, True, "onnxrt")
+#FP32 test
+for batch_size in [4]:
+    for src_length in [10, 20, 40, 60, 80, 100]:
+        for T in range(10, src_length, 10):
+            create_test(batch_size, src_length, T, False, "turbo")
+
 if __name__ == '__main__':
     unittest.main()
