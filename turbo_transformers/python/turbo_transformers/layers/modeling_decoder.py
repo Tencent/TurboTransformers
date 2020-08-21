@@ -381,16 +381,13 @@ class TransformerDecoderLayer:
                     })
             import onnxruntime
             import onnxruntime.backend
-            # sess_options = onnxruntime.SessionOptions()
-            # sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-            # self.session = onnxruntime.InferenceSession(
-            #     self.onnx_model_path, sess_options)
+            sess_options = onnxruntime.SessionOptions()
+            sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+            self.session = onnxruntime.InferenceSession(
+                self.onnx_model_path, sess_options)
+            if use_cuda:
+                self.session.set_providers(['CUDAExecutionProvider'])
 
-            self.onnx_model = onnxruntime.backend.prepare(
-                model=self.onnx_model_path,
-                device='GPU' if use_cuda else 'CPU',
-                graph_optimization_level=onnxruntime.GraphOptimizationLevel.
-                ORT_ENABLE_ALL)
         else:
             self.backend = 'turbo'
             self.self_attn = self_attn
@@ -420,11 +417,6 @@ class TransformerDecoderLayer:
         self.session = onnxruntime.InferenceSession(quantized_model_path,
                                                     sess_options)
         self.session.set_provders('CUDAExecutionProvider')
-        # self.onnx_model = onnxruntime.backend.prepare(
-        #     model=onnx_model,
-        #     device='CPU',
-        #     graph_optimization_level=onnxruntime.GraphOptimizationLevel.
-        #     ORT_ENABLE_ALL)
 
     def __call__(self,
                  input_tensor: torch.Tensor,
@@ -475,27 +467,18 @@ class TransformerDecoderLayer:
                                        input_tensor.size(1),
                                        dtype=torch.float32,
                                        device=input_tensor.device).bool()
-            # # ort_inputs = {
-            # #     'input_tensor': input_tensor.cpu().numpy(),
-            # #     'memory_bank': memory_bank.cpu().numpy(),
-            # #     'src_pad_mask': src_pad_mask.cpu().numpy(),
-            # #     'dec_mask': dec_mask.cpu().numpy()
-            # # }
-            # ort_inputs = [input_tensor.cpu().numpy(), memory_bank.cpu().numpy(),
-            #             src_pad_mask.cpu().numpy(), dec_mask.cpu().numpy()]
-            # return self.onnx_model.run(input_tensor=input_tensor.cpu().numpy(),
-            #         memory_bank = memory_bank.cpu().numpy(),
-            #         src_pad_mask = src_pad_mask.cpu().numpy(),
-            #         dec_mask = dec_mask.cpu().numpy())
             ort_inputs = {
                 'input_tensor': input_tensor.cpu().numpy(),
                 'memory_bank': memory_bank.cpu().numpy(),
                 'src_pad_mask': src_pad_mask.cpu().numpy(),
                 'dec_mask': dec_mask.cpu().numpy()
             }
-            return self.onnx_model.run(inputs=ort_inputs)
-            # return self.session.run(None, ort_inputs)
-
+            # return self.onnx_model.run(inputs=ort_inputs)
+            output_list = self.session.run(None, ort_inputs)
+            for idx in range(len(output_list)):
+                output_list[idx] = torch.tensor(output_list[idx],
+                                                device=input_tensor.device)
+            return output_list
         # dec_mask = None which is no mask
         dec_mask = None
 

@@ -116,8 +116,8 @@ def create_test(batch_size,
                 turbo_result, turbo_qps, turbo_time_consume = \
                     test_helper.run_model(turbo_model, use_cuda, num_iter)
 
-            turbo_mid = torch.FloatTensor(turbo_result[0])
-            turbo_attns = torch.FloatTensor(turbo_result[1])
+            turbo_mid = turbo_result[0]
+            turbo_attns = turbo_result[1]
 
             if with_quantize_dynamic and not use_cuda and backend == "onnxrt":
                 turbo_plan_name = "Turbo Quantized"
@@ -180,16 +180,17 @@ def create_test(batch_size,
 with open(fname, "w") as fh:
     fh.write(", torch, *q_torch, turbo_transformers\n")
 
-#quantize test
-for batch_size in [4]:
-    for src_length in [10, 60, 100]:
-        for T in range(10, src_length, 10):
-            create_test(batch_size, src_length, T, False, "onnxrt")
-#FP32 test
-for batch_size in [4]:
-    for src_length in [10, 40, 100]:
-        for T in range(10, src_length, 10):
-            create_test(batch_size, src_length, T, False, "turbo")
+create_test(4, 10, 10, False, "onnxrt")
+# #quantize test
+# for batch_size in [4]:
+#     for src_length in [10, 60, 100]:
+#         for T in range(10, src_length, 10):
+#             create_test(batch_size, src_length, T, False, "onnxrt")
+# #FP32 test
+# for batch_size in [4]:
+#     for src_length in [10, 40, 100]:
+#         for T in range(10, src_length, 10):
+#             create_test(batch_size, src_length, T, False, "turbo")
 
 if __name__ == '__main__':
     unittest.main()
