@@ -414,7 +414,7 @@ class TransformerDecoderLayer:
                     future_mask_numpy = np.ones(shape = (tgt_len, tgt_len), dtype = np.float32)
                     future_mask_numpy = np.triu(future_mask_numpy)
                     # TODO(jiaruifang) move to GPU if use cuda
-                    future_mask = torch.from_numpy(future_mask_numpy).view(1, tgt_len, tgt_len)
+                    future_mask = torch.tensor(future_mask_numpy, device = input_tensor.device).view(1, tgt_len, tgt_len)
                     dec_mask = torch.gt(tgt_pad_mask + future_mask, 0)
                 else:  # only mask padding, result mask in (B, 1, T)
                     dec_mask = tgt_pad_mask
@@ -424,7 +424,6 @@ class TransformerDecoderLayer:
                                             input_tensor.size(1),
                                             dtype=torch.float32,
                                             device=input_tensor.device).bool()
-                # dosen't make sence
             ort_inputs = {'input_tensor':   input_tensor.cpu().numpy(), 
                         'memory_bank':    memory_bank.cpu().numpy(), 
                         'src_pad_mask':   src_pad_mask.cpu().numpy(),
