@@ -371,11 +371,21 @@ class TransformerDecoderLayer:
                         'src_pad_mask': symbolic_names_2,
                         'dec_mask': symbolic_names_2
                     })
-            import onnxruntime
-            sess_options = onnxruntime.SessionOptions()
-            sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-            self.session = onnxruntime.InferenceSession(
-                self.onnx_model_path, sess_options)
+            # import onnxruntime
+            # sess_options = onnxruntime.SessionOptions()
+            # sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+            # self.session = onnxruntime.InferenceSession(
+            #     self.onnx_model_path, sess_options)
+
+            use_gpu = False
+            if 'cuda' in device.type and torch.cuda.is_available():
+                use_gpu = True
+
+            self.onnx_model = onnxruntime.backend.prepare(
+                model=onnx_model,
+                device='GPU' if use_gpu else 'CPU',
+                graph_optimization_level=onnxruntime.GraphOptimizationLevel.
+                ORT_ENABLE_ALL)
         else:
             self.backend = 'turbo'
             self.self_attn = self_attn
@@ -400,10 +410,15 @@ class TransformerDecoderLayer:
             force_fusions=True)
         quantized_model_path = "/tmp/temp_turbo_onnx_q.model"
         onnx.save(quantized_onnx_model, quantized_model_path)
-        sess_options = onnxruntime.SessionOptions()
-        sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-        self.session = onnxruntime.InferenceSession(quantized_model_path,
-                                                    sess_options)
+        # sess_options = onnxruntime.SessionOptions()
+        # sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        # self.session = onnxruntime.InferenceSession(quantized_model_path,
+        #                                             sess_options)
+        self.onnx_model = onnxruntime.backend.prepare(
+            model=onnx_model,
+            device='CPU',
+            graph_optimization_level=onnxruntime.GraphOptimizationLevel.
+            ORT_ENABLE_ALL)
 
     def __call__(self,
                  input_tensor: torch.Tensor,
@@ -461,7 +476,8 @@ class TransformerDecoderLayer:
                 'src_pad_mask': src_pad_mask.cpu().numpy(),
                 'dec_mask': dec_mask.cpu().numpy()
             }
-            return self.session.run(None, ort_inputs)
+            return self.onnx_model.run(inputs=ort_inputs)
+            # return self.session.run(None, ort_inputs)
 
         # dec_mask = None which is no mask
         dec_mask = None

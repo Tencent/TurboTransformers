@@ -168,7 +168,7 @@ def create_test(batch_size,
                     fh.write(f"{info} {torch_qps}, {turbo_qps}\n")
 
         def test_decoder(self):
-            self.check_torch_and_turbo(use_cuda=False)
+            # self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
                 turbo_transformers.config.is_compiled_with_cuda():
                 self.check_torch_and_turbo(use_cuda=True)
@@ -184,7 +184,7 @@ with open(fname, "w") as fh:
 for batch_size in [4]:
     for src_length in [10, 60, 100]:
         for T in range(10, src_length, 10):
-            create_test(batch_size, src_length, T, True, "onnxrt")
+            create_test(batch_size, src_length, T, False, "onnxrt")
 #FP32 test
 for batch_size in [4]:
     for src_length in [10, 40, 100]:
