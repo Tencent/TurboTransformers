@@ -343,12 +343,19 @@ class TransformerDecoderLayer:
             d_model = model.layer_norm_1.normalized_shape[0]
             # trick
             model = ModifiedOnmtTransformerDecoderLayer(model)
+            device_type = model.device
+            print(device_ttpe)
             dummy_input = {
-                'input_tensor': torch.rand(1, 10, d_model,
-                                           dtype=torch.float32),
-                'memory_bank': torch.rand(1, 10, d_model, dtype=torch.float32),
-                'src_pad_mask': torch.zeros(1, 1, 10, dtype=torch.bool),
-                'dec_mask': torch.zeros(1, 1, 10, dtype=torch.bool)
+                'input_tensor':
+                torch.rand(1, 10, d_model,
+                           dtype=torch.float32).to(device_type),
+                'memory_bank':
+                torch.rand(1, 10, d_model,
+                           dtype=torch.float32).to(device_type),
+                'src_pad_mask':
+                torch.zeros(1, 1, 10, dtype=torch.bool).to(device_type),
+                'dec_mask':
+                torch.zeros(1, 1, 10, dtype=torch.bool).to(device_type)
             }
             symbolic_names = {0: 'batch_size', 1: 'max_len'}
             symbolic_names_2 = {0: 'batch_size', 2: 'max_len'}
