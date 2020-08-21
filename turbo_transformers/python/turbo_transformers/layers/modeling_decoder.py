@@ -415,15 +415,16 @@ class TransformerDecoderLayer:
             force_fusions=True)
         quantized_model_path = "/tmp/temp_turbo_onnx_q.model"
         onnx.save(quantized_onnx_model, quantized_model_path)
-        # sess_options = onnxruntime.SessionOptions()
-        # sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-        # self.session = onnxruntime.InferenceSession(quantized_model_path,
-        #                                             sess_options)
-        self.onnx_model = onnxruntime.backend.prepare(
-            model=onnx_model,
-            device='CPU',
-            graph_optimization_level=onnxruntime.GraphOptimizationLevel.
-            ORT_ENABLE_ALL)
+        sess_options = onnxruntime.SessionOptions()
+        sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        self.session = onnxruntime.InferenceSession(quantized_model_path,
+                                                    sess_options)
+        self.session.set_provders('CUDAExecutionProvider')
+        # self.onnx_model = onnxruntime.backend.prepare(
+        #     model=onnx_model,
+        #     device='CPU',
+        #     graph_optimization_level=onnxruntime.GraphOptimizationLevel.
+        #     ORT_ENABLE_ALL)
 
     def __call__(self,
                  input_tensor: torch.Tensor,
@@ -474,7 +475,18 @@ class TransformerDecoderLayer:
                                        input_tensor.size(1),
                                        dtype=torch.float32,
                                        device=input_tensor.device).bool()
-
+            # # ort_inputs = {
+            # #     'input_tensor': input_tensor.cpu().numpy(),
+            # #     'memory_bank': memory_bank.cpu().numpy(),
+            # #     'src_pad_mask': src_pad_mask.cpu().numpy(),
+            # #     'dec_mask': dec_mask.cpu().numpy()
+            # # }
+            # ort_inputs = [input_tensor.cpu().numpy(), memory_bank.cpu().numpy(),
+            #             src_pad_mask.cpu().numpy(), dec_mask.cpu().numpy()]
+            # return self.onnx_model.run(input_tensor=input_tensor.cpu().numpy(),
+            #         memory_bank = memory_bank.cpu().numpy(),
+            #         src_pad_mask = src_pad_mask.cpu().numpy(),
+            #         dec_mask = dec_mask.cpu().numpy())
             ort_inputs = {
                 'input_tensor': input_tensor.cpu().numpy(),
                 'memory_bank': memory_bank.cpu().numpy(),
