@@ -46,7 +46,7 @@ def create_test(batch_size, src_length, T, with_quantize_dynamic=False):
             if use_cuda:
                 self.onmt_decoder.to(self.test_device)
             self.turbo_decoder = turbo_transformers.TransformerDecoderLayer.from_onmt(
-                self.onmt_decoder)
+                self.onmt_decoder, "onnxrt")
 
             # https://pytorch.org/docs/stable/quantization.html
             if with_quantize_dynamic and not use_cuda:
@@ -182,6 +182,6 @@ with open(fname, "w") as fh:
 #             for T in range(10, src_length, 10):
 #                 create_test(batch_size, src_length, T, quantize)
 create_test(1, 10, 10, True)
-
+create_test(1, 30, 20, True)
 if __name__ == '__main__':
     unittest.main()

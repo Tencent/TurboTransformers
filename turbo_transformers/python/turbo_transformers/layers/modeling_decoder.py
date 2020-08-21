@@ -341,7 +341,7 @@ class TransformerDecoderLayer:
             dummy_input = {'input_tensor':  torch.rand(1,10,d_model, dtype=torch.float32),
                            'memory_bank':   torch.rand(1,10,d_model, dtype=torch.float32),
                            'src_pad_mask':  torch.zeros(1,1,10, dtype=torch.bool),
-                           'tgt_pad_mask':  torch.zeros(1,1,10, dtype=torch.bool)}
+                           'dec_mask':  torch.zeros(1,1,10, dtype=torch.bool)}
             symbolic_names = {0: 'batch_size', 1: 'max_len'}
             symbolic_names_2 = {0: 'batch_size', 2: 'max_len'}
             onnx_model_path = "/tmp/temp_turbo_onnx.model"
@@ -350,15 +350,20 @@ class TransformerDecoderLayer:
                                     (   dummy_input['input_tensor'], 
                                         dummy_input['memory_bank'], 
                                         dummy_input['src_pad_mask'],
-                                        dummy_input['tgt_pad_mask']),
+                                        dummy_input['dec_mask']
+                                     ),
                                     f,
-                                    input_names=['input_tensor', 'memory_bank', 'src_pad_mask', 'tgt_pad_mask'], 
+                                    input_names=['input_tensor', 
+                                            'memory_bank', 
+                                            'src_pad_mask', 
+                                            'dec_mask'], 
                                     output_names=['output'],
                                     opset_version=11,
                                     dynamic_axes={  'input_tensor': symbolic_names, 
                                                     'memory_bank': symbolic_names, 
                                                     'src_pad_mask': symbolic_names_2, 
-                                                    'tgt_pad_mask': symbolic_names_2})
+                                                    'dec_mask': symbolic_names_2}
+                )
             import onnxruntime
             sess_options = onnxruntime.SessionOptions()
             sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
@@ -403,10 +408,28 @@ class TransformerDecoderLayer:
             * attn_align None
         """
         if self.backend=='onnxrt':
+            if step is None:
+                if not future:
+                    tgt_len = tgt_pad_mask.size(-1)
+                    future_mask_numpy = np.ones(shape = (tgt_len, tgt_len), dtype = np.float32)
+                    future_mask_numpy = np.triu(future_mask_numpy)
+                    # TODO(jiaruifang) move to GPU if use cuda
+                    future_mask = torch.from_numpy(future_mask_numpy).view(1, tgt_len, tgt_len)
+                    dec_mask = torch.gt(tgt_pad_mask + future_mask, 0)
+                else:  # only mask padding, result mask in (B, 1, T)
+                    dec_mask = tgt_pad_mask
+            else:
+                dec_mask = torch.zeros(input_tensor.size(0),
+                                            1,
+                                            input_tensor.size(1),
+                                            dtype=torch.float32,
+                                            device=input_tensor.device).bool()
+                # dosen't make sence
             ort_inputs = {'input_tensor':   input_tensor.cpu().numpy(), 
-                          'memory_bank':    memory_bank.cpu().numpy(), 
-                          'src_pad_mask':   src_pad_mask.cpu().numpy(),
-                          'tgt_pad_mask':   tgt_pad_mask.cpu().numpy()}
+                        'memory_bank':    memory_bank.cpu().numpy(), 
+                        'src_pad_mask':   src_pad_mask.cpu().numpy(),
+                        'dec_mask':       dec_mask.cpu().numpy()
+                        }
             return self.session.run(None, ort_inputs)
             
         # dec_mask = None which is no mask

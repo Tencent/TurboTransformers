@@ -101,7 +101,8 @@ class TransformerDecoderLayer(nn.Module):
             attn_align = attns.mean(dim=1)
         return output, top_attn, attn_align
 
-    def _forward(self, inputs, memory_bank, src_pad_mask, tgt_pad_mask,
+    #tgt_pad_mask -> dec_mask
+    def _forward(self, inputs, memory_bank, src_pad_mask, dec_mask, 
                  layer_cache=None, step=None, future=False):
         """ A naive forward pass for transformer decoder.
         # T: could be 1 in the case of stepwise decoding or tgt_len
@@ -118,29 +119,35 @@ class TransformerDecoderLayer(nn.Module):
             * output ``(batch_size, T, model_dim)``
             * attns ``(batch_size, head, T, src_len)``
         """
-        dec_mask = None
+        # In order to adapt to onnxrt, we should move the following outside as numpy logic
+        # For the reason that onnx dose not suppor triu!
+        # dec_mask = None
 
-        if step is None:
-            tgt_len = tgt_pad_mask.size(-1)
-            if not future:  # apply future_mask, result mask in (B, T, T)
-                future_mask = torch.ones(
-                    [tgt_len, tgt_len],
-                    device=tgt_pad_mask.device,
-                    dtype=torch.float32) # TODO(jiaruifang) onnx dose not support bool
-                # TODO(jiarui) triu dosenot support onnx
-                future_mask_numpy = np.triu(future_mask.numpy())
-                future_mask = torch.from_numpy(future_mask_numpy).view(1, tgt_len, tgt_len)
-                # future_mask = future_mask.triu_(1).view(1, tgt_len, tgt_len)
-                # BoolTensor was introduced in pytorch 1.2
-                try:
-                    # TODO(jiaruifang) onnx dose not support bool
-                    # future_mask = future_mask.bool()
-                    pass
-                except AttributeError:
-                    pass
-                dec_mask = torch.gt(tgt_pad_mask + future_mask, 0)
-            else:  # only mask padding, result mask in (B, 1, T)
-                dec_mask = tgt_pad_mask
+        # if step is None:
+            # TODO move out
+            # tgt_len = tgt_pad_mask.size(-1)
+            # if not future:  # apply future_mask, result mask in (B, T, T)
+            #     # TODO(jiaruifang) onnx dose not support bool and torch -> numpy
+            #     # future_mask = torch.ones(
+            #     #     [tgt_len, tgt_len],
+            #     #     device=tgt_pad_mask.device,
+            #     #     dtype=torch.float32) 
+            #     # TODO(jiarui) operator `triu` dosenot support onnx, use numpy instead
+            #     future_mask_numpy = np.ones(shape = (tgt_len, tgt_len), dtype = np.float32)
+            #     future_mask_numpy = np.triu(future_mask_numpy)
+            #     # TODO(jiaruifang) move to GPU if use cuda
+            #     future_mask = torch.from_numpy(future_mask_numpy).view(1, tgt_len, tgt_len)
+            #     # future_mask = future_mask.triu_(1).view(1, tgt_len, tgt_len)
+            #     # BoolTensor was introduced in pytorch 1.2
+            #     try:
+            #         # TODO(jiaruifang) onnx dose not support bool
+            #         # future_mask = future_mask.bool()
+            #         pass
+            #     except AttributeError:
+            #         pass
+            #     dec_mask = torch.gt(tgt_pad_mask + future_mask, 0)
+            # else:  # only mask padding, result mask in (B, 1, T)
+            #     dec_mask = tgt_pad_mask
 
         input_norm = self.layer_norm_1(inputs)
 
