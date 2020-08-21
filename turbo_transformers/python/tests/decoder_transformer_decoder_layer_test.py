@@ -119,8 +119,12 @@ def create_test(batch_size,
             turbo_mid = torch.FloatTensor(turbo_result[0])
             turbo_attns = torch.FloatTensor(turbo_result[1])
 
+            if with_quantize_dynamic and not use_cuda and backend == "onnxrt":
+                turbo_plan_name = "Turbo Quantized"
+            else:
+                turbo_plan_name = "Turbo"
             print(
-                f"Turbo Deocder {info} ",
+                f"{turbo_plan_name} Deocder {info} ",
                 f"{deivce_type} QPS, {turbo_qps}, time, {turbo_time_consume}")
 
             # TODO(jiaruifang) why FP16 error is so large?
@@ -178,12 +182,12 @@ with open(fname, "w") as fh:
 
 #quantize test
 for batch_size in [4]:
-    for src_length in [10, 20, 40, 60, 80, 100]:
+    for src_length in [10, 60, 100]:
         for T in range(10, src_length, 10):
             create_test(batch_size, src_length, T, True, "onnxrt")
 #FP32 test
 for batch_size in [4]:
-    for src_length in [10, 20, 40, 60, 80, 100]:
+    for src_length in [10, 40, 100]:
         for T in range(10, src_length, 10):
             create_test(batch_size, src_length, T, False, "turbo")
 
