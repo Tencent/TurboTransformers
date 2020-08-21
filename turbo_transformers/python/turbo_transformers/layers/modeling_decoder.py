@@ -342,9 +342,10 @@ class TransformerDecoderLayer:
             self.backend = 'onnxrt'
             d_model = model.layer_norm_1.normalized_shape[0]
             # trick
+            use_cuda = next(model.parameters()).is_cuda
             model = ModifiedOnmtTransformerDecoderLayer(model)
-            device_type = model.device
-            print(device_ttpe)
+            device_type = torch.device('cuda:0') if use_cuda else \
+                   torch.device('cpu:0')
             dummy_input = {
                 'input_tensor':
                 torch.rand(1, 10, d_model,
@@ -378,19 +379,16 @@ class TransformerDecoderLayer:
                         'src_pad_mask': symbolic_names_2,
                         'dec_mask': symbolic_names_2
                     })
-            # import onnxruntime
+            import onnxruntime
+            import onnxruntime.backend
             # sess_options = onnxruntime.SessionOptions()
             # sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
             # self.session = onnxruntime.InferenceSession(
             #     self.onnx_model_path, sess_options)
 
-            use_gpu = False
-            if 'cuda' in device.type and torch.cuda.is_available():
-                use_gpu = True
-
             self.onnx_model = onnxruntime.backend.prepare(
-                model=onnx_model,
-                device='GPU' if use_gpu else 'CPU',
+                model=self.onnx_model_path,
+                device='GPU' if use_cuda else 'CPU',
                 graph_optimization_level=onnxruntime.GraphOptimizationLevel.
                 ORT_ENABLE_ALL)
         else:
