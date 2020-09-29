@@ -346,20 +346,29 @@ class TransformerDecoderLayer:
             model = ModifiedOnmtTransformerDecoderLayer(model)
             device_type = torch.device('cuda:0') if use_cuda else \
                    torch.device('cpu:0')
+            dummy_T = 10
+            dummy_src_len = 20
             dummy_input = {
                 'input_tensor':
-                torch.rand(1, 10, d_model,
+                torch.rand(1, dummy_T, d_model,
                            dtype=torch.float32).to(device_type),
                 'memory_bank':
-                torch.rand(1, 10, d_model,
+                torch.rand(1, dummy_src_len, d_model,
                            dtype=torch.float32).to(device_type),
                 'src_pad_mask':
-                torch.zeros(1, 1, 10, dtype=torch.bool).to(device_type),
+                torch.zeros(1, 1, dummy_src_len,
+                            dtype=torch.bool).to(device_type),
                 'dec_mask':
-                torch.zeros(1, 1, 10, dtype=torch.bool).to(device_type)
+                torch.zeros(1, dummy_T, dummy_T,
+                            dtype=torch.bool).to(device_type)
             }
-            symbolic_names = {0: 'batch_size', 1: 'max_len'}
-            symbolic_names_2 = {0: 'batch_size', 2: 'max_len'}
+            symbolic_names_type_1 = {0: 'batch_size', 1: 'max_len'}
+            symbolic_names_type_2 = {0: 'batch_size', 2: 'max_len'}
+            symbolic_names_type_3 = {
+                0: 'batch_size',
+                1: 'max_len1',
+                2: 'max_len2'
+            }
             self.onnx_model_path = "/tmp/temp_turbo_onnx.model"
             with open(self.onnx_model_path, 'wb') as f:
                 torch.onnx.export(
@@ -374,10 +383,10 @@ class TransformerDecoderLayer:
                     output_names=['output'],
                     opset_version=11,
                     dynamic_axes={
-                        'input_tensor': symbolic_names,
-                        'memory_bank': symbolic_names,
+                        'input_tensor': symbolic_names_1,
+                        'memory_bank': symbolic_names_1,
                         'src_pad_mask': symbolic_names_2,
-                        'dec_mask': symbolic_names_2
+                        'dec_mask': symbolic_names_type_3
                     })
             import onnxruntime
             import onnxruntime.backend
@@ -447,26 +456,29 @@ class TransformerDecoderLayer:
             * attn_align None
         """
         if self.backend == 'onnxrt':
+            # The shape of dec_mask in different if-else branch is different
+            # Here, I unify it as (1, T, T)
             if step is None:
                 if not future:
-                    tgt_len = tgt_pad_mask.size(-1)
+                    tgt_len = tgt_pad_mask.size(-1)  # T
                     future_mask_numpy = np.ones(shape=(tgt_len, tgt_len),
                                                 dtype=np.float32)
                     future_mask_numpy = np.triu(future_mask_numpy)
-                    # TODO(jiaruifang) move to GPU if use cuda
                     future_mask = torch.tensor(
                         future_mask_numpy,
                         device=input_tensor.device).view(1, tgt_len, tgt_len)
                     dec_mask = torch.gt(tgt_pad_mask + future_mask, 0)
                 else:  # only mask padding, result mask in (B, 1, T)
-                    dec_mask = tgt_pad_mask
+                    dec_mask = dec_mask.repeat(
+                        tgt_pad_mask, 1)  # tgt_pad_mask in orignal code
             else:
                 # init a dummy dec_mask
-                dec_mask = torch.zeros(input_tensor.size(0),
-                                       1,
-                                       input_tensor.size(1),
-                                       dtype=torch.float32,
-                                       device=input_tensor.device).bool()
+                dec_mask = torch.zeros(
+                    input_tensor.size(0),
+                    input_tensor.size(1),  # 1 in orign code
+                    input_tensor.size(1),
+                    dtype=torch.float32,
+                    device=input_tensor.device).bool()
             ort_inputs = {
                 'input_tensor': input_tensor.cpu().numpy(),
                 'memory_bank': memory_bank.cpu().numpy(),

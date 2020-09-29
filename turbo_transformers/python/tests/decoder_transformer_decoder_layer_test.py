@@ -185,12 +185,12 @@ create_test(4, 10, 10, False, "onnxrt")
 # for batch_size in [4]:
 #     for src_length in [10, 60, 100]:
 #         for T in range(10, src_length, 10):
-#             create_test(batch_size, src_length, T, False, "onnxrt")
-# #FP32 test
-# for batch_size in [4]:
-#     for src_length in [10, 40, 100]:
-#         for T in range(10, src_length, 10):
-#             create_test(batch_size, src_length, T, False, "turbo")
+#             create_test(batch_size, src_length, T, True, "onnxrt")
+#FP32 test
+for batch_size in [4]:
+    for src_length in [10, 40, 100]:
+        for T in [10, 40, 100]:
+            create_test(batch_size, src_length, T, False, "turbo")
 
 if __name__ == '__main__':
     unittest.main()
