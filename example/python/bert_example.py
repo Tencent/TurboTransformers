@@ -24,13 +24,14 @@ class LoadType(enum.Enum):
 
 
 def test(loadtype: LoadType, use_cuda: bool):
+    test_device = torch.device('cuda:0') if use_cuda else \
+        torch.device('cpu:0')
     model_id = "bert-base-uncased"
     model = transformers.BertModel.from_pretrained(model_id)
     model.eval()
+    model.to(test_device)
     torch.set_grad_enabled(False)
 
-    test_device = torch.device('cuda:0') if use_cuda else \
-        torch.device('cpu:0')
 
     cfg = model.config
     # use 4 threads for computing
@@ -38,9 +39,9 @@ def test(loadtype: LoadType, use_cuda: bool):
 
     input_ids = torch.tensor(
         ([12166, 10699, 16752, 4454], [5342, 16471, 817, 16022]),
-        dtype=torch.long)
-    # position_ids = torch.tensor(([1, 0, 0, 0], [1, 1, 1, 0]), dtype=torch.long)
-    segment_ids = torch.tensor(([1, 1, 1, 0], [1, 0, 0, 0]), dtype=torch.long)
+        dtype=torch.long, device = test_device)
+    # position_ids = torch.tensor(([1, 0, 0, 0], [1, 1, 1, 0]), dtype=torch.long, device = test_device)
+    segment_ids = torch.tensor(([1, 1, 1, 0], [1, 0, 0, 0]), dtype=torch.long, device = test_device)
 
     start_time = time.time()
     for _ in range(10):
@@ -59,7 +60,7 @@ def test(loadtype: LoadType, use_cuda: bool):
         # note that you can choose "turbo" or "onnxrt" as backend
         # "turbo" is a hand-crafted implementation and optimized with OMP.
         tt_model = turbo_transformers.BertModel.from_torch(
-            model, test_device, "onnxrt")
+            model, test_device, "turbo")
     elif loadtype is LoadType.PRETRAINED:
         # 2. directly load from checkpoint (torch saved model)
         tt_model = turbo_transformers.BertModel.from_pretrained(
@@ -93,5 +94,5 @@ def test(loadtype: LoadType, use_cuda: bool):
 
 
 if __name__ == "__main__":
-    test(LoadType.PYTORCH, False)
+    test(LoadType.PYTORCH, True)
     # test(LoadType.PRETRAINED, False)
