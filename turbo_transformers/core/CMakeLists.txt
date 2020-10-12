@@ -63,3 +63,5 @@ add_executable(tt_core_test
         fp16_test.cpp)
 target_link_libraries(tt_core_test catch2_test_main tt_core)
 add_test(NAME tt_core_test  COMMAND tt_core_test)
+
+add_subdirectory(allocator)
