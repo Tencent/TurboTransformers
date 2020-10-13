@@ -15,7 +15,7 @@
 
 add_library(tt_model_aware_allocator
         bert_allocator_config.cpp
-        chunked_allocator.cpp)
+        chunked_allocator.cpp ordered_list.cpp ordered_list.h)
 target_link_libraries(tt_model_aware_allocator PUBLIC
         loguru
         tt_core
