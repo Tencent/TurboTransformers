@@ -27,7 +27,7 @@ namespace bert_config {
 template <typename T>
 void GetBertTensorUsageRecord(
     std::vector<TensorRecordItemPtr>& TensorUsageRecord, int64_t batch_size,
-    int64_t seq_len, int64_t num_head = 12, int64_t hidden_size = 64,
+    int64_t seq_len, int64_t num_head = 12, int64_t hidden_size = 768,
     int64_t num_layer = 12);
 
 }  // namespace bert_config

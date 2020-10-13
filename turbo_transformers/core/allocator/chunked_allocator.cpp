@@ -54,25 +54,23 @@ static bool TryFitChunk(
       }
       prev_offset = std::max(prev_offset, x_offset + x_size);
     }
-
-    // the left space of this trunk is enough for this tensor
-    if (best_offset == -1 && chunk.size() - prev_offset >= t_size) {
-      best_offset = prev_offset;
-    }
-
-    if (best_offset == -1) {
-      // target tensor can not fit the chunk
-      success = false;
-    } else {
-      success = true;
-    }
   });
 
-  if (success) {
+  // the left space of this trunk is enough for this tensor
+  if (best_offset == -1 && chunk.size() - prev_offset >= t_size) {
+    best_offset = prev_offset;
+  }
+
+  if (best_offset == -1) {
+    // target tensor can not fit the chunk
+    success = false;
+  } else {
+    success = true;
     chunk.AppendTensor(t, best_offset);
     tensor_position_map.emplace(t->name_,
                                 TensorPositionInfo(&chunk, best_offset));
   }
+
   return success;
 }
 
