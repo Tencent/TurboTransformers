@@ -97,6 +97,7 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
     assigned_trunk : a dict indicates the trunk for each tensor
     """
     global gTrunkList
+    # descend
     usage_recorders = sorted(usage_recorders,
                              key=lambda tup: tup[3],
                              reverse=True)

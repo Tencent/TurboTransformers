@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -34,6 +35,40 @@ struct TensorRecordItem {
   int64_t start_op_;
   int64_t end_op_;
   int64_t size_;
+};
+
+template <typename T>
+class OrderedList {
+ public:
+  OrderedList() : head_ptr_(new Node(nullptr, nullptr)) {}
+  struct Node {
+    Node(std::shared_ptr<T> ptr, std::unique_ptr<Node> next)
+        : ptr_(ptr), next_(std::move(next)) {}
+    std::shared_ptr<T> ptr_;
+    std::unique_ptr<Node> next_;
+  };
+
+  Node* GetHeadPtr() { return head_ptr_.get(); }
+
+  // O(N)
+  void AddAfter(std::shared_ptr<T> new_node_ptr, Node* prev_node) {
+    std::unique_ptr<Node> tmp(
+        new Node(new_node_ptr, std::move(prev_node->next_)));
+    prev_node->next_ = std::move(tmp);
+  }
+
+  // O(N)
+  template <typename Visitor>
+  void visit(Visitor visitor) {
+    Node* cursor = head_ptr_->next_.get();
+    while (cursor != nullptr) {
+      visitor(*cursor->ptr_);
+      cursor = cursor->next_.get();
+    }
+  }
+
+ private:
+  std::unique_ptr<Node> head_ptr_;
 };
 
 struct Chunk {
