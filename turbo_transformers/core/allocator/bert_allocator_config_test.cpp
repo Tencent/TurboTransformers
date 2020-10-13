@@ -11,11 +11,10 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "turbo_transformers/core/allocator/bert_allocator_config.h"
-
 #include <iostream>
 
 #include "catch2/catch.hpp"
+#include "turbo_transformers/core/allocator/bert_config.h"
 #include "turbo_transformers/core/allocator/chunked_allocator.h"
 
 namespace turbo_transformers {

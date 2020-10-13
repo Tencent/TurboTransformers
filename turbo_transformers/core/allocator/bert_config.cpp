@@ -11,7 +11,7 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "turbo_transformers/core/allocator/bert_allocator_config.h"
+#include "turbo_transformers/core/allocator/bert_config.h"
 
 #include <algorithm>
 #include <limits>
