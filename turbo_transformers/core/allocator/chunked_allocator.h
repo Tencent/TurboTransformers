@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "loguru.hpp"
 #include "turbo_transformers/core/allocator/ordered_list.h"
 
 namespace turbo_transformers {
@@ -57,14 +58,10 @@ class Chunk {
   };
 
   bool operator<(const Chunk& o) const { return size_ < o.size_; }
-
   bool operator>=(const Chunk& o) const { return size_ >= o.size_; }
-
   bool operator<=(const Chunk& o) const { return size_ <= o.size_; }
 
-  OrderedList<ChunkNode> tensor_info_;
-  int64_t size_;
-  int64_t id_;
+  int64_t size() const { return size_; }
 
   void visit(std::function<void(ChunkNode*)> visitor) {
     tensor_info_.visit(visitor);
@@ -74,10 +71,20 @@ class Chunk {
     tensor_info_.Add(std::make_shared<ChunkNode>(t, offset));
   }
 
-  char* GetMemAddr() const { return memaddr_; }
+  void* GetMemAddr() const { return static_cast<void*>(memaddr_); }
+
+  void showMe() {
+    tensor_info_.visit([](ChunkNode* node) {
+      LOG_S(INFO) << node->tensor_record_->name_ << " "
+                  << node->tensor_record_->size_ << " " << node->offset_;
+    });
+  }
 
  private:
   char* memaddr_{nullptr};
+  OrderedList<ChunkNode> tensor_info_;
+  int64_t size_;
+  int64_t id_;
 };
 
 class ChunkList {
@@ -93,17 +100,28 @@ class ChunkList {
   // TODO(jiaruifang) remove useless chunk in the list
   void Shrink() {}
 
+  Chunk* Back() { return back_ptr_; }
+
   Chunk* AddChunk(int64_t chunk_size) {
     char* addr = mem_allocate_func_(chunk_size);
     auto new_chunk =
         std::make_shared<Chunk>(addr, chunk_size, chunk_list_.capacity() + 1);
     chunk_list_.Add(new_chunk);
-    return new_chunk.get();
+    return back_ptr_ = new_chunk.get();
+  }
+
+  void ShowMe() {
+    chunk_list_.visit([](Chunk* node) {
+      LOG_S(INFO) << "tensor usage records in the chunk " << node->GetMemAddr()
+                  << " of size " << node->size();
+      node->showMe();
+    });
   }
 
  private:
   std::function<char*(size_t)> mem_allocate_func_;
   OrderedList<Chunk> chunk_list_{};
+  Chunk* back_ptr_;
 };
 
 struct TensorPositionInfo {

@@ -34,6 +34,7 @@ static bool TryFitChunk(
     std::map<std::string, TensorPositionInfo>& tensor_position_map) {
   auto t_size = t->size_;
   int64_t prev_offset = 0;
+
   int64_t best_offset = -1;
   int64_t smallest_gap = std::numeric_limits<int64_t>::max();
   bool success = false;
@@ -41,10 +42,12 @@ static bool TryFitChunk(
     if (success) return;
     auto x_size = x->tensor_record_->size_;
     auto x_offset = x->offset_;
+
     auto max_first_op = std::max(t->start_op_, x->tensor_record_->start_op_);
-    auto min_last_op = std::min(t->start_op_, x->tensor_record_->start_op_);
+    auto min_last_op = std::min(t->end_op_, x->tensor_record_->end_op_);
     if (max_first_op <= min_last_op) {
       auto gap = x_offset - prev_offset;
+
       if (gap >= t_size && gap < smallest_gap) {
         smallest_gap = gap;
         best_offset = prev_offset;
@@ -53,20 +56,23 @@ static bool TryFitChunk(
     }
 
     // the left space of this trunk is enough for this tensor
-    if (best_offset == -1 && chunk.size_ - prev_offset >= t_size) {
+    if (best_offset == -1 && chunk.size() - prev_offset >= t_size) {
       best_offset = prev_offset;
     }
 
     if (best_offset == -1) {
       // target tensor can not fit the chunk
       success = false;
-      return;
     } else {
-      chunk.AppendTensor(t, best_offset);
-      tensor_position_map.emplace(t->name_, TensorPositionInfo(&chunk, 0));
+      success = true;
     }
-    success = true;
   });
+
+  if (success) {
+    chunk.AppendTensor(t, best_offset);
+    tensor_position_map.emplace(t->name_,
+                                TensorPositionInfo(&chunk, best_offset));
+  }
   return success;
 }
 
@@ -100,9 +106,11 @@ void ChunkedGreedyBySizeOffsetCalculation(
     if (!is_assigned) {
       auto new_chunk_size =
           std::max(DEFAULT_TRUNK_SIZE,
-                   static_cast<int64_t>(t_size * K_SCALE) + 31 / 32 * 32);
-      auto chunk_addr = chunk_list.AddChunk(new_chunk_size);
-      tensor_position_map.emplace(t_name, TensorPositionInfo(chunk_addr, 0));
+                   (static_cast<int64_t>(t_size * K_SCALE) + 31) / 32 * 32);
+
+      Chunk* new_chunk = chunk_list.AddChunk(new_chunk_size);
+      new_chunk->AppendTensor(t, 0);
+      tensor_position_map.emplace(t_name, TensorPositionInfo(new_chunk, 0));
 #ifdef NDEBUG
       new_allocate_size += chunk_size;
 #endif

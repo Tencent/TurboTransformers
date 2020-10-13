@@ -23,10 +23,10 @@ target_link_libraries(tt_model_aware_allocator PUBLIC
         ${CMAKE_DL_LIBS}
         )
 
-add_executable(bert_allocator_config_test
-        bert_allocator_config_test.cpp)
-target_link_libraries(bert_allocator_config_test tt_model_aware_allocator catch2_test_main)
-add_test(NAME bert_allocator_config_test  COMMAND bert_allocator_config_test)
+add_executable(bert_allocator_test
+        bert_allocator_test.cpp)
+target_link_libraries(bert_allocator_test tt_model_aware_allocator catch2_test_main)
+add_test(NAME bert_allocator_test  COMMAND bert_allocator_test)
 
 add_executable(chunked_allocator_test
         chunked_allocator_test.cpp)
