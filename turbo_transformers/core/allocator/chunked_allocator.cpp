@@ -30,19 +30,19 @@ namespace allocator {
  * @return : whether or not the chunk has fit the tensor record.
  */
 static bool TryFitChunk(
-    const TensorRecordItem& t, Chunk& chunk,
-    std::map<std::string, TensorPositionInfo>& TensorPositionMap) {
-  auto t_size = t.size_;
+    const std::shared_ptr<TensorRecordItem> t, Chunk& chunk,
+    std::map<std::string, TensorPositionInfo>& tensor_position_map) {
+  auto t_size = t->size_;
   int64_t prev_offset = 0;
   int64_t best_offset = -1;
   int64_t smallest_gap = std::numeric_limits<int64_t>::max();
-  bool sucess = false;
-  chunk.visit([&](Chunk::Node& x) {
-    if (sucess) return;
-    auto x_size = x.tensor_record_.size_;
-    auto x_offset = x.offset_;
-    auto max_first_op = std::max(t.start_op_, x.tensor_record_.start_op_);
-    auto min_last_op = std::min(t.start_op_, x.tensor_record_.start_op_);
+  bool success = false;
+  chunk.visit([&](Chunk::ChunkNode* x) {
+    if (success) return;
+    auto x_size = x->tensor_record_->size_;
+    auto x_offset = x->offset_;
+    auto max_first_op = std::max(t->start_op_, x->tensor_record_->start_op_);
+    auto min_last_op = std::min(t->start_op_, x->tensor_record_->start_op_);
     if (max_first_op <= min_last_op) {
       auto gap = x_offset - prev_offset;
       if (gap >= t_size && gap < smallest_gap) {
@@ -52,25 +52,22 @@ static bool TryFitChunk(
       prev_offset = std::max(prev_offset, x_offset + x_size);
     }
 
-    // the left space of this trunk is enought for this tensor
+    // the left space of this trunk is enough for this tensor
     if (best_offset == -1 && chunk.size_ - prev_offset >= t_size) {
       best_offset = prev_offset;
     }
 
     if (best_offset == -1) {
       // target tensor can not fit the chunk
-      sucess = false;
+      success = false;
       return;
     } else {
       chunk.AppendTensor(t, best_offset);
-      TensorPositionMap.emplace(t.name_, TensorPositionInfo(chunk.id_, 0));
-      // sort offset in ascend order
-      // TODO(jiaruifang) time complexity can be reduced from O(nlog(n)) -> O(n)
-      chunk.Sort();
+      tensor_position_map.emplace(t->name_, TensorPositionInfo(&chunk, 0));
     }
-    sucess = true;
+    success = true;
   });
-  return sucess;
+  return success;
 }
 
 /*
@@ -84,28 +81,28 @@ An offset calculation algorithm designed for variable-length inputs.
 */
 
 void ChunkedGreedyBySizeOffsetCalculation(
-    const std::vector<TensorRecordItem>& tensor_usage_record,
-    std::map<std::string, TensorPositionInfo>& TensorPositionMap) {
+    const std::vector<TensorRecordItemPtr>& tensor_usage_record,
+    ChunkList& chunk_list,
+    std::map<std::string, TensorPositionInfo>& tensor_position_map) {
 #ifdef NDEBUG
   int64_t new_allocate_size = 0;
 #endif
   // descend order
   for (const auto& t : tensor_usage_record) {
-    auto t_name = t.name_;
-    auto t_size = t.size_;
+    auto t_name = t->name_;
+    auto t_size = t->size_;
     bool is_assigned = false;
-    gChunkList.visit([&](Chunk& chunk) {
+    chunk_list.visit([&](Chunk* chunk) {
       if (is_assigned) return;
-      is_assigned = TryFitChunk(t, chunk, TensorPositionMap);
+      is_assigned = TryFitChunk(t, *chunk, tensor_position_map);
     });
 
     if (!is_assigned) {
       auto new_chunk_size =
           std::max(DEFAULT_TRUNK_SIZE,
                    static_cast<int64_t>(t_size * K_SCALE) + 31 / 32 * 32);
-      auto chunk_id = gChunkList.AppendChunk(new_chunk_size);
-      std::cerr << "emplace back TensorPositionMap " << std::endl;
-      TensorPositionMap.emplace(t_name, TensorPositionInfo(chunk_id, 0));
+      auto chunk_addr = chunk_list.AddChunk(new_chunk_size);
+      tensor_position_map.emplace(t_name, TensorPositionInfo(chunk_addr, 0));
 #ifdef NDEBUG
       new_allocate_size += chunk_size;
 #endif

@@ -14,6 +14,7 @@
 #pragma once
 #include <algorithm>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -36,103 +37,147 @@ struct TensorRecordItem {
   int64_t end_op_;
   int64_t size_;
 };
+using TensorRecordItemPtr = std::shared_ptr<TensorRecordItem>;
 
 template <typename T>
 class OrderedList {
  public:
-  OrderedList() : head_ptr_(new Node(nullptr, nullptr)) {}
   struct Node {
     Node(std::shared_ptr<T> ptr, std::unique_ptr<Node> next)
-        : ptr_(ptr), next_(std::move(next)) {}
-    std::shared_ptr<T> ptr_;
+        : content_(ptr), next_(std::move(next)) {}
+    std::shared_ptr<T> content_;
     std::unique_ptr<Node> next_;
   };
 
-  Node* GetHeadPtr() { return head_ptr_.get(); }
+  OrderedList() : head_ptr_(new Node(nullptr, nullptr)), capacity_(0) {}
 
-  // O(N)
-  void AddAfter(std::shared_ptr<T> new_node_ptr, Node* prev_node) {
-    std::unique_ptr<Node> tmp(
-        new Node(new_node_ptr, std::move(prev_node->next_)));
-    prev_node->next_ = std::move(tmp);
+  size_t capacity() const { return capacity_; }
+  void Reset() {
+    // cascadely release the node on list except the head node.
+    head_ptr_->next_.reset();
+    capacity_ = 0;
   }
 
-  // O(N)
-  template <typename Visitor>
-  void visit(Visitor visitor) {
+  Node* GetHeadPtr() { return head_ptr_.get(); }
+
+  // add a new node constructed from new_node_ptr, while maintain the order of
+  // list return : address of newly allocated chunk
+  void Add(std::shared_ptr<T> content_ptr, bool reverse = false) {
+    Node* prev_node = GetHeadPtr();
     Node* cursor = head_ptr_->next_.get();
     while (cursor != nullptr) {
-      visitor(*cursor->ptr_);
+      // descending order
+      if (reverse && *content_ptr >= *cursor->content_) {
+        break;
+        // ascending order
+      } else if (!reverse && *content_ptr <= *cursor->content_) {
+        break;
+      }
+      prev_node = cursor;
+      cursor = cursor->next_.get();
+    }
+    AddAfter(content_ptr, prev_node);
+  }
+
+  // Add a node after prev_node, the node is constructed form new_node_ptr
+  // time complexity O(N)
+  void AddAfter(std::shared_ptr<T> content_ptr, Node* prev_node) {
+    std::unique_ptr<Node> tmp(
+        new Node(content_ptr, std::move(prev_node->next_)));
+    prev_node->next_ = std::move(tmp);
+    capacity_++;
+  }
+
+  // visit the list in O(N) visitor (T*)
+  void visit(std::function<void(T*)> visitor) {
+    Node* cursor = head_ptr_->next_.get();
+    while (cursor != nullptr) {
+      visitor(cursor->content_.get());
       cursor = cursor->next_.get();
     }
   }
 
  private:
   std::unique_ptr<Node> head_ptr_;
+  size_t capacity_;
 };
 
-struct Chunk {
-  explicit Chunk(int64_t size, int64_t id) : size_(size), id_(id) {}
+class Chunk {
+ public:
+  Chunk(char* addr, int64_t size, int64_t id)
+      : memaddr_(addr), size_(size), id_(id) {}
   // a list of tensor usage info (name, first_op, last_op, size, offset)
-  struct Node {
-    Node(const TensorRecordItem& t, int64_t offset)
+  struct ChunkNode {
+    ChunkNode(const TensorRecordItemPtr t, int64_t offset)
         : tensor_record_(t), offset_(offset) {}
-    TensorRecordItem tensor_record_;
+    const TensorRecordItemPtr tensor_record_;
     int64_t offset_;
-    bool operator<(Node& o) const { return offset_ < o.offset_; }
+    bool operator<(const ChunkNode& o) const { return offset_ < o.offset_; }
+    bool operator<=(const ChunkNode& o) const { return offset_ <= o.offset_; }
+    bool operator>=(const ChunkNode& o) const { return offset_ >= o.offset_; }
   };
-  std::vector<Node> tensor_info_;
+
+  bool operator<(const Chunk& o) const { return size_ < o.size_; }
+
+  bool operator>=(const Chunk& o) const { return size_ >= o.size_; }
+
+  bool operator<=(const Chunk& o) const { return size_ <= o.size_; }
+
+  OrderedList<ChunkNode> tensor_info_;
   int64_t size_;
   int64_t id_;
 
-  template <typename Visitor>
-  void visit(Visitor visitor) {
-    for (auto t : tensor_info_) {
-      visitor(t);
-    }
+  void visit(std::function<void(ChunkNode*)> visitor) {
+    tensor_info_.visit(visitor);
   }
 
-  void Sort() { std::sort(tensor_info_.begin(), tensor_info_.end()); }
-
-  void AppendTensor(const TensorRecordItem& t, int64_t offset) {
-    tensor_info_.emplace_back(std::move(Node(t, offset)));
+  void AppendTensor(const TensorRecordItemPtr t, int64_t offset) {
+    tensor_info_.Add(std::make_shared<ChunkNode>(t, offset));
   }
+
+  char* GetMemAddr() const { return memaddr_; }
+
+ private:
+  char* memaddr_{nullptr};
 };
 
-struct ChunkList {
-  std::vector<Chunk> chunk_list_{};
-  int size_{0};
+class ChunkList {
+ public:
+  explicit ChunkList(std::function<char*(size_t)> mem_allocate_func)
+      : mem_allocate_func_(mem_allocate_func) {}
 
-  template <typename Visitor>
-  void visit(Visitor visitor) {
-    for (auto chunk : chunk_list_) {
-      visitor(chunk);
-    }
+  // visitor visit the tensors of each chunk
+  void visit(std::function<void(Chunk*)> visitor) {
+    chunk_list_.visit(visitor);
   }
 
-  int64_t AppendChunk(int64_t chunk_size) {
-    // TODO(jiaruifang) Allocate memory here
-    std::cerr << "AppendChunk chunk " << size_ << std::endl;
-    chunk_list_.push_back(Chunk(chunk_size, size_));
-    size_++;
-    return size_ - 1;
+  // TODO(jiaruifang) remove useless chunk in the list
+  void Shrink() {}
+
+  Chunk* AddChunk(int64_t chunk_size) {
+    char* addr = mem_allocate_func_(chunk_size);
+    auto new_chunk =
+        std::make_shared<Chunk>(addr, chunk_size, chunk_list_.capacity() + 1);
+    chunk_list_.Add(new_chunk);
+    return new_chunk.get();
   }
+
+ private:
+  std::function<char*(size_t)> mem_allocate_func_;
+  OrderedList<Chunk> chunk_list_{};
 };
 
 struct TensorPositionInfo {
-  TensorPositionInfo(int64_t chunk_id, int64_t offset_id)
-      : chunk_id_(chunk_id), offset_id_(offset_id) {}
-  int64_t chunk_id_;
-  int64_t offset_id_;
+  TensorPositionInfo(Chunk* chunk_ptr, int64_t offset)
+      : chunk_ptr_(chunk_ptr), offset_(offset) {}
+  Chunk* chunk_ptr_;
+  int64_t offset_;
 };
 
-static std::vector<TensorRecordItem> gBertTensorUsageRecord;
-static ChunkList gChunkList;
-static std::map<std::string, TensorPositionInfo> gTensorPositionMap;
-
 extern void ChunkedGreedyBySizeOffsetCalculation(
-    const std::vector<TensorRecordItem>& tensor_usage_record,
-    std::map<std::string, TensorPositionInfo>& TensorPositionMap);
+    const std::vector<TensorRecordItemPtr>& tensor_usage_record,
+    ChunkList& chunk_list,
+    std::map<std::string, TensorPositionInfo>& tensor_position_map);
 
 }  // namespace allocator
 }  // namespace core

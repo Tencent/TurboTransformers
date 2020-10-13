@@ -30,13 +30,14 @@ namespace bert_config {
  * @Outputs : tensor usage records (TURs) (name, start_op, end_op, size)
  */
 
-#define ADDITEM(a, b, c, d) TensorUsageRecord.emplace_back(a, (b), (c), (d));
+#define ADDITEM(a, b, c, d)       \
+  TensorUsageRecord.emplace_back( \
+      std::make_shared<TensorRecordItem>(a, (b), (c), (d)));
 
 template <typename T>
-void GetBertTensorUsageRecord(std::vector<TensorRecordItem>& TensorUsageRecord,
-                              int64_t batch_size, int64_t seq_len,
-                              int64_t num_head, int64_t hidden_size,
-                              int64_t num_layer) {
+void GetBertTensorUsageRecord(
+    std::vector<TensorRecordItemPtr>& TensorUsageRecord, int64_t batch_size,
+    int64_t seq_len, int64_t num_head, int64_t hidden_size, int64_t num_layer) {
   auto item_bytes = sizeof(T);
   auto from_seq_len = seq_len;
   auto to_seq_len = seq_len;
@@ -72,12 +73,12 @@ void GetBertTensorUsageRecord(std::vector<TensorRecordItem>& TensorUsageRecord,
   // sort descend order
   std::sort(
       TensorUsageRecord.begin(), TensorUsageRecord.end(),
-      [](const auto& a, const auto& b) -> bool { return a.size_ > b.size_; });
+      [](const auto& a, const auto& b) -> bool { return a->size_ > b->size_; });
 }
 #undef ADDITEM
 
 template void GetBertTensorUsageRecord<float>(
-    std::vector<TensorRecordItem>& TensorUsageRecord, int64_t batch_size,
+    std::vector<TensorRecordItemPtr>& TensorUsageRecord, int64_t batch_size,
     int64_t seq_len, int64_t num_head, int64_t hidden_size, int64_t num_layer);
 
 }  // namespace bert_config

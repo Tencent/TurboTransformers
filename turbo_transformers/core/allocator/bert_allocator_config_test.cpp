@@ -23,18 +23,8 @@ namespace core {
 namespace allocator {
 
 TEST_CASE("bert-allocator-test", "test1") {
-  bert_config::GetBertTensorUsageRecord<float>(gBertTensorUsageRecord, 1, 40);
-  ChunkedGreedyBySizeOffsetCalculation(gBertTensorUsageRecord,
-                                       gTensorPositionMap);
-  std::cerr << "gBertTensorUsageRecord " << gBertTensorUsageRecord.size()
-            << std::endl;
-  for (auto it = gTensorPositionMap.begin(); it != gTensorPositionMap.end();
-       ++it) {
-    std::cerr << it->first << " " << it->second.chunk_id_ << " "
-              << it->second.offset_id_ << std::endl;
-  }
-
-  std::cerr << "TensorPositionMap " << gTensorPositionMap.size() << std::endl;
+  std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
+  bert_config::GetBertTensorUsageRecord<float>(bert_tensor_usage_record, 1, 40);
 }
 
 }  // namespace allocator
