@@ -91,6 +91,8 @@ void ChunkedGreedyBySizeOffsetCalculation(
 #ifdef NDEBUG
   int64_t new_allocate_size = 0;
 #endif
+  tensor_position_map.clear();
+  chunk_list.Reset();
   // descend order
   for (const auto& t : tensor_usage_record) {
     auto t_name = t->name_;
@@ -114,6 +116,8 @@ void ChunkedGreedyBySizeOffsetCalculation(
 #endif
     }
   }
+  // release not used chunk
+  chunk_list.Shrink();
 }
 
 }  // namespace allocator

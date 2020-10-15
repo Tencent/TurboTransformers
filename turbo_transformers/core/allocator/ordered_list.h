@@ -38,6 +38,24 @@ class OrderedList {
     capacity_ = 0;
   }
 
+  // use visitor to judge if the node should be deleted.
+  void FreeNode(std::function<bool(T& node)> visitor) {
+    Node* prev_node = GetHeadPtr();
+    Node* cursor = head_ptr_->next_.get();
+    while (cursor != nullptr) {
+      // descending order
+      auto next_node = cursor->next_.get();
+
+      if (visitor(*cursor->content_)) {
+        prev_node->next_ = std::move(cursor->next_);
+        capacity_--;
+      } else {
+        prev_node = cursor;
+      }
+      cursor = next_node;
+    }
+  }
+
   Node* GetHeadPtr() { return head_ptr_.get(); }
 
   // add a new node constructed from new_node_ptr, while maintain the order of

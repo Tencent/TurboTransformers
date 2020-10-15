@@ -38,6 +38,8 @@ template <typename T>
 void GetBertTensorUsageRecord(
     std::vector<TensorRecordItemPtr>& TensorUsageRecord, int64_t batch_size,
     int64_t seq_len, int64_t num_head, int64_t hidden_size, int64_t num_layer) {
+  TensorUsageRecord.clear();
+
   auto item_bytes = sizeof(T);
   auto from_seq_len = seq_len;
   auto to_seq_len = seq_len;

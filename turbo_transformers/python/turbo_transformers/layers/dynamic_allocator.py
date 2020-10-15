@@ -101,7 +101,6 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
     usage_recorders = sorted(usage_recorders,
                              key=lambda tup: tup[3],
                              reverse=True)
-    recorders_size = len(usage_recorders)
     assigned_offset = {}
     assigned_trunk = {}
     new_allocate_size = 0
@@ -177,8 +176,9 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
         print("tensor name \t offset")
         for t in assigned_offset.items():
             t_name = t[0]
-            # print("{" , t_name, assigned_trunk[t_name], assigned_offset[t_name], "},")
-            print("{\"", t_name, "\",", assigned_offset[t_name], "},")
+            print("{", t_name, assigned_trunk[t_name], assigned_offset[t_name],
+                  "},")
+            # print("{\"" + t_name + "\",", assigned_offset[t_name], "},")
         print("=====allocation plan====")
 
     used_consumption = used_consumption / 1024 / 1024
@@ -201,9 +201,9 @@ if __name__ == "__main__":
     #     print(tur[4])
     #     trunked_greedy_by_size_offset_calculation(tur, True)
     #     print("\n\n")
-    tur = get_bert_tensor_usage_record(1, 40, 1)
+    tur = get_bert_tensor_usage_record(10, 277, 12)
     print(tur)
     for t in tur:
-        print("{\"", f"{t[0]},", "\",", f"{t[1]}, {t[2]}, {t[3]}", "},")
+        print("{\"" + f"{t[0]}" + "\",", f"{t[1]}, {t[2]}, {t[3]}", "},")
 
     trunked_greedy_by_size_offset_calculation(tur, True)

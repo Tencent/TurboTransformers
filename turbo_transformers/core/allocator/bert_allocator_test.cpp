@@ -47,6 +47,44 @@ static std::vector<TUR> tur_ref = {
 
 };
 
+static bool CheckValid(
+    std::map<std::string, TensorPositionInfo>& tensor_position_map,
+    std::vector<TensorRecordItemPtr>& tensor_usage_record) {
+  for (auto tensor : tensor_usage_record) {
+    auto name = tensor->name_;
+    auto start_op = tensor->start_op_;
+    auto end_op = tensor->end_op_;
+    auto size = tensor->size_;
+    auto it = tensor_position_map.find(name);
+    if (it == tensor_position_map.end()) return false;
+    auto offset = it->second.offset_;
+    Chunk* chunk_addr = it->second.chunk_ptr_;
+    bool flag{true};
+    chunk_addr->visit([&](Chunk::ChunkNode* node) {
+      if (!flag) return;
+      auto x_name = node->tensor_record_->name_;
+      if (x_name == name) return;
+      auto x_offset = node->offset_;
+      auto x_start_op = node->tensor_record_->start_op_;
+      auto x_end_op = node->tensor_record_->end_op_;
+      auto x_size = node->tensor_record_->size_;
+      if (std::max(x_start_op, start_op) <= std::min(x_end_op, end_op)) {
+        // time overlap as well space overlap
+        if (std::max(x_offset, offset) <
+            std::min(x_size + x_offset, size + offset)) {
+          flag = false;
+          std::cerr << x_name << " " << x_start_op << " " << x_end_op << " "
+                    << x_offset << " " << x_size << std::endl;
+          std::cerr << name << " " << start_op << " " << end_op << " " << offset
+                    << " " << size << std::endl;
+        }
+      }
+    });
+    if (!flag) return false;
+  }  // for
+  return true;
+}
+
 /*
 TEST_CASE("chunk", "add a new tensor to a chunk") {
   ChunkList chunk_list([](size_t size) -> char*  { return new char[100]; });
@@ -77,7 +115,7 @@ std::make_shared<TensorRecordItem>("tensor3", 3, 4, 100); node->AppendTensor(t,
 }
 */
 
-TEST_CASE("bert-config", "test1") {
+TEST_CASE("bert-config", "make sure generated bert tensor usage is correct") {
   std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
   bert_config::GetBertTensorUsageRecord<float>(bert_tensor_usage_record, 1, 40);
 
@@ -101,24 +139,16 @@ TEST_CASE("bert-config", "test1") {
   }
 }
 
-TEST_CASE("bert-allocator", "test1") {
+TEST_CASE("bert-allocator", "bert memory schema for 1, 40 allocation correct") {
   std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
   bert_config::GetBertTensorUsageRecord<float>(bert_tensor_usage_record, 1, 40);
   // TODO(jiaruifang) use a dummy allocator function.
-  ChunkList chunk_list([](size_t size) -> char* { return new char[1]; });
+  ChunkList chunk_list([](size_t size) -> char* { return new char[size]; },
+                       [](void* mem_addr) { free(mem_addr); });
   std::map<std::string, TensorPositionInfo> tensor_position_map;
 
   ChunkedGreedyBySizeOffsetCalculation(bert_tensor_usage_record, chunk_list,
                                        tensor_position_map);
-
-  //  for (auto it : bert_tensor_usage_record) {
-  //    auto name = it->name_;
-  //    auto tmp = tensor_position_map.find(name);
-  //    if (tmp == tensor_position_map.end()) REQUIRE(false);
-  //    std::cerr << it->name_ << " " << it->size_ << " " <<
-  //    tmp->second.chunk_ptr_
-  //              << " " << tmp->second.offset_ << std::endl;
-  //  }
 
   // tensor name, offset
   std::map<std::string, int64_t> ref = {
@@ -145,10 +175,50 @@ TEST_CASE("bert-allocator", "test1") {
     auto tmp = tensor_position_map.find(name);
     if (tmp == tensor_position_map.end()) REQUIRE(false);
     auto ref_offset = item.second;
-    std::cerr << name << " " << tmp->second.offset_ << std::endl;
+    //    std::cerr << name << " " << tmp->second.offset_ << std::endl;
     REQUIRE(ref_offset == tmp->second.offset_);
-    if (!(ref_offset == tmp->second.offset_))
-      std::cerr << ref_offset << " vs " << tmp->second.offset_ << std::endl;
+    //    if (!(ref_offset == tmp->second.offset_))
+    //      std::cerr << ref_offset << " vs " << tmp->second.offset_ <<
+    //      std::endl;
+  }
+}
+
+TEST_CASE("bert-allocator-multiple-chunk",
+          "check memory scheme in multi chunks scenarios") {
+  std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
+  bert_config::GetBertTensorUsageRecord<float>(bert_tensor_usage_record, 10,
+                                               32);
+  ChunkList chunk_list([](size_t size) -> char* { return new char[size]; },
+                       [](void* mem_addr) { free(mem_addr); });
+  std::map<std::string, TensorPositionInfo> tensor_position_map;
+
+  ChunkedGreedyBySizeOffsetCalculation(bert_tensor_usage_record, chunk_list,
+                                       tensor_position_map);
+
+  std::cerr << "bert-allocator-multiple-chunk" << std::endl;
+  REQUIRE(CheckValid(tensor_position_map, bert_tensor_usage_record));
+}
+
+TEST_CASE("bert-allocator-multiple-allocation",
+          "check multi times memory allocation correction") {
+  std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
+  std::map<std::string, TensorPositionInfo> tensor_position_map;
+  ChunkList chunk_list([](size_t size) -> char* { return new char[size]; },
+                       [](void* mem_addr) { free(mem_addr); });
+
+  std::vector<int64_t> batch_list{1, 1, 2, 4, 1};
+  std::vector<int64_t> seq_len_list{10, 100, 32, 500, 10};
+  for (size_t i = 0; i < batch_list.size(); ++i) {
+    LOG_S(INFO) << "begin allocate for batch " << batch_list[i] << " seq_len "
+                << seq_len_list[i];
+    bert_config::GetBertTensorUsageRecord<float>(
+        bert_tensor_usage_record, batch_list[i], seq_len_list[i]);
+
+    ChunkedGreedyBySizeOffsetCalculation(bert_tensor_usage_record, chunk_list,
+                                         tensor_position_map);
+
+    chunk_list.ShowChunkUsage();
+    REQUIRE(CheckValid(tensor_position_map, bert_tensor_usage_record));
   }
 }
 

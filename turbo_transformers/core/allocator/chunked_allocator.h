@@ -44,8 +44,7 @@ using TensorRecordItemPtr = std::shared_ptr<TensorRecordItem>;
 
 class Chunk {
  public:
-  Chunk(char* addr, int64_t size, int64_t id)
-      : memaddr_(addr), size_(size), id_(id) {}
+  Chunk(char* addr, int64_t size) : memaddr_(addr), size_(size) {}
   // a list of tensor usage info (name, first_op, last_op, size, offset)
   struct ChunkNode {
     ChunkNode(const TensorRecordItemPtr t, int64_t offset)
@@ -74,52 +73,73 @@ class Chunk {
   void* GetMemAddr() const { return static_cast<void*>(memaddr_); }
 
   void showMe() {
-    tensor_info_.visit([](ChunkNode* node) {
-      LOG_S(INFO) << node->tensor_record_->name_ << " "
-                  << node->tensor_record_->size_ << " " << node->offset_;
+    int64_t max_end_addr = 0;
+    tensor_info_.visit([&](ChunkNode* node) {
+      //      LOG_S(INFO) << node->tensor_record_->name_ << " "
+      //                  << node->tensor_record_->size_ << " " <<
+      //                  node->offset_;
+      max_end_addr =
+          std::max(max_end_addr, node->tensor_record_->size_ + node->offset_);
     });
+    LOG_S(INFO) << "max end addr " << max_end_addr;
   }
+
+  size_t TensorNum() const { return tensor_info_.capacity(); }
+
+  // release all tensors
+  void Reset() { tensor_info_.Reset(); }
 
  private:
   char* memaddr_{nullptr};
   OrderedList<ChunkNode> tensor_info_;
   int64_t size_;
-  int64_t id_;
 };
 
 class ChunkList {
  public:
-  explicit ChunkList(std::function<char*(size_t)> mem_allocate_func)
-      : mem_allocate_func_(mem_allocate_func) {}
+  explicit ChunkList(std::function<char*(size_t)> mem_allocate_func,
+                     std::function<void(void*)> mem_free_func)
+      : mem_allocate_func_(mem_allocate_func), mem_free_func_(mem_free_func) {}
 
   // visitor visit the tensors of each chunk
   void visit(std::function<void(Chunk*)> visitor) {
     chunk_list_.visit(visitor);
   }
 
-  // TODO(jiaruifang) remove useless chunk in the list
-  void Shrink() {}
-
-  Chunk* Back() { return back_ptr_; }
+  // remove useless chunk in the list
+  void Shrink() {
+    chunk_list_.FreeNode([this](Chunk& chunk) -> bool {
+      bool ret = (chunk.TensorNum() == 0);
+      if (ret) {
+        this->mem_free_func_(chunk.GetMemAddr());
+      }
+      return ret;
+    });
+  }
 
   Chunk* AddChunk(int64_t chunk_size) {
     char* addr = mem_allocate_func_(chunk_size);
-    auto new_chunk =
-        std::make_shared<Chunk>(addr, chunk_size, chunk_list_.capacity() + 1);
+    auto new_chunk = std::make_shared<Chunk>(addr, chunk_size);
     chunk_list_.Add(new_chunk);
     return back_ptr_ = new_chunk.get();
   }
 
-  void ShowMe() {
+  void ShowChunkUsage() {
     chunk_list_.visit([](Chunk* node) {
       LOG_S(INFO) << "tensor usage records in the chunk " << node->GetMemAddr()
-                  << " of size " << node->size();
+                  << " of size " << node->size() << " B, #tensor "
+                  << node->TensorNum();
       node->showMe();
     });
   }
 
+  void Reset() {
+    chunk_list_.visit([](Chunk* chunk) { chunk->Reset(); });
+  }
+
  private:
   std::function<char*(size_t)> mem_allocate_func_;
+  std::function<void(void*)> mem_free_func_;
   OrderedList<Chunk> chunk_list_{};
   Chunk* back_ptr_;
 };

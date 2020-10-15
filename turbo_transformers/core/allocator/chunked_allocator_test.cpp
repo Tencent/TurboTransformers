@@ -60,7 +60,6 @@ TEST_CASE("ordered_list2", "insert2") {
     size_t ref_idx{0};
     ordered_list.visit([&](int* node) {
       auto content = *node;
-      //      std::cerr << content << std::endl;
       REQUIRE(content == ref[ref_idx++]);
     });
   }
