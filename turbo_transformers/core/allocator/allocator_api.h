@@ -1,0 +1,70 @@
+// Copyright (C) 2020 THL A29 Limited, a Tencent company.
+// All rights reserved.
+// Licensed under the BSD 3-Clause License (the "License"); you may
+// not use this file except in compliance with the License. You may
+// obtain a copy of the License at
+// https://opensource.org/licenses/BSD-3-Clause
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" basis,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
+// See the AUTHORS file for names of contributors.
+
+#pragma once
+#include <memory.h>
+
+#include <map>
+#include <memory>
+#include <unordered_map>
+
+#include "turbo_transformers/core/allocator/allocator_impl.h"
+#include "turbo_transformers/core/macros.h"
+#include "turbo_transformers/core/memory.h"
+
+namespace turbo_transformers {
+namespace core {
+namespace allocator {
+
+/***
+ * If the runtime detect the GPU, then init a GPU allocator as well as a CPU
+ * one. If no GPU detected, only init a CPU allocator. In this way, we have to
+ * pass a device parameter to the allocate and free API. The device type have to
+ * be determined when call allocate.
+ */
+class Allocator {
+ public:
+  ~Allocator();
+
+  static Allocator& GetInstance() {
+    static Allocator instance;
+    return instance;
+  }
+
+  /*
+   * Add a allocator using schema
+   */
+  void register_schema(const std::string& schema);
+  /*
+   * make Allocator work with the schema
+   */
+  void set_schema(const std::string& schema);
+
+  std::string get_schema() const;
+
+  void set_config(std::vector<int64_t> configs);
+  void* allocate(size_t size, DLDeviceType dev, const std::string& name = "");
+
+  void free(void* memory, DLDeviceType dev, const std::string& name = "");
+
+ private:
+  Allocator();
+  struct AllocatorImpl;
+  std::unique_ptr<AllocatorImpl> impl_;
+
+  DISABLE_COPY_AND_ASSIGN(Allocator);
+};
+
+}  // namespace allocator
+}  // namespace core
+}  // namespace turbo_transformers

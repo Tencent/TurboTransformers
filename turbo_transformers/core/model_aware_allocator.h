@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "macros.h"
-#include "turbo_transformers/core/allocator_impl.h"
+#include "turbo_transformers/core/allocator/allocator_impl.h"
 
 namespace turbo_transformers {
 namespace core {

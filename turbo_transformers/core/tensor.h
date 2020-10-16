@@ -20,11 +20,11 @@
 #include <vector>
 
 #include "absl/types/variant.h"
+#include "turbo_transformers/core/allocator/allocator_api.h"
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/core/half.h"
 #include "turbo_transformers/core/memory.h"
-#include "turbo_transformers/core/model_aware_allocator.h"
 #ifdef WITH_PERFTOOLS
 #include "turbo_transformers/core/profiler.h"
 #endif
@@ -119,13 +119,12 @@ inline DLManagedTensor *NewDLPackTensorT(const std::vector<int64_t> &shape_list,
                                          DLDeviceType device = kDLCPU,
                                          int device_id = 0,
                                          std::string name = "") {
-  DynamicAllocator &allocator = DynamicAllocator::GetInstance();
-  bool use_dynamic = allocator.isCached(name);
-  if (!use_dynamic) {
+  auto schema = allocator::Allocator::GetInstance().get_schema();
+  if (schema == "naive") {
     return NewDLPackTensor(shape_list, device, device_id,
                            details::DataTypeTrait<T>::DLPackTypeCode,
                            sizeof(T) * 8, 1);
-  } else if (use_dynamic) {
+  } else if (schema == "model-aware") {
     return NewDLPackTensorDynamic(shape_list, device, device_id,
                                   details::DataTypeTrait<T>::DLPackTypeCode,
                                   sizeof(T) * 8, 1, name);

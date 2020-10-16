@@ -11,7 +11,7 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "turbo_transformers/core/allocator/chunked_allocator.h"
+#include "turbo_transformers/core/allocator/model_aware_memory_scheduler.h"
 
 #include <algorithm>
 #include <iostream>
@@ -117,7 +117,8 @@ void ChunkedGreedyBySizeOffsetCalculation(
     }
   }
   // release not used chunk
-  chunk_list.Shrink();
+  chunk_list.Shrturbo_transformers / core / allocator /
+      naive_allocator.cpp ink();
 }
 
 }  // namespace allocator

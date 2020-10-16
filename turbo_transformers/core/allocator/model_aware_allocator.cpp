@@ -11,26 +11,18 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#pragma once
-#include <cstdlib>
-#include <map>
-#include <string>
-#include <vector>
+//
+// Created by Jiarui Fang on 2020/10/16.
+//
 
-#include "turbo_transformers/core/allocator/model_aware_memory_scheduler.h"
+#include "model_aware_allocator.h"
 
 namespace turbo_transformers {
 namespace core {
 namespace allocator {
-namespace bert_config {
 
-template <typename T>
-void GetBertTensorUsageRecord(
-    std::vector<TensorRecordItemPtr>& TensorUsageRecord, int64_t batch_size,
-    int64_t seq_len, int64_t num_head = 12, int64_t hidden_size = 768,
-    int64_t num_layer = 12);
+ModelAwareAllocator::~ModelAwareAllocator() = default;
 
-}  // namespace bert_config
 }  // namespace allocator
 }  // namespace core
 }  // namespace turbo_transformers

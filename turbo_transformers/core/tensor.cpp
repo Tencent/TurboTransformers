@@ -16,8 +16,8 @@
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
-#include "turbo_transformers/core/allocator.h"
-#include "turbo_transformers/core/model_aware_allocator.h"
+#include "turbo_transformers/core/allocator/allocator_api.h"
+//#include "turbo_transformers/core/model_aware_allocator.h"
 
 namespace turbo_transformers {
 namespace core {
@@ -28,9 +28,8 @@ static void DLManagedTensorDeletor(DLManagedTensor *self) {
   if (self->dl_tensor.data != nullptr) {
     if (self->dl_tensor.ctx.device_type == kDLCPU ||
         self->dl_tensor.ctx.device_type == kDLGPU) {
-      Allocator &allocator = Allocator::GetInstance();
-      allocator.free(self->dl_tensor.data, "naive",
-                     self->dl_tensor.ctx.device_type);
+      allocator::Allocator &allocator = allocator::Allocator::GetInstance();
+      allocator.free(self->dl_tensor.data, self->dl_tensor.ctx.device_type, "");
     }
   }
 
@@ -72,8 +71,9 @@ DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
                                  std::multiplies<int64_t>());
   if (device == kDLCPU || device == kDLGPU) {
     size_t size = numel * (bits / 8);
-    Allocator &allocator = Allocator::GetInstance();
-    newTensor->dl_tensor.data = allocator.allocate(size, "naive", device);
+    allocator::Allocator &allocator = allocator::Allocator::GetInstance();
+    // if no name, then not use model-aware.
+    newTensor->dl_tensor.data = allocator.allocate(size, device, "");
   } else {
     TT_THROW("only cpu and gpu are supported!");
   }
@@ -104,8 +104,8 @@ DLManagedTensor *NewDLPackTensorStatic(const std::vector<int64_t> &shape_list,
 
   if (device == kDLCPU || device == kDLGPU) {
     // static allocator
-    StaticAllocator &allocator = StaticAllocator::GetInstance();
-    newTensor->dl_tensor.data = allocator.allocate(name, device);
+    auto &allocator = allocator::Allocator::GetInstance();
+    newTensor->dl_tensor.data = allocator.allocate(0, device, name);
   } else {
     TT_THROW("only cpu and gpu are supported!");
   }
@@ -135,8 +135,9 @@ DLManagedTensor *NewDLPackTensorDynamic(const std::vector<int64_t> &shape_list,
   newTensor->dl_tensor.byte_offset = 0;
 
   if (device == kDLCPU || device == kDLGPU) {
-    DynamicAllocator &allocator = DynamicAllocator::GetInstance();
-    newTensor->dl_tensor.data = allocator.allocate(name, device);
+    // if has a name and schema is model-aware, then use model-aware allocator.
+    auto &allocator = allocator::Allocator::GetInstance();
+    newTensor->dl_tensor.data = allocator.allocate(0, device, name);
   } else {
     TT_THROW("only cpu and gpu are supported!");
   }

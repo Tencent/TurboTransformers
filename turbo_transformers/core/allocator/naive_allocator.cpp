@@ -11,26 +11,18 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#pragma once
-#include "turbo_transformers/core/memory.h"
-#ifdef TT_WITH_CUDA
-#include <cuda_runtime.h>
+//
+// Created by Jiarui Fang on 2020/10/16.
+//
 
-#include "turbo_transformers/core/cuda_device_context.h"
-#include "turbo_transformers/core/cuda_enforce.cuh"
-#endif
+#include "naive_allocator.h"
+
 namespace turbo_transformers {
 namespace core {
-struct BadAlloc : public std::exception {
-  explicit BadAlloc(std::string err_msg) : err_str_(err_msg) {}
+namespace allocator {
 
-  const char *what() const noexcept override { return err_str_.c_str(); }
+NaiveAllocator::~NaiveAllocator() = default;
 
-  std::string err_str_;
-};
-extern void *allocate_impl(size_t size, DLDeviceType dev);
-
-extern void free_impl(void *memory_addr, DLDeviceType dev);
-
+}  // namespace allocator
 }  // namespace core
 }  // namespace turbo_transformers

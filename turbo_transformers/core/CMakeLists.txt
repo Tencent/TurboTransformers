@@ -22,9 +22,14 @@ add_library(tt_core
             tensor.cpp
             config.cpp
             profiler.cpp
-            allocator.cpp
-            model_aware_allocator.cpp
-            allocator_impl.cpp
+            allocator/allocator_impl.cpp
+            allocator/bert_config.cpp
+        allocator/model_aware_memory_scheduler.cpp
+            allocator/ordered_list.cpp
+            allocator/base_allocator.cpp
+            allocator/naive_allocator.cpp
+            allocator/model_aware_allocator.cpp
+        allocator/allocator_api.cpp
         )
 target_link_libraries(tt_core PUBLIC
         absl::stacktrace
@@ -59,9 +64,17 @@ add_executable(tt_core_test
         enforce_test.cpp
         device_context_test.cpp
         tensor_test.cpp
-        allocator_test.cpp
+        allocator/allocator_api_test.cpp
         fp16_test.cpp)
 target_link_libraries(tt_core_test catch2_test_main tt_core)
 add_test(NAME tt_core_test  COMMAND tt_core_test)
 
-add_subdirectory(allocator)
+add_executable(bert_allocator_test
+        allocator/bert_allocator_test.cpp)
+target_link_libraries(bert_allocator_test tt_core catch2_test_main)
+add_test(NAME bert_allocator_test  COMMAND bert_allocator_test)
+
+add_executable(chunked_allocator_test
+        allocator/model_aware_memory_scheduler_test.cpp)
+target_link_libraries(chunked_allocator_test tt_core catch2_test_main)
+add_test(NAME chunked_allocator_test  COMMAND chunked_allocator_test)

@@ -12,25 +12,26 @@
 // See the AUTHORS file for names of contributors.
 
 #pragma once
-#include <cstdlib>
-#include <map>
 #include <string>
 #include <vector>
 
-#include "turbo_transformers/core/allocator/model_aware_memory_scheduler.h"
+#include "dlpack/dlpack.h"
 
 namespace turbo_transformers {
 namespace core {
 namespace allocator {
-namespace bert_config {
 
-template <typename T>
-void GetBertTensorUsageRecord(
-    std::vector<TensorRecordItemPtr>& TensorUsageRecord, int64_t batch_size,
-    int64_t seq_len, int64_t num_head = 12, int64_t hidden_size = 768,
-    int64_t num_layer = 12);
+class BaseAllocator {
+ public:
+  virtual void* allocate(size_t size, DLDeviceType dev,
+                         const std::string& name) = 0;
+  virtual void free(void* mem, DLDeviceType dev, const std::string& name) = 0;
+  // an interface to modify model-aware allocator's model config.
+  // the config is encoded in a list of int64_t
+  virtual void reset(std::vector<int64_t>& configs){};
+  virtual ~BaseAllocator();
+};
 
-}  // namespace bert_config
 }  // namespace allocator
 }  // namespace core
 }  // namespace turbo_transformers

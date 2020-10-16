@@ -11,7 +11,7 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "turbo_transformers/core/allocator/chunked_allocator.h"
+#include "turbo_transformers/core/allocator/model_aware_memory_scheduler.h"
 
 #include <iostream>
 

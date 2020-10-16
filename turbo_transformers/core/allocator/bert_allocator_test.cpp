@@ -15,7 +15,7 @@
 
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/allocator/bert_config.h"
-#include "turbo_transformers/core/allocator/chunked_allocator.h"
+#include "turbo_transformers/core/allocator/model_aware_memory_scheduler.h"
 
 namespace turbo_transformers {
 namespace core {

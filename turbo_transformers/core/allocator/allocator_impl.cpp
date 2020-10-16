@@ -11,11 +11,12 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "turbo_transformers/core/allocator_impl.h"
+#include "allocator_impl.h"
 
 #include "turbo_transformers/core/memory.h"
 namespace turbo_transformers {
 namespace core {
+namespace allocator {
 #ifdef TT_WITH_CUDA
 static void *cuda_alloc(size_t sz) {
   void *device_mem;
@@ -53,5 +54,6 @@ void free_impl(void *memory_addr, DLDeviceType dev) {
     TT_THROW("Not supported devtype");
   }
 }
+}  // namespace allocator
 }  // namespace core
 }  // namespace turbo_transformers
