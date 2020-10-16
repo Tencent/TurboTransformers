@@ -70,6 +70,7 @@ extern void bert_opt_mem_allocate_api(int64_t batch_size, int64_t seq_len,
                                       int64_t num_layer,
                                       const std::string& dev_str);
 
+extern void set_allocator_schema(const std::string& name);
 }  // namespace allocator
 }  // namespace core
 }  // namespace turbo_transformers

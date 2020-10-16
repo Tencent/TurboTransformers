@@ -85,9 +85,13 @@ class ModelAwareAllocator : public BaseAllocator {
   void* allocate(size_t size, DLDeviceType dev,
                  const std::string& name) override {
     if (!is_activation(name)) {
+      LOG_SCOPE_F(INFO, "Model aware allocator allocates heap CPU memory %s",
+                  name.c_str());
       return allocate_impl(size, dev);
     }
     if (kDLCPU == dev) {
+      LOG_SCOPE_F(INFO, "Model aware allocator allocates cached CPU memory %s",
+                  name.c_str());
       auto it = cpu_tensor_position_map_.find(name);
       TT_ENFORCE(it != cpu_tensor_position_map_.end(),
                  "ModelAwareAllocator allocate %s failed", name.c_str());

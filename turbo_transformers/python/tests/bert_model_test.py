@@ -41,7 +41,7 @@ class TestBertModel(unittest.TestCase):
         self.turbo_model = turbo_transformers.BertModel.from_torch(
             self.torch_model, self.test_device, "turbo", use_memory_opt=True)
 
-    def check_torch_and_turbo(self, use_cuda):
+    def check_torch_and_turbo(self, use_cuda, use_memory_opt=True):
         self.init_data(use_cuda)
         num_iter = 1
         device_name = "GPU" if use_cuda else "CPU"
@@ -58,10 +58,26 @@ class TestBertModel(unittest.TestCase):
 
         turbo_model = (lambda: self.turbo_model(input_ids))
 
+        if use_memory_opt:
+            # use model aware allocator
+            turbo_transformers.set_allocator_schema("model-aware")
+            turbo_transformers.bert_opt_mem_allocate_api(
+                input_ids.size()[0],  # batch
+                input_ids.size()[1],  # seq_len
+                self.cfg.num_attention_heads,
+                self.cfg.hidden_size,
+                self.cfg.num_hidden_layers,
+                "GPU" if 'cuda' in input_ids.device.type else "CPU")
+
         with turbo_transformers.pref_guard("bert_perf") as perf:
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'BertModel TurboTransformer({device_name}) QPS {turbo_qps}')
+
+        # set the allocator back to naive, otherwise it will affect
+        # the other inference processes.
+        if use_memory_opt:
+            turbo_transformers.set_allocator_schema("naive")
 
         self.assertTrue(
             numpy.allclose(torch_result[0].cpu(),

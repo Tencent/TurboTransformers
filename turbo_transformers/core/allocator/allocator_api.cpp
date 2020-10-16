@@ -111,9 +111,15 @@ void bert_opt_mem_allocate_api(int64_t batch_size, int64_t seq_len,
                                int64_t num_head, int64_t hidden_size,
                                int64_t num_layer, const std::string& dev_str) {
   auto& allocator = Allocator::GetInstance();
-  allocator.set_schema("model-aware");
   // TODO(jiaruifang) we can only schedule the dev
   allocator.set_config({batch_size, seq_len, num_head, hidden_size, num_layer});
+}
+
+extern void set_allocator_schema(const std::string& name) {
+  auto& allocator = Allocator::GetInstance();
+  LOG_S(INFO) << "The Global Allocator has been switch from "
+              << allocator.get_schema() << " to " << name;
+  allocator.set_schema(name);
 }
 
 }  // namespace allocator

@@ -459,8 +459,6 @@ class BertModel:
             self.bertmodel_nopooler = model
             self.pooler = pooler
             self.backend = "turbo"
-            # use a hand-crafted opt for variable-length input
-            self.use_memory_opt = use_memory_opt
 
     def __call__(self,
                  inputs: AnyTensor,
@@ -475,14 +473,6 @@ class BertModel:
                  pooler_output: Optional[AnyTensor] = None,
                  return_type: Optional[ReturnType] = None):
         if self.backend == "turbo":
-            if self.use_memory_opt:
-                # use model aware allocator
-                cxx.bert_opt_mem_allocate_api(
-                    inputs.size()[0],
-                    inputs.size()[1], self.config.num_attention_heads,
-                    self.config.hidden_size, self.config.num_hidden_layers,
-                    "GPU" if 'cuda' in inputs.device.type else "CPU")
-
             encoder_outputs = self.bertmodel_nopooler(
                 inputs,
                 attention_masks,

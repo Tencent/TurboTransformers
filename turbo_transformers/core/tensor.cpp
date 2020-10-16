@@ -24,6 +24,7 @@ static void DLManagedTensorDeletor(DLManagedTensor *self) {
   if (self == nullptr) {
     return;
   }
+  std::cerr << "call DLManagedTensorDeletor" << std::endl;
   if (self->dl_tensor.data != nullptr) {
     if (self->dl_tensor.ctx.device_type == kDLCPU ||
         self->dl_tensor.ctx.device_type == kDLGPU) {
@@ -46,7 +47,7 @@ static void DLManagedTensorDeletorWithoutData(DLManagedTensor *self) {
   if (self == nullptr) {
     return;
   }
-
+  std::cerr << "call DLManagedTensorDeletorWithoutData" << std::endl;
   delete[] self->dl_tensor.shape;
   delete self;
 }
@@ -76,12 +77,12 @@ DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
   if (device == kDLCPU || device == kDLGPU) {
     size_t size = numel * (bits / 8);
     allocator::Allocator &allocator = allocator::Allocator::GetInstance();
-    newTensor->dl_tensor.data = allocator.allocate(size, device, "");
+    newTensor->dl_tensor.data = allocator.allocate(size, device, name);
 
     if (allocator.is_activation(name)) {
-      newTensor->deleter = DLManagedTensorDeletor;
-    } else {
       newTensor->deleter = DLManagedTensorDeletorWithoutData;
+    } else {
+      newTensor->deleter = DLManagedTensorDeletor;
     }
   } else {
     TT_THROW("only cpu and gpu are supported!");
