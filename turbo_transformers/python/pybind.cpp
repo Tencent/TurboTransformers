@@ -18,7 +18,6 @@
 #include "pybind11/pybind11.h"
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/config.h"
-#include "turbo_transformers/core/model_aware_allocator.h"
 #include "turbo_transformers/core/profiler.h"
 #include "turbo_transformers/core/tensor.h"
 #include "turbo_transformers/layers/addbias_act.h"

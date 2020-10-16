@@ -17,7 +17,6 @@
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
 #include "turbo_transformers/core/allocator/allocator_api.h"
-//#include "turbo_transformers/core/model_aware_allocator.h"
 
 namespace turbo_transformers {
 namespace core {
