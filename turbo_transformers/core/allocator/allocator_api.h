@@ -65,6 +65,11 @@ class Allocator {
   DISABLE_COPY_AND_ASSIGN(Allocator);
 };
 
+extern void bert_opt_mem_allocate_api(int64_t batch_size, int64_t seq_len,
+                                      int64_t num_head, int64_t hidden_size,
+                                      int64_t num_layer,
+                                      const std::string& dev_str);
+
 }  // namespace allocator
 }  // namespace core
 }  // namespace turbo_transformers

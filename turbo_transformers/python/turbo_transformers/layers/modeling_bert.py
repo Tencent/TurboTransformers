@@ -476,14 +476,11 @@ class BertModel:
                  return_type: Optional[ReturnType] = None):
         if self.backend == "turbo":
             if self.use_memory_opt:
-                tur = get_bert_tensor_usage_record(
-                    inputs.shape[0], inputs.shape[1],
-                    self.config.num_attention_heads, self.config.hidden_size,
-                    self.config.num_hidden_layers)
-                assigned_offset, assigned_trunk, trunk_info, _ = trunked_greedy_by_size_offset_calculation(
-                    tur, False)
-                cxx.dynamic_mem_schedule(
-                    assigned_offset, assigned_trunk, trunk_info,
+                # use model aware allocator
+                cxx.bert_opt_mem_allocate_api(
+                    inputs.size()[0],
+                    inputs.size()[1], self.config.num_attention_heads,
+                    self.config.hidden_size, self.config.num_hidden_layers,
                     "GPU" if 'cuda' in inputs.device.type else "CPU")
 
             encoder_outputs = self.bertmodel_nopooler(

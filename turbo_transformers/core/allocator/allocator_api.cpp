@@ -92,6 +92,16 @@ void Allocator::set_config(std::vector<int64_t> configs) {
     it->second->reset(configs);
   }
 }
+
+void bert_opt_mem_allocate_api(int64_t batch_size, int64_t seq_len,
+                               int64_t num_head, int64_t hidden_size,
+                               int64_t num_layer, const std::string& dev_str) {
+  auto& allocator = Allocator::GetInstance();
+  allocator.set_schema("model-aware");
+  // TODO(jiaruifang) we can only schedule the dev
+  allocator.set_config({batch_size, seq_len, num_head, hidden_size, num_layer});
+}
+
 }  // namespace allocator
 }  // namespace core
 }  // namespace turbo_transformers

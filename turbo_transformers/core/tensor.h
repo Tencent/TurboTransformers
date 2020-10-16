@@ -105,11 +105,6 @@ extern DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
                                         size_t lanes);
 
 // use static memory allocator to allocate memory
-extern DLManagedTensor *NewDLPackTensorStatic(
-    const std::vector<int64_t> &shape_list, DLDeviceType device, int device_id,
-    uint8_t data_type_code, size_t bits, size_t lanes, std::string &name);
-
-// use static memory allocator to allocate memory
 extern DLManagedTensor *NewDLPackTensorDynamic(
     const std::vector<int64_t> &shape_list, DLDeviceType device, int device_id,
     uint8_t data_type_code, size_t bits, size_t lanes, std::string &name);
