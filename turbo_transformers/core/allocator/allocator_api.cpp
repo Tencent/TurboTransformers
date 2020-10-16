@@ -115,7 +115,7 @@ void bert_opt_mem_allocate_api(int64_t batch_size, int64_t seq_len,
   allocator.set_config({batch_size, seq_len, num_head, hidden_size, num_layer});
 }
 
-extern void set_allocator_schema(const std::string& name) {
+extern void reset_allocator_schema(const std::string& name) {
   auto& allocator = Allocator::GetInstance();
   LOG_S(INFO) << "The Global Allocator has been switch from "
               << allocator.get_schema() << " to " << name;

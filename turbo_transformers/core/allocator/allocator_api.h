@@ -41,13 +41,6 @@ class Allocator {
     return instance;
   }
 
-  /*
-   * Add a allocator using schema
-   */
-  void register_schema(const std::string& schema);
-  /*
-   * make Allocator work with the schema
-   */
   void set_schema(const std::string& schema);
 
   std::string get_schema() const;
@@ -58,6 +51,7 @@ class Allocator {
   bool is_activation(const std::string& name);
 
  private:
+  void register_schema(const std::string& schema);
   Allocator();
   struct AllocatorImpl;
   std::unique_ptr<AllocatorImpl> impl_;
@@ -70,7 +64,7 @@ extern void bert_opt_mem_allocate_api(int64_t batch_size, int64_t seq_len,
                                       int64_t num_layer,
                                       const std::string& dev_str);
 
-extern void set_allocator_schema(const std::string& name);
+extern void reset_allocator_schema(const std::string& name);
 }  // namespace allocator
 }  // namespace core
 }  // namespace turbo_transformers

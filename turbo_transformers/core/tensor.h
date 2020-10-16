@@ -109,7 +109,6 @@ inline DLManagedTensor *NewDLPackTensorT(const std::vector<int64_t> &shape_list,
                                          DLDeviceType device = kDLCPU,
                                          int device_id = 0,
                                          const std::string &name = "") {
-  auto schema = allocator::Allocator::GetInstance().get_schema();
   return NewDLPackTensor(shape_list, device, device_id,
                          details::DataTypeTrait<T>::DLPackTypeCode,
                          sizeof(T) * 8, 1, name);

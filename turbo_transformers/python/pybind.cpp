@@ -79,7 +79,7 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
   m.def("bert_opt_mem_allocate_api",
         &core::allocator::bert_opt_mem_allocate_api);
 
-  m.def("set_allocator_schema", &core::allocator::set_allocator_schema);
+  m.def("reset_allocator_schema", &core::allocator::reset_allocator_schema);
 
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",

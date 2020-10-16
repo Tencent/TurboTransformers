@@ -30,13 +30,8 @@ from transformers.modeling_bert import BertEncoder as TorchBertEncoder
 from transformers.modeling_bert import BertModel as TorchBertModel
 from transformers.modeling_bert import BertPooler as TorchBertPooler
 
-from .bert_tensor_usage import get_bert_tensor_usage_record
-from .static_allocator import greedy_by_size_offset_calculation
-from .dynamic_allocator import trunked_greedy_by_size_offset_calculation
-
 import enum
 import numpy as np
-import os
 
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
@@ -444,12 +439,7 @@ class BertModel:
     # @params:
     # pooler is used for turbo backend only
     # config is used for memory optizations
-    def __init__(self,
-                 model,
-                 pooler=None,
-                 backend="onnxrt",
-                 config=None,
-                 use_memory_opt=False):
+    def __init__(self, model, pooler=None, backend="onnxrt", config=None):
         # TODO type of bertmodel_nopooler is (onnx and torch)
         self.backend = backend
         if backend == "onnxrt":
@@ -541,8 +531,7 @@ class BertModel:
             encoder = BertEncoder.from_torch(model.encoder)
             bertmodel_nopooler = BertModelNoPooler(embeddings, encoder)
             pooler = BertPooler.from_torch(model.pooler)
-            return BertModel(bertmodel_nopooler, pooler, "turbo", model.config,
-                             use_memory_opt)
+            return BertModel(bertmodel_nopooler, pooler, "turbo", model.config)
         elif backend == "onnxrt":
             import onnx
             import onnxruntime
