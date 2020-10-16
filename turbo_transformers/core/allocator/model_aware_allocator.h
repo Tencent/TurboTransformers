@@ -12,6 +12,8 @@
 // See the AUTHORS file for names of contributors.
 
 #pragma once
+#include <set>
+
 #include "turbo_transformers/core/allocator/allocator_impl.h"
 #include "turbo_transformers/core/allocator/base_allocator.h"
 #include "turbo_transformers/core/allocator/bert_config.h"
@@ -37,11 +39,29 @@ class ModelAwareAllocator : public BaseAllocator {
             },
             [&](void* mem_addr) { free_impl(mem_addr, kDLCPU); }) {
     if (model_name == "bert") {
+      activation_names_ = {"PrepareBertMasks/possitionids",
+                           "PrepareBertMasks/seqids/Reshape",
+                           "PrepareBertMasks/attmask/Reshape",
+                           "PrepareBertMasks/extendedattnmask/Reshape",
+                           "BERTEmbedding/Reshape",
+                           "self/qkv_out1/Reshape",
+                           "self/q/Reshape",
+                           "self/k/Reshape",
+                           "self/v/Reshape",
+                           "batch_gemm3/Reshape",
+                           "ApplyMaskAndSoftmax/Reshape",
+                           "batch_gemm4/Reshape",
+                           "gemm5/Reshape",
+                           "BertIntermediate/Reshape",
+                           "BertOutput/Reshape"};
+
     } else {
       TT_THROW("ModelAwareAllocator dose not support %s", model_name.c_str());
     }
   }
-
+  bool is_activation(const std::string& name) const override {
+    return activation_names_.count(name) != 0;
+  }
   // reset memory schema, after input tensor changes.
   void reset(std::vector<int64_t>& param_list) override {
     LOG_SCOPE_F(INFO,
@@ -64,7 +84,7 @@ class ModelAwareAllocator : public BaseAllocator {
   // DNN model, allocate a piece of memory on heap.
   void* allocate(size_t size, DLDeviceType dev,
                  const std::string& name) override {
-    if (name.size() == 0) {
+    if (!is_activation(name)) {
       return allocate_impl(size, dev);
     }
     if (kDLCPU == dev) {
@@ -87,6 +107,7 @@ class ModelAwareAllocator : public BaseAllocator {
   std::vector<TensorRecordItemPtr> tensor_usage_records_;
   std::map<std::string, TensorPositionInfo> cpu_tensor_position_map_;
   ChunkList cpu_chunk_list_;
+  std::set<std::string> activation_names_;
 #ifdef TT_WITH_CUDA
   std::map<std::string, TensorPositionInfo> gpu_tensor_position_map_;
   ChunkList gpu_chunk_list_;

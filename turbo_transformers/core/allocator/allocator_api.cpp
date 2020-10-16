@@ -93,6 +93,20 @@ void Allocator::set_config(std::vector<int64_t> configs) {
   }
 }
 
+/***
+ * If use the model-aware model, judge if the name is an activation.
+ * @param name : activation name.
+ * @return : is the activation a activation.
+ */
+bool Allocator::is_activation(const std::string& name) {
+  if (get_schema() != "model-aware") return false;
+  auto it = impl_->allocators.find("model-aware");
+  if (it != impl_->allocators.end()) {
+    return it->second->is_activation(name);
+  }
+  return false;
+}
+
 void bert_opt_mem_allocate_api(int64_t batch_size, int64_t seq_len,
                                int64_t num_head, int64_t hidden_size,
                                int64_t num_layer, const std::string& dev_str) {

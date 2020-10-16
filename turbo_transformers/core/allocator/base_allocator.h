@@ -29,6 +29,7 @@ class BaseAllocator {
   // an interface to modify model-aware allocator's model config.
   // the config is encoded in a list of int64_t
   virtual void reset(std::vector<int64_t>& configs){};
+  virtual bool is_activation(const std::string& name) const { return false; };
   virtual ~BaseAllocator();
 };
 

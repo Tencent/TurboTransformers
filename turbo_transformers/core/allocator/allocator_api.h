@@ -54,8 +54,8 @@ class Allocator {
 
   void set_config(std::vector<int64_t> configs);
   void* allocate(size_t size, DLDeviceType dev, const std::string& name = "");
-
   void free(void* memory, DLDeviceType dev, const std::string& name = "");
+  bool is_activation(const std::string& name);
 
  private:
   Allocator();

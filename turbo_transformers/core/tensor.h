@@ -102,29 +102,17 @@ struct VisitDLTensor {
 extern DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
                                         DLDeviceType device, int device_id,
                                         uint8_t data_type_code, size_t bits,
-                                        size_t lanes);
-
-// use static memory allocator to allocate memory
-extern DLManagedTensor *NewDLPackTensorDynamic(
-    const std::vector<int64_t> &shape_list, DLDeviceType device, int device_id,
-    uint8_t data_type_code, size_t bits, size_t lanes, std::string &name);
+                                        size_t lanes, const std::string &name);
 
 template <typename T>
 inline DLManagedTensor *NewDLPackTensorT(const std::vector<int64_t> &shape_list,
                                          DLDeviceType device = kDLCPU,
                                          int device_id = 0,
-                                         std::string name = "") {
+                                         const std::string &name = "") {
   auto schema = allocator::Allocator::GetInstance().get_schema();
-  if (schema == "naive") {
-    return NewDLPackTensor(shape_list, device, device_id,
-                           details::DataTypeTrait<T>::DLPackTypeCode,
-                           sizeof(T) * 8, 1);
-  } else if (schema == "model-aware") {
-    return NewDLPackTensorDynamic(shape_list, device, device_id,
-                                  details::DataTypeTrait<T>::DLPackTypeCode,
-                                  sizeof(T) * 8, 1, name);
-  }
-  return nullptr;
+  return NewDLPackTensor(shape_list, device, device_id,
+                         details::DataTypeTrait<T>::DLPackTypeCode,
+                         sizeof(T) * 8, 1, name);
 }
 
 class Tensor {
@@ -168,7 +156,7 @@ class Tensor {
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
   template <typename T>
   T *Reshape(std::vector<int64_t> shape_list, DLDeviceType device_type,
-             int device_id, std::string name = "Reshape") {
+             int device_id, const std::string &name = "Reshape") {
     // if Need Realloc
 #ifdef WITH_PERFTOOLS
     auto &profile_ctx = core::Profiler::GetInstance();

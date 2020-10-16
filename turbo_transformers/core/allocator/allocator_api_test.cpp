@@ -55,6 +55,8 @@ TEST_CASE("model-aware-allocator-cpu-with-name") {
     addr_list[i] =
         allocator.allocate(size_list[i], kDLCPU, "BertIntermediate/Reshape");
     allocator.free(addr_list[i], kDLCPU, "");
+    REQUIRE(allocator.is_activation("BertIntermediate/Reshape"));
+    REQUIRE(!allocator.is_activation("Reshape"));
   }
 }
 
