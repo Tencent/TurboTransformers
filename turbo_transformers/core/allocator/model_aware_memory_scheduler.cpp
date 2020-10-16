@@ -117,8 +117,7 @@ void ChunkedGreedyBySizeOffsetCalculation(
     }
   }
   // release not used chunk
-  chunk_list.Shrturbo_transformers / core / allocator /
-      naive_allocator.cpp ink();
+  chunk_list.Shrink();
 }
 
 }  // namespace allocator
