@@ -12,15 +12,14 @@
 // See the AUTHORS file for names of contributors.
 
 #pragma once
-#include <memory.h>
+#include <dlpack/dlpack.h>
 
 #include <map>
 #include <memory>
-#include <unordered_map>
+#include <string>
+#include <vector>
 
-#include "turbo_transformers/core/allocator/allocator_impl.h"
 #include "turbo_transformers/core/macros.h"
-#include "turbo_transformers/core/memory.h"
 
 namespace turbo_transformers {
 namespace core {

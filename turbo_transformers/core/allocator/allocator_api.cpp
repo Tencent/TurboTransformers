@@ -16,6 +16,7 @@
 #include <map>
 #include <memory>
 
+#include "turbo_transformers/core/allocator/allocator_impl.h"
 #include "turbo_transformers/core/allocator/base_allocator.h"
 #include "turbo_transformers/core/allocator/model_aware_allocator.h"
 #include "turbo_transformers/core/allocator/naive_allocator.h"
@@ -76,13 +77,14 @@ void Allocator::register_schema(const std::string& schema) {
   if ("model-aware" == schema) {
     impl_->allocators.emplace("model-aware", new ModelAwareAllocator("bert"));
   } else if ("naive" == schema) {
-    impl_->allocators.emplace("naive", new ModelAwareAllocator("bert"));
+    impl_->allocators.emplace("naive", new NaiveAllocator());
   } else {
     TT_THROW("no schem %s in register_schema", schema.c_str());
   }
 }
 
 void Allocator::set_schema(const std::string& schema) {
+  LOG_S(INFO) << "Global allocator has be set to " << schema;
   impl_->schema_ = schema;
 }
 

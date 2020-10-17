@@ -41,13 +41,17 @@ class TestBertModel(unittest.TestCase):
         self.turbo_model = turbo_transformers.BertModel.from_torch(
             self.torch_model, self.test_device, "turbo", use_memory_opt=True)
 
-    def check_torch_and_turbo(self, use_cuda, use_memory_opt=True):
+    def check_torch_and_turbo(self,
+                              use_cuda,
+                              batch_size,
+                              seq_len,
+                              use_memory_opt=True):
         self.init_data(use_cuda)
         num_iter = 1
         device_name = "GPU" if use_cuda else "CPU"
         input_ids = torch.randint(low=0,
                                   high=self.cfg.vocab_size - 1,
-                                  size=(1, 10),
+                                  size=(batch_size, seq_len),
                                   dtype=torch.long,
                                   device=self.test_device)
 
@@ -60,7 +64,7 @@ class TestBertModel(unittest.TestCase):
 
         if use_memory_opt:
             # use model aware allocator
-            turbo_transformers.set_allocator_schema("model-aware")
+            turbo_transformers.reset_allocator_schema("model-aware")
             turbo_transformers.bert_opt_mem_allocate_api(
                 input_ids.size()[0],  # batch
                 input_ids.size()[1],  # seq_len
@@ -77,7 +81,7 @@ class TestBertModel(unittest.TestCase):
         # set the allocator back to naive, otherwise it will affect
         # the other inference processes.
         if use_memory_opt:
-            turbo_transformers.set_allocator_schema("naive")
+            turbo_transformers.reset_allocator_schema("naive")
 
         self.assertTrue(
             numpy.allclose(torch_result[0].cpu(),
@@ -86,10 +90,16 @@ class TestBertModel(unittest.TestCase):
                            rtol=1e-3))
 
     def test_bert_model(self):
-        if torch.cuda.is_available() and \
-            turbo_transformers.config.is_compiled_with_cuda():
-            self.check_torch_and_turbo(use_cuda=True)
-        self.check_torch_and_turbo(use_cuda=False)
+        for batch_size in [2]:
+            for seq_len in [50]:
+                if torch.cuda.is_available() and \
+                    turbo_transformers.config.is_compiled_with_cuda():
+                    self.check_torch_and_turbo(use_cuda=True,
+                                               batch_size=batch_size,
+                                               seq_len=seq_len)
+                self.check_torch_and_turbo(use_cuda=False,
+                                           batch_size=batch_size,
+                                           seq_len=seq_len)
 
 
 if __name__ == '__main__':

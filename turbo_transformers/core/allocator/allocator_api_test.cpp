@@ -40,6 +40,7 @@ TEST_CASE("model-aware-allocator-cpu-no-name") {
     addr_list[i] = allocator.allocate(size_list[i], kDLCPU, "");
     allocator.free(addr_list[i], kDLCPU, "");
   }
+  allocator.set_schema("naive");
 }
 
 TEST_CASE("model-aware-allocator-cpu-with-name") {
@@ -54,10 +55,11 @@ TEST_CASE("model-aware-allocator-cpu-with-name") {
   for (size_t i = 0; i < size_list.size(); ++i) {
     addr_list[i] =
         allocator.allocate(size_list[i], kDLCPU, "BertIntermediate/Reshape");
-    allocator.free(addr_list[i], kDLCPU, "");
+    allocator.free(addr_list[i], kDLCPU, "BertIntermediate/Reshape");
     REQUIRE(allocator.is_activation("BertIntermediate/Reshape"));
     REQUIRE(!allocator.is_activation("Reshape"));
   }
+  allocator.set_schema("naive");
 }
 
 }  // namespace allocator
