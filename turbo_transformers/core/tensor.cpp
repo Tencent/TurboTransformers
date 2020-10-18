@@ -12,7 +12,6 @@
 // See the AUTHORS file for names of contributors.
 
 #include "tensor.h"
-
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
 #endif
@@ -20,11 +19,12 @@
 
 namespace turbo_transformers {
 namespace core {
+
 static void DLManagedTensorDeletor(DLManagedTensor *self) {
   if (self == nullptr) {
     return;
   }
-  std::cerr << "call DLManagedTensorDeletor" << std::endl;
+  //  std::cerr << "call DLManagedTensorDeletor" << std::endl;
   if (self->dl_tensor.data != nullptr) {
     if (self->dl_tensor.ctx.device_type == kDLCPU ||
         self->dl_tensor.ctx.device_type == kDLGPU) {
@@ -47,7 +47,7 @@ static void DLManagedTensorDeletorWithoutData(DLManagedTensor *self) {
   if (self == nullptr) {
     return;
   }
-  std::cerr << "call DLManagedTensorDeletorWithoutData" << std::endl;
+  //  std::cerr << "call DLManagedTensorDeletorWithoutData" << std::endl;
   delete[] self->dl_tensor.shape;
   delete self;
 }
@@ -79,6 +79,8 @@ DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
     allocator::Allocator &allocator = allocator::Allocator::GetInstance();
     newTensor->dl_tensor.data = allocator.allocate(size, device, name);
 
+    // TODO(jiaruifang) very bad! Allocator shall not has an is_activation
+    // function.
     if (allocator.is_activation(name)) {
       newTensor->deleter = DLManagedTensorDeletorWithoutData;
     } else {

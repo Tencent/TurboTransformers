@@ -38,7 +38,7 @@ void *allocate_impl(size_t size, DLDeviceType dev) {
     return addr;
 #endif
   } else {
-    TT_THROW("Not supported devtype");
+    TT_THROW("Not supported devtype id as %d", dev);
   }
   return nullptr;
 }
@@ -51,7 +51,7 @@ void free_impl(void *memory_addr, DLDeviceType dev) {
     cuda_free(memory_addr);
 #endif
   } else {
-    TT_THROW("Not supported devtype");
+    TT_THROW("Not supported devtype id as %d", dev);
   }
 }
 }  // namespace allocator

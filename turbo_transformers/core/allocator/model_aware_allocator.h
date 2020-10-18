@@ -39,22 +39,6 @@ class ModelAwareAllocator : public BaseAllocator {
             },
             [&](void* mem_addr) { free_impl(mem_addr, kDLCPU); }) {
     if (model_name == "bert") {
-      activation_names_ = {"PrepareBertMasks/possitionids",
-                           "PrepareBertMasks/seqids/Reshape",
-                           "PrepareBertMasks/attmask/Reshape",
-                           "PrepareBertMasks/extendedattnmask/Reshape",
-                           "BERTEmbedding/Reshape",
-                           "self/qkv_out1/Reshape",
-                           "self/q/Reshape",
-                           "self/k/Reshape",
-                           "self/v/Reshape",
-                           "batch_gemm3/Reshape",
-                           "ApplyMaskAndSoftmax/Reshape",
-                           "batch_gemm4/Reshape",
-                           "gemm5/Reshape",
-                           "BertIntermediate/Reshape",
-                           "BertOutput/Reshape"};
-
     } else {
       TT_THROW("ModelAwareAllocator dose not support %s", model_name.c_str());
     }
@@ -64,34 +48,40 @@ class ModelAwareAllocator : public BaseAllocator {
   }
   // reset memory schema, after input tensor changes.
   void reset(std::vector<int64_t>& param_list) override {
-    LOG_SCOPE_F(INFO,
-                "start schedule memory offsets for model aware allocator.");
+    //    LOG_SCOPE_F(INFO,
+    //                "start schedule memory offsets for model aware
+    //                allocator.");
     int64_t batch_size = param_list[0];
     int64_t seq_len = param_list[1];
     int64_t num_head = param_list[2];
     int64_t hidden_size = param_list[3];
     int64_t num_layer = param_list[4];
 
-    bert_config::GetBertTensorUsageRecord<float>(tensor_usage_records_,
-                                                 batch_size, seq_len, num_head,
-                                                 hidden_size, num_layer);
+    bert_config::GetBertTensorUsageRecord<float>(
+        tensor_usage_records_, activation_names_, batch_size, seq_len, num_head,
+        hidden_size, num_layer);
     ChunkedGreedyBySizeOffsetCalculation(tensor_usage_records_, cpu_chunk_list_,
                                          cpu_tensor_position_map_);
   }
 
   // return memory address according to the tensor name
-  // if the tensor name is "", inidicating the memory is not the activation of
+  // if the tensor name is "", indicating the memory is not the activation of
   // DNN model, allocate a piece of memory on heap.
   void* allocate(size_t size, DLDeviceType dev,
                  const std::string& name) override {
     if (!is_activation(name)) {
-      LOG_SCOPE_F(INFO, "Model aware allocator allocates heap CPU memory %s",
-                  name.c_str());
-      return allocate_impl(size, dev);
+      void* addr = allocate_impl(size, dev);
+      //
+      //      LOG_SCOPE_F(INFO, "Model aware allocator allocates heap CPU memory
+      //      %s %ld",
+      //                  name.c_str(), addr);
+
+      return addr;
     }
     if (kDLCPU == dev) {
-      LOG_SCOPE_F(INFO, "Model aware allocator allocates cached CPU memory %s",
-                  name.c_str());
+      //      LOG_SCOPE_F(INFO, "Model aware allocator allocates cached CPU
+      //      memory %s",
+      //                  name.c_str());
       auto it = cpu_tensor_position_map_.find(name);
       TT_ENFORCE(it != cpu_tensor_position_map_.end(),
                  "ModelAwareAllocator allocate %s failed", name.c_str());
@@ -103,7 +93,14 @@ class ModelAwareAllocator : public BaseAllocator {
     }
   }
 
-  void free(void* mem, DLDeviceType dev, const std::string& name) override {}
+  void free(void* mem, DLDeviceType dev, const std::string& name) override {
+    if (!is_activation(name)) {
+      //      LOG_SCOPE_F(INFO, "Model aware free allocates heap CPU memory %s
+      //      %ld",
+      //                  name.c_str(), mem);
+      return free_impl(mem, dev);
+    }
+  }
   ~ModelAwareAllocator();
 
  private:

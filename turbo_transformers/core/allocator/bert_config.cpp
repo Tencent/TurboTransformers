@@ -30,14 +30,21 @@ namespace bert_config {
  * @Outputs : tensor usage records (TURs) (name, start_op, end_op, size)
  */
 
-#define ADDITEM(a, b, c, d)       \
-  TensorUsageRecord.emplace_back( \
-      std::make_shared<TensorRecordItem>(a, (b), (c), (d)));
+#define ADDITEM(a, b, c, d)                                  \
+  TensorUsageRecord.emplace_back(                            \
+      std::make_shared<TensorRecordItem>(a, (b), (c), (d))); \
+  activation_set.insert(a);
 
+/*
+ * TODO(jiaruifang) The tensor usage record should be generated automatically
+ * A practical method is to run a DNN inference and trace the allocate and
+ * free time of each tensor.
+ */
 template <typename T>
 void GetBertTensorUsageRecord(
-    std::vector<TensorRecordItemPtr>& TensorUsageRecord, int64_t batch_size,
-    int64_t seq_len, int64_t num_head, int64_t hidden_size, int64_t num_layer) {
+    std::vector<TensorRecordItemPtr>& TensorUsageRecord,
+    std::set<std::string>& activation_set, int64_t batch_size, int64_t seq_len,
+    int64_t num_head, int64_t hidden_size, int64_t num_layer) {
   TensorUsageRecord.clear();
 
   auto item_bytes = sizeof(T);
@@ -52,12 +59,12 @@ void GetBertTensorUsageRecord(
   auto aligned_id_seq_size =
       (from_seq_len * batch_size + 31) * item_bytes / 32 * 32;
 
-  ADDITEM("PrepareBertMasks/possitionids", 0, 1, aligned_id_seq_size);
-  ADDITEM("PrepareBertMasks/seqids/Reshape", 0, 1, aligned_id_seq_size);
-  ADDITEM("PrepareBertMasks/attmask/Reshape", 0, 1, aligned_id_seq_size);
-  ADDITEM("PrepareBertMasks/extendedattnmask/Reshape", 0, 1,
+  ADDITEM("PrepareBertMasks/possitionids", 0, 0, aligned_id_seq_size);
+  ADDITEM("PrepareBertMasks/seqids/Reshape", 0, 0, aligned_id_seq_size);
+  ADDITEM("PrepareBertMasks/attmask/Reshape", 0, 11, aligned_id_seq_size);
+  ADDITEM("PrepareBertMasks/extendedattnmask/Reshape", 0, 11,
           aligned_id_seq_size);
-  ADDITEM("BERTEmbedding/Reshape", 1, 2, Q_size);
+  ADDITEM("BERTEmbedding/Reshape", 0, 11, Q_size);
 
   int64_t start_idx = 0;
   ADDITEM("self/qkv_out1/Reshape", start_idx + 0, start_idx + 1,
@@ -80,8 +87,9 @@ void GetBertTensorUsageRecord(
 #undef ADDITEM
 
 template void GetBertTensorUsageRecord<float>(
-    std::vector<TensorRecordItemPtr>& TensorUsageRecord, int64_t batch_size,
-    int64_t seq_len, int64_t num_head, int64_t hidden_size, int64_t num_layer);
+    std::vector<TensorRecordItemPtr>& TensorUsageRecord,
+    std::set<std::string>& activation_set, int64_t batch_size, int64_t seq_len,
+    int64_t num_head, int64_t hidden_size, int64_t num_layer);
 
 }  // namespace bert_config
 }  // namespace allocator

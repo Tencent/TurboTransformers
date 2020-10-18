@@ -150,10 +150,12 @@ struct BertModel::Impl {
                           return std::max(len, input_ids.size());
                         });
     int64_t batch_size = inputs.size();
-    auto *iptr = inputs_tensor.Reshape<int64_t>({batch_size, max_seq_len},
-                                                DLDeviceType::kDLCPU, 0);
-    auto *mptr = masks_tensor.Reshape<int64_t>({batch_size, max_seq_len},
-                                               DLDeviceType::kDLCPU, 0);
+    auto *iptr = inputs_tensor.Reshape<int64_t>(
+        {batch_size, max_seq_len}, DLDeviceType::kDLCPU, 0,
+        "PrepareBertMasks/seqids/Reshape");
+    auto *mptr = masks_tensor.Reshape<int64_t>(
+        {batch_size, max_seq_len}, DLDeviceType::kDLCPU, 0,
+        "PrepareBertMasks/attmask/Reshape");
 
     for (size_t i = 0; i < inputs.size();
          ++i, iptr += max_seq_len, mptr += max_seq_len) {
@@ -169,9 +171,11 @@ struct BertModel::Impl {
     }
     if (device_type_ == DLDeviceType::kDLGPU) {
       gpuInputs_tensor.Reshape<int64_t>({batch_size, max_seq_len},
-                                        DLDeviceType::kDLGPU, 0);
+                                        DLDeviceType::kDLGPU, 0,
+                                        "PrepareBertMasks/seqids/Reshape");
       gpuMasks_tensor.Reshape<int64_t>({batch_size, max_seq_len},
-                                       DLDeviceType::kDLGPU, 0);
+                                       DLDeviceType::kDLGPU, 0,
+                                       "PrepareBertMasks/attmask/Reshape");
       core::Copy(inputs_tensor.data<int64_t>(), inputs_tensor.numel(),
                  DLDeviceType::kDLCPU, gpuInputs_tensor);
       core::Copy(masks_tensor.data<int64_t>(), masks_tensor.numel(),

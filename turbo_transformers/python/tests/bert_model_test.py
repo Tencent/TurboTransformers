@@ -87,11 +87,11 @@ class TestBertModel(unittest.TestCase):
             numpy.allclose(torch_result[0].cpu(),
                            turbo_result[0].cpu(),
                            atol=1e-3,
-                           rtol=1e-3))
+                           rtol=1e-2))
 
     def test_bert_model(self):
-        for batch_size in [2]:
-            for seq_len in [50]:
+        for batch_size in [1, 4, 20]:
+            for seq_len in [4, 16, 50]:
                 if torch.cuda.is_available() and \
                     turbo_transformers.config.is_compiled_with_cuda():
                     self.check_torch_and_turbo(use_cuda=True,

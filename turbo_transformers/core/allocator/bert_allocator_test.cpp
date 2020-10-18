@@ -117,7 +117,9 @@ std::make_shared<TensorRecordItem>("tensor3", 3, 4, 100); node->AppendTensor(t,
 
 TEST_CASE("bert-config", "make sure generated bert tensor usage is correct") {
   std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
-  bert_config::GetBertTensorUsageRecord<float>(bert_tensor_usage_record, 1, 40);
+  std::set<std::string> activation_set;
+  bert_config::GetBertTensorUsageRecord<float>(
+      bert_tensor_usage_record, activation_set, 1, 40, 12, 768, 12);
 
   for (auto it : bert_tensor_usage_record) {
     auto name = it->name_;
@@ -139,55 +141,12 @@ TEST_CASE("bert-config", "make sure generated bert tensor usage is correct") {
   }
 }
 
-TEST_CASE("bert-allocator", "bert memory schema for 1, 40 allocation correct") {
-  std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
-  bert_config::GetBertTensorUsageRecord<float>(bert_tensor_usage_record, 1, 40);
-  // TODO(jiaruifang) use a dummy allocator function.
-  ChunkList chunk_list([](size_t size) -> char* { return new char[size]; },
-                       [](void* mem_addr) { free(mem_addr); });
-  std::map<std::string, TensorPositionInfo> tensor_position_map;
-
-  ChunkedGreedyBySizeOffsetCalculation(bert_tensor_usage_record, chunk_list,
-                                       tensor_position_map);
-
-  // tensor name, offset
-  std::map<std::string, int64_t> ref = {
-      {"BertIntermediate/Reshape", 0},
-      {"self/qkv_out1/Reshape", 0},
-      {"BERTEmbedding/Reshape", 368640},
-      {"self/q/Reshape", 491520},
-      {"self/k/Reshape", 614400},
-      {"self/v/Reshape", 737280},
-      {"ApplyMaskAndSoftmax/Reshape", 0},
-      {"gemm5/Reshape", 491520},
-      {"BertOutput/Reshape", 860160},
-      {"batch_gemm3/Reshape", 122880},
-      {"batch_gemm4/Reshape", 614400},
-      {"PrepareBertMasks/possitionids", 983040},
-      {"PrepareBertMasks/seqids/Reshape", 983296},
-      {"PrepareBertMasks/attmask/Reshape", 983552},
-      {"PrepareBertMasks/extendedattnmask/Reshape", 983808},
-  };
-
-  std::cerr << "name \t tensor_size \t offset" << std::endl;
-  for (auto item : ref) {
-    auto name = item.first;
-    auto tmp = tensor_position_map.find(name);
-    if (tmp == tensor_position_map.end()) REQUIRE(false);
-    auto ref_offset = item.second;
-    //    std::cerr << name << " " << tmp->second.offset_ << std::endl;
-    REQUIRE(ref_offset == tmp->second.offset_);
-    //    if (!(ref_offset == tmp->second.offset_))
-    //      std::cerr << ref_offset << " vs " << tmp->second.offset_ <<
-    //      std::endl;
-  }
-}
-
 TEST_CASE("bert-allocator-multiple-chunk",
           "check memory scheme in multi chunks scenarios") {
   std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
-  bert_config::GetBertTensorUsageRecord<float>(bert_tensor_usage_record, 10,
-                                               32);
+  std::set<std::string> activation_set;
+  bert_config::GetBertTensorUsageRecord<float>(
+      bert_tensor_usage_record, activation_set, 1, 40, 12, 768, 12);
   ChunkList chunk_list([](size_t size) -> char* { return new char[size]; },
                        [](void* mem_addr) { free(mem_addr); });
   std::map<std::string, TensorPositionInfo> tensor_position_map;
@@ -208,11 +167,13 @@ TEST_CASE("bert-allocator-multiple-allocation",
 
   std::vector<int64_t> batch_list{1, 1, 2, 4, 1};
   std::vector<int64_t> seq_len_list{10, 100, 32, 500, 10};
+  std::set<std::string> activation_set;
   for (size_t i = 0; i < batch_list.size(); ++i) {
     LOG_S(INFO) << "begin allocate for batch " << batch_list[i] << " seq_len "
                 << seq_len_list[i];
-    bert_config::GetBertTensorUsageRecord<float>(
-        bert_tensor_usage_record, batch_list[i], seq_len_list[i]);
+    bert_config::GetBertTensorUsageRecord<float>(bert_tensor_usage_record,
+                                                 activation_set, batch_list[i],
+                                                 seq_len_list[i], 12, 768, 12);
 
     ChunkedGreedyBySizeOffsetCalculation(bert_tensor_usage_record, chunk_list,
                                          tensor_position_map);
