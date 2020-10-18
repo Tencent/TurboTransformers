@@ -263,7 +263,6 @@ void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
                 true,
                 "SplitAddBiasTransposeForScore: input_tensor and q_out_tensor "
                 "should have the same device type and device id.");
-
   if (q_out_tensor.device_type() == kDLCPU &&
       input_tensor.device_type() == kDLCPU &&
       bias_tensor.device_type() == kDLCPU) {
