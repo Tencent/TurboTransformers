@@ -200,6 +200,14 @@ Download PyTorch version to 1.1.0 will improve Turbo's Performance.
 4. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
 5. April 2020 v0.0.1, TurboTransformers released, and achieved state-of-the-art BERT inference speed on CPU/GPU.
 
+## Cite us
+Cite this paper, if you use TurboTransformers in your research publication.
+@article{fang2020turbotransformers,
+  title={TurboTransformers: An Efficient GPU Serving System For Transformer Models},
+  author={Fang, Jiarui and Yu, Yang and Zhao, Chengduo and Zhou, Jie},
+  journal={arXiv preprint arXiv:2010.05680},
+  year={2020}
+}
 
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
