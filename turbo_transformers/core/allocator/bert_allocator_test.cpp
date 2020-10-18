@@ -21,32 +21,12 @@ namespace turbo_transformers {
 namespace core {
 namespace allocator {
 
-struct TUR {
-  std::string name_;
-  int64_t start_op_;
-  int64_t end_op_;
-  int64_t size_;
-};
-
-static std::vector<TUR> tur_ref = {
-    {"PrepareBertMasks/possitionids", 0, 1, 256},
-    {"PrepareBertMasks/seqids/Reshape", 0, 1, 256},
-    {"PrepareBertMasks/attmask/Reshape", 0, 1, 256},
-    {"PrepareBertMasks/extendedattnmask/Reshape", 0, 1, 256},
-    {"BERTEmbedding/Reshape", 1, 2, 122880},
-    {"self/qkv_out1/Reshape", 0, 1, 368640},
-    {"self/q/Reshape", 1, 2, 122880},
-    {"self/k/Reshape", 1, 2, 122880},
-    {"self/v/Reshape", 1, 3, 122880},
-    {"batch_gemm3/Reshape", 2, 3, 76800},
-    {"ApplyMaskAndSoftmax/Reshape", 3, 4, 122880},
-    {"batch_gemm4/Reshape", 4, 5, 76800},
-    {"gemm5/Reshape", 5, 8, 122880},
-    {"BertIntermediate/Reshape", 7, 8, 491520},
-    {"BertOutput/Reshape", 0, 9, 122880},
-
-};
-
+/***
+ * Is a tensor_position_map valid
+ * @param tensor_position_map, the allocation schema
+ * @param tensor_usage_record, the usage
+ * @return
+ */
 static bool CheckValid(
     std::map<std::string, TensorPositionInfo>& tensor_position_map,
     std::vector<TensorRecordItemPtr>& tensor_usage_record) {
@@ -83,62 +63,6 @@ static bool CheckValid(
     if (!flag) return false;
   }  // for
   return true;
-}
-
-/*
-TEST_CASE("chunk", "add a new tensor to a chunk") {
-  ChunkList chunk_list([](size_t size) -> char*  { return new char[100]; });
-  chunk_list.AddChunk(2 * 1024 *1024);
-  chunk_list.ShowMe();
-
-  chunk_list.visit([](Chunk* node) {
-    std::shared_ptr<TensorRecordItem> t =
-std::make_shared<TensorRecordItem>("tensor1", 1, 2, 100); node->AppendTensor(t,
-0);
-  });
-  chunk_list.ShowMe();
-
-  chunk_list.visit([](Chunk* node) {
-    std::shared_ptr<TensorRecordItem> t =
-std::make_shared<TensorRecordItem>("tensor2", 3, 4, 100); node->AppendTensor(t,
-0);
-  });
-  chunk_list.ShowMe();
-
-  chunk_list.visit([](Chunk* node) {
-    std::shared_ptr<TensorRecordItem> t =
-std::make_shared<TensorRecordItem>("tensor3", 3, 4, 100); node->AppendTensor(t,
-200);
-
-  });
-  chunk_list.ShowMe();
-}
-*/
-
-TEST_CASE("bert-config", "make sure generated bert tensor usage is correct") {
-  std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
-  std::set<std::string> activation_set;
-  bert_config::GetBertTensorUsageRecord<float>(
-      bert_tensor_usage_record, activation_set, 1, 40, 12, 768, 12);
-
-  for (auto it : bert_tensor_usage_record) {
-    auto name = it->name_;
-    auto start_op = it->start_op_;
-    auto end_op = it->end_op_;
-    auto size = it->size_;
-
-    std::cerr << name << " " << size << std::endl;
-    bool found{false};
-    for (const auto& item : tur_ref) {
-      if (item.name_ == name) {
-        REQUIRE(start_op == item.start_op_);
-        REQUIRE(end_op == item.end_op_);
-        REQUIRE(size == item.size_);
-        found = true;
-      }
-    }
-    REQUIRE(found);
-  }
 }
 
 TEST_CASE("bert-allocator-multiple-chunk",

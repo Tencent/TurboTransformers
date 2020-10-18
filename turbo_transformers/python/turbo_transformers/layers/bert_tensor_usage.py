@@ -40,7 +40,7 @@ def get_bert_tensor_usage_record(batch_size,
     TUR_dict[f"PrepareBertMasks/extendedattnmask/Reshape"] = (0, 1,
                                                               aligned_id_size)
     TUR_dict[f"BERTEmbedding/Reshape"] = (1, 2, Q_size)
-    start_idx = 0
+    start_idx = 3
     TUR_dict[f"self/qkv_out1/Reshape"] = (start_idx + 0, start_idx + 1,
                                           K_size + Q_size + V_size)
     TUR_dict[f"self/q/Reshape"] = (start_idx + 1, start_idx + 2, Q_size)

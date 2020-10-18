@@ -153,7 +153,10 @@ int main(int argc, char *argv[]) {
                           10);
   }
 
-  // Test model-aware Allocator
+  // Test model-aware Allocator.
+  // NOTE, if using the model-aware allocator,
+  // then you shall not run multi bert inference concurrently.
+  // Because all activations of the bert share the same memory space.
   auto &allocator =
       turbo_transformers::core::allocator::Allocator::GetInstance();
   allocator.set_schema("model-aware");

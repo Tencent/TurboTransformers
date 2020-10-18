@@ -29,7 +29,7 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
   if (position_ids->is_null()) {
     auto pos_ids_ptr = position_ids->Reshape<int64_t>(
         {inputs.shape(0), inputs.shape(1)}, inputs.device_type(),
-        inputs.device_id(), "PrepareBertMasks/possitionids");
+        inputs.device_id(), "PrepareBertMasks/possitionids/Reshape");
 
     // fill range
     for (int64_t row_id = 0; row_id < inputs.shape(0); ++row_id) {
