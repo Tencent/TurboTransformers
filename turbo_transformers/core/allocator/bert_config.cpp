@@ -62,9 +62,11 @@ void GetBertTensorUsageRecord(
       (from_seq_len * batch_size + 31) * item_bytes / 32 * 32;
 
   //  ADDITEM("PrepareBertMasks/possitionids/Reshape", 0, 0,
-  //  aligned_id_seq_size); ADDITEM("PrepareBertMasks/seqids/Reshape", 0, 0,
-  //  aligned_id_seq_size); ADDITEM("PrepareBertMasks/attmask/Reshape", 0, 2 +
-  //  3, aligned_id_seq_size);
+  //  aligned_id_seq_size);
+  //  ADDITEM("PrepareBertMasks/seqids/Reshape", 0, 0,
+  //  aligned_id_seq_size);
+  //  ADDITEM("PrepareBertMasks/attmask/Reshape", 0, 11,
+  //          aligned_id_seq_size);
   //  ADDITEM("PrepareBertMasks/extendedattnmask/Reshape", 0, 11,
   //          aligned_id_seq_size);
   // NOTE: bert embedding overlap with output
