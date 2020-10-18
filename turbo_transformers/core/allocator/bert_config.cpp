@@ -49,6 +49,7 @@ void GetBertTensorUsageRecord(
   activation_set.clear();
 
   auto item_bytes = sizeof(T);
+  auto id_bytes = sizeof(int64_t);
   auto from_seq_len = seq_len;
   auto to_seq_len = seq_len;
 
@@ -57,18 +58,16 @@ void GetBertTensorUsageRecord(
   auto V_size = K_size;
   auto attn_score_size =
       batch_size * num_head * from_seq_len * to_seq_len * item_bytes;
-  //  auto aligned_id_seq_size = from_seq_len * batch_size * item_bytes;
-  auto aligned_id_seq_size =
-      (from_seq_len * batch_size + 31) * item_bytes / 32 * 32;
+  auto aligned_id_seq_size = from_seq_len * batch_size * id_bytes;
+  //  auto aligned_id_seq_size =
+  //      (from_seq_len * batch_size + 31) * id_bytes / 32 * 32;
 
-  //  ADDITEM("PrepareBertMasks/possitionids/Reshape", 0, 0,
-  //  aligned_id_seq_size);
-  //  ADDITEM("PrepareBertMasks/seqids/Reshape", 0, 0,
-  //  aligned_id_seq_size);
-  //  ADDITEM("PrepareBertMasks/attmask/Reshape", 0, 11,
-  //          aligned_id_seq_size);
-  //  ADDITEM("PrepareBertMasks/extendedattnmask/Reshape", 0, 11,
-  //          aligned_id_seq_size);
+  auto extendedattnmask_size = batch_size * from_seq_len * item_bytes;
+  ADDITEM("PrepareBertMasks/possitionids/Reshape", 0, 1, aligned_id_seq_size);
+  ADDITEM("PrepareBertMasks/seqids/Reshape", 0, 1, aligned_id_seq_size);
+  ADDITEM("PrepareBertMasks/attmask/Reshape", 0, 0, aligned_id_seq_size);
+  ADDITEM("PrepareBertMasks/extendedattnmask/Reshape", 0, 11,
+          extendedattnmask_size);
   // NOTE: bert embedding overlap with output
   ADDITEM("BERTEmbedding/Reshape", 1, 11, Q_size);
 
