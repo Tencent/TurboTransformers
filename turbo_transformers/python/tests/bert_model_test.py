@@ -83,15 +83,17 @@ class TestBertModel(unittest.TestCase):
         if use_memory_opt:
             turbo_transformers.reset_allocator_schema("naive")
 
+        print(f"batch {batch_size} seq_len {seq_len}")
+        print(torch_result[0].cpu() - turbo_result[0].cpu())
         self.assertTrue(
             numpy.allclose(torch_result[0].cpu(),
                            turbo_result[0].cpu(),
                            atol=1e-3,
-                           rtol=1e-2))
+                           rtol=1e-3))
 
     def test_bert_model(self):
         for batch_size in [1, 4, 20]:
-            for seq_len in [4, 16, 50]:
+            for seq_len in [50, 4, 16]:
                 if torch.cuda.is_available() and \
                     turbo_transformers.config.is_compiled_with_cuda():
                     self.check_torch_and_turbo(use_cuda=True,
