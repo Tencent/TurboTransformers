@@ -33,6 +33,13 @@ class ModelAwareAllocator : public BaseAllocator {
  public:
   explicit ModelAwareAllocator(const std::string& model_name)
       : model_name_(model_name),
+#ifdef TT_WITH_CUDA
+        gpu_chunk_list_(
+            [&](size_t size) -> char* {
+              return (char*)allocate_impl(size, kDLGPU);
+            },
+            [&](void* mem_addr) { free_impl(mem_addr, kDLGPU); }),
+#endif
         cpu_chunk_list_(
             [&](size_t size) -> char* {
               return (char*)allocate_impl(size, kDLCPU);
@@ -48,9 +55,6 @@ class ModelAwareAllocator : public BaseAllocator {
   }
   // reset memory schema, after input tensor changes.
   void reset(std::vector<int64_t>& param_list) override {
-    //    LOG_SCOPE_F(INFO,
-    //                "start schedule memory offsets for model aware
-    //                allocator.");
     int64_t batch_size = param_list[0];
     int64_t seq_len = param_list[1];
     int64_t num_head = param_list[2];
@@ -62,6 +66,10 @@ class ModelAwareAllocator : public BaseAllocator {
         hidden_size, num_layer);
     ChunkedGreedyBySizeOffsetCalculation(tensor_usage_records_, cpu_chunk_list_,
                                          cpu_tensor_position_map_);
+#ifdef TT_WITH_CUDA
+    ChunkedGreedyBySizeOffsetCalculation(tensor_usage_records_, gpu_chunk_list_,
+                                         gpu_tensor_position_map_);
+#endif
   }
 
   // return memory address according to the tensor name
@@ -71,17 +79,9 @@ class ModelAwareAllocator : public BaseAllocator {
                  const std::string& name) override {
     if (!is_activation(name)) {
       void* addr = allocate_impl(size, dev);
-      //
-      //      LOG_SCOPE_F(INFO, "Model aware allocator allocates heap CPU memory
-      //      %s %ld",
-      //                  name.c_str(), addr);
-
       return addr;
     }
     if (kDLCPU == dev) {
-      //      LOG_SCOPE_F(INFO, "Model aware allocator allocates cached CPU
-      //      memory %s",
-      //                  name.c_str());
       auto it = cpu_tensor_position_map_.find(name);
       TT_ENFORCE(it != cpu_tensor_position_map_.end(),
                  "ModelAwareAllocator allocate %s failed", name.c_str());
@@ -89,15 +89,19 @@ class ModelAwareAllocator : public BaseAllocator {
       return static_cast<void*>(static_cast<uint8_t*>(chunk_ptr->GetMemAddr()) +
                                 it->second.offset_);
     } else {
-      TT_THROW("Model Aware Allocator has not been implemented!");
+#ifdef TT_WITH_CUDA
+      auto it = gpu_tensor_position_map_.find(name);
+      TT_ENFORCE(it != gpu_tensor_position_map_.end(),
+                 "ModelAwareAllocator allocate %s failed", name.c_str());
+      Chunk* chunk_ptr = it->second.chunk_ptr_;
+      return static_cast<void*>(static_cast<uint8_t*>(chunk_ptr->GetMemAddr()) +
+                                it->second.offset_);
+#endif
     }
   }
 
   void free(void* mem, DLDeviceType dev, const std::string& name) override {
     if (!is_activation(name)) {
-      //      LOG_SCOPE_F(INFO, "Model aware free allocates heap CPU memory %s
-      //      %ld",
-      //                  name.c_str(), mem);
       return free_impl(mem, dev);
     }
   }

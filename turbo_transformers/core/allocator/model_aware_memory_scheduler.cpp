@@ -112,7 +112,7 @@ void ChunkedGreedyBySizeOffsetCalculation(
       new_chunk->AppendTensor(t, 0);
       tensor_position_map.emplace(t_name, TensorPositionInfo(new_chunk, 0));
 #ifdef NDEBUG
-      new_allocate_size += chunk_size;
+      new_allocate_size += new_chunk_size;
 #endif
     }
   }
