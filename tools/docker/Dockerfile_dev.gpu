@@ -8,11 +8,11 @@ RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py37_4.8.3-Linux-x86
     bash Miniconda3-py37_4.8.3-Linux-x86_64.sh -p /opt/miniconda3 -b && \
     rm Miniconda3-py37_4.8.3-Linux-x86_64.sh && \
     conda update -y conda && \
-    conda install pytorch=PYTORCH_VERSION cudatoolkit=CUDA_VERSION -c pytorch && \
-    conda install curl conda-verify conda-build mkl-include cmake -c anaconda && \
-    conda install git git-lfs docopt -c conda-forge  && \
-    pip install OpenNMT-py==1.1.0 && \
-    pip install onnxruntime-gpu==1.3.0 && \
+    conda install pytorch=PYTORCH_VERSION cudatoolkit=CUDA_VERSION -c pytorch -y && \
+    conda install curl conda-verify conda-build mkl-include cmake -c anaconda -y && \
+    conda install git git-lfs docopt -c conda-forge -y && \
+    pip install --no-cache-dir OpenNMT-py==1.1.0 && \
+    pip install --no-cache-dir onnxruntime-gpu==1.3.0 && \
     conda clean -afy
 
 # build turbo
