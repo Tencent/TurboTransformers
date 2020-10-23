@@ -89,15 +89,14 @@ class TestBertModel(unittest.TestCase):
                            atol=1e-2,
                            rtol=1e-3))
 
-    def test_bert_model(self):
-        use_memory_opt = True
+    def test_bert_model_helper(self, use_memory_opt=False):
         if use_memory_opt:
             turbo_transformers.reset_allocator_schema("model-aware")
 
         for batch_size in [1, 4, 20]:
             for seq_len in [50, 4, 16]:
                 if torch.cuda.is_available() and \
-                    turbo_transformers.config.is_compiled_with_cuda():
+                        turbo_transformers.config.is_compiled_with_cuda():
                     self.check_torch_and_turbo(use_cuda=True,
                                                batch_size=batch_size,
                                                seq_len=seq_len,
@@ -109,6 +108,10 @@ class TestBertModel(unittest.TestCase):
 
         if use_memory_opt:
             turbo_transformers.reset_allocator_schema("naive")
+
+    def test_bert_model(self, use_memory_opt=False):
+        self.test_bert_model_helper(True)
+        self.test_bert_model_helper(False)
 
 
 if __name__ == '__main__':
