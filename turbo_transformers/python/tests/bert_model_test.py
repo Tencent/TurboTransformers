@@ -63,8 +63,6 @@ class TestBertModel(unittest.TestCase):
         turbo_model = (lambda: self.turbo_model(input_ids))
 
         if use_memory_opt:
-            # use model aware allocator
-            turbo_transformers.reset_allocator_schema("model-aware")
             turbo_transformers.bert_opt_mem_allocate_api(
                 input_ids.size()[0],  # batch
                 input_ids.size()[1],  # seq_len
@@ -92,16 +90,25 @@ class TestBertModel(unittest.TestCase):
                            rtol=1e-3))
 
     def test_bert_model(self):
+        use_memory_opt = True
+        if use_memory_opt:
+            turbo_transformers.reset_allocator_schema("model-aware")
+
         for batch_size in [1, 4, 20]:
             for seq_len in [50, 4, 16]:
                 if torch.cuda.is_available() and \
                     turbo_transformers.config.is_compiled_with_cuda():
                     self.check_torch_and_turbo(use_cuda=True,
                                                batch_size=batch_size,
-                                               seq_len=seq_len)
+                                               seq_len=seq_len,
+                                               use_memory_opt=use_memory_opt)
                 self.check_torch_and_turbo(use_cuda=False,
                                            batch_size=batch_size,
-                                           seq_len=seq_len)
+                                           seq_len=seq_len,
+                                           use_memory_opt=use_memory_opt)
+
+        if use_memory_opt:
+            turbo_transformers.reset_allocator_schema("naive")
 
 
 if __name__ == '__main__':
