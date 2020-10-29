@@ -362,13 +362,9 @@ class TransformerDecoderLayer:
                 torch.zeros(1, dummy_T, dummy_T,
                             dtype=torch.bool).to(device_type)
             }
-            symbolic_names_type_1 = {0: 'batch_size', 1: 'max_len'}
-            symbolic_names_type_2 = {0: 'batch_size', 2: 'max_len'}
-            symbolic_names_type_3 = {
-                0: 'batch_size',
-                1: 'max_len1',
-                2: 'max_len2'
-            }
+            symbolic_names_type_1 = {0: 'batch_size', 1: 'T'}
+            symbolic_names_type_2 = {0: 'batch_size', 2: 'src_len'}
+            symbolic_names_type_3 = {0: 'batch_size', 1: 'T_1', 2: 'T_2'}
             self.onnx_model_path = "/tmp/temp_turbo_onnx.model"
             with open(self.onnx_model_path, 'wb') as f:
                 torch.onnx.export(
@@ -383,9 +379,9 @@ class TransformerDecoderLayer:
                     output_names=['output'],
                     opset_version=11,
                     dynamic_axes={
-                        'input_tensor': symbolic_names_1,
-                        'memory_bank': symbolic_names_1,
-                        'src_pad_mask': symbolic_names_2,
+                        'input_tensor': symbolic_names_type_1,
+                        'memory_bank': symbolic_names_type_1,
+                        'src_pad_mask': symbolic_names_type_2,
                         'dec_mask': symbolic_names_type_3
                     })
             import onnxruntime
