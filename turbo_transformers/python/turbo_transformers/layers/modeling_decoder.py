@@ -358,7 +358,7 @@ class TransformerDecoderLayer:
                 'src_pad_mask':
                 torch.zeros(1, 1, dummy_src_len,
                             dtype=torch.bool).to(device_type),
-                'dec_mask':
+                'tgt_pad_mask':
                 torch.zeros(1, dummy_T, dummy_T,
                             dtype=torch.bool).to(device_type)
             }
@@ -370,11 +370,11 @@ class TransformerDecoderLayer:
                 torch.onnx.export(
                     model,
                     (dummy_input['input_tensor'], dummy_input['memory_bank'],
-                     dummy_input['src_pad_mask'], dummy_input['dec_mask']),
+                     dummy_input['src_pad_mask'], dummy_input['tgt_pad_mask']),
                     f,
                     input_names=[
                         'input_tensor', 'memory_bank', 'src_pad_mask',
-                        'dec_mask'
+                        'tgt_pad_mask'
                     ],
                     output_names=['output'],
                     opset_version=11,
@@ -382,7 +382,7 @@ class TransformerDecoderLayer:
                         'input_tensor': symbolic_names_type_1,
                         'memory_bank': symbolic_names_type_1,
                         'src_pad_mask': symbolic_names_type_2,
-                        'dec_mask': symbolic_names_type_3
+                        'tgt_pad_mask': symbolic_names_type_3
                     })
             import onnxruntime
             import onnxruntime.backend
@@ -407,7 +407,6 @@ class TransformerDecoderLayer:
         assert self.backend == 'onnxrt'
         from onnxruntime.quantization import quantize, QuantizationMode
         import onnx
-        import onnxruntime
         import onnxruntime.backend
         opt_model = onnx.load(self.onnx_model_path)
         quantized_onnx_model = quantize(
