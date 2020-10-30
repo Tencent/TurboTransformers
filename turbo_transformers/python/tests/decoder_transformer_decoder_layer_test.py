@@ -55,6 +55,7 @@ def create_test(batch_size,
             self.onmt_decoder.eval()
             if use_cuda:
                 self.onmt_decoder.to(self.test_device)
+                self.modified_onmt_decoder.to(self.test_device)
             self.turbo_decoder = turbo_transformers.TransformerDecoderLayer.from_onmt(
                 self.modified_onmt_decoder, backend)
 
