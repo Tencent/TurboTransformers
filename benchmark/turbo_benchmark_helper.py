@@ -23,10 +23,6 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
     import turbo_transformers
     import benchmark_helper
     test_device = torch.device('cuda:0') if use_gpu else torch.device('cpu:0')
-    if use_gpu:
-        print("using GPU")
-    else:
-        print("using CPU")
     cfg = None
     torch.set_grad_enabled(False)
     if model_name == "bert":
