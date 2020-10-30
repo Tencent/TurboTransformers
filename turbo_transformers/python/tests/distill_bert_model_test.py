@@ -68,7 +68,7 @@ def create_test(batch_size, input_len):
                 test_helper.run_model(torch_model, use_cuda, num_iter)
 
             print(
-                f"DistrillTransformerBlock \"({batch_size}, {input_len:03})\" ",
+                f"DistillBertModel \"({batch_size}, {input_len:03})\" ",
                 f"{device} Torch QPS, {torch_qps}, time, {torch_time_consume}")
 
             turbo_res = lambda: self.turbo_transformer(
@@ -78,7 +78,7 @@ def create_test(batch_size, input_len):
                     test_helper.run_model(turbo_res, use_cuda, num_iter)
 
             print(
-                f"DistrillTransformerBlock \"({batch_size}, {input_len:03})\" ",
+                f"DistillBertModel \"({batch_size}, {input_len:03})\" ",
                 f"{device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}")
 
             self.assertTrue(
