@@ -25,12 +25,16 @@ from transformers.modeling_distilbert import DistilBertConfig
 from transformers.modeling_distilbert import MultiHeadSelfAttention as TorchDistilMultiHeadSelfAttention
 from transformers.modeling_distilbert import FFN as TorchDistilFFN
 from transformers.modeling_distilbert import TransformerBlock as TorchDistilTransformerBlock
+from transformers.modeling_distilbert import Transformer as TorchDistilTransformer
+from transformers.modeling_distilbert import Embeddings as TorchDistrilEmbeddings
+from transformers.modeling_distilbert import DistilBertModel as TorchDistilBertModel
 
 from torch import nn
-import enum
-import numpy as np
 
-__all__ = ['DistillBertAttention', 'DistrillFFN', 'DistrillTransformerBlock']
+__all__ = [
+    'DistillBertAttention', 'DistrillFFN', 'DistrillTransformerBlock',
+    'DistrillTransformer', 'DistilBertModel'
+]
 
 
 class DistillBertAttention(cxx.BertAttention):
@@ -160,3 +164,97 @@ class DistrillTransformerBlock:
             DistillBertAttention.from_torch(layer.attention,
                                             layer.sa_layer_norm),
             DistrillFFN.from_torch(layer.ffn, layer.output_layer_norm))
+
+
+class DistrillTransformer:
+    def __init__(self, blocks: Sequence[DistrillTransformerBlock]):
+        self.blocks = blocks
+
+    def __call__(self,
+                 hidden_states: AnyTensor,
+                 attention_mask: Optional[AnyTensor] = None,
+                 head_mask: Optional[AnyTensor] = None,
+                 output_attentions: Optional[bool] = False,
+                 output_hidden_states: Optional[bool] = False,
+                 return_type: Optional[ReturnType] = ReturnType.TORCH):
+        all_hidden_states = ()
+        all_attentions = ()
+        hidden_states = try_convert(hidden_states)
+        for l in self.blocks:
+            layer_outputs = l(hidden_states=hidden_states,
+                              attention_mask=attention_mask,
+                              output_attentions=output_attentions,
+                              return_type=ReturnType.turbo_transformers)
+            if output_hidden_states:
+                all_hidden_states = all_hidden_states + (
+                    convert_returns_as_type(hidden_states, ReturnType.TORCH), )
+
+            hidden_states = layer_outputs[0]
+            if output_attentions:
+                all_attentions = all_attentions + (layer_outputs[1], )
+
+        # outputs = (convert_returns_as_type(hidden_states, return_type), )
+        outputs = (hidden_states, )
+        # Add last layer
+        if output_hidden_states:
+            # TODO(jiaruifang)two return value use the same memory space, that is not supported in dlpack.
+            # So we do not append the last hidden_state at the buttom of all_hidden_states,
+            # User should use outputs[0] if necessary
+            # all_hidden_states = all_hidden_states + (convert_returns_as_type(hidden_states, ReturnType.TORCH),)
+            pass
+
+        if output_hidden_states:
+            outputs = outputs + (all_hidden_states, )
+        if output_attentions:
+            outputs = outputs + (all_attentions, )
+
+        return outputs
+
+    @staticmethod
+    def from_torch(transform: TorchDistilTransformer):
+        blocks = [
+            DistrillTransformerBlock.from_torch(l) for l in transform.layer
+        ]
+        return DistrillTransformer(blocks)
+
+
+class DistilBertModel:
+    def __init__(self, embeddings: TorchDistrilEmbeddings,
+                 transformer: DistrillTransformer):
+        self.embeddings = embeddings
+        self.transformer = transformer
+
+    def __call__(self,
+                 input_ids: AnyTensor,
+                 attention_masks: Optional[AnyTensor] = None,
+                 token_type_ids: Optional[AnyTensor] = None,
+                 position_ids: Optional[AnyTensor] = None,
+                 head_mask: Optional[AnyTensor] = None,
+                 inputs_embeds: Optional[AnyTensor] = None,
+                 output_attentions: Optional[bool] = None,
+                 output_hidden_states: Optional[bool] = None,
+                 return_type: Optional[ReturnType] = None):
+        # attention_masks = try_convert(create_empty_if_none(attention_masks))
+        # token_type_ids = try_convert(create_empty_if_none(token_type_ids))
+        # position_ids = try_convert(create_empty_if_none(position_ids))
+        # torch part
+        inputs_embeds = self.embeddings(input_ids)  # (bs, seq_length, dim)
+        inputs_embeds = try_convert(inputs_embeds)
+        # extended_attention_masks = cxx.Tensor.create_empty()
+        # turbo part
+        transformer_outputs = self.transformer(
+            hidden_states=inputs_embeds,
+            attention_mask=attention_masks,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_type=return_type)
+        return transformer_outputs
+
+    @staticmethod
+    def from_torch(model: TorchDistilBertModel):
+        """
+        :param model: a torch distrilBert Model
+        move model to gpu before call this function.
+        """
+        transformer = DistrillTransformer.from_torch(model.transformer)
+        return DistilBertModel(model.embeddings, transformer)
