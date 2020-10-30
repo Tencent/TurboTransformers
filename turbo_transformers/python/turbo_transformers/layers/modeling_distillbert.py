@@ -41,10 +41,9 @@ class DistillBertAttention(cxx.BertAttention):
                  is_trans_weight: Optional[cxx.Tensor] = False):
         assert (head_mask is None)
         # attention mask is different from BERT
-        # attention_mask = (1.0 - attention_mask) * -10000.0
         attention_mask = attention_mask[:, None, None, :]
-        attention_mask = (1.0 - attention_mask) * -10000.0  #-float("inf")
-        #.view(mask_reshp).expand_as(scores)  # (bs, n_heads, q_length, k_length)
+        attention_mask = (
+            1.0 - attention_mask) * -10000.0  #-float("inf") will cause NAN
 
         input_tensor = try_convert(input_tensor)
         attention_mask = try_convert(create_empty_if_none(attention_mask))

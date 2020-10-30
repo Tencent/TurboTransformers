@@ -15,5 +15,5 @@ RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py37_4.8.3-Linux-x86
     pip install onnxruntime-gpu==1.3.0 && \
     conda clean -afy
 
-RUN pip --no-cache-dir install contexttimer future transformers==3.0.2 docopt
+RUN pip --no-cache-dir install contexttimer future transformers==3.4.0 docopt
 WORKDIR /workspace
