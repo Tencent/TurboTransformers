@@ -82,7 +82,8 @@ def create_test(batch_size, input_len):
                 f"{device} Turbo QPS, {turbo_qps}, time, {turbo_time_consume}")
 
             self.assertTrue(
-                torch.max(torch.abs(torch_res[0] - turbo_res[0])) < 1e-3)
+                torch.max(torch.abs(torch_res[0] - turbo_res[0])) < 1e-2
+                if use_cuda else 1e-3)
 
             with open(fname, "a") as fh:
                 fh.write(
