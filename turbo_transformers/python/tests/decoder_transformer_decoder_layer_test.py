@@ -17,8 +17,8 @@ import sys
 import torch
 import os
 
-# from onmt.decoders.transformer import TransformerDecoderLayer
-from onmt_tranformer_copy import TransformerDecoderLayer
+from onmt.decoders.transformer import TransformerDecoderLayer
+from onmt_tranformer_copy import TransformerDecoderLayer as ModifiedTransformerDecoderLayer
 
 sys.path.append(os.path.dirname(__file__))
 import test_helper
@@ -46,11 +46,17 @@ def create_test(batch_size,
                                                         d_ff=1024,
                                                         dropout=0.,
                                                         attention_dropout=0.)
+            self.modified_onmt_decoder = ModifiedTransformerDecoderLayer(
+                d_model=self.model_dim,
+                heads=8,
+                d_ff=1024,
+                dropout=0.,
+                attention_dropout=0.)
             self.onmt_decoder.eval()
             if use_cuda:
                 self.onmt_decoder.to(self.test_device)
             self.turbo_decoder = turbo_transformers.TransformerDecoderLayer.from_onmt(
-                self.onmt_decoder, backend)
+                self.modified_onmt_decoder, backend)
 
             # https://pytorch.org/docs/stable/quantization.html
             if with_quantize_dynamic and not use_cuda:
