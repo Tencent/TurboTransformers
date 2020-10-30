@@ -24,12 +24,13 @@ from .utils import try_convert, convert2tt_tensor, to_param_dict_convert_tt, to_
 from transformers.modeling_distilbert import DistilBertConfig
 from transformers.modeling_distilbert import MultiHeadSelfAttention as TorchDistilMultiHeadSelfAttention
 from transformers.modeling_distilbert import FFN as TorchDistilFFN
+from transformers.modeling_distilbert import TransformerBlock as TorchDistilTransformerBlock
 
 from torch import nn
 import enum
 import numpy as np
 
-__all__ = ['DistillBertAttention', 'DistrillFFN']
+__all__ = ['DistillBertAttention', 'DistrillFFN', 'DistrillTransformerBlock']
 
 
 class DistillBertAttention(cxx.BertAttention):
@@ -123,3 +124,39 @@ class DistrillFFN(cxx.DistrillFFN):
                               convert2tt_tensor(layernorm_params['weight']),
                               convert2tt_tensor(layernorm_params['bias']))
             return ffn
+
+
+class DistrillTransformerBlock:
+    def __init__(self, attn: DistillBertAttention, ffn: DistrillFFN):
+        self.attention = attn
+        self.ffn = ffn
+
+    def __call__(self,
+                 hidden_states: AnyTensor,
+                 attention_mask: Optional[torch.Tensor] = None,
+                 head_mask: Optional[torch.Tensor] = None,
+                 output_attentions=False,
+                 return_type: Optional[ReturnType] = None):
+        hidden_states = try_convert(hidden_states)
+
+        sa_output = self.attention(hidden_states,
+                                   attention_mask,
+                                   head_mask,
+                                   output_attentions=output_attentions,
+                                   return_type=ReturnType.turbo_transformers)
+        if output_attentions:
+            sa_output, sa_weights = sa_output
+        else:
+            sa_output = sa_output[0]
+        ffn_output = self.ffn(sa_output)
+        output = (ffn_output, )
+        if output_attentions:
+            output = (sa_weights, ) + output
+        return output
+
+    @staticmethod
+    def from_torch(layer: TorchDistilTransformerBlock):
+        return DistrillTransformerBlock(
+            DistillBertAttention.from_torch(layer.attention,
+                                            layer.sa_layer_norm),
+            DistrillFFN.from_torch(layer.ffn, layer.output_layer_norm))
