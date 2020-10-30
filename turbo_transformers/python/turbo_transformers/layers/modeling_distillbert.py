@@ -221,17 +221,15 @@ class DistrillTransformer:
 
 class DistilBertModel:
     def __init__(self,
-                 embeddings: TorchDistrilEmbeddings,
+                 embeddings_onnxmodel_variant,
                  transformer: DistrillTransformer,
                  backend="turbo"):
         if backend == "turbo":
-            self.embeddings = embeddings
+            self.embeddings = embeddings_onnxmodel_variant
             self.transformer = transformer
             self.backend = "turbo"
-
-    def __init__(self, onnxmodel, backend="turbo"):
-        if backend == "onnxrt":
-            self.onnxmodel = onnxmodel
+        elif backend == "onnxrt":
+            self.onnxmodel = embeddings_onnxmodel_variant
             self.backend = "onnxrt"
 
     def __call__(self,
@@ -277,7 +275,7 @@ class DistilBertModel:
         """
         if backend == "turbo":
             transformer = DistrillTransformer.from_torch(model.transformer)
-            return DistilBertModel(model.embeddings, transformer)
+            return DistilBertModel(model.embeddings, transformer, "turbo")
         elif backend == "onnxrt":
             import onnx
             import onnxruntime.backend
@@ -313,4 +311,4 @@ class DistilBertModel:
                 device='GPU' if use_gpu else "CPU",
                 graph_optimization_level=onnxruntime.GraphOptimizationLevel.
                 ORT_ENABLE_ALL)
-            return DistilBertModel(onnx_model, "onnxrt")
+            return DistilBertModel(onnx_model, None, "onnxrt")
