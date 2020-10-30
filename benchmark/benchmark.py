@@ -29,9 +29,6 @@ Options:
     --num_threads=<int>  The number of CPU threads. [default: 4]
 """
 
-import json
-import os
-
 import docopt
 from turbo_benchmark_helper import benchmark_turbo_transformers
 from torch_benchmark_helper import benchmark_torch
@@ -40,7 +37,6 @@ from onnx_benchmark_helper import onnxruntime_benchmark_creator
 
 
 def main():
-    import benchmark_helper
     args = docopt.docopt(__doc__)
     kwargs = {
         'model_name': args['<model_name>'],

@@ -19,7 +19,6 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
                     num_threads: int, use_gpu: bool):
     import torch
     import transformers
-    import contexttimer
     import benchmark_helper
 
     test_device = torch.device('cuda:0') if use_gpu else torch.device('cpu:0')
@@ -40,6 +39,9 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
     elif model_name == "roberta":
         cfg = transformers.RobertaConfig()
         model = transformers.RobertaModel(cfg)
+    elif model_name == "distilbert":
+        cfg = transformers.DistilBertConfig()
+        model = transformers.DistilBertModel(cfg)
     else:
         raise (f"benchmark does not support {model_name}")
     model.eval()

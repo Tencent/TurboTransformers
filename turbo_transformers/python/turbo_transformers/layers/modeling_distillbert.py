@@ -47,9 +47,10 @@ class DistillBertAttention(cxx.BertAttention):
                  is_trans_weight: Optional[cxx.Tensor] = False):
         assert (head_mask is None)
         # attention mask is different from BERT
-        attention_mask = attention_mask[:, None, None, :]
-        attention_mask = (
-            1.0 - attention_mask) * -10000.0  #-float("inf") will cause NAN
+        if attention_mask is not None:
+            attention_mask = attention_mask[:, None, None, :]
+            attention_mask = (
+                1.0 - attention_mask) * -10000.0  #-float("inf") will cause NAN
 
         input_tensor = try_convert(input_tensor)
         attention_mask = try_convert(create_empty_if_none(attention_mask))
@@ -240,7 +241,9 @@ class DistilBertModel:
         # torch part
         inputs_embeds = self.embeddings(input_ids)  # (bs, seq_length, dim)
         inputs_embeds = try_convert(inputs_embeds)
-        # extended_attention_masks = cxx.Tensor.create_empty()
+
+        # if attention_masks is None:
+        #     attention_masks = cxx.Tensor.create_empty()
         # turbo part
         transformer_outputs = self.transformer(
             hidden_states=inputs_embeds,
