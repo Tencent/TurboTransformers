@@ -23,12 +23,13 @@ from .utils import try_convert, convert2tt_tensor, to_param_dict_convert_tt, to_
 
 from transformers.modeling_distilbert import DistilBertConfig
 from transformers.modeling_distilbert import MultiHeadSelfAttention as TorchDistilMultiHeadSelfAttention
+from transformers.modeling_distilbert import FFN as TorchDistilFFN
 
 from torch import nn
 import enum
 import numpy as np
 
-__all__ = ['DistillBertAttention']
+__all__ = ['DistillBertAttention', 'DistrillFFN']
 
 
 class DistillBertAttention(cxx.BertAttention):
@@ -63,7 +64,7 @@ class DistillBertAttention(cxx.BertAttention):
                    layernorm: nn.LayerNorm):
         params = {k: v for k, v in attention.named_parameters()}
         layernorm_params = {k: v for k, v in layernorm.named_parameters()}
-        # print(layernorm_params)
+
         with torch.no_grad():
             # merge self.query.weight, self.query.weight and self.query.weight together as qkv.weight
             qkv_weight = torch.clone(
@@ -84,3 +85,41 @@ class DistillBertAttention(cxx.BertAttention):
                 convert2tt_tensor(layernorm_params['bias']), attention.n_heads)
 
             return att
+
+
+class DistrillFFN(cxx.DistrillFFN):
+    def __call__(
+            self,
+            input_tensor: AnyTensor,
+            return_type: Optional[ReturnType] = None,
+            is_trans_weight: Optional[bool] = True,  #Intel 61xx True is faster
+            output: Optional[cxx.Tensor] = None):
+        input_tensor = try_convert(input_tensor)
+        output = create_empty_if_none(output)
+        super(DistrillFFN, self).__call__(input_tensor, output,
+                                          is_trans_weight)
+        return convert_returns_as_type(output, return_type)
+
+    @staticmethod
+    def from_torch(ffn: TorchDistilFFN,
+                   layernorm: nn.LayerNorm,
+                   is_trans_weight: Optional[bool] = True):
+        ffn_params = {k: v for k, v in ffn.named_parameters()}
+        layernorm_params = {k: v for k, v in layernorm.named_parameters()}
+
+        # Note that torch's weights of linear layer is transposed
+        if is_trans_weight:
+            w_1 = convert2tt_tensor(ffn_params['lin1.weight'])
+            w_2 = convert2tt_tensor(ffn_params['lin2.weight'])
+        else:
+            w_1 = convert2tt_tensor(
+                torch.clone(torch.t(ffn_params['lin1.weight']).contiguous()))
+            w_2 = convert2tt_tensor(
+                torch.clone(torch.t(ffn_params['lin2.weight']).contiguous()))
+
+        with torch.no_grad():
+            ffn = DistrillFFN(w_1, convert2tt_tensor(ffn_params['lin1.bias']),
+                              w_2, convert2tt_tensor(ffn_params['lin2.bias']),
+                              convert2tt_tensor(layernorm_params['weight']),
+                              convert2tt_tensor(layernorm_params['bias']))
+            return ffn
