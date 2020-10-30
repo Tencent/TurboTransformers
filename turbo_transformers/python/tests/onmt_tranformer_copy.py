@@ -1,3 +1,15 @@
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.
+# All rights reserved.
+# Licensed under the BSD 3-Clause License (the "License"); you may
+# not use this file except in compliance with the License. You may
+# obtain a copy of the License at
+# https://opensource.org/licenses/BSD-3-Clause
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" basis,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+# See the AUTHORS file for names of contributors.
 """
 Implementation of "Attention is All You Need"
 """
@@ -44,24 +56,33 @@ class TransformerDecoderLayer(nn.Module):
         alignment_heads (int):
             N. of cross attention heads to use for alignment guiding
     """
-
-    def __init__(self, d_model, heads, d_ff, dropout, attention_dropout,
-                 self_attn_type="scaled-dot", max_relative_positions=0,
-                 aan_useffn=False, full_context_alignment=False,
+    def __init__(self,
+                 d_model,
+                 heads,
+                 d_ff,
+                 dropout,
+                 attention_dropout,
+                 self_attn_type="scaled-dot",
+                 max_relative_positions=0,
+                 aan_useffn=False,
+                 full_context_alignment=False,
                  alignment_heads=0):
         super(TransformerDecoderLayer, self).__init__()
 
         if self_attn_type == "scaled-dot":
             self.self_attn = MultiHeadedAttention(
-                heads, d_model, dropout=attention_dropout,
+                heads,
+                d_model,
+                dropout=attention_dropout,
                 max_relative_positions=max_relative_positions)
         elif self_attn_type == "average":
             self.self_attn = AverageAttention(d_model,
                                               dropout=attention_dropout,
                                               aan_useffn=aan_useffn)
 
-        self.context_attn = MultiHeadedAttention(
-            heads, d_model, dropout=attention_dropout)
+        self.context_attn = MultiHeadedAttention(heads,
+                                                 d_model,
+                                                 dropout=attention_dropout)
         self.feed_forward = PositionwiseFeedForward(d_model, d_ff, dropout)
         self.layer_norm_1 = nn.LayerNorm(d_model, eps=1e-6)
         self.layer_norm_2 = nn.LayerNorm(d_model, eps=1e-6)
@@ -101,9 +122,15 @@ class TransformerDecoderLayer(nn.Module):
             attn_align = attns.mean(dim=1)
         return output, top_attn, attn_align
 
-    #tgt_pad_mask -> dec_mask
-    def _forward(self, inputs, memory_bank, src_pad_mask, dec_mask, 
-                 layer_cache=None, step=None, future=False):
+    #tgt_pad_mask -> dec_mask TODO
+    def _forward(self,
+                 inputs,
+                 memory_bank,
+                 src_pad_mask,
+                 tgt_pad_mask,
+                 layer_cache=None,
+                 step=None,
+                 future=False):
         """ A naive forward pass for transformer decoder.
         # T: could be 1 in the case of stepwise decoding or tgt_len
         Args:
@@ -142,21 +169,28 @@ class TransformerDecoderLayer(nn.Module):
             else:  # only mask padding, result mask in (B, 1, T)
                 dec_mask = tgt_pad_mask
         """
+        dec_mask = tgt_pad_mask
         input_norm = self.layer_norm_1(inputs)
 
         if isinstance(self.self_attn, MultiHeadedAttention):
-            query, _ = self.self_attn(input_norm, input_norm, input_norm,
+            query, _ = self.self_attn(input_norm,
+                                      input_norm,
+                                      input_norm,
                                       mask=dec_mask,
                                       layer_cache=layer_cache,
                                       attn_type="self")
         elif isinstance(self.self_attn, AverageAttention):
-            query, _ = self.self_attn(input_norm, mask=dec_mask,
-                                      layer_cache=layer_cache, step=step)
+            query, _ = self.self_attn(input_norm,
+                                      mask=dec_mask,
+                                      layer_cache=layer_cache,
+                                      step=step)
 
         query = self.drop(query) + inputs
 
         query_norm = self.layer_norm_2(query)
-        mid, attns = self.context_attn(memory_bank, memory_bank, query_norm,
+        mid, attns = self.context_attn(memory_bank,
+                                       memory_bank,
+                                       query_norm,
                                        mask=src_pad_mask,
                                        layer_cache=layer_cache,
                                        attn_type="context")
@@ -205,12 +239,10 @@ class TransformerDecoder(DecoderBase):
         alignment_heads (int):
             N. of cross attention heads to use for alignment guiding
     """
-
-    def __init__(self, num_layers, d_model, heads, d_ff,
-                 copy_attn, self_attn_type, dropout, attention_dropout,
-                 embeddings, max_relative_positions, aan_useffn,
-                 full_context_alignment, alignment_layer,
-                 alignment_heads):
+    def __init__(self, num_layers, d_model, heads, d_ff, copy_attn,
+                 self_attn_type, dropout, attention_dropout, embeddings,
+                 max_relative_positions, aan_useffn, full_context_alignment,
+                 alignment_layer, alignment_heads):
         super(TransformerDecoder, self).__init__()
 
         self.embeddings = embeddings
@@ -218,14 +250,19 @@ class TransformerDecoder(DecoderBase):
         # Decoder State
         self.state = {}
 
-        self.transformer_layers = nn.ModuleList(
-            [TransformerDecoderLayer(d_model, heads, d_ff, dropout,
-             attention_dropout, self_attn_type=self_attn_type,
-             max_relative_positions=max_relative_positions,
-             aan_useffn=aan_useffn,
-             full_context_alignment=full_context_alignment,
-             alignment_heads=alignment_heads)
-             for i in range(num_layers)])
+        self.transformer_layers = nn.ModuleList([
+            TransformerDecoderLayer(
+                d_model,
+                heads,
+                d_ff,
+                dropout,
+                attention_dropout,
+                self_attn_type=self_attn_type,
+                max_relative_positions=max_relative_positions,
+                aan_useffn=aan_useffn,
+                full_context_alignment=full_context_alignment,
+                alignment_heads=alignment_heads) for i in range(num_layers)
+        ])
 
         # previously, there was a GlobalAttention module here for copy
         # attention. But it was never actually used -- the "copy" attention
@@ -246,8 +283,8 @@ class TransformerDecoder(DecoderBase):
             opt.copy_attn,
             opt.self_attn_type,
             opt.dropout[0] if type(opt.dropout) is list else opt.dropout,
-            opt.attention_dropout[0] if type(opt.attention_dropout)
-            is list else opt.attention_dropout,
+            opt.attention_dropout[0]
+            if type(opt.attention_dropout) is list else opt.attention_dropout,
             embeddings,
             opt.max_relative_positions,
             opt.aan_useffn,
@@ -301,14 +338,13 @@ class TransformerDecoder(DecoderBase):
         for i, layer in enumerate(self.transformer_layers):
             layer_cache = self.state["cache"]["layer_{}".format(i)] \
                 if step is not None else None
-            output, attn, attn_align = layer(
-                output,
-                src_memory_bank,
-                src_pad_mask,
-                tgt_pad_mask,
-                layer_cache=layer_cache,
-                step=step,
-                with_align=with_align)
+            output, attn, attn_align = layer(output,
+                                             src_memory_bank,
+                                             src_pad_mask,
+                                             tgt_pad_mask,
+                                             layer_cache=layer_cache,
+                                             step=step,
+                                             with_align=with_align)
             if attn_align is not None:
                 attn_aligns.append(attn_align)
 

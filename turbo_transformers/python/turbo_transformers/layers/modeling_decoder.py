@@ -479,7 +479,7 @@ class TransformerDecoderLayer:
                 'input_tensor': input_tensor.cpu().numpy(),
                 'memory_bank': memory_bank.cpu().numpy(),
                 'src_pad_mask': src_pad_mask.cpu().numpy(),
-                'dec_mask': dec_mask.cpu().numpy()
+                'dec_mask': tgt_pad_mask.cpu().numpy()  #TODO
             }
             # return self.onnx_model.run(inputs=ort_inputs)
             output_list = self.session.run(None, ort_inputs)
