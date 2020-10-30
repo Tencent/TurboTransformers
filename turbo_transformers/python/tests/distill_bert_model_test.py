@@ -46,7 +46,7 @@ def create_test(batch_size, input_len):
                 self.torch_model.to(self.test_device)
 
             self.turbo_transformer = turbo_transformers.DistilBertModel.from_torch(
-                self.torch_model)
+                self.torch_model, "onnxrt")
             # (batch_size, input_len, model_dim)
             self.inputs = torch.randint(low=0,
                                         high=self.cfg.vocab_size - 1,
@@ -54,7 +54,7 @@ def create_test(batch_size, input_len):
                                         dtype=torch.long,
                                         device=self.test_device)
             self.attention_mask = torch.ones((batch_size, input_len),
-                                             dtype=torch.float32,
+                                             dtype=torch.long,
                                              device=self.test_device)
             self.head_mask = [None] * self.cfg.num_hidden_layers
 
@@ -102,8 +102,8 @@ def create_test(batch_size, input_len):
 with open(fname, "w") as fh:
     fh.write(", torch, turbo_trans\n")
 
-for batch_size in [1, 4]:
-    for input_len in [10, 40, 92, 123]:
+for batch_size in [4]:
+    for input_len in [10]:
         create_test(batch_size, input_len)
 
 if __name__ == '__main__':

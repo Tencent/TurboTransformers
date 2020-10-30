@@ -30,7 +30,7 @@ from transformers.modeling_distilbert import Embeddings as TorchDistrilEmbedding
 from transformers.modeling_distilbert import DistilBertModel as TorchDistilBertModel
 
 from torch import nn
-
+import numpy as np
 __all__ = [
     'DistillBertAttention', 'DistrillFFN', 'DistrillTransformerBlock',
     'DistrillTransformer', 'DistilBertModel'
@@ -220,10 +220,19 @@ class DistrillTransformer:
 
 
 class DistilBertModel:
-    def __init__(self, embeddings: TorchDistrilEmbeddings,
-                 transformer: DistrillTransformer):
-        self.embeddings = embeddings
-        self.transformer = transformer
+    def __init__(self,
+                 embeddings: TorchDistrilEmbeddings,
+                 transformer: DistrillTransformer,
+                 backend="turbo"):
+        if backend == "turbo":
+            self.embeddings = embeddings
+            self.transformer = transformer
+            self.backend = "turbo"
+
+    def __init__(self, onnxmodel, backend="turbo"):
+        if backend == "onnxrt":
+            self.onnxmodel = onnxmodel
+            self.backend = "onnxrt"
 
     def __call__(self,
                  input_ids: AnyTensor,
@@ -235,29 +244,73 @@ class DistilBertModel:
                  output_attentions: Optional[bool] = None,
                  output_hidden_states: Optional[bool] = None,
                  return_type: Optional[ReturnType] = None):
-        # attention_masks = try_convert(create_empty_if_none(attention_masks))
-        # token_type_ids = try_convert(create_empty_if_none(token_type_ids))
-        # position_ids = try_convert(create_empty_if_none(position_ids))
-        # torch part
-        inputs_embeds = self.embeddings(input_ids)  # (bs, seq_length, dim)
-        inputs_embeds = try_convert(inputs_embeds)
+        if self.backend == "onnxrt":
+            if attention_masks is None:
+                attention_masks = np.ones(input_ids.size(), dtype=np.int64)
+            else:
+                attention_masks = attention_masks.cpu().numpy()
+            data = [input_ids.cpu().numpy(), attention_masks]
+            outputs = self.onnxmodel.run(inputs=data)
+            for idx, item in enumerate(outputs):
+                outputs[idx] = torch.tensor(item, device=input_ids.device)
+            return outputs
+        elif self.backend == "turbo":
+            # torch part
+            inputs_embeds = self.embeddings(input_ids)  # (bs, seq_length, dim)
+            inputs_embeds = try_convert(inputs_embeds)
 
-        # if attention_masks is None:
-        #     attention_masks = cxx.Tensor.create_empty()
-        # turbo part
-        transformer_outputs = self.transformer(
-            hidden_states=inputs_embeds,
-            attention_mask=attention_masks,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_type=return_type)
-        return transformer_outputs
+            # turbo part
+            transformer_outputs = self.transformer(
+                hidden_states=inputs_embeds,
+                attention_mask=attention_masks,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states,
+                return_type=return_type)
+            return transformer_outputs
 
     @staticmethod
-    def from_torch(model: TorchDistilBertModel):
+    def from_torch(model: TorchDistilBertModel, backend="turbo"):
         """
         :param model: a torch distrilBert Model
+        backend： turbo or onnxrt
         move model to gpu before call this function.
         """
-        transformer = DistrillTransformer.from_torch(model.transformer)
-        return DistilBertModel(model.embeddings, transformer)
+        if backend == "turbo":
+            transformer = DistrillTransformer.from_torch(model.transformer)
+            return DistilBertModel(model.embeddings, transformer)
+        elif backend == "onnxrt":
+            import onnx
+            import onnxruntime.backend
+            device = model.device
+            if 'cuda' in device.type and torch.cuda.is_available():
+                use_gpu = True
+            else:
+                use_gpu = False
+            inputs = {
+                'input_ids':
+                torch.randint(32, [2, 32], dtype=torch.long).to(
+                    device),  # list of numerical ids for the tokenised text
+                'attention_mask':
+                torch.ones([2, 32],
+                           dtype=torch.long).to(device),  # dummy list of ones
+            }
+            onnx_model_path = "/tmp/temp_turbo_onnx.model"
+            with open(onnx_model_path, 'wb') as outf:
+                torch.onnx.export(
+                    model=model,
+                    args=(inputs['input_ids'], inputs['attention_mask']
+                          ),  # model input (or a tuple for multiple inputs)
+                    f=outf,
+                    input_names=['input_ids', 'attention_mask'],
+                    output_names=['output'],
+                    dynamic_axes={
+                        'input_ids': [0, 1],
+                        'attention_mask': [0, 1]
+                    })
+            onnx_model = onnx.load_model(f=onnx_model_path)
+            onnx_model = onnxruntime.backend.prepare(
+                model=onnx_model,
+                device='GPU' if use_gpu else "CPU",
+                graph_optimization_level=onnxruntime.GraphOptimizationLevel.
+                ORT_ENABLE_ALL)
+            return DistilBertModel(onnx_model, "onnxrt")
