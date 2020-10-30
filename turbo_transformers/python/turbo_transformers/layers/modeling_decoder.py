@@ -332,7 +332,7 @@ class TransformerDecoderLayer:
                  self_attn: MultiHeadedAttention,
                  context_attn: MultiHeadedAttention,
                  feed_forward: PositionwiseFeedForward,
-                 model=None,
+                 model: ModifiedOnmtTransformerDecoderLayer = None,
                  backend='turbo'):
         """ Implement class TransformerDecoderLayer(nn.Module):
         https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py
@@ -343,7 +343,7 @@ class TransformerDecoderLayer:
             d_model = model.layer_norm_1.normalized_shape[0]
             # trick
             use_cuda = next(model.parameters()).is_cuda
-            model = ModifiedOnmtTransformerDecoderLayer(model)
+            # model = ModifiedOnmtTransformerDecoderLayer(model)
             device_type = torch.device('cuda:0') if use_cuda else \
                    torch.device('cpu:0')
             dummy_T = 10
@@ -438,7 +438,7 @@ class TransformerDecoderLayer:
         https://github.com/OpenNMT/OpenNMT-py/blob/master/onmt/decoders/transformer.py
         Because we now do not need context aligment, so we do not provide a forward method
         Args:
-            input_tensor (FloatTensor): ``(batch_size, T, model_dim)``
+            input_tensor (FloatTensor): ``(batch_size, src_len, model_dim)``
             memory_bank (FloatTensor): ``(batch_size, src_len, model_dim)``
             src_pad_mask (bool): ``(batch_size, 1, src_len)``
             tgt_pad_mask (bool): ``(batch_size, 1, T)``
@@ -454,27 +454,27 @@ class TransformerDecoderLayer:
         if self.backend == 'onnxrt':
             # The shape of dec_mask in different if-else branch is different
             # Here, I unify it as (1, T, T)
-            if step is None:
-                if not future:
-                    tgt_len = tgt_pad_mask.size(-1)  # T
-                    future_mask_numpy = np.ones(shape=(tgt_len, tgt_len),
-                                                dtype=np.float32)
-                    future_mask_numpy = np.triu(future_mask_numpy)
-                    future_mask = torch.tensor(
-                        future_mask_numpy,
-                        device=input_tensor.device).view(1, tgt_len, tgt_len)
-                    dec_mask = torch.gt(tgt_pad_mask + future_mask, 0)
-                else:  # only mask padding, result mask in (B, 1, T)
-                    dec_mask = dec_mask.repeat(
-                        tgt_pad_mask, 1)  # tgt_pad_mask in orignal code
-            else:
-                # init a dummy dec_mask
-                dec_mask = torch.zeros(
-                    input_tensor.size(0),
-                    input_tensor.size(1),  # 1 in orign code
-                    input_tensor.size(1),
-                    dtype=torch.float32,
-                    device=input_tensor.device).bool()
+            # if step is None:
+            #     if not future:
+            #         tgt_len = tgt_pad_mask.size(-1)  # T
+            #         future_mask_numpy = np.ones(shape=(tgt_len, tgt_len),
+            #                                     dtype=np.float32)
+            #         future_mask_numpy = np.triu(future_mask_numpy)
+            #         future_mask = torch.tensor(
+            #             future_mask_numpy,
+            #             device=input_tensor.device).view(1, tgt_len, tgt_len)
+            #         dec_mask = torch.gt(tgt_pad_mask + future_mask, 0)
+            #     else:  # only mask padding, result mask in (B, 1, T)
+            #         dec_mask = dec_mask.repeat(
+            #             tgt_pad_mask, 1)  # tgt_pad_mask in orignal code
+            # else:
+            #     # init a dummy dec_mask
+            #     dec_mask = torch.zeros(
+            #         input_tensor.size(0),
+            #         input_tensor.size(1),  # 1 in orign code
+            #         input_tensor.size(1),
+            #         dtype=torch.float32,
+            #         device=input_tensor.device).bool()
             ort_inputs = {
                 'input_tensor': input_tensor.cpu().numpy(),
                 'memory_bank': memory_bank.cpu().numpy(),
@@ -544,54 +544,19 @@ class TransformerDecoderLayer:
             ), None  #attn_aligned mast be None
 
     @staticmethod
-    def from_onmt(transformer_decoder_layer: OnmtTransformerDecoderLayer,
-                  backend='onnxrt'):
+    def from_onmt(transformer_decoder_layer, backend='onnxrt'):
         if backend == 'onnxrt':
-            return TransformerDecoderLayer(None,
-                                           None,
-                                           None,
-                                           model=transformer_decoder_layer,
-                                           backend='onnxrt')
+            return TransformerDecoderLayer(
+                None,
+                None,
+                None,
+                model=
+                transformer_decoder_layer,  # ModifiedOnmtTransformerDecoderLayer
+                backend='onnxrt')
         params = {
             k: v
             for k, v in transformer_decoder_layer.named_parameters()
         }
-        # for k, v in transformer_decoder_layer.named_parameters():
-        #     print(k, v.size())
-
-        # 12: self_attn.linear_keys.weight torch.Size([1024, 1024])
-        # 12: self_attn.linear_keys.bias torch.Size([1024])
-        # 12: self_attn.linear_values.weight torch.Size([1024, 1024])
-        # 12: self_attn.linear_values.bias torch.Size([1024])
-        # 12: self_attn.linear_query.weight torch.Size([1024, 1024])
-        # 12: self_attn.linear_query.bias torch.Size([1024])
-        # 12: self_attn.final_linear.weight torch.Size([1024, 1024])
-        # 12: self_attn.final_linear.bias torch.Size([1024])
-        # 12: context_attn.linear_keys.weight torch.Size([1024, 1024])
-        # 12: context_attn.linear_keys.bias torch.Size([1024])
-        # 12: context_attn.linear_values.weight torch.Size([1024, 1024])
-        # 12: context_attn.linear_values.bias torch.Size([1024])
-        # 12: context_attn.linear_query.weight torch.Size([1024, 1024])
-        # 12: context_attn.linear_query.bias torch.Size([1024])
-        # 12: context_attn.final_linear.weight torch.Size([1024, 1024])
-        # 12: context_attn.final_linear.bias torch.Size([1024])
-        # 12: feed_forward.w_1.weight torch.Size([1, 1024])
-        # 12: feed_forward.w_1.bias torch.Size([1])
-        # 12: feed_forward.w_2.weight torch.Size([1024, 1])
-        # 12: feed_forward.w_2.bias torch.Size([1024])
-        # 12: feed_forward.layer_norm.weight torch.Size([1024])
-        # 12: feed_forward.layer_norm.bias torch.Size([1024])
-        # 12: layer_norm_1.weight torch.Size([1024])
-        # 12: layer_norm_1.bias torch.Size([1024])
-        # 12: layer_norm_2.weight torch.Size([1024])
-        # 12: layer_norm_2.bias torch.Size([1024])
-        # 12: w_1.weight torch.Size([1, 1024])
-        # 12: w_1.bias torch.Size([1])
-        # 12: w_2.weight torch.Size([1024, 1])
-        # 12: w_2.bias torch.Size([1024])
-        # 12: layer_norm.weight torch.Size([1024])
-        # 12: layer_norm.bias torch.Size([1024])
-
         self_attn = MultiHeadedAttention.from_onmt(
             transformer_decoder_layer.self_attn,
             transformer_decoder_layer.layer_norm_1)

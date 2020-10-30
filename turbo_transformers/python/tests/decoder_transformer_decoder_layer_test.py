@@ -32,7 +32,7 @@ def create_test(batch_size,
                 with_quantize_dynamic=False,
                 backend="turbo"):
     class TestDecoder(unittest.TestCase):
-        def init_data(self, use_cuda):
+        def init_data(self, backend, use_cuda):
             self.test_device = torch.device('cuda:0') if use_cuda else \
                    torch.device('cpu:0')
             if not use_cuda:
@@ -41,37 +41,46 @@ def create_test(batch_size,
 
             torch.set_grad_enabled(False)
             self.model_dim = 1024
-            self.onmt_decoder = TransformerDecoderLayer(d_model=self.model_dim,
-                                                        heads=8,
-                                                        d_ff=1024,
-                                                        dropout=0.,
-                                                        attention_dropout=0.)
-            self.modified_onmt_decoder = ModifiedTransformerDecoderLayer(
-                d_model=self.model_dim,
-                heads=8,
-                d_ff=1024,
-                dropout=0.,
-                attention_dropout=0.)
-            self.onmt_decoder.eval()
-            if use_cuda:
-                self.onmt_decoder.to(self.test_device)
-                self.modified_onmt_decoder.to(self.test_device)
-            self.turbo_decoder = turbo_transformers.TransformerDecoderLayer.from_onmt(
-                self.modified_onmt_decoder, backend)
 
-            # https://pytorch.org/docs/stable/quantization.html
-            if with_quantize_dynamic and not use_cuda:
-                self.quantized_onmt_decoder = torch.quantization.quantize_dynamic(
-                    self.onmt_decoder)
-                if backend == "onnxrt":
-                    self.turbo_decoder.quantize_dynamic()
+            if backend == "turbo":
+                self.onmt_decoder = TransformerDecoderLayer(
+                    d_model=self.model_dim,
+                    heads=8,
+                    d_ff=1024,
+                    dropout=0.,
+                    attention_dropout=0.)
+                self.onmt_decoder.eval()
+                if use_cuda:
+                    self.onmt_decoder.to(self.test_device)
+                self.turbo_decoder = turbo_transformers.TransformerDecoderLayer.from_onmt(
+                    self.onmt_decoder, backend)
 
-        def check_torch_and_turbo(self, use_cuda, num_iter=1):
+                # https://pytorch.org/docs/stable/quantization.html
+                if with_quantize_dynamic and not use_cuda:
+                    self.quantized_onmt_decoder = torch.quantization.quantize_dynamic(
+                        self.onmt_decoder)
+                    if backend == "onnxrt":
+                        self.turbo_decoder.quantize_dynamic()
+
+            elif backend == "onnxrt":
+                self.onmt_decoder = ModifiedTransformerDecoderLayer(
+                    d_model=self.model_dim,
+                    heads=8,
+                    d_ff=1024,
+                    dropout=0.,
+                    attention_dropout=0.)
+                self.onmt_decoder.eval()
+                if use_cuda:
+                    self.onmt_decoder.to(self.test_device)
+                self.turbo_decoder = turbo_transformers.TransformerDecoderLayer.from_onmt(
+                    self.onmt_decoder, backend)
+
+        def check_torch_and_turbo(self, use_cuda, backend="turbo", num_iter=1):
             deivce_type = "GPU" if use_cuda else "CPU"
             info = f"\"({deivce_type}, {batch_size}, {src_length}, {T})\""
 
             step = 2
-            self.init_data(use_cuda=use_cuda)
+            self.init_data(backend=backend, use_cuda=use_cuda)
 
             self.inputs = torch.rand(batch_size,
                                      T,
@@ -108,7 +117,7 @@ def create_test(batch_size,
             onmt_mid, attns, attn_align = onmt_result
 
             print(
-                f"ONMT Deocder {info} ",
+                f"ONMT Deocder {info} {backend}",
                 f"{deivce_type} QPS, {torch_qps}, time, {torch_time_consume}")
 
             turbo_model = lambda: self.turbo_decoder(self.inputs,
@@ -131,7 +140,7 @@ def create_test(batch_size,
             else:
                 turbo_plan_name = "Turbo"
             print(
-                f"{turbo_plan_name} Deocder {info} ",
+                f"{turbo_plan_name} Deocder {info} {backend}",
                 f"{deivce_type} QPS, {turbo_qps}, time, {turbo_time_consume}")
 
             # TODO(jiaruifang) why FP16 error is so large?
@@ -174,11 +183,11 @@ def create_test(batch_size,
                 with open(fname, "a") as fh:
                     fh.write(f"{info} {torch_qps}, {turbo_qps}\n")
 
-        def test_decoder(self):
-            # self.check_torch_and_turbo(use_cuda=False)
+        def test_decoder(self, backend="onnxrt"):
+            self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
                 turbo_transformers.config.is_compiled_with_cuda():
-                self.check_torch_and_turbo(use_cuda=True)
+                self.check_torch_and_turbo(use_cuda=True, backend=backend)
 
     globals(
     )[f"TestDecoder{batch_size}_{src_length}_{T}_{with_quantize_dynamic}"] = TestDecoder
@@ -187,17 +196,17 @@ def create_test(batch_size,
 with open(fname, "w") as fh:
     fh.write(", torch, *q_torch, turbo_transformers\n")
 
-create_test(4, 10, 10, False, "onnxrt")
+create_test(4, 10, 40, False, "onnxrt")
 # #quantize test
 # for batch_size in [4]:
 #     for src_length in [10, 60, 100]:
 #         for T in range(10, src_length, 10):
 #             create_test(batch_size, src_length, T, True, "onnxrt")
 #FP32 test
-for batch_size in [4]:
-    for src_length in [10, 40, 100]:
-        for T in [10, 40, 100]:
-            create_test(batch_size, src_length, T, False, "turbo")
+# for batch_size in [4]:
+#     for src_length in [10, 40, 100]:
+#         for T in [10, 40, 100]:
+#             create_test(batch_size, src_length, T, False, "turbo")
 
 if __name__ == '__main__':
     unittest.main()
