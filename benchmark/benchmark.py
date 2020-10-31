@@ -54,7 +54,8 @@ def main():
         'use_gpu': True if args['--use_gpu'] else False,
         'enable_mem_opt': True if args['--enable_mem_opt'] else False,
     }
-
+    if (kwargs['model_name'] != 'bert'):
+        kwargs['enable_mem_opt'] = False
     if args['--framework'] == 'turbo-transformers':
         benchmark_turbo_transformers(**kwargs)
     elif args['--framework'] == 'torch':

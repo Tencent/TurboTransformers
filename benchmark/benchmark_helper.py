@@ -109,13 +109,15 @@ def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
 
                 with contexttimer.Timer() as t:
                     if enable_mem_opt:
-                        turbo_transformers.bert_opt_mem_allocate_api(
-                            input_ids.size(0),  # batch
-                            input_ids.size(1),  # seq_len
-                            model.config.num_attention_heads,
-                            model.config.hidden_size,
-                            model.config.num_hidden_layers,
-                            "GPU" if use_gpu else "CPU")
+                        with contexttimer.Timer() as mem_opt_t:
+                            turbo_transformers.bert_opt_mem_allocate_api(
+                                input_ids.size(0),  # batch
+                                input_ids.size(1),  # seq_len
+                                model.config.num_attention_heads,
+                                model.config.hidden_size,
+                                model.config.num_hidden_layers,
+                                "GPU" if use_gpu else "CPU")
+
                     model(request)
 
                 if not use_gpu:
@@ -132,7 +134,10 @@ def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
             elapse = 0.
             result_list = sorted(result_list, key=lambda s: s[0])
             for item in result_list:
-                of.write(f"{item[0]}, {item[1]}\n")
+                if enable_mem_opt:
+                    of.write(f"{item[0]}, {mem_opt_t.elapsed}, {item[1]}\n")
+                else:
+                    of.write(f"{item[0]}, {item[1]}\n")
                 elapse += item[1]
             print(f"elapsed {elapse}  QPS {num_iter/elapse}")
     else:
