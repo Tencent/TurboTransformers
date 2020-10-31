@@ -14,7 +14,7 @@
 turbo-transformers Benchmark Utils
 
 Usage:
-    benchmark <model_name> [--seq_len=<int>] [--framework=<f>] [--batch_size=<int>] [-n <int>] [--enable-random] [--min_seq_len=<int>] [--max_seq_len=<int>] [--use_gpu] [--num_threads=<int>]
+    benchmark <model_name> [--seq_len=<int>] [--framework=<f>] [--batch_size=<int>] [-n <int>] [--enable-random] [--min_seq_len=<int>] [--max_seq_len=<int>] [--use_gpu] [--num_threads=<int>] [--enable_mem_opt=<bool>]
 
 Options:
     --framework=<f>      The framework to test in (torch, torch_jit, turbo-transformers,
@@ -27,6 +27,7 @@ Options:
     --max_seq_len=<int>  Maximal sequence length generated when enable random [default: 50]
     --use_gpu            Enable GPU.
     --num_threads=<int>  The number of CPU threads. [default: 4]
+    --enable_mem_opt=<bool>  Use memory optimization for BERT. [default: False]
 """
 
 import json
@@ -40,7 +41,6 @@ from onnx_benchmark_helper import onnxruntime_benchmark_creator
 
 
 def main():
-    import benchmark_helper
     args = docopt.docopt(__doc__)
     kwargs = {
         'model_name': args['<model_name>'],
@@ -51,7 +51,8 @@ def main():
         'min_seq_len': int(args['--min_seq_len']),
         'max_seq_len': int(args['--max_seq_len']),
         'num_threads': int(args['--num_threads']),
-        'use_gpu': True if args['--use_gpu'] else False
+        'use_gpu': True if args['--use_gpu'] else False,
+        'enable_mem_opt': True if args['--enable_mem_opt'] else False,
     }
 
     if args['--framework'] == 'turbo-transformers':

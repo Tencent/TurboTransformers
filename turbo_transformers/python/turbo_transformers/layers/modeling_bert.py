@@ -503,8 +503,7 @@ class BertModel:
     @staticmethod
     def from_torch(model: TorchBertModel,
                    device: Optional[torch.device] = None,
-                   backend: Optional[str] = None,
-                   use_memory_opt=False):
+                   backend: Optional[str] = None):
         """
         Args:
             model : a PyTorch Bert Model
