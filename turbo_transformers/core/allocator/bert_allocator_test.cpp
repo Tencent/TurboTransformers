@@ -90,72 +90,100 @@ TEST_CASE("compare-mem-opt-allocator-and-cub",
   std::map<std::string, TensorPositionInfo> tensor_position_map;
   bert_config::GetBertTensorUsageRecord<float>(
       bert_tensor_usage_record, activation_set, 1, 40, 12, 768, 12);
-  ChunkList chunk_list([](size_t size) -> char* { return new char[size]; },
-                       [](void* mem_addr) { free(mem_addr); });
-  ChunkedGreedyBySizeOffsetCalculation(bert_tensor_usage_record, chunk_list,
-                                       tensor_position_map);
 
-  auto& allocator = Allocator::GetInstance();
-  allocator.set_schema("model-aware");
-  auto start = std::chrono::system_clock::now();
-
+  // warmup
   bert_opt_mem_allocate_api(1, 40, 12, 768, 12, "GPU");
 
-  for (int i = 0; i < 12; ++i) {
-    for (auto& item : bert_tensor_usage_record) {
-      auto name = item->name_;
-      auto size = item->size_;
+  std::vector<int> len_list = {
+      318, 357, 139, 464, 334, 165, 382, 176, 480, 287, 440, 14,  169, 244,
+      320, 132, 429, 178, 247, 69,  422, 398, 451, 329, 45,  352, 455, 331,
+      118, 344, 338, 310, 187, 303, 285, 356, 445, 23,  54,  18,  268, 237,
+      13,  294, 87,  430, 81,  302, 11,  132, 150, 182, 370, 343, 220, 108,
+      43,  57,  205, 260, 115, 266, 455, 124, 93,  161, 332, 53,  25,  300,
+      340, 191, 249, 384, 75,  156, 417, 426, 471, 188, 420, 498, 298, 46,
+      250, 480, 105, 237, 469, 137, 160, 356, 405, 114, 202, 18,  232, 206,
+      169, 345, 101, 165, 441, 369, 482, 443, 160, 171, 401, 183, 411, 436,
+      105, 476, 378, 30,  226, 184, 361, 58,  90,  224, 20,  436, 295, 47,
+      476, 50,  56,  439, 391, 456, 366, 7,   286, 385, 244, 207, 171, 261,
+      295, 430, 442, 346, 32,  403, 400, 53,  234, 467};
+  auto& allocator = Allocator::GetInstance();
+
+  std::vector<std::tuple<int, float, float>> res_map;
+  for (int len : len_list) {
+    allocator.set_schema("model-aware");
+    auto start = std::chrono::system_clock::now();
+
+    bert_opt_mem_allocate_api(1, len, 12, 768, 12, "GPU");
+
+    for (int i = 0; i < 12; ++i) {
+      for (auto& item : bert_tensor_usage_record) {
+        auto name = item->name_;
+        auto size = item->size_;
 //    std::cerr << name << " " << size << std::endl;
 #ifdef TT_WITH_CUDA
-      allocator.allocate(size, kDLCPU, name);
+        allocator.allocate(size, kDLCPU, name);
 #else
-      allocator.allocate(size, kDLGPU, name);
+        allocator.allocate(size, kDLGPU, name);
 #endif
+      }
     }
-  }
 
-  auto end = std::chrono::system_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  auto elapsed_time = float(duration.count()) *
-                      std::chrono::microseconds::period::num /
-                      std::chrono::microseconds::period::den;
+    auto end = std::chrono::system_clock::now();
+    auto duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    auto ma_elapsed_time = float(duration.count()) *
+                           std::chrono::microseconds::period::num /
+                           std::chrono::microseconds::period::den;
 
-  std::cerr << "model-aware time " << elapsed_time << " sec" << std::endl;
-  start = std::chrono::system_clock::now();
+    bert_config::GetBertTensorUsageRecord<float>(
+        bert_tensor_usage_record, activation_set, 1, len, 12, 768, 12);
 
-  allocator.set_schema("naive");
-  std::map<std::string, void*> mem_buff;
-  for (int i = 0; i < 12; ++i) {
-    for (auto& item : bert_tensor_usage_record) {
-      auto name = item->name_ + std::to_string(i);
-      auto size = item->size_;
+    start = std::chrono::system_clock::now();
+
+    allocator.set_schema("naive");
+    std::map<std::string, void*> mem_buff;
+    for (int i = 0; i < 12; ++i) {
+      for (auto& item : bert_tensor_usage_record) {
+        auto name = item->name_ + std::to_string(i);
+        auto size = item->size_;
 #ifdef TT_WITH_CUDA
-      void* addr = allocator.allocate(size, kDLCPU, name);
+        void* addr = allocator.allocate(size, kDLCPU, name);
 #else
-      void* addr = allocator.allocate(size, kDLGPU, name);
+        void* addr = allocator.allocate(size, kDLGPU, name);
 #endif
-      mem_buff.emplace(name, addr);
+        mem_buff.emplace(name, addr);
+      }
     }
-  }
 
-  for (int i = 0; i < 12; ++i) {
-    for (auto& item : bert_tensor_usage_record) {
-      auto name = item->name_ + std::to_string(i);
+    for (int i = 0; i < 12; ++i) {
+      for (auto& item : bert_tensor_usage_record) {
+        auto name = item->name_ + std::to_string(i);
 #ifdef TT_WITH_CUDA
-      allocator.free(mem_buff[name], kDLCPU, name);
+        allocator.free(mem_buff[name], kDLCPU, name);
 #else
-      allocator.free(mem_buff[name], kDLGPU, name);
+        allocator.free(mem_buff[name], kDLGPU, name);
 #endif
+      }
     }
+
+    end = std::chrono::system_clock::now();
+    duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    auto naive_elapsed_time = float(duration.count()) *
+                              std::chrono::microseconds::period::num /
+                              std::chrono::microseconds::period::den;
+    //    std::cerr << ma_elapsed_time << ", " << naive_elapsed_time <<
+    //    std::endl;
+
+    res_map.emplace_back(len, ma_elapsed_time, naive_elapsed_time);
   }
 
-  end = std::chrono::system_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  elapsed_time = float(duration.count()) *
-                 std::chrono::microseconds::period::num /
-                 std::chrono::microseconds::period::den;
-  std::cerr << "naive time " << elapsed_time << " sec" << std::endl;
+  std::sort(res_map.begin(), res_map.end(),
+            [](auto& a, auto& b) { return std::get<0>(a) < std::get<0>(b); });
+  for (auto item : res_map) {
+    std::cerr << std::get<0>(item) << " " << std::get<1>(item) << " "
+              << std::get<2>(item) << std::endl;
+  }
 }
 
 }  // namespace allocator
