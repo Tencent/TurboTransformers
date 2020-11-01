@@ -41,7 +41,9 @@ void BertOutput::operator()(const core::Tensor &hidden_states,
   output_tensor->Reshape<float>(
       {hidden_states.shape(0), hidden_states.shape(1), dense_weight_.shape(1)},
       hidden_states.device_type(), hidden_states.device_id(),
-      "BertOutput/Reshape");
+      "BERTEmbedding/Reshape");
+  // NOTE the out of this bert layer should be the input of the next layer
+  //      "BertOutput/Reshape");
   kernels::MatMul(hidden_states, false, dense_weight_, false, 1.0,
                   output_tensor, 0.0, "BertOutput/MatMul");
   kernels::AddBiasLayerNorm<float>(

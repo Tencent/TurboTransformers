@@ -39,15 +39,19 @@ class TestBertModel(unittest.TestCase):
             self.torch_model.to(self.test_device)
 
         self.turbo_model = turbo_transformers.BertModel.from_torch(
-            self.torch_model, self.test_device, "turbo")
+            self.torch_model, self.test_device, "turbo", use_memory_opt=True)
 
-    def check_torch_and_turbo(self, use_cuda):
+    def check_torch_and_turbo(self,
+                              use_cuda,
+                              batch_size,
+                              seq_len,
+                              use_memory_opt=True):
         self.init_data(use_cuda)
         num_iter = 1
         device_name = "GPU" if use_cuda else "CPU"
         input_ids = torch.randint(low=0,
                                   high=self.cfg.vocab_size - 1,
-                                  size=(1, 10),
+                                  size=(batch_size, seq_len),
                                   dtype=torch.long,
                                   device=self.test_device)
 
@@ -58,22 +62,56 @@ class TestBertModel(unittest.TestCase):
 
         turbo_model = (lambda: self.turbo_model(input_ids))
 
+        if use_memory_opt:
+            turbo_transformers.bert_opt_mem_allocate_api(
+                input_ids.size()[0],  # batch
+                input_ids.size()[1],  # seq_len
+                self.cfg.num_attention_heads,
+                self.cfg.hidden_size,
+                self.cfg.num_hidden_layers,
+                "GPU" if 'cuda' in input_ids.device.type else "CPU")
+
         with turbo_transformers.pref_guard("bert_perf") as perf:
             turbo_result, turbo_qps, turbo_time = \
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'BertModel TurboTransformer({device_name}) QPS {turbo_qps}')
 
+        # set the allocator back to naive, otherwise it will affect
+        # the other inference processes.
+        if use_memory_opt:
+            turbo_transformers.reset_allocator_schema("naive")
+
+        print(f"batch {batch_size} seq_len {seq_len}")
+        print(torch.max(torch_result[0].cpu() - turbo_result[0].cpu()))
         self.assertTrue(
             numpy.allclose(torch_result[0].cpu(),
                            turbo_result[0].cpu(),
-                           atol=1e-3,
+                           atol=1e-2,
                            rtol=1e-3))
 
-    def test_bert_model(self):
-        if torch.cuda.is_available() and \
-            turbo_transformers.config.is_compiled_with_cuda():
-            self.check_torch_and_turbo(use_cuda=True)
-        self.check_torch_and_turbo(use_cuda=False)
+    def test_bert_model_helper(self, use_memory_opt=False):
+        if use_memory_opt:
+            turbo_transformers.reset_allocator_schema("model-aware")
+
+        for batch_size in [1, 4, 20]:
+            for seq_len in [50, 4, 16]:
+                if torch.cuda.is_available() and \
+                        turbo_transformers.config.is_compiled_with_cuda():
+                    self.check_torch_and_turbo(use_cuda=True,
+                                               batch_size=batch_size,
+                                               seq_len=seq_len,
+                                               use_memory_opt=use_memory_opt)
+                self.check_torch_and_turbo(use_cuda=False,
+                                           batch_size=batch_size,
+                                           seq_len=seq_len,
+                                           use_memory_opt=use_memory_opt)
+
+        if use_memory_opt:
+            turbo_transformers.reset_allocator_schema("naive")
+
+    def test_bert_model(self, use_memory_opt=False):
+        self.test_bert_model_helper(True)
+        self.test_bert_model_helper(False)
 
 
 if __name__ == '__main__':

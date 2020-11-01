@@ -12,14 +12,16 @@
 // See the AUTHORS file for names of contributors.
 
 #include <pybind11/stl.h>
+
 #include "absl/memory/memory.h"
 #include "loguru.hpp"
 #include "pybind11/pybind11.h"
-
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/config.h"
 #include "turbo_transformers/core/profiler.h"
 #include "turbo_transformers/core/tensor.h"
+#include "turbo_transformers/layers/addbias_act.h"
+#include "turbo_transformers/layers/addbias_layernorm.h"
 #include "turbo_transformers/layers/albert_layer.h"
 #include "turbo_transformers/layers/bert_attention.h"
 #include "turbo_transformers/layers/bert_embedding.h"
@@ -30,8 +32,6 @@
 #include "turbo_transformers/layers/positionwise_ffn.h"
 #include "turbo_transformers/layers/prepare_bert_masks.h"
 #include "turbo_transformers/layers/sequence_pool.h"
-#include "turbo_transformers/layers/addbias_act.h"
-#include "turbo_transformers/layers/addbias_layernorm.h"
 
 namespace turbo_transformers {
 namespace python {
@@ -75,6 +75,11 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
   m.def("enable_perf", &core::EnableGperf);
   m.def("disable_perf", &core::DisableGperf);
   m.def("set_num_threads", &core::SetNumThreads);
+
+  m.def("bert_opt_mem_allocate_api",
+        &core::allocator::bert_opt_mem_allocate_api);
+
+  m.def("reset_allocator_schema", &core::allocator::reset_allocator_schema);
 
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",
@@ -223,15 +228,14 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       .def("__call__", &layers::FusedAddBiasGELU::operator());
 
   py::class_<layers::FusedAddBiasLayerNorm>(m, "FusedAddBiasLayerNorm")
-      .def(py::init([](core::Tensor &dense_bias, 
-                       core::Tensor &layer_norm_weight, 
-                       core::Tensor &layer_norm_bias) -> layers::FusedAddBiasLayerNorm * {
-        return new layers::FusedAddBiasLayerNorm(std::move(dense_bias), 
-                                                 std::move(layer_norm_weight), 
-                                                 std::move(layer_norm_bias));
-      }))
+      .def(py::init(
+          [](core::Tensor &dense_bias, core::Tensor &layer_norm_weight,
+             core::Tensor &layer_norm_bias) -> layers::FusedAddBiasLayerNorm * {
+            return new layers::FusedAddBiasLayerNorm(
+                std::move(dense_bias), std::move(layer_norm_weight),
+                std::move(layer_norm_bias));
+          }))
       .def("__call__", &layers::FusedAddBiasLayerNorm::operator());
-  
 }
 
 }  // namespace python

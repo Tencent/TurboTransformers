@@ -263,12 +263,6 @@ void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
                 true,
                 "SplitAddBiasTransposeForScore: input_tensor and q_out_tensor "
                 "should have the same device type and device id.");
-  TT_ENFORCE_EQ(q_out_tensor.numel(), input_tensor.numel() / 3,
-                "numel of q_out_tensor should 1/3 of input tensor");
-  TT_ENFORCE_EQ(k_out_tensor.numel(), input_tensor.numel() / 3,
-                "numel of q_out_tensor should 1/3 of input tensor");
-  TT_ENFORCE_EQ(v_out_tensor.numel(), input_tensor.numel() / 3,
-                "numel of q_out_tensor should 1/3 of input tensor");
   if (q_out_tensor.device_type() == kDLCPU &&
       input_tensor.device_type() == kDLCPU &&
       bias_tensor.device_type() == kDLCPU) {

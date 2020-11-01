@@ -29,7 +29,7 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
   if (position_ids->is_null()) {
     auto pos_ids_ptr = position_ids->Reshape<int64_t>(
         {inputs.shape(0), inputs.shape(1)}, inputs.device_type(),
-        inputs.device_id());
+        inputs.device_id(), "PrepareBertMasks/possitionids/Reshape");
 
     // fill range
     for (int64_t row_id = 0; row_id < inputs.shape(0); ++row_id) {
@@ -42,14 +42,16 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
   if (seq_type->is_null()) {
     // seq_type.zeros_like(inputs)
     seq_type->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)},
-                               inputs.device_type(), inputs.device_id());
+                               inputs.device_type(), inputs.device_id(),
+                               "PrepareBertMasks/seqids/Reshape");
     kernels::common::Fill(seq_type->mutableData<int64_t>(), seq_type->numel(),
                           static_cast<int64_t>(0), inputs.device_type());
   }
 
   if (att_mask->is_null()) {
     att_mask->Reshape<int64_t>({inputs.shape(0), inputs.shape(1)},
-                               inputs.device_type(), inputs.device_id());
+                               inputs.device_type(), inputs.device_id(),
+                               "PrepareBertMasks/attmask/Reshape");
     kernels::common::Fill(att_mask->mutableData<int64_t>(), att_mask->numel(),
                           static_cast<int64_t>(1), inputs.device_type());
   }
@@ -57,7 +59,7 @@ void PrepareBertMasks::operator()(const core::Tensor& inputs,
   // cast att_mask to float
   extended_attention_mask->Reshape<float>(
       {att_mask->shape(0), 1, 1, att_mask->shape(1)}, inputs.device_type(),
-      inputs.device_id());
+      inputs.device_id(), "PrepareBertMasks/extendedattnmask/Reshape");
   kernels::common::Transform(att_mask->mutableData<int64_t>(),
                              extended_attention_mask->mutableData<float>(),
                              att_mask->numel(), inputs.device_type());

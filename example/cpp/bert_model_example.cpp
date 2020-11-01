@@ -19,6 +19,7 @@
 #include <thread>
 
 #include "bert_model.h"
+#include "turbo_transformers/core/allocator/allocator_api.h"
 #include "turbo_transformers/core/config.h"
 
 static bool test(const std::string &model_path, bool use_cuda = false) {
@@ -64,6 +65,11 @@ bool test_multiple_threads(const std::string &model_path, bool only_input,
                                               {5342, 16471, 817, 16022}};
   std::vector<std::vector<int64_t>> position_ids{{1, 0, 0, 0}, {1, 1, 1, 0}};
   std::vector<std::vector<int64_t>> segment_ids{{1, 1, 1, 0}, {1, 0, 0, 0}};
+
+  auto &allocator =
+      turbo_transformers::core::allocator::Allocator::GetInstance();
+  allocator.set_config({2, 4, 12, 768, 12});
+
   if (only_input) {
     position_ids.clear();
     segment_ids.clear();
@@ -106,6 +112,10 @@ bool test_multiple_threads(const std::string &model_path, bool only_input,
       assert(fabs(vec.data()[768] - 0.3060) < 1e-3);
       assert(fabs(vec.data()[768 + 1] - 0.1162) < 1e-3);
     } else {
+      std::cerr << vec.data()[0] << std::endl;
+      std::cerr << vec.data()[1] << std::endl;
+      std::cerr << vec.data()[768] << std::endl;
+      std::cerr << vec.data()[768 + 1] << std::endl;
       assert(fabs(vec.data()[0] - -0.5503) < 1e-3);
       assert(fabs(vec.data()[1] - 0.1295) < 1e-3);
       assert(fabs(vec.data()[768] - -0.5545) < 1e-3);
@@ -142,7 +152,16 @@ int main(int argc, char *argv[]) {
     test_multiple_threads(model_path, false /*only_input*/, true /*use cuda*/,
                           10);
   }
+
+  // Test model-aware Allocator.
+  // NOTE, if using the model-aware allocator,
+  // then you shall not run multi bert inference concurrently.
+  // Because all activations of the bert share the same memory space.
+  auto &allocator =
+      turbo_transformers::core::allocator::Allocator::GetInstance();
+  allocator.set_schema("model-aware");
   test_multiple_threads(model_path, false /*only_input*/,
-                        false /*not use cuda*/, 10);
+                        false /*not use cuda*/, 1);
+  allocator.set_schema("naive");
   return 0;
 }
