@@ -46,7 +46,7 @@ def create_test(batch_size, input_len):
                 self.torch_model.to(self.test_device)
 
             self.turbo_transformer = turbo_transformers.DistilBertModel.from_torch(
-                self.torch_model, "onnxrt")
+                self.torch_model)
             # (batch_size, input_len, model_dim)
             self.inputs = torch.randint(low=0,
                                         high=self.cfg.vocab_size - 1,
