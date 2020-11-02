@@ -202,6 +202,7 @@ Download PyTorch version to 1.1.0 will improve Turbo's Performance.
 
 ## Cite us
 Cite this paper, if you use TurboTransformers in your research publication.
+
 ```
 @article{fang2020turbotransformers,
   title={TurboTransformers: An Efficient GPU Serving System For Transformer Models},

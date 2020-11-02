@@ -12,39 +12,26 @@
 // See the AUTHORS file for names of contributors.
 
 #pragma once
-#include <memory.h>
-
+#include <cstdlib>
 #include <map>
-#include <memory>
-#include <unordered_map>
-#include "macros.h"
-#include "turbo_transformers/core/memory.h"
+#include <set>
+#include <string>
+#include <vector>
+
+#include "turbo_transformers/core/allocator/model_aware_memory_scheduler.h"
 
 namespace turbo_transformers {
 namespace core {
+namespace allocator {
+namespace bert_config {
 
-class Allocator {
- public:
-  ~Allocator();
+template <typename T>
+void GetBertTensorUsageRecord(
+    std::vector<TensorRecordItemPtr>& TensorUsageRecord,
+    std::set<std::string>& activation_set, int64_t batch_size, int64_t seq_len,
+    int64_t num_head = 12, int64_t hidden_size = 768, int64_t num_layer = 12);
 
-  static Allocator &GetInstance() {
-    static Allocator instance;
-    return instance;
-  }
-
-  void *allocate(size_t size, const std::string &strategy, DLDeviceType dev);
-
-  void free(void *memory, const std::string &strategy, DLDeviceType dev);
-
- private:
-  Allocator();
-  struct BestFitAllocatorImpl;
-  std::unique_ptr<BestFitAllocatorImpl> bestfit_allocator_;
-  struct CachingAllocatorImpl;
-  std::unique_ptr<CachingAllocatorImpl> caching_allocator_;
-
-  DISABLE_COPY_AND_ASSIGN(Allocator);
-};
-
+}  // namespace bert_config
+}  // namespace allocator
 }  // namespace core
 }  // namespace turbo_transformers
