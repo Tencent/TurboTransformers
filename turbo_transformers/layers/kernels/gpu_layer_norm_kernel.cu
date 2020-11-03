@@ -12,7 +12,7 @@
 // See the AUTHORS file for names of contributors.
 
 #include <cuda_runtime.h>
-#include <immintrin.h>
+//#include <immintrin.h>
 
 #include <numeric>
 
