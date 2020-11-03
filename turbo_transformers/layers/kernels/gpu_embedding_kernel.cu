@@ -14,6 +14,7 @@
 #include <cuda_runtime.h>
 
 #include <numeric>
+#include <stdexcept>
 
 #include "turbo_transformers/layers/kernels/gpu_embedding_kernel.h"
 
