@@ -25,4 +25,4 @@ foreach(X ${ARCH_FLAGS})
 endforeach()
 
 message(STATUS "Generating CUDA code for ${CUDA_VERSION} SMs: ${CUDA_FLAGS}")
-set(CMAKE_CUDA_FLAGS "${CUDA_FLAGS} -Xcompiler -Wall --expt-relaxed-constexpr --use_fast_math --expt-extended-lambda")
+#set(CMAKE_CUDA_FLAGS "${CUDA_FLAGS} -Xcompiler -Wall --expt-relaxed-constexpr --use_fast_math --expt-extended-lambda")
