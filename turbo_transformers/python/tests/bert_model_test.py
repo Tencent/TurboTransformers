@@ -76,10 +76,7 @@ class TestBertModel(unittest.TestCase):
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'BertModel TurboTransformer({device_name}) QPS {turbo_qps}')
 
-        # set the allocator back to naive, otherwise it will affect
-        # the other inference processes.
-        if use_memory_opt:
-            turbo_transformers.reset_allocator_schema("naive")
+
 
         print(f"batch {batch_size} seq_len {seq_len}")
         print(torch.max(torch_result[0].cpu() - turbo_result[0].cpu()))
@@ -89,7 +86,8 @@ class TestBertModel(unittest.TestCase):
                            atol=1e-2,
                            rtol=1e-3))
 
-    def test_bert_model_helper(self, use_memory_opt=False):
+
+    def bert_model_test_helper(self, use_memory_opt=False):
         if use_memory_opt:
             turbo_transformers.reset_allocator_schema("model-aware")
 
@@ -109,9 +107,10 @@ class TestBertModel(unittest.TestCase):
         if use_memory_opt:
             turbo_transformers.reset_allocator_schema("naive")
 
-    def test_bert_model(self, use_memory_opt=False):
-        self.test_bert_model_helper(True)
-        self.test_bert_model_helper(False)
+    def test_bert_model(self):
+        self.bert_model_test_helper(True)
+        self.bert_model_test_helper(False)
+
 
 
 if __name__ == '__main__':
