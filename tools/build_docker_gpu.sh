@@ -20,7 +20,6 @@ VERSION=$(cat ../CMakeLists.txt | grep TURBO_TRANSFORMERS_VERSION | \
 CUDA_VERSION=10.1
 PYTORCH_VERSION=1.7.0
 BUILD_TYPES=("dev" "release")
-EXTRA_ARGS="--build-arg https_proxy=http://192.168.12.11:1080"
 
 DEV_IMAGE=thufeifeibear/turbo_transformers_gpu_dev:latest
 

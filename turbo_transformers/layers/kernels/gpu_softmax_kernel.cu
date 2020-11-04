@@ -12,7 +12,6 @@
 // See the AUTHORS file for names of contributors.
 
 #include <cuda_runtime.h>
-//#include <immintrin.h>
 
 #include <cub/cub.cuh>
 #include <numeric>
