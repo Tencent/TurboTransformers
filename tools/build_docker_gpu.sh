@@ -28,7 +28,7 @@ do
   if [ $BUILD_TYPE == "dev" ]; then
       NV_BASE_IMAGE=${CUDA_VERSION}-devel-ubuntu18.04
   elif [ $BUILD_TYPE == "release" ]; then
-      NV_BASE_IMAGE=${CUDA_VERSION}-runtime-ubuntu18.04
+      NV_BASE_IMAGE=${CUDA_VERSION}-base-ubuntu18.04
   fi
 
   sed 's#IMAGE_BASE#nvidia/cuda:'${NV_BASE_IMAGE}'#g' ./docker/Dockerfile_${BUILD_TYPE}.gpu |

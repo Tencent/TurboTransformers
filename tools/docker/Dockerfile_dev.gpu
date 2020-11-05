@@ -1,16 +1,15 @@
 FROM IMAGE_BASE
 
 RUN sed -i s@/archive.ubuntu.com/@/mirrors.tuna.tsinghua.edu.cn/@g /etc/apt/sources.list && apt-get update && \
-    apt-get install -y curl git ninja-build && rm -rf /var/lib/apt/lists/*
+    apt-get install -y curl git && rm -rf /var/lib/apt/lists/*
 
 ENV PATH=/opt/miniconda3/bin:${PATH} CONDA_PREFIX=/opt/miniconda3
 
 RUN curl -LO https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-py37_4.8.3-Linux-x86_64.sh && \
     bash Miniconda3-py37_4.8.3-Linux-x86_64.sh -p /opt/miniconda3 -b && \
-    rm Miniconda3-py37_4.8.3-Linux-x86_64.sh
-
-RUN conda install pytorch=PYTORCH_VERSION cudatoolkit=CUDA_VERSION cudnn -c pytorch -y && \
-    conda install conda-verify conda-build mkl-include cmake -c anaconda -y && \
+    rm Miniconda3-py37_4.8.3-Linux-x86_64.sh && \
+    conda install pytorch=PYTORCH_VERSION cudatoolkit=CUDA_VERSION cudnn -c pytorch -y && \
+    conda install conda-verify conda-build mkl-include cmake ninja -c anaconda -y && \
     conda clean -afy
 
 RUN pip install --no-cache-dir OpenNMT-py==1.1.0 onnxruntime-gpu==1.3.0
