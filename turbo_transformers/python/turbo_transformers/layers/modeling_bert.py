@@ -32,7 +32,6 @@ from transformers.modeling_bert import BertPooler as TorchBertPooler
 
 import enum
 import numpy as np
-import os
 
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
@@ -437,12 +436,16 @@ class BertModelNoPooler:
 
 
 class BertModel:
-    def __init__(self, model, pooler=None, backend="onnxrt"):
+    # @params:
+    # pooler is used for turbo backend only
+    # config is used for memory optizations
+    def __init__(self, model, pooler=None, backend="onnxrt", config=None):
         # TODO type of bertmodel_nopooler is (onnx and torch)
         self.backend = backend
         if backend == "onnxrt":
             self.onnxmodel = model
         elif backend == "turbo":
+            self.config = config
             self.bertmodel_nopooler = model
             self.pooler = pooler
             self.backend = "turbo"
@@ -500,18 +503,20 @@ class BertModel:
     @staticmethod
     def from_torch(model: TorchBertModel,
                    device: Optional[torch.device] = None,
-                   backend: Optional[str] = None):
+                   backend: Optional[str] = None,
+                   use_memory_opt=False):
         """
         Args:
             model : a PyTorch Bert Model
             device : cpu or GPU
             backend : a string to indicates kernel provides
             Four options. [onnxrt-cpu, onnxrt-gpu, turbo-cpu, turbo-gpu]
+            use_memory_opt [bool] whether or not use memory opt for variable length inputs.
         """
         use_gpu = False
         if device is None:
             device = model.device
-        # may need to move to GPU explicitly
+        # we may need to move to GPU explicitly
         if 'cuda' in device.type and torch.cuda.is_available():
             model.to(device)
             if backend is None:
@@ -526,7 +531,7 @@ class BertModel:
             encoder = BertEncoder.from_torch(model.encoder)
             bertmodel_nopooler = BertModelNoPooler(embeddings, encoder)
             pooler = BertPooler.from_torch(model.pooler)
-            return BertModel(bertmodel_nopooler, pooler, "turbo")
+            return BertModel(bertmodel_nopooler, pooler, "turbo", model.config)
         elif backend == "onnxrt":
             import onnx
             import onnxruntime
@@ -575,7 +580,8 @@ class BertModel:
                         device: Optional[torch.device] = None,
                         backend: Optional[str] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
-        model = BertModel.from_torch(torch_model, device, backend)
+        model = BertModel.from_torch(torch_model, device, backend,
+                                     model.config)
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model

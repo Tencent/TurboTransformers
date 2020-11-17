@@ -76,6 +76,11 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
   m.def("disable_perf", &core::DisableGperf);
   m.def("set_num_threads", &core::SetNumThreads);
 
+  m.def("bert_opt_mem_allocate_api",
+        &core::allocator::bert_opt_mem_allocate_api);
+
+  m.def("reset_allocator_schema", &core::allocator::reset_allocator_schema);
+
   py::class_<core::Tensor>(m, "Tensor")
       .def_static("from_dlpack",
                   [](py::capsule capsule) -> std::unique_ptr<core::Tensor> {

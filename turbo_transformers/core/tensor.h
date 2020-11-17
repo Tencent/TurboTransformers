@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "absl/types/variant.h"
+#include "turbo_transformers/core/allocator/allocator_api.h"
 #include "turbo_transformers/core/blas.h"
 #include "turbo_transformers/core/enforce.h"
 #include "turbo_transformers/core/half.h"
@@ -101,15 +102,16 @@ struct VisitDLTensor {
 extern DLManagedTensor *NewDLPackTensor(const std::vector<int64_t> &shape_list,
                                         DLDeviceType device, int device_id,
                                         uint8_t data_type_code, size_t bits,
-                                        size_t lanes);
+                                        size_t lanes, const std::string &name);
 
 template <typename T>
 inline DLManagedTensor *NewDLPackTensorT(const std::vector<int64_t> &shape_list,
                                          DLDeviceType device = kDLCPU,
-                                         int device_id = 0) {
+                                         int device_id = 0,
+                                         const std::string &name = "") {
   return NewDLPackTensor(shape_list, device, device_id,
                          details::DataTypeTrait<T>::DLPackTypeCode,
-                         sizeof(T) * 8, 1);
+                         sizeof(T) * 8, 1, name);
 }
 
 class Tensor {
@@ -153,7 +155,7 @@ class Tensor {
   // FIXME(florianzhao): Maybe this func should not be named Reshape.
   template <typename T>
   T *Reshape(std::vector<int64_t> shape_list, DLDeviceType device_type,
-             int device_id, const std::string name = "Reshape") {
+             int device_id, const std::string &name = "Reshape") {
     // if Need Realloc
 #ifdef WITH_PERFTOOLS
     auto &profile_ctx = core::Profiler::GetInstance();
@@ -161,7 +163,7 @@ class Tensor {
 #endif
     if (absl::visit(ReshapeNeedRealloc(shape_list), tensor_)) {
       tensor_ = details::DLManagedTensorPtr(
-          NewDLPackTensorT<T>(shape_list, device_type, device_id));
+          NewDLPackTensorT<T>(shape_list, device_type, device_id, name));
     }
 #ifdef WITH_PERFTOOLS
     profile_ctx.end_profile(name, device_type);

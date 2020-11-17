@@ -23,6 +23,9 @@ from .modeling_distillbert import DistillBertAttention, DistrillFFN, DistrillTra
 
 from .return_type import ReturnType
 
+from .bert_tensor_usage import get_bert_tensor_usage_record
+from .static_allocator import greedy_by_size_offset_calculation
+
 __all__ = [
     'BertEmbeddings', 'BertIntermediate', 'BertOutput', 'BertAttention',
     'BertLayer', 'BertEncoder', 'BertModel', 'ReturnType', 'BertPooler',

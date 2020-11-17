@@ -17,16 +17,26 @@ set -xe
 VERSION=$(cat ../CMakeLists.txt | grep TURBO_TRANSFORMERS_VERSION | \
     sed 's#set(TURBO_TRANSFORMERS_VERSION ##g' | sed 's#)##g')
 
-if [ -z $BUILD_TYPE ]; then
-  BUILD_TYPE=release
-fi
-
 CUDA_VERSION=10.1
-DOCKER_BASE=${CUDA_VERSION}-cudnn7-devel-ubuntu18.04
-PYTORCH_VERSION=1.5.0
-sed 's#IMAGE_BASE#nvidia/cuda:'${DOCKER_BASE}'#g' ./docker/Dockerfile_${BUILD_TYPE}.gpu |
-sed 's#CUDA_VERSION#'${CUDA_VERSION}'#g'         |
-sed 's#PYTORCH_VERSION#'${PYTORCH_VERSION}'#g'    > Dockerfile.gpu
+PYTORCH_VERSION=1.7.0
+BUILD_TYPES=("dev" "release")
 
-docker build ${EXTRA_ARGS} -t thufeifeibear/turbo_transformers_gpu:latest \
-  -t thufeifeibear/turbo_transformers:${VERSION}-cuda${DOCKER_BASE}-gpu-${BUILD_TYPE} -f Dockerfile.gpu  .
+DEV_IMAGE=thufeifeibear/turbo_transformers_gpu_dev:latest
+
+for BUILD_TYPE in ${BUILD_TYPES[*]}
+do
+  if [ $BUILD_TYPE == "dev" ]; then
+      NV_BASE_IMAGE=${CUDA_VERSION}-devel-ubuntu18.04
+  elif [ $BUILD_TYPE == "release" ]; then
+      NV_BASE_IMAGE=${CUDA_VERSION}-base-ubuntu18.04
+  fi
+
+  sed 's#IMAGE_BASE#nvidia/cuda:'${NV_BASE_IMAGE}'#g' ./docker/Dockerfile_${BUILD_TYPE}.gpu |
+  sed 's#CUDA_VERSION#'${CUDA_VERSION}'#g'         |
+  sed 's#PYTORCH_VERSION#'${PYTORCH_VERSION}'#g'   |
+  sed 's#DEV_IMAGE#'${DEV_IMAGE}'#g'               > Dockerfile_${BUILD_TYPE}.gpu
+
+  docker build ${EXTRA_ARGS} -t thufeifeibear/turbo_transformers_gpu_${BUILD_TYPE}:latest \
+    -t thufeifeibear/turbo_transformers:${VERSION}-cuda${CUDA_VERSION}-gpu-${BUILD_TYPE} -f Dockerfile_${BUILD_TYPE}.gpu  .
+
+done

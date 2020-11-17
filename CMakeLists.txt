@@ -21,7 +21,9 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-Wall")
 set(CMAKE_C_FLAGS "-Wall")
 
-set(TURBO_TRANSFORMERS_VERSION 0.4.5)
+
+set(TURBO_TRANSFORMERS_VERSION 0.5.1)
+
 
 option(WITH_PROFILER  "Compile with profiler"   OFF)
 option(WITH_GPU       "Build with GPU"          OFF)
