@@ -13,6 +13,7 @@
 
 #include <iostream>
 
+
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/allocator/bert_config.h"
 #include "turbo_transformers/core/allocator/model_aware_memory_scheduler.h"
@@ -82,6 +83,7 @@ TEST_CASE("bert-allocator-multiple-chunk",
   REQUIRE(CheckValid(tensor_position_map, bert_tensor_usage_record));
 }
 
+
 TEST_CASE("bert-allocator-multiple-allocation",
           "check multi times memory allocation correction") {
   std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
@@ -104,6 +106,7 @@ TEST_CASE("bert-allocator-multiple-allocation",
 
     chunk_list.ShowChunkUsage();
     REQUIRE(CheckValid(tensor_position_map, bert_tensor_usage_record));
+
   }
 }
 
