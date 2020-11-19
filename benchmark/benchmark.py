@@ -14,7 +14,7 @@
 turbo-transformers Benchmark Utils
 
 Usage:
-    benchmark <model_name> [--seq_len=<int>] [--framework=<f>] [--batch_size=<int>] [-n <int>] [--enable-random] [--min_seq_len=<int>] [--max_seq_len=<int>] [--use_gpu] [--num_threads=<int>] [--enable_mem_opt=<bool>]
+    benchmark <model_name> [--seq_len=<int>] [--framework=<f>] [--batch_size=<int>] [-n <int>] [--enable-random] [--min_seq_len=<int>] [--max_seq_len=<int>] [--use_gpu] [--num_threads=<int>] [--enable_mem_opt]
 
 Options:
     --framework=<f>      The framework to test in (torch, torch_jit, turbo-transformers,
@@ -27,7 +27,7 @@ Options:
     --max_seq_len=<int>  Maximal sequence length generated when enable random [default: 50]
     --use_gpu            Enable GPU.
     --num_threads=<int>  The number of CPU threads. [default: 4]
-    --enable_mem_opt=<bool>  Use memory optimization for BERT. [default: False]
+    --enable_mem_opt     Use model aware memory optimization for BERT.
 """
 
 import json
@@ -54,7 +54,8 @@ def main():
         'use_gpu': True if args['--use_gpu'] else False,
         'enable_mem_opt': True if args['--enable_mem_opt'] else False,
     }
-    if (kwargs['model_name'] != 'bert'):
+    if (kwargs['model_name'] != 'bert'
+            or args['--framework'] != 'turbo-transformers'):
         kwargs['enable_mem_opt'] = False
     if args['--framework'] == 'turbo-transformers':
         benchmark_turbo_transformers(**kwargs)
