@@ -42,7 +42,9 @@ def create_test_bert_emb(batch_size: int, seq_length: int):
                 torch.device('cpu:0')
 
             torch.set_grad_enabled(False)
-            cfg = AlbertConfig()
+            cfg = AlbertConfig(hidden_size=768,
+                               num_attention_heads=12,
+                               intermediate_size=3072)
             self.torch_embedding = AlbertEmbeddings(cfg)
 
             self.torch_embedding.eval()

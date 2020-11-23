@@ -34,7 +34,9 @@ def create_test(batch_size, seq_length):
                 turbo_transformers.set_num_threads(4)
 
             torch.set_grad_enabled(False)
-            self.cfg = AlbertConfig()
+            self.cfg = AlbertConfig(hidden_size=768,
+                                    num_attention_heads=12,
+                                    intermediate_size=3072)
 
             self.torch_layer = AlbertLayer(self.cfg)
             if torch.cuda.is_available():
@@ -93,7 +95,7 @@ def create_test(batch_size, seq_length):
                 )
 
         def test_layer(self):
-            # self.check_torch_and_turbo(use_cuda=False)
+            self.check_torch_and_turbo(use_cuda=False)
             if torch.cuda.is_available() and \
                 turbo_transformers.config.is_compiled_with_cuda():
                 self.check_torch_and_turbo(use_cuda=True)
