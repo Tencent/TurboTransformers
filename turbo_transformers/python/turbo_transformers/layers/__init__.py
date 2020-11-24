@@ -19,6 +19,7 @@ from .modeling_albert import AlbertEmbeddings, AlbertAttention, AlbertLayer, Alb
 from .modeling_decoder import MultiHeadedAttention, PositionwiseFeedForward, TransformerDecoderLayer, TransformerDecoder
 from .modeling_roberta import RobertaModel
 from .modeling_gpt2 import GPT2Model
+from .modeling_distillbert import DistillBertAttention, DistrillFFN, DistrillTransformerBlock, DistrillTransformer, DistilBertModel
 
 from .return_type import ReturnType
 
@@ -33,5 +34,7 @@ __all__ = [
     'AlbertAttention', 'AlbertTransformer', 'AlbertModel',
     'PositionwiseFeedForward', 'TransformerDecoderLayer', 'TransformerDecoder',
     'RobertaModel', 'QBertIntermediate', 'QBertOutput', 'QBertLayer',
-    'QBertEncoder', 'QBertModel', 'GPT2Model'
+    'QBertEncoder', 'QBertModel', 'GPT2Model', 'DistillBertAttention',
+    'DistrillFFN', 'DistrillTransformerBlock', 'DistrillTransformer',
+    'DistilBertModel'
 ]

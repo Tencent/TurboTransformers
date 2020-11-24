@@ -30,9 +30,6 @@ Options:
     --enable_mem_opt     Use model aware memory optimization for BERT.
 """
 
-import json
-import os
-
 import docopt
 from turbo_benchmark_helper import benchmark_turbo_transformers
 from torch_benchmark_helper import benchmark_torch
