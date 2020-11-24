@@ -35,7 +35,6 @@ do
               --batch_size=1 \
               -n ${N} \
               --num_threads=${NTHREADS} \
-              --framework=${framework} \
-              --enable_mem_opt=True
+              --framework=${framework}
   done
 done
