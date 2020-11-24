@@ -15,7 +15,9 @@ RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py37_4.8.3-Linux-x86
     conda install pytorch=PYTORCH_VERSION cudatoolkit=CUDA_VERSION cudnn --freeze-installed -c pytorch && \
     conda clean -yfa
 
-RUN pip --no-cache-dir install contexttimer future transformers==3.0.2 docopt OpenNMT-py==1.1.0 onnxruntime-gpu==1.3.0
+
+RUN pip --no-cache-dir install contexttimer future transformers==3.4.0 docopt OpenNMT-py==1.1.0 onnxruntime-gpu==1.3.0
+
 
 COPY --from=DEV_IMAGE /opt/miniconda3/lib/python3.7/site-packages/turbo_transformers /opt/miniconda3/lib/python3.7/site-packages/turbo_transformers
 
