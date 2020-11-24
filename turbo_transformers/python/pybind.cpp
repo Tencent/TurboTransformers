@@ -221,6 +221,18 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       }))
       .def("__call__", &layers::PositionwiseFeedForward::operator());
 
+  py::class_<layers::DistrillFFN>(m, "DistrillFFN")
+      .def(py::init([](core::Tensor &dense_weight_1, core::Tensor &dense_bias_1,
+                       core::Tensor &dense_weight_2, core::Tensor &dense_bias_2,
+                       core::Tensor &layer_norm_weight,
+                       core::Tensor &layer_norm_bias) -> layers::DistrillFFN * {
+        return new layers::DistrillFFN(
+            std::move(dense_weight_1), std::move(dense_bias_1),
+            std::move(dense_weight_2), std::move(dense_bias_2),
+            std::move(layer_norm_weight), std::move(layer_norm_bias));
+      }))
+      .def("__call__", &layers::DistrillFFN::operator());
+
   py::class_<layers::FusedAddBiasGELU>(m, "FusedAddBiasGELU")
       .def(py::init([](core::Tensor &dense_bias) -> layers::FusedAddBiasGELU * {
         return new layers::FusedAddBiasGELU(std::move(dense_bias));

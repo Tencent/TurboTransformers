@@ -26,7 +26,6 @@ def generate_onnx_model(model_name: str,
                         use_dynamic_axes: bool = False):
     import transformers
     import torch
-    import os
 
     test_device = torch.device(
         'cuda:0') if backend == "GPU" and use_gpu else torch.device('cpu:0')
@@ -45,6 +44,9 @@ def generate_onnx_model(model_name: str,
     elif model_name == "roberta":
         cfg = transformers.RobertaConfig()
         model = transformers.RobertaModel(cfg)
+    elif model_name == "distilbert":
+        cfg = transformers.DistilBertConfig()
+        model = transformers.DistilBertModel(cfg)
     else:
         raise (f"benchmark does not support {model_name}")
 
