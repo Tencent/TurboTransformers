@@ -20,7 +20,8 @@ def run_model(model,
               batch_size,
               seq_len,
               framework_name,
-              num_threads=1):
+              num_threads=1,
+              enable_mem_opt=False):
     # warm up
     import torch
     import contexttimer
@@ -33,15 +34,15 @@ def run_model(model,
         start.record()
 
     with contexttimer.Timer() as t:
+        if enable_mem_opt:
+            turbo_transformers.bert_opt_mem_allocate_api(
+                batch_size,  # batch
+                seq_len,  # seq_len
+                model.config.num_attention_heads,
+                model.config.hidden_size,
+                model.config.num_hidden_layers,
+                "GPU" if use_gpu else "CPU")
         for it in range(num_iter):
-            if use_mem_opt:
-                turbo_transformers.bert_opt_mem_allocate_api(
-                    batch_size,  # batch
-                    seq_len,  # seq_len
-                    model.config.num_attention_heads,
-                    model.config.hidden_size,
-                    model.config.num_hidden_layers,
-                    "GPU" if use_gpu else "CPU")
             model()
 
     if not use_gpu:
