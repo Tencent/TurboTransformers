@@ -28,7 +28,7 @@ void BertPooler::operator()(const core::Tensor& input_tensor,
                 input_tensor.n_dim());
   output_tensor->Reshape<float>({input_tensor.shape(0), dense_weight_.shape(0)},
                                 input_tensor.device_type(),
-                                input_tensor.device_id());
+                                input_tensor.device_id(), "BertPooler");
 
   kernels::MatMul(input_tensor, false, dense_weight_, false, 1.0, output_tensor,
                   0.0);

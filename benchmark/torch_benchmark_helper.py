@@ -16,7 +16,7 @@ __all__ = ['benchmark_torch']
 
 def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
                     enable_random: bool, max_seq_len: int, min_seq_len: int,
-                    num_threads: int, use_gpu: bool):
+                    num_threads: int, use_gpu: bool, enable_mem_opt: bool):
     import torch
     import transformers
     import benchmark_helper
@@ -47,7 +47,7 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
     if enable_random:
         benchmark_helper.run_variable_model(model, use_gpu, n, max_seq_len,
                                             min_seq_len, "torch", num_threads,
-                                            cfg)
+                                            cfg, enable_mem_opt)
     else:
         input_ids = torch.randint(low=0,
                                   high=cfg.vocab_size - 1,

@@ -14,7 +14,7 @@
 set -e
 # Turbo is designed for variable-length input
 # This script benchmarks turbo using a list of request with variable lengths
-FRAMEWORKS=("torch"  "turbo-transformers" "onnxruntime-cpu")
+FRAMEWORKS=("turbo-transformers")
 # FRAMEWORKS=("turbo-transformers" "torch")
 # FRAMEWORKS=("torch")
 # Note Onnx doese not supports Albert

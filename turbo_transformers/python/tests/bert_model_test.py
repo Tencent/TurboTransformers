@@ -39,7 +39,7 @@ class TestBertModel(unittest.TestCase):
             self.torch_model.to(self.test_device)
 
         self.turbo_model = turbo_transformers.BertModel.from_torch(
-            self.torch_model, self.test_device, "turbo", use_memory_opt=True)
+            self.torch_model, self.test_device, "turbo")
 
     def check_torch_and_turbo(self,
                               use_cuda,
@@ -76,8 +76,6 @@ class TestBertModel(unittest.TestCase):
                 test_helper.run_model(turbo_model, use_cuda, num_iter)
         print(f'BertModel TurboTransformer({device_name}) QPS {turbo_qps}')
 
-
-
         print(f"batch {batch_size} seq_len {seq_len}")
         print(torch.max(torch_result[0].cpu() - turbo_result[0].cpu()))
         self.assertTrue(
@@ -86,12 +84,12 @@ class TestBertModel(unittest.TestCase):
                            atol=1e-2,
                            rtol=1e-3))
 
-
     def bert_model_test_helper(self, use_memory_opt=False):
+
         if use_memory_opt:
             turbo_transformers.reset_allocator_schema("model-aware")
 
-        for batch_size in [1, 4, 20]:
+        for batch_size in [2, 4, 1]:
             for seq_len in [50, 4, 16]:
                 if torch.cuda.is_available() and \
                         turbo_transformers.config.is_compiled_with_cuda():
@@ -108,9 +106,8 @@ class TestBertModel(unittest.TestCase):
             turbo_transformers.reset_allocator_schema("naive")
 
     def test_bert_model(self):
-        self.bert_model_test_helper(True)
+        # self.bert_model_test_helper(True)
         self.bert_model_test_helper(False)
-
 
 
 if __name__ == '__main__':

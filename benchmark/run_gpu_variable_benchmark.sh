@@ -17,7 +17,7 @@ set -e
 # FRAMEWORKS=("turbo-transformers" "torch" "onnxruntime")
 FRAMEWORKS=("turbo-transformers" "torch")
 # Note Onnx doese not supports Albert
-# FRAMEWORKS=("onnxruntime")
+# FRAMEWORKS=("onnxruntime-gpu")
 
 MAX_SEQ_LEN=(500)
 

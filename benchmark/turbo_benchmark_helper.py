@@ -17,7 +17,8 @@ __all__ = ['benchmark_turbo_transformers']
 def benchmark_turbo_transformers(model_name: str, seq_len: int,
                                  batch_size: int, n: int, enable_random: bool,
                                  max_seq_len: int, min_seq_len: int,
-                                 num_threads: int, use_gpu: bool):
+                                 num_threads: int, use_gpu: bool,
+                                 enable_mem_opt: bool):
     import torch
     import transformers
     import turbo_transformers
@@ -30,7 +31,7 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
         model = transformers.BertModel(cfg)
         model.to(test_device)
         model.eval()
-        model = turbo_transformers.BertModel.from_torch(model)
+        model = turbo_transformers.BertModel.from_torch(model, backend="turbo")
     elif model_name == "albert":
         cfg = transformers.AlbertConfig()
         model = transformers.AlbertModel(cfg)
@@ -54,15 +55,18 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
 
     turbo_transformers.set_num_threads(num_threads)
     if enable_random:
+        if enable_mem_opt:
+            turbo_transformers.reset_allocator_schema("model-aware")
         benchmark_helper.run_variable_model(model, use_gpu, n, max_seq_len,
                                             min_seq_len, "turbo", num_threads,
-                                            cfg)
+                                            cfg, enable_mem_opt)
+        if enable_mem_opt:
+            turbo_transformers.reset_allocator_schema("naive")
     else:
         input_ids = torch.randint(low=0,
                                   high=cfg.vocab_size - 1,
                                   size=(batch_size, seq_len),
                                   dtype=torch.long,
                                   device=test_device)
-
         benchmark_helper.run_model(lambda: model(input_ids), use_gpu, n,
                                    batch_size, seq_len, "turbo", num_threads)

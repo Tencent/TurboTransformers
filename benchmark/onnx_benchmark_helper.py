@@ -155,6 +155,7 @@ def onnxruntime_benchmark_creator(backend: str):
 
             if enable_latency_plot:
                 import time
+                import torch
                 print(f"dump results to onnxrt_latency_{num_threads}.txt")
                 result_list = []
                 with open(f"onnxrt_latency_{num_threads}.txt", "w") as of:
