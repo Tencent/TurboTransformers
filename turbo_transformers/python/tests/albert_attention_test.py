@@ -34,8 +34,9 @@ def create_test(batch_size, seq_length):
                 torch.set_num_threads(1)
 
             torch.set_grad_enabled(False)
-            cfg = AlbertConfig(attention_probs_dropout_prob=0.0,
-                               hidden_dropout_prob=0.0)
+            cfg = AlbertConfig(hidden_size=768,
+                               num_attention_heads=12,
+                               intermediate_size=3072)
             torch_attention = AlbertAttention(cfg)
             torch_attention.eval()
             if use_cuda:
