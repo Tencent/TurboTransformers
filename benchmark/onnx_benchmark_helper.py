@@ -154,11 +154,13 @@ def onnxruntime_benchmark_creator(backend: str):
                 request_list.append(input_ids)
 
             if enable_latency_plot:
-                import time
                 import torch
-                print(f"dump results to onnxrt_latency_{num_threads}.txt")
+                print(
+                    f"dump results to onnxrt_{num_threads}_{model_name}_latency.txt"
+                )
                 result_list = []
-                with open(f"onnxrt_latency_{num_threads}.txt", "w") as of:
+                with open(f"onnxrt_{num_threads}_{model_name}_latency.txt",
+                          "w") as of:
                     for request in request_list:
                         if use_gpu:
                             start = torch.cuda.Event(enable_timing=True)
