@@ -39,7 +39,6 @@ static bool TryFitChunk(
   int64_t smallest_gap = std::numeric_limits<int64_t>::max();
   bool success = false;
   chunk.visit([&](Chunk::ChunkNode* x) {
-    if (success) return;
     auto x_size = x->tensor_record_->size_;
     auto x_offset = x->offset_;
 
