@@ -47,7 +47,7 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
     if enable_random:
         benchmark_helper.run_variable_model(model, use_gpu, n, max_seq_len,
                                             min_seq_len, "torch", num_threads,
-                                            cfg, enable_mem_opt)
+                                            cfg, enable_mem_opt, model_name)
     else:
         input_ids = torch.randint(low=0,
                                   high=cfg.vocab_size - 1,

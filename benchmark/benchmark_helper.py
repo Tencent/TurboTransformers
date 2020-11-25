@@ -67,7 +67,8 @@ def run_model(model,
 
 
 def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
-                       framework_name, num_threads, cfg, enable_mem_opt):
+                       framework_name, num_threads, cfg, enable_mem_opt,
+                       model_name):
     import torch
     import contexttimer
     import json
