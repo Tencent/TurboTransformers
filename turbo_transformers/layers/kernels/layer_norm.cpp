@@ -1,15 +1,4 @@
-// Copyright (C) 2020 THL A29 Limited, a Tencent company.
-// All rights reserved.
-// Licensed under the BSD 3-Clause License (the "License"); you may
-// not use this file except in compliance with the License. You may
-// obtain a copy of the License at
-// https://opensource.org/licenses/BSD-3-Clause
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" basis,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
-// See the AUTHORS file for names of contributors.
+
 
 #include "turbo_transformers/layers/kernels/layer_norm.h"
 
@@ -132,11 +121,14 @@ void AddBiasLayerNorm(const core::Tensor& input_tensor,
   // TODO(florianzhao): Check the dim of bias_tensor, gamma_tensor, beta_tensor,
   // out_tensor
   TT_ENFORCE_EQ(input_tensor.shape(-1), gamma_tensor.shape(0),
-                "AddBiasLayerNorm input_tensor.shape(-1) should be the same as gamma_tensor.shape(0)");
+                "AddBiasLayerNorm input_tensor.shape(-1) should be the same as "
+                "gamma_tensor.shape(0)");
   TT_ENFORCE_EQ(input_tensor.shape(-1), beta_tensor.shape(0),
-                "AddBiasLayerNorm input_tensor.shape(-1) should be the same as beta_tensor.shape(0)");
+                "AddBiasLayerNorm input_tensor.shape(-1) should be the same as "
+                "beta_tensor.shape(0)");
   TT_ENFORCE_EQ(input_tensor.shape(-1), bias_tensor.shape(0),
-                "AddBiasLayerNorm input_tensor.shape(-1) should be the same as bias_tensor.shape(0)");
+                "AddBiasLayerNorm input_tensor.shape(-1) should be the same as "
+                "bias_tensor.shape(0)");
   TT_ENFORCE(common::is_same_shape(input_tensor, *out_tensor),
              "The shape of the input_tensor and out_tensor is not equal.");
   if (input_tensor.device_type() == kDLCPU) {

@@ -1,15 +1,5 @@
-// Copyright (C) 2020 THL A29 Limited, a Tencent company.
-// All rights reserved.
-// Licensed under the BSD 3-Clause License (the "License"); you may
-// not use this file except in compliance with the License. You may
-// obtain a copy of the License at
-// https://opensource.org/licenses/BSD-3-Clause
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" basis,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
-// See the AUTHORS file for names of contributors.
+
+
 #include "turbo_transformers/layers/kernels/embedding.h"
 
 #include "common.h"
@@ -28,14 +18,13 @@ namespace kernels {
 template <bool Add>
 void LookupEmbedding(core::Tensor *out_tensor,
                      const core::Tensor &embedding_table,
-                     const core::Tensor &ids_tensor,
-                     const std::string name) {
+                     const core::Tensor &ids_tensor, const std::string name) {
 #ifdef WITH_PERFTOOLS
   auto &profile_ctx = core::Profiler::GetInstance();
   profile_ctx.start_profile(name, ids_tensor.device_type());
 #endif
-  TT_ENFORCE_EQ(common::is_same_device_ctx(
-                    out_tensor->device_ctx(), embedding_table.device_ctx()),
+  TT_ENFORCE_EQ(common::is_same_device_ctx(out_tensor->device_ctx(),
+                                           embedding_table.device_ctx()),
                 true,
                 "The out_tensor and embedding_table should have the same "
                 "device type and device id.");
@@ -71,8 +60,8 @@ void LookupEmbedding(core::Tensor *out_tensor,
   } else if (out_tensor->device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
     auto &cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPULookupKernel<Add>(out, embedding, ids, vocab_size, hidden_size,
-                         num_ids, cuda_ctx.stream());
+    GPULookupKernel<Add>(out, embedding, ids, vocab_size, hidden_size, num_ids,
+                         cuda_ctx.stream());
 #else
     TT_THROW("The current code is not compiled with CUDA.");
 #endif

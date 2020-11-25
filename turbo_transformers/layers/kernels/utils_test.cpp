@@ -1,15 +1,5 @@
-// Copyright (C) 2020 THL A29 Limited, a Tencent company.
-// All rights reserved.
-// Licensed under the BSD 3-Clause License (the "License"); you may
-// not use this file except in compliance with the License. You may
-// obtain a copy of the License at
-// https://opensource.org/licenses/BSD-3-Clause
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" basis,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// permissions and limitations under the License.
-// See the AUTHORS file for names of contributors.
+
+
 #include "turbo_transformers/layers/kernels/utils.h"
 #ifdef TT_WITH_CUDA
 #include "turbo_transformers/core/cuda_device_context.h"
@@ -70,8 +60,8 @@ TEST_CASE("cpu-concate", "test1") {
 
 #ifdef TT_WITH_CUDA
 template <typename T, typename Func>
-static void AddBiasTestHelper(int batch_size, int seq_length,
-                              int hidden_size, const Func& func) {
+static void AddBiasTestHelper(int batch_size, int seq_length, int hidden_size,
+                              const Func& func) {
   core::Tensor gpu_bias(nullptr), cpu_bias(nullptr), gpu_out(nullptr),
       cpu_out(nullptr);
   std::tie(cpu_bias, gpu_bias) =
@@ -101,17 +91,21 @@ TEST_CASE("addbias-gpu-test") {
 template <typename T, typename Func>
 static void AddInputBiasTestHelper(int batch_size, int seq_length,
                                    int hidden_size, const Func& func) {
-  core::Tensor gpu_input1(nullptr), cpu_input1(nullptr), gpu_input2(nullptr), cpu_input2(nullptr),
-               gpu_bias(nullptr), cpu_bias(nullptr), gpu_out(nullptr), cpu_out(nullptr);
-  std::tie(cpu_input1, gpu_input1) = common::CreateAndFillRandomForCPUGPUTensors<T>(
-      {batch_size, seq_length, hidden_size});
-  std::tie(cpu_input2, gpu_input2) = common::CreateAndFillRandomForCPUGPUTensors<T>(
-      {batch_size, seq_length, hidden_size});
+  core::Tensor gpu_input1(nullptr), cpu_input1(nullptr), gpu_input2(nullptr),
+      cpu_input2(nullptr), gpu_bias(nullptr), cpu_bias(nullptr),
+      gpu_out(nullptr), cpu_out(nullptr);
+  std::tie(cpu_input1, gpu_input1) =
+      common::CreateAndFillRandomForCPUGPUTensors<T>(
+          {batch_size, seq_length, hidden_size});
+  std::tie(cpu_input2, gpu_input2) =
+      common::CreateAndFillRandomForCPUGPUTensors<T>(
+          {batch_size, seq_length, hidden_size});
   std::tie(cpu_bias, gpu_bias) =
       common::CreateAndFillRandomForCPUGPUTensors<T>({hidden_size});
   std::tie(cpu_out, gpu_out) = common::CreateAndFillRandomForCPUGPUTensors<T>(
       {batch_size, seq_length, hidden_size});
-  func(cpu_input1, cpu_input2, cpu_bias, cpu_out, gpu_input1, gpu_input2, gpu_bias, gpu_out);
+  func(cpu_input1, cpu_input2, cpu_bias, cpu_out, gpu_input1, gpu_input2,
+       gpu_bias, gpu_out);
 }
 
 TEST_CASE("addinputbias-gpu-test") {

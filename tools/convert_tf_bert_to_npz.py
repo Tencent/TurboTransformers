@@ -1,16 +1,3 @@
-# Copyright (C) 2020 THL A29 Limited, a Tencent company.
-# All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may
-# not use this file except in compliance with the License. You may
-# obtain a copy of the License at
-# https://opensource.org/licenses/BSD-3-Clause
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# permissions and limitations under the License.
-# See the AUTHORS file for names of contributors.
-
 from transformers import BertConfig
 try:
     import tensorflow as tf
@@ -24,16 +11,13 @@ import os
 # User should define the map between tf model's layer name to tt model's layer name
 def build_dic(num_layers):
     dic = {
-        'bert/embeddings/word_embeddings':
-        'embeddings.word_embeddings.weight',
+        'bert/embeddings/word_embeddings': 'embeddings.word_embeddings.weight',
         'bert/embeddings/position_embeddings':
         'embeddings.position_embeddings.weight',
         'bert/embeddings/token_type_embeddings':
         'embeddings.token_type_embeddings.weight',
-        'bert/embeddings/LayerNorm/gamma':
-        'embeddings.LayerNorm.weight',
-        'bert/embeddings/LayerNorm/beta':
-        'embeddings.LayerNorm.bias',
+        'bert/embeddings/LayerNorm/gamma': 'embeddings.LayerNorm.weight',
+        'bert/embeddings/LayerNorm/beta': 'embeddings.LayerNorm.bias',
         'bert/pooler/dense/kernel': 'pooler.dense.weight',
         'bert/pooler/dense/bias': 'pooler.dense.bias'
     }
@@ -64,13 +48,13 @@ def trans_layer_name_tf2turbo(dic, name):
 
 def main():
     if len(sys.argv) != 3:
-        print(
-            "Usage: \n"
-            "    convert_tf_bert_to_npz.py model_name output_file")
+        print("Usage: \n"
+              "    convert_tf_bert_to_npz.py model_name output_file")
         exit(0)
     model_path = sys.argv[1]
     ckpt_path = os.path.join(model_path, "bert_model.ckpt")
-    cfg = BertConfig.from_pretrained(os.path.join(model_path, "bert_config.json"))
+    cfg = BertConfig.from_pretrained(
+        os.path.join(model_path, "bert_config.json"))
     dic = build_dic(cfg.num_hidden_layers)
     names = [v[0] for v in tf.train.list_variables(ckpt_path)]
 
@@ -78,7 +62,9 @@ def main():
     for i in range(len(names)):
         if names[i].startswith("cls"):
             continue
-        arrays[trans_layer_name_tf2turbo(dic, names[i])] = tf.train.load_variable(ckpt_path, names[i])
+        arrays[trans_layer_name_tf2turbo(dic,
+                                         names[i])] = tf.train.load_variable(
+                                             ckpt_path, names[i])
 
     q_weight_key = 'self.query.weight'
     k_weight_key = 'self.key.weight'
