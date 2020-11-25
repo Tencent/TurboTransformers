@@ -14,14 +14,8 @@
 enable_latency_plot = 1
 
 
-def run_model(model,
-              use_gpu,
-              num_iter,
-              batch_size,
-              seq_len,
-              framework_name,
-              num_threads=1,
-              enable_mem_opt=False):
+def run_model(model, use_gpu, num_iter, batch_size, seq_len, framework_name,
+              num_threads, enable_mem_opt, model_name):
     # warm up
     import torch
     import contexttimer
@@ -63,6 +57,7 @@ def run_model(model,
             "seq_len": seq_len,
             "framework": framework_name,
             "thread_num": num_threads,
+            "model_name": model_name
         }))
 
 
@@ -166,4 +161,5 @@ def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
                 "min_seq_len": min_seq_len,
                 "framework": framework_name,
                 "thread_num": num_iter,
+                "model_name": model_name
             }))

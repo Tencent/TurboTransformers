@@ -69,4 +69,5 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
                                   dtype=torch.long,
                                   device=test_device)
         benchmark_helper.run_model(lambda: model(input_ids), use_gpu, n,
-                                   batch_size, seq_len, "turbo", num_threads)
+                                   batch_size, seq_len, "turbo", num_threads,
+                                   enable_mem_opt, model_name)

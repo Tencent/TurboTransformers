@@ -56,4 +56,4 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
                                   device=test_device)
         benchmark_helper.run_model(lambda: model(input_ids), use_gpu, n,
                                    batch_size, seq_len, "torch", num_threads,
-                                   enable_mem_opt)
+                                   enable_mem_opt, model_name)

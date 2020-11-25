@@ -89,7 +89,8 @@ def onnxruntime_benchmark_creator(backend: str):
                min_seq_len: int,
                max_seq_len: int,
                num_threads: int = 1,
-               use_gpu: bool = False):
+               use_gpu: bool = False,
+               enable_mem_opt: bool = False):
         import multiprocessing
         import os
         temp_fn = "/tmp/temp_onnx.model"
@@ -225,6 +226,7 @@ def onnxruntime_benchmark_creator(backend: str):
                         "min_seq_len": min_seq_len,
                         "framework": f"onnx_rt_{backend}",
                         "thread_num": num_threads,
+                        "model_name": model_name
                     }))
             else:
                 print(
@@ -235,7 +237,8 @@ def onnxruntime_benchmark_creator(backend: str):
                         "batch_size": batch_size,
                         "seq_len": seq_len,
                         "framework": f"onnx_rt_{backend}",
-                        "n_threads": num_threads
+                        "n_threads": num_threads,
+                        "model_name": model_name
                     }))
 
     return _impl_
