@@ -13,7 +13,6 @@
 
 #include <iostream>
 
-
 #include "catch2/catch.hpp"
 #include "turbo_transformers/core/allocator/bert_config.h"
 #include "turbo_transformers/core/allocator/model_aware_memory_scheduler.h"
@@ -83,7 +82,6 @@ TEST_CASE("bert-allocator-multiple-chunk",
   REQUIRE(CheckValid(tensor_position_map, bert_tensor_usage_record));
 }
 
-
 TEST_CASE("bert-allocator-multiple-allocation",
           "check multi times memory allocation correction") {
   std::vector<TensorRecordItemPtr> bert_tensor_usage_record;
@@ -91,8 +89,8 @@ TEST_CASE("bert-allocator-multiple-allocation",
   ChunkList chunk_list([](size_t size) -> char* { return new char[size]; },
                        [](void* mem_addr) { free(mem_addr); });
 
-  std::vector<int64_t> batch_list{1, 1, 2, 4, 1};
-  std::vector<int64_t> seq_len_list{10, 100, 32, 500, 10};
+  std::vector<int64_t> batch_list{2, 1, 2};
+  std::vector<int64_t> seq_len_list{50, 100, 50};
   std::set<std::string> activation_set;
   for (size_t i = 0; i < batch_list.size(); ++i) {
     LOG_S(INFO) << "begin allocate for batch " << batch_list[i] << " seq_len "
@@ -106,7 +104,6 @@ TEST_CASE("bert-allocator-multiple-allocation",
 
     chunk_list.ShowChunkUsage();
     REQUIRE(CheckValid(tensor_position_map, bert_tensor_usage_record));
-
   }
 }
 

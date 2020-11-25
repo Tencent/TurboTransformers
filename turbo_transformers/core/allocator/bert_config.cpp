@@ -61,8 +61,6 @@ void GetBertTensorUsageRecord(
   auto attn_score_size =
       batch_size * num_head * from_seq_len * to_seq_len * item_bytes;
   auto aligned_id_seq_size = from_seq_len * batch_size * id_bytes;
-  //  auto aligned_id_seq_size =
-  //      (from_seq_len * batch_size + 31) * id_bytes / 32 * 32;
 
   auto extendedattnmask_size = batch_size * from_seq_len * item_bytes;
   ADDITEM("PrepareBertMasks/possitionids/Reshape", 0, 1, aligned_id_seq_size);
