@@ -22,12 +22,14 @@ FRAMEWORKS=("turbo-transformers" "torch")
 MAX_SEQ_LEN=(500)
 
 N=150
-MODEL="bert"
+MODELS=("bert" "albert")
+for model in ${MODELS[*]}
+do
 for max_seq_len in ${MAX_SEQ_LEN[*]}
 do
   for framework in ${FRAMEWORKS[*]}
   do
-    python benchmark.py ${MODEL} \
+    python benchmark.py ${model} \
               --enable-random \
               --min_seq_len=5  \
               --max_seq_len=${max_seq_len}  \
@@ -36,4 +38,5 @@ do
               --framework=${framework} \
               --use_gpu
   done
+done
 done

@@ -59,7 +59,7 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
             turbo_transformers.reset_allocator_schema("model-aware")
         benchmark_helper.run_variable_model(model, use_gpu, n, max_seq_len,
                                             min_seq_len, "turbo", num_threads,
-                                            cfg, enable_mem_opt)
+                                            cfg, enable_mem_opt, model_name)
         if enable_mem_opt:
             turbo_transformers.reset_allocator_schema("naive")
     else:
@@ -69,4 +69,5 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
                                   dtype=torch.long,
                                   device=test_device)
         benchmark_helper.run_model(lambda: model(input_ids), use_gpu, n,
-                                   batch_size, seq_len, "turbo", num_threads)
+                                   batch_size, seq_len, "turbo", num_threads,
+                                   enable_mem_opt, model_name)
