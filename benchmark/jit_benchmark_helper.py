@@ -20,7 +20,8 @@ __all__ = ['benchmark_torch_jit']
 
 def benchmark_torch_jit(model_name: str, seq_len: int, batch_size: int, n: int,
                         enable_random: bool, max_seq_len: int,
-                        min_seq_len: int, num_threads: int, use_gpu: bool):
+                        min_seq_len: int, num_threads: int, use_gpu: bool,
+                        enable_mem_opt: bool):
     import transformers
     import contexttimer
     import torch.jit
@@ -59,5 +60,6 @@ def benchmark_torch_jit(model_name: str, seq_len: int, batch_size: int, n: int,
             "batch_size": batch_size,
             "seq_len": seq_len,
             "framework": "torch_jit",
-            "n_threads": num_threads
+            "n_threads": num_threads,
+            "model_name": model_name
         }))
