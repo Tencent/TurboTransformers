@@ -15,6 +15,7 @@ import transformers
 import turbo_transformers
 import enum
 import time
+import sys
 
 
 class LoadType(enum.Enum):
@@ -32,16 +33,18 @@ def test(loadtype: LoadType, use_cuda: bool):
     model.to(test_device)
     torch.set_grad_enabled(False)
 
-
     cfg = model.config
     # use 4 threads for computing
     turbo_transformers.set_num_threads(4)
 
     input_ids = torch.tensor(
         ([12166, 10699, 16752, 4454], [5342, 16471, 817, 16022]),
-        dtype=torch.long, device = test_device)
+        dtype=torch.long,
+        device=test_device)
     # position_ids = torch.tensor(([1, 0, 0, 0], [1, 1, 1, 0]), dtype=torch.long, device = test_device)
-    segment_ids = torch.tensor(([1, 1, 1, 0], [1, 0, 0, 0]), dtype=torch.long, device = test_device)
+    segment_ids = torch.tensor(([1, 1, 1, 0], [1, 0, 0, 0]),
+                               dtype=torch.long,
+                               device=test_device)
 
     start_time = time.time()
     for _ in range(10):
@@ -75,8 +78,7 @@ def test(loadtype: LoadType, use_cuda: bool):
                 sys.exit("ERROR. can not open ", sys.argv[1])
         else:
             in_file = "/workspace/bert_torch.npz"
-        tt_model = turbo_transformers.BertModel.from_npz(
-            in_file, cfg, test_device)
+        tt_model = turbo_transformers.BertModel.from_npz(in_file, cfg)
     else:
         raise ("LoadType is not supported")
 
@@ -94,5 +96,5 @@ def test(loadtype: LoadType, use_cuda: bool):
 
 
 if __name__ == "__main__":
-    test(LoadType.PYTORCH, True)
+    test(LoadType.NPZ, False)
     # test(LoadType.PRETRAINED, False)
