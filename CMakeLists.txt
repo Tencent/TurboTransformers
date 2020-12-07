@@ -61,12 +61,12 @@ endif ()
 
 IF (UNIX AND NOT APPLE)
     # Link absl_base needs -lrt on linux. It is necessary on CentOS.
-    find_library(RT_LIBRARY NAMES librt.a
-            PATHS $ENV{CONDA_PREFIX}/lib/
-            $ENV{CONDA_PREFIX}/x86_64-conda_cos6-linux-gnu/sysroot/lib/
-            $ENV{CONDA_PREFIX}/x86_64-conda_cos6-linux-gnu/sysroot/usr/lib/)
+    # find_library(RT_LIBRARY NAMES librt.a
+    #         PATHS $ENV{CONDA_PREFIX}/lib/
+    #         $ENV{CONDA_PREFIX}/x86_64-conda_cos6-linux-gnu/sysroot/lib/
+    #         $ENV{CONDA_PREFIX}/x86_64-conda_cos6-linux-gnu/sysroot/usr/lib/)
     if (NOT RT_LIBRARY)
-        message(SEND_ERROR "Cannot find librt from")
+        # message(SEND_ERROR "Cannot find librt from")
     ENDIF ()
 ENDIF ()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -75,4 +75,4 @@ if (WITH_MODULE_BENCHMAKR)
     add_definitions(-DCATCH_CONFIG_ENABLE_BENCHMARKING)
     add_subdirectory(benchmark)
 endif()
-add_subdirectory(example)
+# add_subdirectory(example)

@@ -1,5 +1,6 @@
 ## TurboTransformer User Guidance
 ### Installation
+#### With Docker
 1. build docker images and containers on your machine.
 ```
 bash tools/build_docker_gpu.sh $PWD
@@ -18,6 +19,20 @@ bash tools/build_and_run_unittests.sh $PWD -DWITH_GPU=ON
 docker pull ppopp21whoami/turbo_transformers_gpu_dev:latest
 nvidia-docker run --gpus all --net=host --rm -it -v $PWD:/workspace -v /etc/passwd:/etc/passwd --name=turbo_gpu_env ppopp21whoami/turbo_transformers_gpu_dev:latest
 ```
+
+
+#### Withiout Docker on Centos
+1. prerequisites
+* gcc >= 7.5.0
+Please refer to the url how to build gcc from source on centos
+https://linuxhostsupport.com/blog/how-to-install-gcc-on-centos-7/
+* cuda >= 10.0
+* wget
+* git
+* cmake
+
+2. build
+bash build_centos.sh
 
 ### Reproduce the results in the manuscript
 3. Run benchmark in docker container, compare with pytorch
