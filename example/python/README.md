@@ -16,7 +16,7 @@ model_id = "your_saved_model" directory
 
 ```
 cd /workspace
-python tools/convert_huggingface_bert_tf_to_npz.py bert-based-uncased /workspace/bert_tf.npz
+python tools/convert_huggingface_bert_tf_to_npz.py bert-base-uncased /workspace/bert_tf.npz
 ```
 update the corresponding line in bert_example.py
 ```
@@ -27,6 +27,13 @@ tt_model = turbo_transformers.BertModel.from_npz(
 ```
 python bert_example.py
 ```
+**Attention** : If you want to use turbo as the backend instead of onnxrt.
+To achieve the best performance for turbo, you should uninstall OpenNMT-py and ungrade torch to 1.1.0.
+In this case, turbo is faster than torch, otherwise the MKL of torch will introduce a wired performance issue.
+
+I have prepared an image for bert on dockerhub.
+
+`thufeifeibear/turbo_transformers_cpu:bert_only_v0.1`
 
 ### How to customized your post-processing layers after BERT encoder
 [Chinese Version](./README.md)
