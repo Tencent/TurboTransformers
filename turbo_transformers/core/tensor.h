@@ -124,6 +124,15 @@ class Tensor {
     }
   }
 
+  Tensor(Tensor &&o) noexcept : tensor_(std::move(o.tensor_)){};
+  Tensor &operator=(Tensor &&o) noexcept {
+    if (this == &o) {
+      TT_THROW("Tensor can not be assigned to itself!");
+    }
+    tensor_ = std::move(o.tensor_);
+    return *this;
+  }
+
   DLManagedTensor *ToDLPack() {
     TT_ENFORCE(absl::holds_alternative<details::DLManagedTensorPtr>(tensor_),
                "Must own dltensor");

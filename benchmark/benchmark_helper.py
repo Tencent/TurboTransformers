@@ -14,13 +14,8 @@
 enable_latency_plot = 1
 
 
-def run_model(model,
-              use_gpu,
-              num_iter,
-              batch_size,
-              seq_len,
-              framework_name,
-              num_threads=1):
+def run_model(model, use_gpu, num_iter, batch_size, seq_len, framework_name,
+              num_threads, enable_mem_opt, model_name):
     # warm up
     import torch
     import contexttimer
@@ -33,15 +28,15 @@ def run_model(model,
         start.record()
 
     with contexttimer.Timer() as t:
+        if enable_mem_opt:
+            turbo_transformers.bert_opt_mem_allocate_api(
+                batch_size,  # batch
+                seq_len,  # seq_len
+                model.config.num_attention_heads,
+                model.config.hidden_size,
+                model.config.num_hidden_layers,
+                "GPU" if use_gpu else "CPU")
         for it in range(num_iter):
-            if use_mem_opt:
-                turbo_transformers.bert_opt_mem_allocate_api(
-                    batch_size,  # batch
-                    seq_len,  # seq_len
-                    model.config.num_attention_heads,
-                    model.config.hidden_size,
-                    model.config.num_hidden_layers,
-                    "GPU" if use_gpu else "CPU")
             model()
 
     if not use_gpu:
@@ -62,11 +57,13 @@ def run_model(model,
             "seq_len": seq_len,
             "framework": framework_name,
             "thread_num": num_threads,
+            "model_name": model_name
         }))
 
 
 def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
-                       framework_name, num_threads, cfg, enable_mem_opt):
+                       framework_name, num_threads, cfg, enable_mem_opt,
+                       model_name):
     import torch
     import contexttimer
     import json
@@ -87,19 +84,15 @@ def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
                                   device=test_device)
         request_list.append(input_ids)
 
-    # warm-up using the longest sequence
-    # TODO(jiaruifang) We now recommend you to run warm-up before inference.
-    # In the future we will refactor allocator so as to not avoid warm-up
     input_ids = torch.randint(low=0,
                               high=cfg.vocab_size - 1,
                               size=(1, max_seq_len),
                               dtype=torch.long,
                               device=test_device)
-    # model(input_ids)
     if enable_latency_plot:
-        import time
-        print(f"dump results to {framework_name}_latency_{num_threads}.txt")
-        with open(f"{framework_name}_latency_{num_threads}.txt", "w") as of:
+        file_name = f"{framework_name}_{num_threads}_{model_name}_latency.txt"
+        print(f"dump results to {file_name}")
+        with open(f"{file_name}", "w") as of:
             result_list = []
             for request in request_list:
                 if use_gpu:
@@ -168,4 +161,5 @@ def run_variable_model(model, use_gpu, num_iter, max_seq_len, min_seq_len,
                 "min_seq_len": min_seq_len,
                 "framework": framework_name,
                 "thread_num": num_iter,
+                "model_name": model_name
             }))

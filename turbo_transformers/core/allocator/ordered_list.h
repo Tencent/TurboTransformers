@@ -65,10 +65,10 @@ class OrderedList {
     Node* cursor = head_ptr_->next_.get();
     while (cursor != nullptr) {
       // descending order
-      if (reverse && *content_ptr >= *cursor->content_) {
+      if (reverse && *content_ptr > *cursor->content_) {
         break;
         // ascending order
-      } else if (!reverse && *content_ptr <= *cursor->content_) {
+      } else if (!reverse && *content_ptr < *cursor->content_) {
         break;
       }
       prev_node = cursor;

@@ -52,11 +52,13 @@ class Chunk {
     const TensorRecordItemPtr tensor_record_;
     int64_t offset_;
     bool operator<(const ChunkNode& o) const { return offset_ < o.offset_; }
-    bool operator<=(const ChunkNode& o) const { return offset_ <= o.offset_; }
+    bool operator>(const ChunkNode& o) const { return offset_ > o.offset_; }
     bool operator>=(const ChunkNode& o) const { return offset_ >= o.offset_; }
+    bool operator<=(const ChunkNode& o) const { return offset_ <= o.offset_; }
   };
 
   bool operator<(const Chunk& o) const { return size_ < o.size_; }
+  bool operator>(const Chunk& o) const { return size_ > o.size_; }
   bool operator>=(const Chunk& o) const { return size_ >= o.size_; }
   bool operator<=(const Chunk& o) const { return size_ <= o.size_; }
 
@@ -75,9 +77,9 @@ class Chunk {
   void showMe() {
     int64_t max_end_addr = 0;
     tensor_info_.visit([&](ChunkNode* node) {
-      //      LOG_S(INFO) << node->tensor_record_->name_ << " "
-      //                  << node->tensor_record_->size_ << " " <<
-      //                  node->offset_;
+      //            LOG_S(INFO) << node->tensor_record_->name_ << " "
+      //                        << node->tensor_record_->size_ << " " <<
+      //                        node->offset_;
       max_end_addr =
           std::max(max_end_addr, node->tensor_record_->size_ + node->offset_);
     });
