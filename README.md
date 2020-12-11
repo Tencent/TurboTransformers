@@ -120,10 +120,12 @@ docker pull thufeifeibear/turbo_transformers_cpu:latest
 ```
 
 *Attention* :
-There are two kind of backend provided by us, i.e. a hand-crafted C++ backend
-and a [onnxrun](./example/python "python") backend.
-We found that it is difficult to guarantee the MKL performance of C++ in the case of compatible Torch.
-Because my code must depend on the mkl version of Torch.
+There are two kinds of backend provided by Turbo, i.e. a hand-crafted C++ backend based on the OpenMP multi-threading technique,
+and an [onnxruntime](https://github.com/microsoft/onnxruntime) backend.
+When using the C++ backend to accelerate CPU transformers, pay attention to the which MKL the Turbo links to.
+Initially, we linked the Turbo with the MKL installed by conda, which is one of the prerequists of torch installation.
+After we upgraded the torch from v1.1.0 to v1.5.0, MKL's performance is severely degraded.
+So, install an official MKL, and set the `MKLROOT` in CMakeLists.txt correctly.
 
 #### GPU
 ```
