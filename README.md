@@ -113,10 +113,18 @@ sh tool/build_conda_package.sh
 # When using turbo_transformers in other environments outside this container: conda install your_root_path/dist/*.tar.bz2
 ```
 
-*We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.2.0 and pytorch-jit on dockerhub*
+*We also prepared a docker image containing CPU version of TurboTransformers, as well as other related works, i.e. onnxrt v1.4.0 and pytorch-jit on dockerhub*
+*NOTE: This docker image has performance issue for turbo C++ backend. However, it still can achieve a descend performance using onnxrt backend*
 ```
 docker pull thufeifeibear/turbo_transformers_cpu:latest
 ```
+
+*Attention* :
+There are two kind of backend provided by us, i.e. a hand-crafted C++ backend
+and a [onnxrun](./example/python "python") backend.
+We found that it is difficult to guarantee the MKL performance of C++ in the case of compatible Torch.
+Because my code must depend on the mkl version of Torch.
+
 #### GPU
 ```
 git clone https://github.com/Tencent/TurboTransformers --recursive
@@ -193,8 +201,8 @@ Download PyTorch version to 1.1.0 will improve Turbo's Performance.
 3. onnxruntime-cpu==1.4.0 and onnxruntime-gpu==1.3.0 can not work simultaneously.
 
 ## History
-
-1. July 2020 v0.4.0, TurboTransformers used onnxruntime as cpu backend, supports GPT2. Anded a Quantized BERT.
+1. December 2020 v0.5.0, TurboTransformers used model-aware allocator for BERT and Albert. Added a DistilBert Model.
+1. July 2020 v0.4.0, TurboTransformers used onnxruntime as cpu backend, supports GPT2. Added a Quantized BERT.
 2. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
 3. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
 4. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
