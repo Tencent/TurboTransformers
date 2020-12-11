@@ -15,8 +15,8 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
-
 #include <utility>
+
 #include "turbo_transformers/core/tensor.h"
 
 namespace turbo_transformers {
@@ -71,6 +71,16 @@ class MultiHeadedAttention {
   }
   void EnforceShapeAndType() const;
 
+  void SetContextFlag(
+      const std::unordered_map<std::string, core::Tensor*>& layer_cache) const;
+
+  template <bool is_self>
+  void FuseGemm012AddBIasTranspose(
+      const core::Tensor& query_tensor, const core::Tensor& value_tensor,
+      const core::Tensor& key_tensor, bool pre_layernorm, bool is_trans_weight,
+      std::unordered_map<std::string, core::Tensor*>& layer_cache,
+      core::Tensor* q_out, core::Tensor* k_out, core::Tensor* v_out) const;
+
   void operator()(const core::Tensor& key_tensor,
                   const core::Tensor& value_tensor,
                   const core::Tensor& query_tensor,
@@ -100,6 +110,22 @@ class MultiHeadedAttention {
   core::Tensor layernorm_beta_;
 
   int64_t num_attention_heads_;
+
+  mutable int64_t batch_size_;
+  mutable int64_t query_seq_length_;
+  mutable int64_t key_seq_length_;
+  mutable int64_t hidden_size_;
+
+  mutable int64_t size_per_head_;
+  mutable DLDeviceType devtype_;
+  mutable int devid_;
+
+  mutable bool layer_cache_not_none_{false};
+  mutable bool memory_keys_not_none_{false};
+  mutable bool memory_values_not_none_{false};
+  mutable bool self_keys_not_none_{false};
+  mutable bool self_values_not_none_{false};
+  mutable bool memory_not_none_{false};
 };
 
 }  // namespace layers
