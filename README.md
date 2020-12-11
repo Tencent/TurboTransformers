@@ -121,8 +121,8 @@ docker pull thufeifeibear/turbo_transformers_cpu:latest
 
 *Attention* :
 There are two kinds of backend provided by Turbo, i.e. a hand-crafted C++ backend based on the OpenMP multi-threading technique,
-and an [onnxruntime](https://github.com/microsoft/onnxruntime) backend.
-When using the C++ backend to accelerate CPU transformers, pay attention to the which MKL the Turbo links to.
+and an [onnxruntime](https://github.com/microsoft/onnxruntime) backend, which is only work for BERT because we failed to run Albert or decoder.
+When using the C++ backend to accelerate CPU transformers, pay attention to the MKL the Turbo links to.
 Initially, we linked the Turbo with the MKL installed by conda, which is one of the prerequists of torch installation.
 After we upgraded the torch from v1.1.0 to v1.5.0, MKL's performance is severely degraded.
 So, install an official MKL, and set the `MKLROOT` in CMakeLists.txt correctly.
@@ -175,12 +175,7 @@ Our example provides the GPU and two CPU multi-thread calling methods. One is to
 Users can link turbo-transformers to your code through add_subdirectory.
 
 ## Performance
-[BERT Benchmark Results](./docs/bert.md)
-
-[ALBERT Benchmark Results](./docs/albert.md)
-
-[Transformer Docoder Results](./docs/decoder.md)
-
+Refer our paper for more details.
 
 ## How to contribute new models
 [How to know hotspots of your code?](./docs/profiler.md)
@@ -189,7 +184,9 @@ Users can link turbo-transformers to your code through add_subdirectory.
 
 
 ## TODO
-Currently (June 2020), In the near futuer, we will add support for low-precision models (CPU int8, GPU FP16).
+Currently (December 2020),
+We are seeking for a solution to automatically load computation graph from onnx model.
+We also plan to add support for low-precision models (CPU int8, GPU FP16).
 **Looking forwards to your contribution!**
 
 ## Lisence
@@ -204,7 +201,7 @@ Download PyTorch version to 1.1.0 will improve Turbo's Performance.
 
 ## History
 1. December 2020 v0.5.0, TurboTransformers used model-aware allocator for BERT and Albert. Added a DistilBert Model.
-1. July 2020 v0.4.0, TurboTransformers used onnxruntime as cpu backend, supports GPT2. Added a Quantized BERT.
+1. July 2020 v0.4.0, TurboTransformers added onnxruntime as an cpu backend option, supports GPT2. Added a Quantized BERT.
 2. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
 3. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
 4. June 2020 v0.2.1, TurboTransformers added BLIS as a BLAS provider option. Better performance on AMD CPU.
