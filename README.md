@@ -212,6 +212,8 @@ Cite this paper, if you use TurboTransformers in your research publication.
 }
 ```
 
+The artifacts of the paper can be found at branch `ppopp21_artifact_centos`.
+
 ## Contact us
 Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
 1. Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.
