@@ -27,12 +27,13 @@ tt_model = turbo_transformers.BertModel.from_npz(
 ```
 python bert_example.py
 ```
-**Attention** : If you want to use turbo as the backend instead of onnxrt.
-To achieve the best performance for turbo, you should uninstall OpenNMT-py and ungrade torch to 1.1.0.
-In this case, turbo is faster than torch, otherwise the MKL of torch will introduce a wired performance issue.
+**Attention** : If you want to use turbo with C++ backend instead of onnxrt.
+Directly linking an MKL of Pytorch installed by conda will lead to poor performance
+in our hand-crafted C++ version.
+You should install an official MKL an set MKL PATH in CMakeLists.txt.
+As a not so elegant alternative, you can uninstall OpenNMT-py and downgrade torch to 1.1.0.
 
-I have prepared an image for bert on dockerhub.
-
+I have prepared an image for bert only runtime on dockerhub with .
 `thufeifeibear/turbo_transformers_cpu:bert_only_v0.1`
 
 ### How to customized your post-processing layers after BERT encoder
