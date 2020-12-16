@@ -67,6 +67,8 @@ def generate_onnx_model(model_name: str,
             torch.onnx.export(model=model,
                               args=(input_ids, ),
                               f=outf,
+                              opset_version=11,
+                              do_constant_folding=True,
                               input_names=['input'],
                               output_names=['output'],
                               dynamic_axes={
