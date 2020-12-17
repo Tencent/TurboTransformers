@@ -94,10 +94,10 @@ def onnxruntime_benchmark_creator(backend: str):
                use_gpu: bool = False,
                enable_mem_opt: bool = False):
         import multiprocessing
-        import transformers
         import os
-        temp_fn = "/tmp/temp_onnx.model"
+        temp_fn = f"/tmp/temp_{model_name}_onnx.model"
         if os.path.exists(temp_fn):
+            import transformers
             cfg = transformers.BertConfig()
             vocab_size = cfg.vocab_size
         else:
