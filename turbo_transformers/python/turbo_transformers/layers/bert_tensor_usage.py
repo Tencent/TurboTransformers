@@ -25,6 +25,7 @@ def get_bert_tensor_usage_record(batch_size,
     Outputs : tensor usage records (TURs) (name, start_op, end_op, size)
     """
     item_bytes = 4
+    id_bytes = 8
 
     from_seq_len = seq_len
     to_seq_len = seq_len
@@ -68,7 +69,7 @@ def get_bert_tensor_usage_record(batch_size,
     # print("tensor_name\t start_op, end_op, size")
     for item in TUR_dict.items():
         TUR_list.append((item[0], *item[1]))
-    sorted(TUR_list, key=lambda elem: elem[4], reverse=True)
+    sorted(TUR_list, key=lambda elem: elem[3], reverse=True)
     return TUR_list
 
 
