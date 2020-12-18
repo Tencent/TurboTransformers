@@ -67,6 +67,8 @@ def generate_onnx_model(model_name: str,
             torch.onnx.export(model=model,
                               args=(input_ids, ),
                               f=outf,
+                              opset_version=11,
+                              do_constant_folding=True,
                               input_names=['input'],
                               output_names=['output'],
                               dynamic_axes={
@@ -93,12 +95,18 @@ def onnxruntime_benchmark_creator(backend: str):
                enable_mem_opt: bool = False):
         import multiprocessing
         import os
-        temp_fn = "/tmp/temp_onnx.model"
-        p = multiprocessing.Pool(1)
-        vocab_size, cfg = p.apply(generate_onnx_model,
-                                  args=(model_name, use_gpu, temp_fn, seq_len,
-                                        batch_size, backend, enable_random))
-        p.close()
+        temp_fn = f"/tmp/temp_{model_name}_onnx.model"
+        if os.path.exists(temp_fn):
+            import transformers
+            cfg = transformers.BertConfig()
+            vocab_size = cfg.vocab_size
+        else:
+            p = multiprocessing.Pool(1)
+            vocab_size, cfg = p.apply(generate_onnx_model,
+                                      args=(model_name, use_gpu, temp_fn,
+                                            seq_len, batch_size, backend,
+                                            enable_random))
+            p.close()
         import contexttimer
         import onnxruntime.backend
         import onnx

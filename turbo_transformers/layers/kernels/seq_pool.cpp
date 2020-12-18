@@ -133,7 +133,7 @@ void SeqPool(const core::Tensor& input, layers::types::PoolType pool_type,
   auto hidden_size = input.shape(2);
 
   output->Reshape<T>({batch_size, hidden_size}, input.device_type(),
-                     input.device_id());
+                     input.device_id(), "SeqPool");
 
   switch (pool_type) {
     case layers::types::PoolType::kMax:
