@@ -132,7 +132,7 @@ class RobertaModel:
         self.seq_pool = SequencePool(PoolingMap[pooling_type])
         output = self.seq_pool(input_tensor=sequence_output,
                                return_type=return_type)
-        pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
+        pooler_output = self.pooler(sequence_output) if self.pooler is not None else None
         return (
             convert_returns_as_type(sequence_output, return_type),
             pooler_output,
