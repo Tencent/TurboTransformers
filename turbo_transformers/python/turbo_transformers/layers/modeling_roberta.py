@@ -56,6 +56,7 @@ class RobertaModel:
         self.config = config
         self.embeddings = embeddings
         self.encoder = encoder
+        self.pooler = pooler
         self.prepare = cxx.PrepareBertMasks()
 
     def __call__(self,
