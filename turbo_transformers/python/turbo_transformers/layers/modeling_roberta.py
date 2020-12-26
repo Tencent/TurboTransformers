@@ -56,7 +56,6 @@ class RobertaModel:
         self.config = config
         self.embeddings = embeddings
         self.encoder = encoder
-        self.pooler = pooler
         self.prepare = cxx.PrepareBertMasks()
 
     def __call__(self,
@@ -145,6 +144,8 @@ class RobertaModel:
         ):
             model.to(device)
         encoder = BertEncoder.from_torch(model.encoder)
-        pooler = BertPooler.from_torch(model.pooler)
+        if model.pooler is not None:
+            pooler = BertPooler.from_torch(model.pooler)
+        else:
+            pooler = None
         return RobertaModel(model.embeddings, encoder, pooler, model.config)
-
