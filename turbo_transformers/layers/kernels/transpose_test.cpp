@@ -134,10 +134,33 @@ TEST_CASE("transpose-bias-gpu-test") {
 }
 #endif
 
+template <typename T>
+static bool CheckResultOfCPUNoZero(const core::Tensor& cpu_tensor_lhs,
+                                   const core::Tensor& cpu_tensor_rhs) {
+  const T* cpu_data_lhs = cpu_tensor_lhs.data<T>();
+  const T* cpu_data_rhs = cpu_tensor_rhs.data<T>();
+  auto size = cpu_tensor_lhs.numel();
+
+  bool ret = true;
+  for (int64_t i = 0; i < size; ++i) {
+    if (cpu_data_lhs[i] != 0.f &&
+        std::abs(cpu_data_lhs[i] - cpu_data_rhs[i]) > 1e-3) {
+      std::cerr << "@ " << i << ": " << cpu_data_lhs[i] << " vs "
+                << cpu_data_rhs[i] << std::endl;
+      ret = false;
+      break;
+    }
+  }
+  return ret;
+}
+
+/***
+ * Test smart padding transpose
+ */
 TEST_CASE("transpose-bias-gpu-pad-test") {
   const std::vector<int64_t> num_attention_heads_list{12, 20, 24};
 
-  const std::vector<int64_t> seq_length_list{7, 7, 7};
+  const std::vector<int64_t> seq_length_list{12, 7, 11};
   int64_t sum_seq_len =
       std::accumulate(seq_length_list.begin(), seq_length_list.end(), 0);
   int64_t max_seq_len =
@@ -155,20 +178,16 @@ TEST_CASE("transpose-bias-gpu-pad-test") {
                                    0);
 
     common::FillRandom<float>(input_tensor_cpu);
-    common::Fill<float>(bias_tensor_cpu.mutableData<float>(),
-                        3 * num_attention_heads * model_dim, 0., kDLCPU);
-
+    common::FillRandom<float>(bias_tensor_cpu);
     // for reference
-    core::Tensor input_tensor_ref_cpu(nullptr);
-    input_tensor_ref_cpu.Reshape<float>(
+    core::Tensor input_tensor_cpu_ref(nullptr);
+    input_tensor_cpu_ref.Reshape<float>(
         {batch_size, max_seq_len, 3, num_attention_heads * model_dim}, kDLCPU,
         0);
-    auto* input_ref_data = input_tensor_ref_cpu.mutableData<float>();
+    auto* input_ref_data = input_tensor_cpu_ref.mutableData<float>();
+    memset(input_ref_data, 0, sizeof(float) * input_tensor_cpu_ref.numel());
     const auto* input_data = input_tensor_cpu.data<float>();
 
-    memset(input_ref_data, 0.,
-           sizeof(float) * batch_size * max_seq_len * 3 * num_attention_heads *
-               model_dim);
     int64_t acc_seq_len = 0;
     for (int64_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
       auto seq_len = seq_length_list[batch_idx];
@@ -185,16 +204,21 @@ TEST_CASE("transpose-bias-gpu-pad-test") {
         turbo_transformers::core::NewDLPackTensorT<float>(
             {batch_size, num_attention_heads, max_seq_len * model_dim}, kDLCPU,
             0));
+    memset(output_q_cpu_ref.mutableData<float>(), 0,
+           sizeof(float) * output_q_cpu_ref.numel());
     core::Tensor output_k_cpu_ref(
         turbo_transformers::core::NewDLPackTensorT<float>(
             {batch_size, num_attention_heads, max_seq_len * model_dim}, kDLCPU,
             0));
+    memset(output_k_cpu_ref.mutableData<float>(), 0,
+           sizeof(float) * output_k_cpu_ref.numel());
     core::Tensor output_v_cpu_ref(
         turbo_transformers::core::NewDLPackTensorT<float>(
             {batch_size, num_attention_heads, max_seq_len * model_dim}, kDLCPU,
             0));
-
-    SplitAddBiasTransposeForScore(input_tensor_ref_cpu, bias_tensor_cpu,
+    memset(output_v_cpu_ref.mutableData<float>(), 0,
+           sizeof(float) * output_v_cpu_ref.numel());
+    SplitAddBiasTransposeForScore(input_tensor_cpu_ref, bias_tensor_cpu,
                                   output_q_cpu_ref, output_k_cpu_ref,
                                   output_v_cpu_ref);
 
@@ -209,9 +233,11 @@ TEST_CASE("transpose-bias-gpu-pad-test") {
                                      output_q_cpu, output_k_cpu, output_v_cpu,
                                      seq_length_list);
 
-    REQUIRE(common::CheckResultOfCPU<float>(output_q_cpu, output_q_cpu_ref));
-    REQUIRE(common::CheckResultOfCPU<float>(output_k_cpu, output_k_cpu_ref));
-    REQUIRE(common::CheckResultOfCPU<float>(output_v_cpu, output_v_cpu_ref));
+    // the `SplitAddBiasTransposeForScore` will add bias for zero-padding
+    // elements
+    REQUIRE(CheckResultOfCPUNoZero<float>(output_q_cpu, output_q_cpu_ref));
+    REQUIRE(CheckResultOfCPUNoZero<float>(output_k_cpu, output_k_cpu_ref));
+    REQUIRE(CheckResultOfCPUNoZero<float>(output_v_cpu, output_v_cpu_ref));
   }
 }
 

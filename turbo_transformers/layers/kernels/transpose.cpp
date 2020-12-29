@@ -240,7 +240,7 @@ void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
 #endif
 
   TT_ENFORCE_EQ(input_tensor.n_dim(), 4,
-                "input_tensor should be (batch_size, seq_length, "
+                "input_tensor should be (batch_size, seq_length, 3, "
                 "num_attention_heads * size_per_head)");
 
   auto batch_size = input_tensor.shape(0);
@@ -372,8 +372,6 @@ void SplitAddBiasTransposeForScorePad(const core::Tensor& input_tensor,
   int64_t out_batch_size = static_cast<int64_t>(seq_list.size());
   int64_t out_max_seq_length =
       *std::max_element(seq_list.begin(), seq_list.end());
-  std::cerr << "out_max_seq_length " << out_max_seq_length << " out_batch_size "
-            << out_batch_size << std::endl;
   TT_ENFORCE_EQ(
       common::is_same_device_ctx(input_tensor.device_ctx(),
                                  bias_tensor.device_ctx()),
@@ -390,13 +388,13 @@ void SplitAddBiasTransposeForScorePad(const core::Tensor& input_tensor,
   if (q_out_tensor.device_type() == kDLCPU &&
       input_tensor.device_type() == kDLCPU &&
       bias_tensor.device_type() == kDLCPU) {
-    memset(q_out, 0.f,
+    memset(q_out, 0,
            out_batch_size * out_max_seq_length * num_attention_heads * width *
                sizeof(float));
-    memset(k_out, 0.f,
+    memset(k_out, 0,
            out_batch_size * out_max_seq_length * num_attention_heads * width *
                sizeof(float));
-    memset(v_out, 0.f,
+    memset(v_out, 0,
            out_batch_size * out_max_seq_length * num_attention_heads * width *
                sizeof(float));
 #pragma omp parallel for
@@ -404,12 +402,14 @@ void SplitAddBiasTransposeForScorePad(const core::Tensor& input_tensor,
          idx < out_batch_size * weight_num * out_max_seq_length; ++idx) {
       auto batch_idx = idx / (out_max_seq_length * weight_num);
       auto seq_idx = idx / weight_num % out_max_seq_length;
-      auto weight_idx = idx % weight_num;
-      int64_t acc_seq_length =
-          std::accumulate(seq_list.begin(), seq_list.begin() + batch_idx, 0);
+
       if (seq_idx >= seq_list[batch_idx]) {
         continue;
       }
+
+      auto weight_idx = idx % weight_num;
+      int64_t acc_seq_length =
+          std::accumulate(seq_list.begin(), seq_list.begin() + batch_idx, 0);
 
       for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
         auto* src_ptr = input +
