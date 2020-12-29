@@ -13,7 +13,10 @@
 
 #include "turbo_transformers/layers/kernels/transpose.h"
 
+#include <string.h>
+
 #include <chrono>
+#include <vector>
 
 #include "catch2/catch.hpp"
 #include "loguru.hpp"
@@ -130,6 +133,87 @@ TEST_CASE("transpose-bias-gpu-test") {
       }
 }
 #endif
+
+TEST_CASE("transpose-bias-gpu-pad-test") {
+  const std::vector<int64_t> num_attention_heads_list{12, 20, 24};
+
+  const std::vector<int64_t> seq_length_list{7, 7, 7};
+  int64_t sum_seq_len =
+      std::accumulate(seq_length_list.begin(), seq_length_list.end(), 0);
+  int64_t max_seq_len =
+      *std::max_element(seq_length_list.begin(), seq_length_list.end());
+  int64_t batch_size = seq_length_list.size();
+
+  constexpr int64_t model_dim = 64;
+  for (auto num_attention_heads : num_attention_heads_list) {
+    core::Tensor input_tensor_cpu(nullptr);
+    core::Tensor bias_tensor_cpu(nullptr);
+
+    input_tensor_cpu.Reshape<float>(
+        {1, sum_seq_len, 3, num_attention_heads * model_dim}, kDLCPU, 0);
+    bias_tensor_cpu.Reshape<float>({3, num_attention_heads, model_dim}, kDLCPU,
+                                   0);
+
+    common::FillRandom<float>(input_tensor_cpu);
+    common::Fill<float>(bias_tensor_cpu.mutableData<float>(),
+                        3 * num_attention_heads * model_dim, 0., kDLCPU);
+
+    // for reference
+    core::Tensor input_tensor_ref_cpu(nullptr);
+    input_tensor_ref_cpu.Reshape<float>(
+        {batch_size, max_seq_len, 3, num_attention_heads * model_dim}, kDLCPU,
+        0);
+    auto* input_ref_data = input_tensor_ref_cpu.mutableData<float>();
+    const auto* input_data = input_tensor_cpu.data<float>();
+
+    memset(input_ref_data, 0.,
+           sizeof(float) * batch_size * max_seq_len * 3 * num_attention_heads *
+               model_dim);
+    int64_t acc_seq_len = 0;
+    for (int64_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
+      auto seq_len = seq_length_list[batch_idx];
+      for (int64_t seq_idx = 0; seq_idx < seq_len; ++seq_idx) {
+        auto* dst = input_ref_data + (batch_idx * max_seq_len + seq_idx) * 3 *
+                                         num_attention_heads * model_dim;
+        const auto* src = input_data + (acc_seq_len + seq_idx) * 3 *
+                                           num_attention_heads * model_dim;
+        memcpy(dst, src, sizeof(float) * 3 * num_attention_heads * model_dim);
+      }
+      acc_seq_len += seq_len;
+    }
+    core::Tensor output_q_cpu_ref(
+        turbo_transformers::core::NewDLPackTensorT<float>(
+            {batch_size, num_attention_heads, max_seq_len * model_dim}, kDLCPU,
+            0));
+    core::Tensor output_k_cpu_ref(
+        turbo_transformers::core::NewDLPackTensorT<float>(
+            {batch_size, num_attention_heads, max_seq_len * model_dim}, kDLCPU,
+            0));
+    core::Tensor output_v_cpu_ref(
+        turbo_transformers::core::NewDLPackTensorT<float>(
+            {batch_size, num_attention_heads, max_seq_len * model_dim}, kDLCPU,
+            0));
+
+    SplitAddBiasTransposeForScore(input_tensor_ref_cpu, bias_tensor_cpu,
+                                  output_q_cpu_ref, output_k_cpu_ref,
+                                  output_v_cpu_ref);
+
+    // real function call
+    core::Tensor output_q_cpu(turbo_transformers::core::NewDLPackTensorT<float>(
+        {batch_size, num_attention_heads, max_seq_len * model_dim}, kDLCPU, 0));
+    core::Tensor output_k_cpu(turbo_transformers::core::NewDLPackTensorT<float>(
+        {batch_size, num_attention_heads, max_seq_len * model_dim}, kDLCPU, 0));
+    core::Tensor output_v_cpu(turbo_transformers::core::NewDLPackTensorT<float>(
+        {batch_size, num_attention_heads, max_seq_len * model_dim}, kDLCPU, 0));
+    SplitAddBiasTransposeForScorePad(input_tensor_cpu, bias_tensor_cpu,
+                                     output_q_cpu, output_k_cpu, output_v_cpu,
+                                     seq_length_list);
+
+    REQUIRE(common::CheckResultOfCPU<float>(output_q_cpu, output_q_cpu_ref));
+    REQUIRE(common::CheckResultOfCPU<float>(output_k_cpu, output_k_cpu_ref));
+    REQUIRE(common::CheckResultOfCPU<float>(output_v_cpu, output_v_cpu_ref));
+  }
+}
 
 }  // namespace kernels
 }  // namespace layers

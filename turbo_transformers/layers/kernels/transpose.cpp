@@ -13,6 +13,7 @@
 
 #include "turbo_transformers/layers/kernels/transpose.h"
 
+#include <algorithm>
 #include <cstring>
 
 #include "common.h"
@@ -239,7 +240,7 @@ void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
 #endif
 
   TT_ENFORCE_EQ(input_tensor.n_dim(), 4,
-                "output_tensor should be (batch_size, seq_length, "
+                "input_tensor should be (batch_size, seq_length, "
                 "num_attention_heads * size_per_head)");
 
   auto batch_size = input_tensor.shape(0);
@@ -316,6 +317,146 @@ void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
     GPUSplitAddBiasTransposeForScoreThreeOutput<float>(
         input, bias, batch_size, seq_length, weight_num, num_attention_heads,
         width, cuda_ctx.stream(), q_out, k_out, v_out);
+#endif
+  } else {
+    TT_THROW("device_type is not supported");
+  }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, input_tensor.device_type());
+#endif
+}
+
+/**
+ * add bias, transpose as well as padding for variabble length
+ * When this function is called, it is indicated that we use a ByteDance smart
+ * padding method for batch inference. The batch is set as 1 and seq_len is the
+ * summation of seq_list.
+ *
+ * @param input_tensor: 4D float tensor
+ * `(1, sum(seq_len), 3, head_num * size_per_head)`
+ * @param bias_tensor: float tensor of size `3 * head_num  * size_per_head`
+ * @param q_out_tensor: batch, head_num, max(seq_len), size_per_head
+ * @param k_out_tensor: batch, head_num, max(seq_len), size_per_head
+ * @param v_out_tensor: batch, head_num, max(seq_len), size_per_head
+ * @param seq_list : a batch of requests with variable seq_len for
+ * example three request of sizes (4, 6, 3). sum(seq_len) = 4 + 6 + 3 = 13
+ * batch_size = 3
+ * @param name
+ */
+void SplitAddBiasTransposeForScorePad(const core::Tensor& input_tensor,
+                                      const core::Tensor& bias_tensor,
+                                      core::Tensor& q_out_tensor,
+                                      core::Tensor& k_out_tensor,
+                                      core::Tensor& v_out_tensor,
+                                      const std::vector<int64_t>& seq_list,
+                                      const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, input_tensor.device_type());
+#endif
+
+  TT_ENFORCE_EQ(
+      input_tensor.n_dim(), 4,
+      "input_tensor should be 4D tensor of size (1, sum(seq_list), 3, "
+      "num_attention_heads * size_per_head)");
+
+  auto weight_num = 3;
+  auto num_attention_heads = q_out_tensor.shape(1);
+  auto width = input_tensor.shape(3) / num_attention_heads;
+  auto input = input_tensor.data<float>();
+  auto bias = bias_tensor.data<float>();
+  auto q_out = q_out_tensor.mutableData<float>();
+  auto k_out = k_out_tensor.mutableData<float>();
+  auto v_out = v_out_tensor.mutableData<float>();
+
+  int64_t out_batch_size = static_cast<int64_t>(seq_list.size());
+  int64_t out_max_seq_length =
+      *std::max_element(seq_list.begin(), seq_list.end());
+  std::cerr << "out_max_seq_length " << out_max_seq_length << " out_batch_size "
+            << out_batch_size << std::endl;
+  TT_ENFORCE_EQ(
+      common::is_same_device_ctx(input_tensor.device_ctx(),
+                                 bias_tensor.device_ctx()),
+      true,
+      "SplitAddBiasTransposeForScorePad: input_tensor and bias_tensor "
+      "should have the same device type and device id.");
+  TT_ENFORCE_EQ(
+      common::is_same_device_ctx(input_tensor.device_ctx(),
+                                 q_out_tensor.device_ctx()),
+      true,
+      "SplitAddBiasTransposeForScorePad: input_tensor and q_out_tensor "
+      "should have the same device type and device id.");
+
+  if (q_out_tensor.device_type() == kDLCPU &&
+      input_tensor.device_type() == kDLCPU &&
+      bias_tensor.device_type() == kDLCPU) {
+    memset(q_out, 0.f,
+           out_batch_size * out_max_seq_length * num_attention_heads * width *
+               sizeof(float));
+    memset(k_out, 0.f,
+           out_batch_size * out_max_seq_length * num_attention_heads * width *
+               sizeof(float));
+    memset(v_out, 0.f,
+           out_batch_size * out_max_seq_length * num_attention_heads * width *
+               sizeof(float));
+#pragma omp parallel for
+    for (int64_t idx = 0;
+         idx < out_batch_size * weight_num * out_max_seq_length; ++idx) {
+      auto batch_idx = idx / (out_max_seq_length * weight_num);
+      auto seq_idx = idx / weight_num % out_max_seq_length;
+      auto weight_idx = idx % weight_num;
+      int64_t acc_seq_length =
+          std::accumulate(seq_list.begin(), seq_list.begin() + batch_idx, 0);
+      if (seq_idx >= seq_list[batch_idx]) {
+        continue;
+      }
+
+      for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
+        auto* src_ptr = input +
+                        (acc_seq_length + seq_idx) *
+                            (weight_num * num_attention_heads * width) +
+                        weight_idx * (num_attention_heads * width) +
+                        head_idx * width;
+        float* dst_ptr = nullptr;
+        switch (weight_idx) {
+          case 0:
+            dst_ptr =
+                q_out +
+                batch_idx * (num_attention_heads * out_max_seq_length * width) +
+                head_idx * out_max_seq_length * width + seq_idx * width;
+            break;
+          case 1:
+            dst_ptr =
+                k_out +
+                batch_idx * (num_attention_heads * out_max_seq_length * width) +
+                head_idx * out_max_seq_length * width + seq_idx * width;
+            break;
+          case 2:
+            dst_ptr =
+                v_out +
+                batch_idx * (num_attention_heads * out_max_seq_length * width) +
+                head_idx * out_max_seq_length * width + seq_idx * width;
+            break;
+          default:
+            break;
+        }
+        auto* bias_ptr =
+            bias + weight_idx * width * num_attention_heads + head_idx * width;
+#pragma omp simd
+        for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
+          dst_ptr[width_idx] = src_ptr[width_idx] + bias_ptr[width_idx];
+        }
+      }
+    }  // end for
+  } else if (q_out_tensor.device_type() == kDLGPU &&
+             input_tensor.device_type() == kDLGPU &&
+             bias_tensor.device_type() == kDLGPU) {
+#ifdef TT_WITH_CUDA
+//    core::CUDADeviceContext& cuda_ctx =
+//    core::CUDADeviceContext::GetInstance();
+//    GPUSplitAddBiasTransposeForScoreThreeOutput<float>(
+//        input, bias, batch_size, seq_length, weight_num, num_attention_heads,
+//        width, cuda_ctx.stream(), q_out, k_out, v_out);
 #endif
   } else {
     TT_THROW("device_type is not supported");
