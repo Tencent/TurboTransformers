@@ -63,6 +63,11 @@ extern void SplitAddBiasTransposeForScorePad(
     core::Tensor& q_out_tensor, core::Tensor& k_out_tensor,
     core::Tensor& v_out_tensor, const std::vector<int64_t>& seq_list,
     const std::string name = "SplitAddBiasTransposeForScorePad");
+
+extern void TransposeForScorePad(
+    core::Tensor* output, const core::Tensor& input,
+    const std::vector<int64_t>& seq_list,
+    const std::string name = "TransposeForScorePad");
 }  // namespace kernels
 }  // namespace layers
 }  // namespace turbo_transformers

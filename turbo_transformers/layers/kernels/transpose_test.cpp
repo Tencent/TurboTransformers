@@ -15,7 +15,6 @@
 
 #include <string.h>
 
-#include <chrono>
 #include <vector>
 
 #include "catch2/catch.hpp"
@@ -157,7 +156,7 @@ static bool CheckResultOfCPUNoZero(const core::Tensor& cpu_tensor_lhs,
 /***
  * Test smart padding transpose
  */
-TEST_CASE("transpose-bias-gpu-pad-test") {
+TEST_CASE("split-add-bias-transpose-pad-cpu-test") {
   const std::vector<int64_t> num_attention_heads_list{12, 20, 24};
 
   const std::vector<int64_t> seq_length_list{12, 7, 11};
@@ -239,6 +238,59 @@ TEST_CASE("transpose-bias-gpu-pad-test") {
     REQUIRE(CheckResultOfCPUNoZero<float>(output_k_cpu, output_k_cpu_ref));
     REQUIRE(CheckResultOfCPUNoZero<float>(output_v_cpu, output_v_cpu_ref));
   }
+}
+
+TEST_CASE("transpose-pad-cpu-test") {
+  std::vector<int64_t> num_attention_heads_list{7};
+
+  const std::vector<int64_t> seq_length_list{8, 12, 8};
+  int64_t sum_seq_len =
+      std::accumulate(seq_length_list.begin(), seq_length_list.end(), 0);
+  int64_t max_seq_len =
+      *std::max_element(seq_length_list.begin(), seq_length_list.end());
+  int64_t batch_size = seq_length_list.size();
+
+  constexpr int64_t model_dim = 8;
+  for (auto num_attention_heads : num_attention_heads_list) {
+    core::Tensor input_tensor_cpu(nullptr);
+    core::Tensor output_tensor_ref_cpu(nullptr);
+    core::Tensor output_tensor_cpu(nullptr);
+
+    input_tensor_cpu.Reshape<float>(
+        {batch_size, num_attention_heads, max_seq_len, model_dim}, kDLCPU, 0);
+
+    output_tensor_ref_cpu.Reshape<float>(
+        {batch_size, max_seq_len, num_attention_heads, model_dim}, kDLCPU, 0);
+
+    common::FillRandom<float>(input_tensor_cpu);
+
+    // for reference
+    TransposeForScore(&output_tensor_ref_cpu, input_tensor_cpu);
+
+    // real function call
+    output_tensor_cpu.Reshape<float>(
+        {1, sum_seq_len, num_attention_heads, model_dim}, kDLCPU, 0);
+
+    TransposeForScorePad(&output_tensor_cpu, input_tensor_cpu, seq_length_list);
+
+    // check results
+    int64_t acc_seq_len = 0;
+    for (int64_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
+      for (int64_t seq_idx = 0; seq_idx < seq_length_list[batch_idx];
+           ++seq_idx) {
+        for (int64_t i = 0; i < num_attention_heads * model_dim; ++i) {
+          const float* val =
+              output_tensor_cpu.data<float>() +
+              (i + (acc_seq_len + seq_idx) * num_attention_heads * model_dim);
+          const float* val_ref = output_tensor_ref_cpu.data<float>() + i +
+                                 (batch_idx * max_seq_len + seq_idx) *
+                                     num_attention_heads * model_dim;
+          REQUIRE(*val == *val_ref);
+        }
+      }
+      acc_seq_len += seq_length_list[batch_idx];
+    }
+  }  // for
 }
 
 }  // namespace kernels

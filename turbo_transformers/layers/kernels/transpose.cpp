@@ -327,10 +327,10 @@ void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
 }
 
 /**
- * add bias, transpose as well as padding for variabble length
- * When this function is called, it is indicated that we use a ByteDance smart
- * padding method for batch inference. The batch is set as 1 and seq_len is the
- * summation of seq_list.
+ * add bias, transpose as well as padding for a batch of variable length
+ * requests. When this function is called, it is indicated that we use a
+ * ByteDance smart padding method for batch inference. The batch is set as 1 and
+ * seq_len is the summation of seq_list.
  *
  * @param input_tensor: 4D float tensor
  * `(1, sum(seq_len), 3, head_num * size_per_head)`
@@ -463,6 +463,82 @@ void SplitAddBiasTransposeForScorePad(const core::Tensor& input_tensor,
   }
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile(name, input_tensor.device_type());
+#endif
+}
+
+// tranpose(2,3)
+static void TransposeForScorePadImpl(float* output, const float* input,
+                                     int64_t batch_size,           // 0
+                                     int64_t max_seq_len,          // 2
+                                     int64_t num_attention_heads,  // 1
+                                     int64_t width,                // 3
+                                     const std::vector<int64_t>& seq_len_list) {
+#pragma omp parallel for
+  for (int64_t idx = 0; idx < batch_size * max_seq_len; ++idx) {
+    int64_t batch_idx = idx / max_seq_len;
+    int64_t seq_idx = idx % max_seq_len;
+    if (seq_idx >= seq_len_list[batch_idx]) {
+      continue;
+    }
+    int64_t acc_seq_len = std::accumulate(seq_len_list.begin(),
+                                          seq_len_list.begin() + batch_idx, 0);
+    for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
+      const float* src = input +
+                         batch_idx * num_attention_heads * max_seq_len * width +
+                         head_idx * max_seq_len * width + seq_idx * width;
+      float* dst = output +
+                   (acc_seq_len + seq_idx) * num_attention_heads * width +
+                   head_idx * width;
+#pragma omp simd
+      for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
+        dst[width_idx] = src[width_idx];
+      }
+    }
+  }
+}
+
+/***
+ * Tranpose the input tensor back
+ * @param output 3D/4D tensor (1, sum_seq_len, head_num * model_dim)
+ * @param input 4D (batch, head_num, max_seq_len, model_dim)
+ * @param seq_list: list contains seq_len of each request
+ * @param name
+ */
+void TransposeForScorePad(core::Tensor* output, const core::Tensor& input,
+                          const std::vector<int64_t>& seq_list,
+                          const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, input.device_type());
+#endif
+  TT_ENFORCE_EQ(input.n_dim(), 4,
+                "input should be a 4-D tensor, size (batch, num_heads, "
+                "max_seq_len, width)");
+  TT_ENFORCE_GE(output->n_dim(), 3,
+                "output tensor dim should be greater than 3, size (1, "
+                "sum_seq_len, num_heads * width)");
+  if (input.device_type() == kDLCPU && output->device_type() == kDLCPU) {
+    TransposeForScorePadImpl(output->mutableData<float>(), input.data<float>(),
+                             input.shape(0), input.shape(2), input.shape(1),
+                             input.shape(3), seq_list);
+  } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
+#ifdef TT_WITH_CUDA
+//    auto batch_size = output->shape(0);
+//    auto seq_length = output->shape(1);
+//    auto num_attention_heads = input.shape(1);
+//    auto width = input.shape(3);
+//    core::CUDADeviceContext& cuda_ctx =
+//    core::CUDADeviceContext::GetInstance(); const float* dummy = nullptr;
+//    GPUTransposeForScore<float, false>(
+//        input.data<float>(), dummy, batch_size, seq_length,
+//        num_attention_heads, width, cuda_ctx.stream(),
+//        output->mutableData<float>());
+#endif
+  } else {
+    TT_THROW("device_type is not supported");
+  }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, input.device_type());
 #endif
 }
 
