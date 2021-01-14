@@ -19,3 +19,6 @@
 [submodule "3rd/FP16"]
   path = 3rd/FP16
   url = https://github.com/Maratyszcza/FP16
+[submodule "3rd/cudaMemHooker"]
+  path = 3rd/cudaMemHooker
+  url = https://github.com/feifeibear/cudaMemHooker.git

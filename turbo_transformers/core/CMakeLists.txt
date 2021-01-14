@@ -57,7 +57,7 @@ endif ()
 
 if (WITH_GPU)
     target_sources(tt_core PRIVATE cuda_device_context.cpp)
-    target_link_libraries(tt_core PUBLIC cudart cuda cublas)
+    target_link_libraries(tt_core PUBLIC cudart cuda_alloc_client cuda cublas)
 endif()
 
 add_executable(tt_core_test

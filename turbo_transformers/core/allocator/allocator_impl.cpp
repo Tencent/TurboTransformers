@@ -13,20 +13,25 @@
 
 #include "allocator_impl.h"
 
+#include "cuda_alloc_client.h"
 #include "turbo_transformers/core/memory.h"
 namespace turbo_transformers {
 namespace core {
 namespace allocator {
 #ifdef TT_WITH_CUDA
 static void *cuda_alloc(size_t sz) {
-  void *device_mem;
-  if (cudaMalloc((void **)&(device_mem), sz) != cudaSuccess) {
-    throw BadAlloc("cudaMalloc failed.");
-  }
-  return device_mem;
+  // void *device_mem;
+  // if (cudaMalloc((void **)&(device_mem), sz) != cudaSuccess) {
+  //   throw BadAlloc("cudaMalloc failed.");
+  // }
+  // return device_mem;
+  return (void *)(turbo_hook::service::uMalloc(123, sz));
 }
 
-static void cuda_free(void *data) { TT_ENFORCE_CUDA_SUCCESS(cudaFree(data)); }
+static void cuda_free(void *data) {
+  turbo_hook::service::uFree(123, data);
+  // TT_ENFORCE_CUDA_SUCCESS(cudaFree(data));
+}
 #endif
 
 void *allocate_impl(size_t size, DLDeviceType dev) {
