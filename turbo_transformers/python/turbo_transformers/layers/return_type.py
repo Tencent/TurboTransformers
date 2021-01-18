@@ -36,7 +36,7 @@ def convert_returns_as_type(tensor: cxx.Tensor, rtype: Optional[ReturnType]
         rtype = ReturnType.TORCH
 
     if rtype == ReturnType.NUMPY:
-        return cxx.tensor2nparray(tensor)
+        return cxx.tensor2nparrayf(tensor)
     elif rtype == ReturnType.turbo_transformers:
         return tensor
     elif rtype == ReturnType.TORCH:
