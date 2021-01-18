@@ -94,12 +94,13 @@ def create_test(batch_size, seq_length):
                     torch.abs(torch_attention_result[0] -
                               turbo_attention_result[0])) < (
                                   1e-2 if use_cuda else 1e-4))
-
+            # TODO(jiaruifang) result[1] won't be converted into torch tensor.
             # self.assertTrue(
             #     torch.max(
             #         torch.abs(torch_attention_result[1] -
             #                   turbo_attention_result[1])) < (
             #                       1e-2 if use_cuda else 1e-4))
+
 
             turbo_multiheaded_model = lambda: turbo_decoder_attention(
                 input_tensor,
