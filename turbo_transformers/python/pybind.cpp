@@ -11,6 +11,7 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
+#include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
 #include "absl/memory/memory.h"
@@ -20,6 +21,7 @@
 #include "turbo_transformers/core/config.h"
 #include "turbo_transformers/core/profiler.h"
 #include "turbo_transformers/core/tensor.h"
+#include "turbo_transformers/core/tensor_copy.h"
 #include "turbo_transformers/layers/addbias_act.h"
 #include "turbo_transformers/layers/addbias_layernorm.h"
 #include "turbo_transformers/layers/albert_layer.h"
@@ -60,6 +62,59 @@ static void BindConfig(py::module &m) {
       .def("get_blas_provider", &core::GetBlasProvider);
 }
 
+core::Tensor nparray2tensorf(py::array_t<float> array) {
+  py::buffer_info buf1 = array.request();
+  auto ndim = array.ndim();
+  if (ndim == 0) {
+    throw std::runtime_error(
+        "nparray2tensorf: numpy array shall not be empty!");
+  }
+  std::vector<int64_t> shape;
+  shape.resize(ndim);
+  for (auto i = 0; i < ndim; ++i) {
+    shape[i] = array.shape(i);
+  }
+  core::Tensor tensor(
+      core::NewDLPackTensorT<float>(shape, DLDeviceType::kDLCPU));
+  // real copy
+  core::Copy(array.data(), tensor.numel(), DLDeviceType::kDLCPU, tensor);
+
+  tensor.Print<float>(std::cerr);
+
+  return tensor;
+}
+
+py::array_t<float> tensor2nparrayf(const core::Tensor &tensor) {
+  /* No pointer is passed, so NumPy will allocate the buffer */
+  auto numel = tensor.numel();
+  auto ndim = tensor.n_dim();
+  auto result = py::array_t<float>(numel);
+  // py::buffer_info(
+  //         m.data(),                               /* Pointer to buffer */
+  //         sizeof(float),                          /* Size of one scalar */
+  //         py::format_descriptor<float>::format(), /* Python struct-style
+  //         format descriptor */ 2,                                      /*
+  //         Number of dimensions */ { m.rows(), m.cols() },                 /*
+  //         Buffer dimensions */ { sizeof(float) * m.cols(),             /*
+  //         Strides (in bytes) for each index */
+  //           sizeof(float) }
+  //     );
+
+  py::buffer_info buf = result.request();
+  buf.ndim = ndim;
+  for (auto i = 0; i < ndim; ++i) {
+    buf.shape.emplace_back(tensor.shape(i));
+  }
+  float *ptr = static_cast<float *>(buf.ptr);
+
+  // real copy
+  for (auto idx = 0; idx < numel; idx++) {
+    ptr[idx] = tensor.data<float>()[idx];
+  }
+
+  return result;
+}
+
 PYBIND11_MODULE(turbo_transformers_cxx, m) {
   char *argv[] = {strdup("turbo_transformers_cxx"), nullptr};
   int argc = 1;
@@ -69,6 +124,11 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       m.def_submodule("config", "compile configuration of turbo_transformers");
 
   BindConfig(config_module);
+
+  m.def("nparray2tensorf", &nparray2tensorf,
+        "Convert Numpy to Tensor, float data only.");
+  m.def("tensor2nparrayf", &tensor2nparrayf,
+        "Convert Tensor to Numpy, float data only.");
 
   m.def("set_stderr_verbose_level",
         [](int v) { loguru::g_stderr_verbosity = v; });
