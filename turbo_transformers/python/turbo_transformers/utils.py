@@ -20,7 +20,8 @@ import contextlib
 
 __all__ = [
     'pref_guard', 'set_num_threads', 'set_stderr_verbose_level',
-    'disable_perf', 'enable_perf', 'nparray2tensorf', 'tensor2nparrayf'
+    'disable_perf', 'enable_perf', 'nparray2tensor', 'tensor2nparrayf',
+    'tensor2nparrayl'
 ]
 
 set_num_threads = cxx.set_num_threads
@@ -39,9 +40,13 @@ def pref_guard(filename: str):
     cxx.disable_perf()
 
 
-def nparray2tensorf(a, dev_name):
-    return cxx.nparray2tensorf(a, dev_name)
+def nparray2tensor(a, dev_name):
+    return cxx.nparray2tensor(a, dev_name)
 
 
-def tensor2nparrayf(a, dev_name):
-    return cxx.tensor2nparrayf(a, dev_name)
+def tensor2nparrayf(a):
+    return cxx.tensor2nparrayf(a)
+
+
+def tensor2nparrayl(a):
+    return cxx.tensor2nparrayl(a)

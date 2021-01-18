@@ -62,13 +62,12 @@ static void BindConfig(py::module &m) {
       .def("get_blas_provider", &core::GetBlasProvider);
 }
 
-core::Tensor nparray2tensorf(py::array_t<float> array,
-                             const std::string &dev_name) {
+template <typename T>
+core::Tensor nparray2tensor(py::array_t<T> array, const std::string &dev_name) {
   py::buffer_info buf1 = array.request();
   auto ndim = array.ndim();
   if (ndim == 0) {
-    throw std::runtime_error(
-        "nparray2tensorf: numpy array shall not be empty!");
+    throw std::runtime_error("nparray2tensor: numpy array shall not be empty!");
   }
   std::vector<int64_t> shape;
   shape.resize(ndim);
@@ -81,28 +80,19 @@ core::Tensor nparray2tensorf(py::array_t<float> array,
   } else if (dev_name == "GPU") {
     dev_type = DLDeviceType::kDLGPU;
   } else {
-    TT_THROW("nparray2tensorf dev_name should be CPU or GPU!");
+    TT_THROW("nparray2tensor dev_name should be CPU or GPU!");
   }
-  core::Tensor tensor(core::NewDLPackTensorT<float>(shape, dev_type));
+  core::Tensor tensor(core::NewDLPackTensorT<T>(shape, dev_type));
   // real copy, src dev is alway GPU for numpy
   core::Copy(array.data(), tensor.numel(), DLDeviceType::kDLCPU, tensor);
   return tensor;
 }
 
-py::array_t<float> tensor2nparrayf(const core::Tensor &tensor,
-                                   const std::string &dev_name) {
-  /* No pointer is passed, so NumPy will allocate the buffer */
+template <typename T>
+py::array_t<T> tensor2nparray(const core::Tensor &tensor) {
   auto numel = tensor.numel();
   auto ndim = tensor.n_dim();
-
-  DLDeviceType dev_type;
-  if (dev_name == "CPU") {
-    dev_type = DLDeviceType::kDLCPU;
-  } else if (dev_name == "GPU") {
-    dev_type = DLDeviceType::kDLGPU;
-  } else {
-    TT_THROW("tensor2nparrayf dev_name should be CPU or GPU!");
-  }
+  DLDeviceType dev_type = tensor.device_type();
 
   // py::buffer_info(
   //         m.data(),                               /* Pointer to buffer */
@@ -115,7 +105,7 @@ py::array_t<float> tensor2nparrayf(const core::Tensor &tensor,
   //           sizeof(float) }
   //     );
 
-  float *np_data_ptr = new float[numel];
+  T *np_data_ptr = new T[numel];
   std::vector<py::ssize_t> shape, strides;
   shape.resize(ndim);
   for (py::ssize_t i = 0; i < ndim; ++i) {
@@ -125,27 +115,26 @@ py::array_t<float> tensor2nparrayf(const core::Tensor &tensor,
   py::ssize_t j = 1;
   strides.resize(ndim);
   for (py::ssize_t i = ndim - 1; i >= 0; --i) {
-    strides[i] = j * sizeof(float);
-    j *= i;
+    strides[i] = j * sizeof(T);
+    j *= shape[i];
   }
 
-  core::Copy(tensor.data<float>(), tensor.numel(), dev_type,
-             DLDeviceType::kDLCPU, np_data_ptr);
+  core::Copy(tensor.data<T>(), tensor.numel(), dev_type, DLDeviceType::kDLCPU,
+             np_data_ptr);
 
   // Create a Python object that will free the allocated
   // memory when destroyed:
   py::capsule free_when_done(np_data_ptr, [](void *f) {
-    float *np_data_ptr = reinterpret_cast<float *>(f);
+    T *np_data_ptr = reinterpret_cast<T *>(f);
     // std::cerr << "Element [0] = " << np_data_ptr[0] << "\n";
     // std::cerr << "freeing memory @ " << f << "\n";
     delete[] np_data_ptr;
   });
 
-  return py::array_t<float>(
-      shape,            // shape
-      strides,          // C-style contiguous strides for double
-      np_data_ptr,      // the data pointer
-      free_when_done);  // numpy array references this parent
+  return py::array_t<T>(shape,        // shape
+                        strides,      // C-style contiguous strides for double
+                        np_data_ptr,  // the data pointer
+                        free_when_done);  // numpy array references this parent
 }
 
 PYBIND11_MODULE(turbo_transformers_cxx, m) {
@@ -158,9 +147,12 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
 
   BindConfig(config_module);
 
-  m.def("nparray2tensorf", &nparray2tensorf,
-        "Convert Numpy to Tensor, float data only.");
-  m.def("tensor2nparrayf", &tensor2nparrayf,
+  m.def("nparray2tensor", &nparray2tensor<float>, "Convert Numpy to Tensor.");
+  m.def("nparray2tensor", &nparray2tensor<int64_t>, "Convert Numpy to Tensor.");
+
+  m.def("tensor2nparrayf", &tensor2nparray<float>,
+        "Convert Tensor to Numpy, float data only.");
+  m.def("tensor2nparrayl", &tensor2nparray<int64_t>,
         "Convert Tensor to Numpy, float data only.");
 
   m.def("set_stderr_verbose_level",
