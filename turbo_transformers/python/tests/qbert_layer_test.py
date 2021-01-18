@@ -55,15 +55,8 @@ for l in lens:
     end = time.time()
     print("torch int8 layer QPS =", loops / (end - start))
 
-print(
-    "max error against torch fp32 =",
-    max(torch.max(torch.abs(res[0] - res2[0])),
-        torch.max(torch.abs(res[1] - res2[1]))))
-print(
-    "max error against torch int8 =",
-    max(torch.max(torch.abs(res3[0] - res2[0])),
-        torch.max(torch.abs(res3[1] - res2[1]))))
-print(
-    "max error between torch int8 and torch fp32 =",
-    max(torch.max(torch.abs(res3[0] - res[0])),
-        torch.max(torch.abs(res3[1] - res[1]))))
+print("max error against torch fp32 =", torch.max(torch.abs(res[0] - res2[0])))
+print("max error against torch int8 =",
+      torch.max(torch.abs(res3[0] - res2[0])))
+print("max error between torch int8 and torch fp32 =",
+      torch.max(torch.abs(res3[0] - res[0])))
