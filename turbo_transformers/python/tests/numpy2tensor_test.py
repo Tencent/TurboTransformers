@@ -19,13 +19,22 @@ import turbo_transformers
 
 
 class TestNumpy2Cxx(unittest.TestCase):
-    def test(self):
+    def test_cpu2gpu(self):
         np_data = np.random.rand(2, 3, 1)
         print(np_data)
-        t = turbo_transformers.nparray2tensorf(np_data)
+        t = turbo_transformers.nparray2tensorf(np_data, "GPU")
+        print(t)
+        np_data_res = turbo_transformers.tensor2nparrayf(t, "GPU")
+        assert (np.max(np.abs(np_data_res - np_data) < 1e-6))
+        print(np_data_res)
 
-        b = turbo_transformers.tensor2nparrayf(t)
-        print(b)
+    # def test_cpu2cpu(self):
+    #     np_data = np.random.rand(2, 3, 1)
+    #     print(np_data)
+    #     t = turbo_transformers.nparray2tensorf(np_data, "CPU")
+
+    #     np_data_res = turbo_transformers.tensor2nparrayf(t, "CPU")
+    #     assert(np.abs(np_data_res - np_data) < 1e-6)
 
 
 if __name__ == '__main__':

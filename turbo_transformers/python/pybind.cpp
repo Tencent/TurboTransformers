@@ -62,7 +62,8 @@ static void BindConfig(py::module &m) {
       .def("get_blas_provider", &core::GetBlasProvider);
 }
 
-core::Tensor nparray2tensorf(py::array_t<float> array) {
+core::Tensor nparray2tensorf(py::array_t<float> array,
+                             const std::string &dev_name) {
   py::buffer_info buf1 = array.request();
   auto ndim = array.ndim();
   if (ndim == 0) {
@@ -74,9 +75,16 @@ core::Tensor nparray2tensorf(py::array_t<float> array) {
   for (auto i = 0; i < ndim; ++i) {
     shape[i] = array.shape(i);
   }
-  core::Tensor tensor(
-      core::NewDLPackTensorT<float>(shape, DLDeviceType::kDLCPU));
-  // real copy
+  DLDeviceType dev_type;
+  if (dev_name == "CPU") {
+    dev_type = DLDeviceType::kDLCPU;
+  } else if (dev_name == "GPU") {
+    dev_type = DLDeviceType::kDLGPU;
+  } else {
+    TT_THROW("nparray2tensorf dev_name should be CPU or GPU!");
+  }
+  core::Tensor tensor(core::NewDLPackTensorT<float>(shape, dev_type));
+  // real copy, src dev is alway GPU for numpy
   core::Copy(array.data(), tensor.numel(), DLDeviceType::kDLCPU, tensor);
 
   tensor.Print<float>(std::cerr);
@@ -84,7 +92,8 @@ core::Tensor nparray2tensorf(py::array_t<float> array) {
   return tensor;
 }
 
-py::array_t<float> tensor2nparrayf(const core::Tensor &tensor) {
+py::array_t<float> tensor2nparrayf(const core::Tensor &tensor,
+                                   const std::string &dev_name) {
   /* No pointer is passed, so NumPy will allocate the buffer */
   auto numel = tensor.numel();
   auto ndim = tensor.n_dim();
@@ -102,16 +111,24 @@ py::array_t<float> tensor2nparrayf(const core::Tensor &tensor) {
 
   py::buffer_info buf = result.request();
   buf.ndim = ndim;
-  for (auto i = 0; i < ndim; ++i) {
+  for (size_t i = 0; i < ndim; ++i) {
     buf.shape.emplace_back(tensor.shape(i));
   }
   float *ptr = static_cast<float *>(buf.ptr);
-
-  // real copy
-  for (auto idx = 0; idx < numel; idx++) {
-    ptr[idx] = tensor.data<float>()[idx];
+  DLDeviceType dev_type;
+  if (dev_name == "CPU") {
+    dev_type = DLDeviceType::kDLCPU;
+  } else if (dev_name == "GPU") {
+    dev_type = DLDeviceType::kDLGPU;
+  } else {
+    TT_THROW("tensor2nparrayf dev_name should be CPU or GPU!");
   }
-
+  // real copy
+  //   for (auto idx = 0; idx < numel; idx++) {
+  //     ptr[idx] = tensor.data<float>()[idx];
+  //   }
+  core::Copy(tensor.data<float>(), tensor.numel(), dev_type,
+             DLDeviceType::kDLCPU, ptr);
   return result;
 }
 

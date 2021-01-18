@@ -39,5 +39,9 @@ def pref_guard(filename: str):
     cxx.disable_perf()
 
 
-def nparray2tensorf(a):
-    return cxx.nparray2tensorf(a)
+def nparray2tensorf(a, dev_name):
+    return cxx.nparray2tensorf(a, dev_name)
+
+
+def tensor2nparrayf(a, dev_name):
+    return cxx.tensor2nparrayf(a, dev_name)
