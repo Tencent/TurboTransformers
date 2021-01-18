@@ -86,9 +86,6 @@ core::Tensor nparray2tensorf(py::array_t<float> array,
   core::Tensor tensor(core::NewDLPackTensorT<float>(shape, dev_type));
   // real copy, src dev is alway GPU for numpy
   core::Copy(array.data(), tensor.numel(), DLDeviceType::kDLCPU, tensor);
-
-  tensor.Print<float>(std::cerr);
-
   return tensor;
 }
 
@@ -97,7 +94,16 @@ py::array_t<float> tensor2nparrayf(const core::Tensor &tensor,
   /* No pointer is passed, so NumPy will allocate the buffer */
   auto numel = tensor.numel();
   auto ndim = tensor.n_dim();
-  auto result = py::array_t<float>(numel);
+
+  DLDeviceType dev_type;
+  if (dev_name == "CPU") {
+    dev_type = DLDeviceType::kDLCPU;
+  } else if (dev_name == "GPU") {
+    dev_type = DLDeviceType::kDLGPU;
+  } else {
+    TT_THROW("tensor2nparrayf dev_name should be CPU or GPU!");
+  }
+
   // py::buffer_info(
   //         m.data(),                               /* Pointer to buffer */
   //         sizeof(float),                          /* Size of one scalar */
@@ -109,27 +115,35 @@ py::array_t<float> tensor2nparrayf(const core::Tensor &tensor,
   //           sizeof(float) }
   //     );
 
-  py::buffer_info buf = result.request();
-  buf.ndim = ndim;
-  for (size_t i = 0; i < ndim; ++i) {
-    buf.shape.emplace_back(tensor.shape(i));
+  float *np_data_ptr = new float[numel];
+  std::vector<py::ssize_t> shape, strides;
+  shape.resize(ndim);
+  for (py::ssize_t i = 0; i < ndim; ++i) {
+    shape[i] = tensor.shape(i);
   }
-  float *ptr = static_cast<float *>(buf.ptr);
-  DLDeviceType dev_type;
-  if (dev_name == "CPU") {
-    dev_type = DLDeviceType::kDLCPU;
-  } else if (dev_name == "GPU") {
-    dev_type = DLDeviceType::kDLGPU;
-  } else {
-    TT_THROW("tensor2nparrayf dev_name should be CPU or GPU!");
+
+  py::ssize_t j = 1;
+  strides.resize(ndim);
+  for (py::ssize_t i = ndim - 1; i >= 0; --i) {
+    strides[i] = j * sizeof(float);
+    j *= i;
   }
-  // real copy
-  //   for (auto idx = 0; idx < numel; idx++) {
-  //     ptr[idx] = tensor.data<float>()[idx];
-  //   }
+
   core::Copy(tensor.data<float>(), tensor.numel(), dev_type,
-             DLDeviceType::kDLCPU, ptr);
-  return result;
+             DLDeviceType::kDLCPU, np_data_ptr);
+
+  // Create a Python object that will free the allocated
+  // memory when destroyed:
+  py::capsule free_when_done(np_data_ptr, [](void *f) {
+    float *np_data_ptr = reinterpret_cast<float *>(f);
+    delete[] np_data_ptr;
+  });
+
+  return py::array_t<float>(
+      shape,            // shape
+      strides,          // C-style contiguous strides for double
+      np_data_ptr,      // the data pointer
+      free_when_done);  // numpy array references this parent
 }
 
 PYBIND11_MODULE(turbo_transformers_cxx, m) {
