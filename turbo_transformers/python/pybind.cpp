@@ -136,6 +136,8 @@ py::array_t<float> tensor2nparrayf(const core::Tensor &tensor,
   // memory when destroyed:
   py::capsule free_when_done(np_data_ptr, [](void *f) {
     float *np_data_ptr = reinterpret_cast<float *>(f);
+    // std::cerr << "Element [0] = " << np_data_ptr[0] << "\n";
+    // std::cerr << "freeing memory @ " << f << "\n";
     delete[] np_data_ptr;
   });
 
