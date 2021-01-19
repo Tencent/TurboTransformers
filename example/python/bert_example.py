@@ -78,8 +78,7 @@ def test(loadtype: LoadType, use_cuda: bool):
                 sys.exit("ERROR. can not open ", sys.argv[1])
         else:
             in_file = "/workspace/bert_torch.npz"
-        tt_model = turbo_transformers.BertModel.from_npz(
-            in_file, cfg, test_device)
+        tt_model = turbo_transformers.BertModel.from_npz(in_file, cfg)
     else:
         raise ("LoadType is not supported")
 
