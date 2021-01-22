@@ -57,7 +57,12 @@ extern void SplitAddBiasTransposeForScore(
     core::Tensor& q_out, core::Tensor& k_out, core::Tensor& v_out,
     const std::string name = "SplitAddBiasTransposeForScore");
 
-// A API friendly to variable-length input memory allocations.
+// A API friendly to smart padding APIs.
+extern void AddBiasTransposeForScorePad(
+    const core::Tensor& input, const core::Tensor& bias, core::Tensor* output,
+    const std::vector<int64_t>& seq_list,
+    const std::string name = "AddBiasTransposeForScore");
+
 extern void SplitAddBiasTransposeForScorePad(
     const core::Tensor& input_tensor, const core::Tensor& bias_tensor,
     core::Tensor& q_out_tensor, core::Tensor& k_out_tensor,

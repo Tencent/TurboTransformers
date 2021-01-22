@@ -28,6 +28,7 @@ fname = "tt_decoder_multi_headed_attention.txt"
 
 
 def create_test(query_seq_len_list,
+                key_seq_len_list,
                 attn_type,
                 pre_layernorm,
                 post_add_input,
@@ -47,7 +48,7 @@ def create_test(query_seq_len_list,
             self.size_per_head = int(self.model_dim / self.head_count)
 
             self.query_seq_len_list = query_seq_len_list
-
+            self.key_seq_len_list = key_seq_len_list
             # build the torch model
             self.model = MultiHeadedAttention(self.head_count, self.model_dim)
             self.model.eval()
@@ -61,11 +62,32 @@ def create_test(query_seq_len_list,
                 Q = torch.rand(
                     size=(
                         1,
-                        query_seq_len,  #to_seq
+                        query_seq_len,  #from_seq
                         self.model_dim),
                     dtype=torch.float32,
                     device=self.test_device)
                 self.Q_list.append(Q)
+
+            self.K_list = []
+            self.V_list = []
+            for key_seq_len in key_seq_len_list:
+                K = torch.rand(
+                    size=(
+                        1,
+                        key_seq_len,  #from_seq
+                        self.model_dim),
+                    dtype=torch.float32,
+                    device=self.test_device)
+
+                V = torch.rand(
+                    size=(
+                        1,
+                        key_seq_len,  #to_seq
+                        self.model_dim),
+                    dtype=torch.float32,
+                    device=self.test_device)
+                self.K_list.append(K)
+                self.V_list.append(V)
 
             # prepare turbo smart batch model
             self.turbo_smart_pad = turbo_transformers.MultiHeadedAttentionSmartPad.from_onmt(
@@ -77,6 +99,7 @@ def create_test(query_seq_len_list,
             device = "GPU" if use_cuda else "CPU"
             info = f"\"({device}, {set_layer_cache}, {pre_layernorm}, {post_add_input}, {attn_type})\""
 
+            # TODO(jiaruifang) test scenario where mask is not None.
             attention_mask = None
             layer_cache_torch = {
                 "memory_keys": None,
@@ -86,10 +109,10 @@ def create_test(query_seq_len_list,
             }
 
             res_list = []
-            for Q in self.Q_list:
+            for Q, K, V in zip(self.Q_list, self.K_list, self.V_list):
                 res, _ = self.model(
-                    Q,
-                    Q,
+                    Q if attn_type == "self" else K,  #K,
+                    Q if attn_type == "self" else V,  #V,
                     Q,
                     mask=attention_mask,
                     layer_cache=None,  #layer_cache_torch
@@ -106,25 +129,33 @@ def create_test(query_seq_len_list,
             self.assertTrue(
                 concat_res.size()[1] == sum(self.query_seq_len_list))
 
-            # concat Q together
+            # concat K, Q, V together
             for i in range(len(self.query_seq_len_list)):
                 if i == 0:
                     concat_Q = self.Q_list[i]
+                    concat_K = self.K_list[i]
+                    concat_V = self.V_list[i]
                 else:
                     concat_Q = torch.cat((concat_Q, self.Q_list[i]), 1)
+                    concat_K = torch.cat((concat_K, self.K_list[i]), 1)
+                    concat_V = torch.cat((concat_V, self.V_list[i]), 1)
 
             self.assertTrue(concat_Q.size()[1] == sum(self.query_seq_len_list))
+            self.assertTrue(concat_K.size()[1] == sum(self.key_seq_len_list))
+            self.assertTrue(concat_V.size()[1] == sum(self.key_seq_len_list))
+            self.assertTrue(attn_type == "self" or attn_type == "context")
 
-            self.assertTrue(attn_type == "self")
-            pad_res, _ = self.turbo_smart_pad(concat_Q,
-                                              concat_Q,
+            pad_res, _ = self.turbo_smart_pad(concat_K,
+                                              concat_V,
                                               concat_Q,
                                               self.query_seq_len_list,
+                                              self.key_seq_len_list,
                                               mask=attention_mask,
                                               layer_cache=None,
                                               attn_type=attn_type)
 
             diff = pad_res - concat_res
+            print(diff)
             print(torch.max(diff))
             self.assertTrue(
                 numpy.allclose(pad_res.cpu(),
@@ -148,13 +179,16 @@ with open(fname, "w") as fh:
 for set_layer_cache in [False]:
     for post_add_input in [False]:
         for pre_layernorm in [False]:
-            query_seq_len_list = [10, 7, 15, 12]
-            create_test(query_seq_len_list,
-                        "self",
-                        pre_layernorm,
-                        post_add_input,
-                        with_quantize_dynamic=False,
-                        set_layer_cache=set_layer_cache)
+            query_seq_len_list = [9, 7, 13]
+            key_seq_len_list = [10, 19, 20]
+            for type in ["context", "self"]:
+                create_test(query_seq_len_list,
+                            key_seq_len_list,
+                            type,
+                            pre_layernorm,
+                            post_add_input,
+                            with_quantize_dynamic=False,
+                            set_layer_cache=set_layer_cache)
 
 if __name__ == '__main__':
     unittest.main()

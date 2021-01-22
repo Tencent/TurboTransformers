@@ -39,7 +39,8 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
                  key_tensor: AnyTensor,
                  value_tensor: AnyTensor,
                  query_tensor: AnyTensor,
-                 seq_len_list: Sequence[int],
+                 query_seq_len_list: Sequence[int],
+                 key_seq_len_list: Sequence[int],
                  mask: Optional[AnyTensor] = None,
                  layer_cache: Optional[dict] = None,
                  attn_type: str = None,
@@ -52,26 +53,48 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
                  attn: Optional[cxx.Tensor] = None):
         """ Implement a MultiHeadedAttention with SmartPad
         https://github.com/bytedance/effective_transformer
+        Additional Parameter:
+        @query_seq_len_list contains a list of input_seq_len.
         """
 
         # TODO(jiaruifang) bug device is only cpu, you must make it support GPU
         if mask is None:
             # (B, 1, k_len)
-            batch_size = len(seq_len_list)
-            max_seq_len = max(seq_len_list)
-            if isinstance(query_tensor, torch.Tensor):
-                mask = torch.zeros(batch_size,
-                                   1,
-                                   max_seq_len,
-                                   dtype=torch.float32,
-                                   device=query_tensor.device)
-            else:
-                raise "Mask is None and MultiHeadedAttentionSmartPad can not identify the device type of mask"
-            for batch_idx in range(batch_size):
-                for seq_idx in range(seq_len_list[batch_idx], max_seq_len):
-                    mask[batch_idx][0][seq_idx] = -1e9
-        mask = try_convert(mask)
+            if attn_type == "self":
+                # self attn. query_seq_len is the same as the key_seq_len
+                batch_size = len(query_seq_len_list)
+                query_max_seq_len = max(query_seq_len_list)
+                if isinstance(query_tensor, torch.Tensor):
+                    mask = torch.zeros(batch_size,
+                                       1,
+                                       query_max_seq_len,
+                                       dtype=torch.float32,
+                                       device=query_tensor.device)
+                else:
+                    raise "Mask is None and MultiHeadedAttentionSmartPad can not identify the device type of mask"
+                for batch_idx in range(batch_size):
+                    for query_seq_idx in range(query_seq_len_list[batch_idx],
+                                               query_max_seq_len):
+                        mask[batch_idx][0][query_seq_idx] = -1e9
+            elif attn_type == "context":
+                batch_size = len(query_seq_len_list)
+                assert (batch_size == len(key_seq_len_list))
+                query_max_seq_len = max(query_seq_len_list)
+                key_max_seq_len = max(key_seq_len_list)
+                if isinstance(query_tensor, torch.Tensor):
+                    mask = torch.zeros(batch_size,
+                                       1,
+                                       key_max_seq_len,
+                                       dtype=torch.float32,
+                                       device=query_tensor.device)
+                else:
+                    raise "Mask is None and MultiHeadedAttentionSmartPad can not identify the device type of mask"
+                for batch_idx in range(batch_size):
+                    for key_seq_idx in range(key_seq_len_list[batch_idx],
+                                             key_max_seq_len):
+                        mask[batch_idx][0][key_seq_idx] = -1e9
 
+        mask = try_convert(mask)
         key_tensor = try_convert(key_tensor)
         value_tensor = try_convert(value_tensor)
         query_tensor = try_convert(query_tensor)
@@ -89,8 +112,9 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
         super(MultiHeadedAttentionSmartPad,
               self).__call__(key_tensor, value_tensor, query_tensor, mask,
                              attn_type, output, attn, layer_cache_tmp,
-                             seq_len_list, pre_layernorm, post_layernorm,
-                             post_add_input, is_trans_weight)
+                             query_seq_len_list, key_seq_len_list,
+                             pre_layernorm, post_layernorm, post_add_input,
+                             is_trans_weight)
 
         if layer_cache is not None:
             for k, v in layer_cache_tmp.items():

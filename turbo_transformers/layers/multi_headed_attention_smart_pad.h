@@ -81,20 +81,18 @@ class MultiHeadedAttentionSmartPad {
       const core::Tensor& query_tensor, const core::Tensor& value_tensor,
       const core::Tensor& key_tensor, bool pre_layernorm, bool is_trans_weight,
       std::unordered_map<std::string, core::Tensor*>& layer_cache,
-      const std::vector<int64_t>& seq_len_list, core::Tensor* q_out,
-      core::Tensor* k_out, core::Tensor* v_out) const;
+      core::Tensor* q_out, core::Tensor* k_out, core::Tensor* v_out) const;
 
-  void operator()(const core::Tensor& key_tensor,
-                  const core::Tensor& value_tensor,
-                  const core::Tensor& query_tensor,
-                  const core::Tensor& attention_mask,
-                  const std::string& attn_type, core::Tensor* output,
-                  core::Tensor* att_score,
-                  std::unordered_map<std::string, core::Tensor*> layer_cache,
-                  const std::vector<int64_t>& query_seqlen_list,
-                  bool pre_layernorm = false, bool post_layernorm = false,
-                  bool post_add_input = false,
-                  bool is_trans_weight = false) const;
+  void operator()(
+      const core::Tensor& key_tensor, const core::Tensor& value_tensor,
+      const core::Tensor& query_tensor, const core::Tensor& attention_mask,
+      const std::string& attn_type, core::Tensor* output,
+      core::Tensor* att_score,
+      std::unordered_map<std::string, core::Tensor*> layer_cache,
+      const std::vector<int64_t>& query_seq_len_list,  // from_seq list
+      const std::vector<int64_t>& key_seq_len_list,    // to_seq list
+      bool pre_layernorm = false, bool post_layernorm = false,
+      bool post_add_input = false, bool is_trans_weight = false) const;
 
  private:
   core::Tensor k_weight_;
@@ -116,6 +114,7 @@ class MultiHeadedAttentionSmartPad {
   int64_t num_attention_heads_;
 
   mutable int64_t sum_query_seq_len_;
+  mutable int64_t sum_key_seq_len_;
 
   mutable int64_t batch_size_;
   mutable int64_t max_query_seq_length_;
@@ -132,6 +131,9 @@ class MultiHeadedAttentionSmartPad {
   mutable bool self_keys_not_none_{false};
   mutable bool self_values_not_none_{false};
   mutable bool memory_not_none_{false};
+
+  mutable std::vector<int64_t> query_seq_len_list_;
+  mutable std::vector<int64_t> key_seq_len_list_;
 };
 
 }  // namespace layers

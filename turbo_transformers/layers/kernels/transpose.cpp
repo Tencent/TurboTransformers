@@ -30,26 +30,69 @@ namespace turbo_transformers {
 namespace layers {
 namespace kernels {
 
-// tranpose(2,3)
-// input (B x seq_len x head_num * hidden_size)
-// bias (head * hidden_size)
+// Transpose the 2,3 dim of a 4-D tensor after adding a bias.
+// It should work as a general function. Do not care with dim is the seq_len
+// dim. Because the application scenerio of this function is unique. input (B x
+// seq_len x head_num * hidden_size) bias (head * hidden_size)
 static void AddBiasTransposeForScoreImpl(const float* input, const float* bias,
-                                         int64_t dim0, int64_t dim1,
-                                         int64_t dim2, int64_t dim3,
-                                         float* output) {
+                                         int64_t batch_size, int64_t seq_length,
+                                         int64_t num_attention_heads,
+                                         int64_t width, float* output) {
 #pragma omp parallel for
-  for (int64_t idx = 0; idx < dim0 * dim1; ++idx) {
-    int64_t dim0_idx = idx / dim1;
-    int64_t dim1_idx = idx % dim1;
-    for (int64_t dim2_idx = 0; dim2_idx < dim2; ++dim2_idx) {
-      const float* bias_ptr = bias + dim2_idx * dim3;
-      auto* src = input + dim0_idx * (dim1 * dim2 * dim3) +
-                  dim1_idx * dim2 * dim3 + dim2_idx * dim3;
-      auto* dst = output + dim0_idx * (dim1 * dim2 * dim3) +
-                  dim2_idx * dim1 * dim3 + dim1_idx * dim3;
+  for (int64_t idx = 0; idx < batch_size * seq_length; ++idx) {
+    int64_t batch_idx = idx / seq_length;
+    int64_t seq_idx = idx % seq_length;
+    for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
+      const float* bias_ptr = bias + head_idx * width;
+      auto* src = input +
+                  batch_idx * (seq_length * num_attention_heads * width) +
+                  seq_idx * num_attention_heads * width + head_idx * width;
+      auto* dst = output +
+                  batch_idx * (seq_length * num_attention_heads * width) +
+                  head_idx * seq_length * width + seq_idx * width;
 #pragma omp simd
-      for (int64_t dim3_idx = 0; dim3_idx < dim3; ++dim3_idx) {
-        dst[dim3_idx] = src[dim3_idx] + bias_ptr[dim3_idx];
+      for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
+        dst[width_idx] = src[width_idx] + bias_ptr[width_idx];
+      }
+    }
+  }
+}
+
+// Transpose the 2,3 dim of a 4-D tensor after adding a bias with smart padding.
+// Therefore you have to pay attention to which dim is seq_len.
+// This function is not a general function. You should care with dime is
+// seq_len. input (1 x sum_seq_len x head_num * hidden_size) bias (head *
+// hidden_size) output (batch, head, max_seq_len, hidden_size)
+static void AddBiasTransposeForScorePadImpl(
+    const float* input, const float* bias, int64_t num_attention_heads,
+    int64_t width, float* output, const std::vector<int64_t>& seq_len_list) {
+  int64_t batch_size = seq_len_list.size();
+  int64_t max_seq_length =
+      *std::max_element(seq_len_list.begin(), seq_len_list.end());
+  memset(output, 0,
+         batch_size * max_seq_length * num_attention_heads * width *
+             sizeof(float));
+
+#pragma omp parallel for
+  for (int64_t idx = 0; idx < batch_size * max_seq_length; ++idx) {
+    int64_t batch_idx = idx / max_seq_length;
+    int64_t seq_idx = idx % max_seq_length;
+    if (seq_idx >= seq_len_list[batch_idx]) {
+      continue;
+    }
+    int64_t acc_seq_len = std::accumulate(seq_len_list.begin(),
+                                          seq_len_list.begin() + batch_idx, 0);
+    for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
+      const float* bias_ptr = bias + head_idx * width;
+      auto* src = input +
+                  (acc_seq_len + seq_idx) * num_attention_heads * width +
+                  head_idx * width;
+      auto* dst = output +
+                  batch_idx * (num_attention_heads * max_seq_length * width) +
+                  head_idx * max_seq_length * width + seq_idx * width;
+#pragma omp simd
+      for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
+        dst[width_idx] = src[width_idx] + bias_ptr[width_idx];
       }
     }
   }
@@ -70,6 +113,37 @@ static void TransposeForScoreImpl(float* output, const float* input,
       auto* dst = output +
                   batch_idx * (seq_length * num_attention_heads * width) +
                   seq_idx * num_attention_heads * width + head_idx * width;
+#pragma omp simd
+      for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
+        dst[width_idx] = src[width_idx];
+      }
+    }
+  }
+}
+
+// tranpose(2,3)
+static void TransposeForScorePadImpl(float* output, const float* input,
+                                     int64_t batch_size,           // 0
+                                     int64_t max_seq_len,          // 2
+                                     int64_t num_attention_heads,  // 1
+                                     int64_t width,                // 3
+                                     const std::vector<int64_t>& seq_len_list) {
+#pragma omp parallel for
+  for (int64_t idx = 0; idx < batch_size * max_seq_len; ++idx) {
+    int64_t batch_idx = idx / max_seq_len;
+    int64_t seq_idx = idx % max_seq_len;
+    if (seq_idx >= seq_len_list[batch_idx]) {
+      continue;
+    }
+    int64_t acc_seq_len = std::accumulate(seq_len_list.begin(),
+                                          seq_len_list.begin() + batch_idx, 0);
+    for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
+      const float* src = input +
+                         batch_idx * num_attention_heads * max_seq_len * width +
+                         head_idx * max_seq_len * width + seq_idx * width;
+      float* dst = output +
+                   (acc_seq_len + seq_idx) * num_attention_heads * width +
+                   head_idx * width;
 #pragma omp simd
       for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
         dst[width_idx] = src[width_idx];
@@ -326,6 +400,44 @@ void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
 #endif
 }
 
+// add bias and transpose(2,3)
+void AddBiasTransposeForScorePad(const core::Tensor& input,
+                                 const core::Tensor& bias, core::Tensor* output,
+                                 const std::vector<int64_t>& seq_list,
+                                 const std::string name) {
+#ifdef WITH_PERFTOOLS
+  auto& profile_ctx = core::Profiler::GetInstance();
+  profile_ctx.start_profile(name, input.device_type());
+#endif
+  TT_ENFORCE_EQ(input.n_dim(), 4, "input should be a 4-D tensor");
+  TT_ENFORCE_EQ(bias.numel(), input.shape(2) * input.shape(3),
+                "bias shape %d should be %d x %d", bias.n_dim(), input.shape(2),
+                input.shape(3));
+  auto batch_size = input.shape(0);
+  auto sum_seq_len = input.shape(1);
+  auto num_head = input.shape(2);
+  auto hidden_size = input.shape(3);
+  if (input.device_type() == kDLCPU && output->device_type() == kDLCPU) {
+    AddBiasTransposeForScorePadImpl(input.data<float>(), bias.data<float>(),
+                                    num_head, hidden_size,
+                                    output->mutableData<float>(), seq_list);
+  } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
+#ifdef TT_WITH_CUDA
+//    core::CUDADeviceContext& cuda_ctx =
+//    core::CUDADeviceContext::GetInstance(); GPUTransposeForScore<float,
+//    true>(input.data<float>(), bias.data<float>(),
+//                                      dim0, dim1, dim2, dim3,
+//                                      cuda_ctx.stream(),
+//                                      output->mutableData<float>());
+#endif
+  } else {
+    TT_THROW("device_type is not supported");
+  }
+#ifdef WITH_PERFTOOLS
+  profile_ctx.end_profile(name, input.device_type());
+#endif
+}
+
 /**
  * add bias, transpose as well as padding for a batch of variable length
  * requests. When this function is called, it is indicated that we use a
@@ -464,37 +576,6 @@ void SplitAddBiasTransposeForScorePad(const core::Tensor& input_tensor,
 #ifdef WITH_PERFTOOLS
   profile_ctx.end_profile(name, input_tensor.device_type());
 #endif
-}
-
-// tranpose(2,3)
-static void TransposeForScorePadImpl(float* output, const float* input,
-                                     int64_t batch_size,           // 0
-                                     int64_t max_seq_len,          // 2
-                                     int64_t num_attention_heads,  // 1
-                                     int64_t width,                // 3
-                                     const std::vector<int64_t>& seq_len_list) {
-#pragma omp parallel for
-  for (int64_t idx = 0; idx < batch_size * max_seq_len; ++idx) {
-    int64_t batch_idx = idx / max_seq_len;
-    int64_t seq_idx = idx % max_seq_len;
-    if (seq_idx >= seq_len_list[batch_idx]) {
-      continue;
-    }
-    int64_t acc_seq_len = std::accumulate(seq_len_list.begin(),
-                                          seq_len_list.begin() + batch_idx, 0);
-    for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
-      const float* src = input +
-                         batch_idx * num_attention_heads * max_seq_len * width +
-                         head_idx * max_seq_len * width + seq_idx * width;
-      float* dst = output +
-                   (acc_seq_len + seq_idx) * num_attention_heads * width +
-                   head_idx * width;
-#pragma omp simd
-      for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
-        dst[width_idx] = src[width_idx];
-      }
-    }
-  }
 }
 
 /***
