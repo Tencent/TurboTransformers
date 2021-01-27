@@ -25,14 +25,27 @@ from .utils import try_convert, convert2tt_tensor, create_empty_if_none, AnyTens
 from onmt.modules.multi_headed_attn import MultiHeadedAttention as OnmtMultiHeadedAttention
 from transformers.modeling_bert import BertAttention as TorchBertAttention
 from transformers.modeling_bert import BertLayer as TorchBertLayer
+from transformers.modeling_bert import BertEncoder as TorchBertEncoder
+from transformers.modeling_bert import BertModel as TorchBertModel
+from transformers.modeling_bert import BertConfig as TorchBertConfig
+from transformers.modeling_bert import BertEmbeddings as TorchBertEmbeddings
 from .modeling_bert import BertIntermediate
 from .modeling_bert import BertOutput
+from .modeling_bert import BertEmbeddings
+from .modeling_bert import BertEncoder
+from .modeling_bert import BertPooler
+from .modeling_bert import SequencePool
+from .modeling_bert import PoolingMap
+from .modeling_bert import PoolingType
 
 from torch.nn import LayerNorm as TorchLayerNorm
 
 import numpy as np
 
-__all__ = ['MultiHeadedAttentionSmartPad', 'BertLayerSmartPad']
+__all__ = [
+    'MultiHeadedAttentionSmartPad', 'BertLayerSmartPad', 'BertEncoderSmartPad',
+    'BertModelSmartPad'
+]
 
 
 class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
@@ -343,3 +356,237 @@ class BertLayerSmartPad:
             BertAttention.from_npz(file_name, layer_num, num_attention_heads),
             BertIntermediate.from_npz(file_name, layer_num),
             BertOutput.from_npz(file_name, layer_num))
+
+
+class BertEncoderSmartPad:
+    def __init__(self, layer: Sequence[BertLayerSmartPad]):
+        self.layer = layer
+
+    def __call__(self,
+                 hidden_states: AnyTensor,
+                 query_seq_len_list: Sequence,
+                 attention_mask: Optional[AnyTensor] = None,
+                 head_mask: Optional[AnyTensor] = None,
+                 output_attentions: Optional[bool] = False,
+                 output_hidden_states: Optional[bool] = False,
+                 return_type: Optional[ReturnType] = None):
+        all_hidden_states = ()
+        all_attentions = ()
+        hidden_states = try_convert(hidden_states)
+        for l in self.layer:
+            layer_outputs = l(hidden_states=hidden_states,
+                              query_seq_len_list=query_seq_len_list,
+                              attention_mask=attention_mask,
+                              output_attentions=output_attentions,
+                              return_type=ReturnType.turbo_transformers)
+            if output_hidden_states:
+                all_hidden_states = all_hidden_states + (
+                    convert_returns_as_type(hidden_states, ReturnType.TORCH), )
+
+            hidden_states = layer_outputs[0]
+            if output_attentions:
+                all_attentions = all_attentions + (layer_outputs[1], )
+
+        outputs = (convert_returns_as_type(hidden_states, return_type), )
+        # Add last layer
+        if output_hidden_states:
+            # TODO(jiaruifang)two return value use the same memory space, that is not supported in dlpack.
+            # So we do not append the last hidden_state at the buttom of all_hidden_states,
+            # User should use outputs[0] if necessary
+            # all_hidden_states = all_hidden_states + (convert_returns_as_type(hidden_states, ReturnType.TORCH),)
+            pass
+
+        if output_hidden_states:
+            outputs = outputs + (all_hidden_states, )
+        if output_attentions:
+            outputs = outputs + (all_attentions, )
+
+        return outputs
+
+    @staticmethod
+    def from_torch(encoder: TorchBertEncoder):
+        layer = [
+            BertLayerSmartPad.from_torch(bert_layer)
+            for bert_layer in encoder.layer
+        ]
+        return BertEncoderSmartPad(layer)
+
+    @staticmethod
+    def from_npz(file_name: str, num_hidden_layers: int,
+                 num_attention_heads: int):
+        layer = []
+        for i in range(num_hidden_layers):
+            layer.append(
+                BertLayerSmartPad.from_npz(file_name, i, num_attention_heads))
+        return BertEncoderSmartPad(layer)
+
+
+class BertModelNoPoolerSmartPad:
+    def __init__(self, embeddings: TorchBertEmbeddings,
+                 encoder: BertEncoderSmartPad):
+        self.embeddings = embeddings  #torch
+        self.encoder = encoder
+        self.prepare = cxx.PrepareBertMasks()
+
+    def __call__(
+            self,
+            inputs: Sequence[torch.Tensor],
+            query_seq_len_list: Sequence,
+            attention_masks: Optional[AnyTensor] = None,
+            token_type_ids: Optional[AnyTensor] = None,
+            position_ids: Optional[AnyTensor] = None,
+            head_mask: Optional[AnyTensor] = None,
+            inputs_embeds: Optional[AnyTensor] = None,
+            output_attentions: Optional[bool] = None,
+            output_hidden_states: Optional[bool] = None,
+            pooling_type: PoolingType = PoolingType.
+            FIRST,  #the following parameters are exclusive for turbo
+            return_type: Optional[ReturnType] = None):
+        # serially embed the inputs
+        # TODO position_ids and token_type_ids should be a list
+        Q_list = []
+        for input in inputs:
+            embedding_output = self.embeddings(input_ids=input,
+                                               position_ids=None,
+                                               token_type_ids=None)
+            Q_list.append(embedding_output)
+        # concat Qs together
+        for idx, Q in enumerate(Q_list):
+            if idx == 0:
+                self.concat_Q = Q
+            else:
+                self.concat_Q = torch.cat((self.concat_Q, Q), 1)
+        query_max_seq_len = max(query_seq_len_list)
+        batch_size = len(query_seq_len_list)
+        assert (batch_size != 0)
+        if attention_masks is None:
+            mask = torch.zeros(batch_size,
+                               1,
+                               query_max_seq_len,
+                               dtype=torch.float32,
+                               device=inputs[0].device)
+            for batch_idx in range(batch_size):
+                for query_seq_idx in range(query_seq_len_list[batch_idx],
+                                           query_max_seq_len):
+                    mask[batch_idx][0][query_seq_idx] = -1e9
+            mask = try_convert(mask)
+        else:
+            mask = try_convert(attention_masks)
+
+        encoder_outputs = self.encoder(
+            hidden_states=self.concat_Q,
+            query_seq_len_list=query_seq_len_list,
+            attention_mask=mask,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_type=return_type)
+        return encoder_outputs
+
+    @staticmethod
+    def from_torch(model: TorchBertModel,
+                   device: Optional[torch.device] = None):
+        if device is not None and 'cuda' in device.type and torch.cuda.is_available(
+        ):
+            model.to(device)
+        # embeddings = BertEmbeddings.from_torch(model.embeddings)
+        encoder = BertEncoderSmartPad.from_torch(model.encoder)
+        return BertModelNoPoolerSmartPad(model.embeddings, encoder)
+
+    @staticmethod
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
+        torch_model = TorchBertModel.from_pretrained(model_id_or_path)
+        model = BertModelNoPoolerSmartPad.from_torch(torch_model, device)
+        model.config = torch_model.config
+        model._torch_model = torch_model  # prevent destroy torch model.
+        return model
+
+    @staticmethod
+    def from_npz(file_name: str, config,
+                 device: Optional[torch.device] = None):
+        embeddings = BertEmbeddings.from_npz(file_name)
+        encoder = BertEncoderSmartPad.from_npz(file_name,
+                                               config.num_hidden_layers,
+                                               config.num_attention_heads)
+        return BertModelNoPoolerSmartPad(embeddings, encoder)
+
+
+class BertModelSmartPad:
+    def __init__(self, model: BertModelNoPoolerSmartPad, pooler: BertPooler,
+                 config: TorchBertConfig):
+        self.config = config
+        self.bertmodel_nopooler = model
+        self.pooler = pooler
+
+    def __call__(self,
+                 inputs: AnyTensor,
+                 query_seq_len_list: Sequence,
+                 attention_masks: Optional[AnyTensor] = None,
+                 token_type_ids: Optional[AnyTensor] = None,
+                 position_ids: Optional[AnyTensor] = None,
+                 head_mask: Optional[AnyTensor] = None,
+                 inputs_embeds: Optional[AnyTensor] = None,
+                 output_attentions: Optional[bool] = None,
+                 output_hidden_states: Optional[bool] = None,
+                 pooling_type: PoolingType = PoolingType.FIRST,
+                 pooler_output: Optional[AnyTensor] = None,
+                 return_type: Optional[ReturnType] = None):
+        encoder_outputs = self.bertmodel_nopooler(
+            inputs,
+            query_seq_len_list,
+            attention_masks,
+            token_type_ids,
+            position_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            pooling_type=pooling_type,
+            return_type=ReturnType.turbo_transformers)
+
+        sequence_output = encoder_outputs[0]
+        self.seq_pool = SequencePool(PoolingMap[pooling_type])
+        sequence_pool_output = self.seq_pool(
+            input_tensor=sequence_output,
+            return_type=ReturnType.turbo_transformers)
+        pooler_output = self.pooler(sequence_pool_output, return_type,
+                                    pooler_output)
+        return (
+            convert_returns_as_type(sequence_output, return_type),
+            pooler_output,
+        ) + encoder_outputs[1:]
+
+    @staticmethod
+    def from_torch(model: TorchBertModel,
+                   device: Optional[torch.device] = None):
+        # use_gpu = False
+        # if device is None:
+        #     device = model.device
+        # # we may need to move to GPU explicitly
+        # if 'cuda' in device.type and torch.cuda.is_available():
+        #     model.to(device)
+        #     if backend is None:
+        #         backend = "turbo"  # On GPU turbo is faster
+        #     use_gpu = True
+
+        # embeddings = BertEmbeddings.from_torch(model.embeddings)
+        encoder = BertEncoderSmartPad.from_torch(model.encoder)
+        bertmodel_nopooler = BertModelNoPoolerSmartPad(model.embeddings,
+                                                       encoder)
+        pooler = BertPooler.from_torch(model.pooler)
+        return BertModelSmartPad(bertmodel_nopooler, pooler, model.config)
+
+    @staticmethod
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
+        torch_model = TorchBertModel.from_pretrained(model_id_or_path)
+        model = BertModelSmartPad.from_torch(torch_model, device,
+                                             torch_model.config)
+        model.config = torch_model.config
+        model._torch_model = torch_model  # prevent destroy torch model.
+        return model
+
+    @staticmethod
+    def from_npz(file_name: str, config):
+        model = BertModelNoPoolerSmartPad.from_npz(file_name, config)
+        pooler = BertPooler.from_npz(file_name)
+        return BertModelSmartPad(model, pooler)
