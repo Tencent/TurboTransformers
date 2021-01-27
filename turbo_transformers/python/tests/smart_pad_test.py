@@ -101,7 +101,7 @@ def create_test(query_seq_len_list,
 
             # TODO(jiaruifang) test scenario where mask is not None.
             attention_mask = None
-            layer_cache_torch = set_layer_cache()
+            layer_cache_torch = None
 
             res_list = []
             for Q, K, V in zip(self.Q_list, self.K_list, self.V_list):
