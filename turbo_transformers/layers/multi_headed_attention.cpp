@@ -163,6 +163,7 @@ void MultiHeadedAttention::FuseGemm012AddBIasTranspose<false>(
   }  // else
 }
 
+
 // self attn
 template <>
 void MultiHeadedAttention::FuseGemm012AddBIasTranspose<true>(
