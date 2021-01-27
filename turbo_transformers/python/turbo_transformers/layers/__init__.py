@@ -22,7 +22,6 @@ from .modeling_gpt2 import GPT2Model
 from .modeling_distillbert import DistillBertAttention, DistrillFFN, DistrillTransformerBlock, DistrillTransformer, DistilBertModel
 from .modeling_smart_pad import MultiHeadedAttentionSmartPad, BertLayerSmartPad, BertEncoderSmartPad, BertModelSmartPad
 
-
 from .return_type import ReturnType
 
 from .bert_tensor_usage import get_bert_tensor_usage_record
@@ -39,6 +38,5 @@ __all__ = [
     'QBertEncoder', 'QBertModel', 'GPT2Model', 'DistillBertAttention',
     'DistrillFFN', 'DistrillTransformerBlock', 'DistrillTransformer',
     'DistilBertModel', 'MultiHeadedAttentionSmartPad', 'BertLayerSmartPad',
-    'BertEncoderSmartPad', 'BertModelSmartPad'
-    'DistilBertModel'
+    'BertEncoderSmartPad', 'BertModelSmartPad', 'DistilBertModel'
 ]
