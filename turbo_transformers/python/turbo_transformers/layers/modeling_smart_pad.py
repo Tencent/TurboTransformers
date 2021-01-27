@@ -24,14 +24,15 @@ from .utils import try_convert, convert2tt_tensor, create_empty_if_none, AnyTens
 
 from onmt.modules.multi_headed_attn import MultiHeadedAttention as OnmtMultiHeadedAttention
 from transformers.modeling_bert import BertAttention as TorchBertAttention
+from transformers.modeling_bert import BertLayer as TorchBertLayer
+from .modeling_bert import BertIntermediate
+from .modeling_bert import BertOutput
 
 from torch.nn import LayerNorm as TorchLayerNorm
 
 import numpy as np
 
-__all__ = [
-    'MultiHeadedAttentionSmartPad',
-]
+__all__ = ['MultiHeadedAttentionSmartPad', 'BertLayerSmartPad']
 
 
 class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
@@ -290,3 +291,55 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
             try_convert(
                 f[f'encoder.layer.{layer_num}.attention.output.LayerNorm.bias']
             ), num_attention_heads)
+
+
+class BertLayerSmartPad:
+    def __init__(self, attention: MultiHeadedAttentionSmartPad,
+                 intermediate: BertIntermediate, output: BertOutput):
+        self.attention = attention
+        self.intermediate = intermediate
+        self.output = output
+
+    def __call__(self,
+                 hidden_states: AnyTensor,
+                 query_seq_len_list: Sequence,
+                 attention_mask: Optional[AnyTensor] = None,
+                 head_mask: Optional[AnyTensor] = None,
+                 output_attentions=False,
+                 return_type: Optional[ReturnType] = None):
+        #self_attention_outputs[0] (1, sum_from_seq_len, hidden)
+        self_attention_outputs = self.attention(
+            hidden_states,
+            hidden_states,
+            hidden_states,
+            query_seq_len_list, [],
+            mask=attention_mask,
+            layer_cache=None,
+            attn_type="self",
+            post_layernorm=True,
+            return_type=ReturnType.turbo_transformers)
+        attention_output = self_attention_outputs[0]
+        outputs = self_attention_outputs[1:]
+
+        intermediate_output = self.intermediate(
+            attention_output, return_type=ReturnType.turbo_transformers)
+        layer_output = self.output(intermediate_output,
+                                   attention_output,
+                                   return_type=return_type)
+        outputs = (layer_output, ) + outputs
+        return outputs
+
+    @staticmethod
+    def from_torch(layer: TorchBertLayer):
+        return BertLayerSmartPad(
+            MultiHeadedAttentionSmartPad.from_torch(layer.attention),
+            BertIntermediate.from_torch(layer.intermediate),
+            BertOutput.from_torch(layer.output))
+
+    @staticmethod
+    def from_npz(file_name: str, layer_num: int, num_attention_heads: int):
+        f = np.load(file_name)
+        return BertLayerSmartPad(
+            BertAttention.from_npz(file_name, layer_num, num_attention_heads),
+            BertIntermediate.from_npz(file_name, layer_num),
+            BertOutput.from_npz(file_name, layer_num))

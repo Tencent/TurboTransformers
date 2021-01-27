@@ -175,6 +175,9 @@ void MultiHeadedAttentionSmartPad::FuseGemm012AddBIasTranspose<false>(
 }
 
 // self attn
+// Fused kernel works as Gemm 0/1/2 and addbias+transpose
+// The q_out, k_out, v_out are padded.
+// if self_keys and self_values are not None, they are concated with gemm 0/1/2
 template <>
 void MultiHeadedAttentionSmartPad::FuseGemm012AddBIasTranspose<true>(
     const core::Tensor& query_tensor, const core::Tensor& value_tensor,
@@ -209,6 +212,8 @@ void MultiHeadedAttentionSmartPad::FuseGemm012AddBIasTranspose<true>(
     kernels::MatMul(query_tensor, false, qkv_weight_, is_trans_weight, 1.0,
                     &tmp_qkv_out1, 0.0, "self/gemm012_fused");
   }
+
+  //! start Padding
   kernels::SplitAddBiasTransposeForScorePad(
       tmp_qkv_out1, qkv_bias_, *q_out, *k_out, *v_out, query_seq_len_list_,
       "self/SplitAddBiasTransposeForScore");

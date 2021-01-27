@@ -101,12 +101,7 @@ def create_test(query_seq_len_list,
 
             # TODO(jiaruifang) test scenario where mask is not None.
             attention_mask = None
-            layer_cache_torch = {
-                "memory_keys": None,
-                "memory_values": None,
-                "self_keys": None,
-                "self_values": None
-            }
+            layer_cache_torch = set_layer_cache()
 
             res_list = []
             for Q, K, V in zip(self.Q_list, self.K_list, self.V_list):
@@ -177,8 +172,8 @@ with open(fname, "w") as fh:
     fh.write(", torch, q_torch, turbo_transformers\n")
 
 for set_layer_cache in [False]:
-    for post_add_input in [False]:
-        for pre_layernorm in [False]:
+    for post_add_input in [False, True]:
+        for pre_layernorm in [False, True]:
             query_seq_len_list = [9, 7, 13]
             key_seq_len_list = [10, 19, 20]
             for type in ["context", "self"]:
