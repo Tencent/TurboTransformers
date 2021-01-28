@@ -469,7 +469,6 @@ class BertModelNoPoolerSmartPad:
                 for query_seq_idx in range(query_seq_len_list[batch_idx],
                                            query_max_seq_len):
                     mask[batch_idx][0][query_seq_idx] = -1e9
-            print(mask)
             mask = try_convert(mask)
         else:
             mask = try_convert(attention_masks)

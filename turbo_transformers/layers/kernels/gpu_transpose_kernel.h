@@ -56,14 +56,13 @@ void GPUTransposeForScorePad(const T* input_data, int64_t batch_size,
                              int64_t num_attention_heads, int64_t size_per_head,
                              cudaStream_t stream, T* output_data);
 
-// used for context attn.
+// used for context attn. forward transpose
 template <typename T>
-void GPUAddiBiasTransposeForScorePad(const T* input_data, const T* bias_data,
-                                     int64_t batch_size,
-                                     const std::vector<int64_t>& seq_len_list,
-                                     int64_t num_attention_heads,
-                                     int64_t size_per_head, cudaStream_t stream,
-                                     T* output_data);
+void GPUAddBiasTransposeForScorePad(const T* input_data, const T* bias_data,
+                                    const std::vector<int64_t>& seq_len_list,
+                                    int64_t num_attention_heads,
+                                    int64_t size_per_head, cudaStream_t stream,
+                                    T* output_data);
 
 }  // namespace kernels
 }  // namespace layers

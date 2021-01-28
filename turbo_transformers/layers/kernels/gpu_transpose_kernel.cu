@@ -120,9 +120,9 @@ static __global__ void split_add_bias_transpose_for_score_3output(
 }
 
 /*
- Output transpose results into three tensors with pad
- block dim size_per_head
- grid dim product of the rest dim
+ foward transpose (1, sum_seq_len, 3, head, hidden) -> 3 X (batch, head,
+ max_seq_len, hidden) Output transpose results into three tensors with pad block
+ dim size_per_head grid dim product of the rest dim
 */
 static __global__ void split_add_bias_transpose_for_score_3output_pad(
     const float* input_data, const float* bias_data, const int batch_size,
@@ -224,6 +224,7 @@ void GPUSplitAddBiasTransposeForScoreThreeOutputPad(
 
 namespace {
 
+// backward
 // batch, head, seq, size_per_head -> batch seq head size_per_head
 template <bool AddBias>
 __global__ void transpose(const float* src, const float* bias,
@@ -259,7 +260,7 @@ __global__ void transpose(const float* src, const float* bias,
   }
 }
 
-// batch, head, max_seq, size_per_head -> 1, sum_seq, head size_per_head
+// batch, head, max_seq, size_per_head -> 1, sum_seq, head, size_per_head
 __global__ void transpose_back_pad(const float* src, const int batch_size,
                                    const int max_seq_len,
                                    const int64_t* seq_len_list,
@@ -291,11 +292,10 @@ __global__ void transpose_back_pad(const float* src, const int batch_size,
 }
 
 // 1, sum_seq, head size_per_head -> batch, head, max_seq, size_per_head
-__global__ void transpose_forward_pad(const float* src, const int batch_size,
-                                      const int max_seq_len,
-                                      const int64_t* seq_len_list,
-                                      const int head_num,
-                                      const int size_per_head, float* dst) {
+__global__ void add_bias_transpose_forward_pad(
+    const float* src, const float* bias, const int batch_size,
+    const int max_seq_len, const int64_t* seq_len_list, const int head_num,
+    const int size_per_head, float* dst) {
   int tid = threadIdx.x;
   int idx = tid;
 
@@ -314,7 +314,8 @@ __global__ void transpose_forward_pad(const float* src, const int batch_size,
     } else {
       dst[blockIdx.x * size_per_head + idx] =
           src[(acc_seq_len + seq_id) * (head_num * size_per_head) +
-              head_id * size_per_head + idx];
+              head_id * size_per_head + idx] +
+          bias[head_id * size_per_head + idx];
     }
     idx += blockDim.x;
   }
@@ -374,13 +375,14 @@ void GPUTransposeForScorePad(const float* input_data, int64_t batch_size,
 // (1, sum_seq_len, head, hidden_size) -> (batch, head, max_seq_len,
 // hidden_size)
 template <>
-void GPUAddiBiasTransposeForScorePad(const float* input_data,
-                                     const float* bias_data, int64_t batch_size,
-                                     const std::vector<int64_t>& seq_len_list,
-                                     int64_t num_attention_heads,
-                                     int64_t size_per_head, cudaStream_t stream,
-                                     float* output_data) {
+void GPUAddBiasTransposeForScorePad(const float* input_data,
+                                    const float* bias_data,
+                                    const std::vector<int64_t>& seq_len_list,
+                                    int64_t num_attention_heads,
+                                    int64_t size_per_head, cudaStream_t stream,
+                                    float* output_data) {
   dim3 grid, block;
+  int64_t batch_size = seq_len_list.size();
   int64_t max_seq_length =
       *std::max_element(seq_len_list.begin(), seq_len_list.end());
   grid.x = batch_size * num_attention_heads * max_seq_length;
@@ -389,8 +391,8 @@ void GPUAddiBiasTransposeForScorePad(const float* input_data,
   cudaMalloc((void**)&(d_seq_len_list), batch_size * sizeof(int64_t));
   cudaMemcpy(d_seq_len_list, seq_len_list.data(), batch_size * sizeof(int64_t),
              cudaMemcpyHostToDevice);
-  transpose_forward_pad<<<grid, block, 0, stream>>>(
-      input_data, batch_size, max_seq_length, d_seq_len_list,
+  add_bias_transpose_forward_pad<<<grid, block, 0, stream>>>(
+      input_data, bias_data, batch_size, max_seq_length, d_seq_len_list,
       num_attention_heads, size_per_head, output_data);
   cudaFree(d_seq_len_list);
 }

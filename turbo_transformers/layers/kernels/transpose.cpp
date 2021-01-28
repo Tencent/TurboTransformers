@@ -302,6 +302,7 @@ void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
 #endif
 }
 
+// forward transpose
 // input_tensor: 4D array (batch_size, seq_length, 3, head_num * size_per_head)
 void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
                                    const core::Tensor& bias_tensor,
@@ -401,7 +402,7 @@ void SplitAddBiasTransposeForScore(const core::Tensor& input_tensor,
 #endif
 }
 
-// add bias and transpose(2,3)
+// add bias and transpose(2,3) used for forward
 void AddBiasTransposeForScorePad(const core::Tensor& input,
                                  const core::Tensor& bias, core::Tensor* output,
                                  const std::vector<int64_t>& seq_list,
@@ -414,8 +415,6 @@ void AddBiasTransposeForScorePad(const core::Tensor& input,
   TT_ENFORCE_EQ(bias.numel(), input.shape(2) * input.shape(3),
                 "bias shape %d should be %d x %d", bias.n_dim(), input.shape(2),
                 input.shape(3));
-  auto batch_size = input.shape(0);
-  auto sum_seq_len = input.shape(1);
   auto num_head = input.shape(2);
   auto hidden_size = input.shape(3);
   if (input.device_type() == kDLCPU && output->device_type() == kDLCPU) {
@@ -425,8 +424,8 @@ void AddBiasTransposeForScorePad(const core::Tensor& input,
   } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
-    GPUAddiBiasTransposeForScorePad<float>(
-        input.data<float>(), bias.data<float>(), batch_size, seq_list, num_head,
+    GPUAddBiasTransposeForScorePad<float>(
+        input.data<float>(), bias.data<float>(), seq_list, num_head,
         hidden_size, cuda_ctx.stream(), output->mutableData<float>());
 #endif
   } else {
@@ -603,7 +602,7 @@ void TransposeForScorePad(core::Tensor* output, const core::Tensor& input,
   } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
     auto batch_size = input.shape(0);
-    auto max_seq_len = input.shape(2);
+    // auto max_seq_len = input.shape(2);
     auto num_attention_heads = input.shape(1);
     auto width = input.shape(3);
     core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
