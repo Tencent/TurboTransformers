@@ -260,10 +260,11 @@ __global__ void transpose(const float* src, const float* bias,
 }
 
 // batch, head, max_seq, size_per_head -> 1, sum_seq, head size_per_head
-__global__ void transpose_pad(const float* src, const int batch_size,
-                              const int max_seq_len,
-                              const int64_t* seq_len_list, const int head_num,
-                              const int size_per_head, float* dst) {
+__global__ void transpose_back_pad(const float* src, const int batch_size,
+                                   const int max_seq_len,
+                                   const int64_t* seq_len_list,
+                                   const int head_num, const int size_per_head,
+                                   float* dst) {
   int tid = threadIdx.x;
   int idx = tid;
   //(batch, head, max_seq_len, size_per_head) -> (batch, seq_len, head,
@@ -285,6 +286,36 @@ __global__ void transpose_pad(const float* src, const int batch_size,
     // set the invalid elements to 0.
     dst[(acc_seq_len + seq_id) * (head_num * size_per_head) +
         head_id * size_per_head + idx] = src[blockIdx.x * size_per_head + idx];
+    idx += blockDim.x;
+  }
+}
+
+// 1, sum_seq, head size_per_head -> batch, head, max_seq, size_per_head
+__global__ void transpose_forward_pad(const float* src, const int batch_size,
+                                      const int max_seq_len,
+                                      const int64_t* seq_len_list,
+                                      const int head_num,
+                                      const int size_per_head, float* dst) {
+  int tid = threadIdx.x;
+  int idx = tid;
+
+  int batch_id = blockIdx.x / (head_num * max_seq_len);
+  int head_id = (blockIdx.x % (head_num * max_seq_len)) / max_seq_len;
+  int seq_id = blockIdx.x % max_seq_len;
+
+  int64_t acc_seq_len = 0;
+  for (size_t i = 0; i < batch_id; ++i) {
+    acc_seq_len += seq_len_list[i];
+  }
+  while (idx < size_per_head) {
+    // set the invalid elements to 0.
+    if (seq_id >= seq_len_list[batch_id]) {
+      dst[blockIdx.x * size_per_head + idx] = 0.f;
+    } else {
+      dst[blockIdx.x * size_per_head + idx] =
+          src[(acc_seq_len + seq_id) * (head_num * size_per_head) +
+              head_id * size_per_head + idx];
+    }
     idx += blockDim.x;
   }
 }
@@ -334,7 +365,31 @@ void GPUTransposeForScorePad(const float* input_data, int64_t batch_size,
   cudaMalloc((void**)&(d_seq_len_list), batch_size * sizeof(int64_t));
   cudaMemcpy(d_seq_len_list, seq_len_list.data(), batch_size * sizeof(int64_t),
              cudaMemcpyHostToDevice);
-  transpose_pad<<<grid, block, 0, stream>>>(
+  transpose_back_pad<<<grid, block, 0, stream>>>(
+      input_data, batch_size, max_seq_length, d_seq_len_list,
+      num_attention_heads, size_per_head, output_data);
+  cudaFree(d_seq_len_list);
+}
+
+// (1, sum_seq_len, head, hidden_size) -> (batch, head, max_seq_len,
+// hidden_size)
+template <>
+void GPUAddiBiasTransposeForScorePad(const float* input_data,
+                                     const float* bias_data, int64_t batch_size,
+                                     const std::vector<int64_t>& seq_len_list,
+                                     int64_t num_attention_heads,
+                                     int64_t size_per_head, cudaStream_t stream,
+                                     float* output_data) {
+  dim3 grid, block;
+  int64_t max_seq_length =
+      *std::max_element(seq_len_list.begin(), seq_len_list.end());
+  grid.x = batch_size * num_attention_heads * max_seq_length;
+  block.x = min(1024, int(size_per_head));
+  int64_t* d_seq_len_list;
+  cudaMalloc((void**)&(d_seq_len_list), batch_size * sizeof(int64_t));
+  cudaMemcpy(d_seq_len_list, seq_len_list.data(), batch_size * sizeof(int64_t),
+             cudaMemcpyHostToDevice);
+  transpose_forward_pad<<<grid, block, 0, stream>>>(
       input_data, batch_size, max_seq_length, d_seq_len_list,
       num_attention_heads, size_per_head, output_data);
   cudaFree(d_seq_len_list);

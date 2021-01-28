@@ -424,12 +424,10 @@ void AddBiasTransposeForScorePad(const core::Tensor& input,
                                     output->mutableData<float>(), seq_list);
   } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
-//    core::CUDADeviceContext& cuda_ctx =
-//    core::CUDADeviceContext::GetInstance(); GPUTransposeForScore<float,
-//    true>(input.data<float>(), bias.data<float>(),
-//                                      dim0, dim1, dim2, dim3,
-//                                      cuda_ctx.stream(),
-//                                      output->mutableData<float>());
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUAddiBiasTransposeForScorePad<float>(
+        input.data<float>(), bias.data<float>(), batch_size, seq_list, num_head,
+        hidden_size, cuda_ctx.stream(), output->mutableData<float>());
 #endif
   } else {
     TT_THROW("device_type is not supported");

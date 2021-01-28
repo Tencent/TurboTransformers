@@ -150,8 +150,8 @@ def create_test(query_seq_len_list,
                                               attn_type=attn_type)
 
             diff = pad_res - concat_res
-            print(diff)
-            print(torch.max(diff))
+            # print(diff)
+            # print(torch.max(diff))
             self.assertTrue(
                 numpy.allclose(pad_res.cpu(),
                                concat_res.cpu(),
@@ -160,9 +160,9 @@ def create_test(query_seq_len_list,
 
         def test_multi_headed_attention(self):
             self.check_torch_and_turbo(use_cuda=False)
-            if torch.cuda.is_available() and \
-                    turbo_transformers.config.is_compiled_with_cuda():
-                self.check_torch_and_turbo(use_cuda=True)
+            # if torch.cuda.is_available() and \
+            #         turbo_transformers.config.is_compiled_with_cuda():
+            #     self.check_torch_and_turbo(use_cuda=True)
 
     globals(
     )[f"TestMultiHeadedAttentionSmartPad_{attn_type}_{pre_layernorm}_{post_add_input}_{with_quantize_dynamic}_{set_layer_cache}"] = TestMultiHeadedAttentionSmartPad
