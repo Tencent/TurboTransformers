@@ -222,6 +222,7 @@ void AddBiasTransposeForScore(const core::Tensor& input,
 #endif
 }
 
+// deprecated!
 void SplitAddBiasTransposeForScore(core::Tensor* output_tensor,
                                    const core::Tensor& input_tensor,
                                    const core::Tensor& bias_tensor,
@@ -564,11 +565,10 @@ void SplitAddBiasTransposeForScorePad(const core::Tensor& input_tensor,
              input_tensor.device_type() == kDLGPU &&
              bias_tensor.device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
-//    core::CUDADeviceContext& cuda_ctx =
-//    core::CUDADeviceContext::GetInstance();
-//    GPUSplitAddBiasTransposeForScoreThreeOutput<float>(
-//        input, bias, batch_size, seq_length, weight_num, num_attention_heads,
-//        width, cuda_ctx.stream(), q_out, k_out, v_out);
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUSplitAddBiasTransposeForScoreThreeOutputPad<float>(
+        input, bias, seq_list, weight_num, num_attention_heads, width,
+        cuda_ctx.stream(), q_out, k_out, v_out);
 #endif
   } else {
     TT_THROW("device_type is not supported");
@@ -604,16 +604,14 @@ void TransposeForScorePad(core::Tensor* output, const core::Tensor& input,
                              input.shape(3), seq_list);
   } else if (input.device_type() == kDLGPU && output->device_type() == kDLGPU) {
 #ifdef TT_WITH_CUDA
-//    auto batch_size = output->shape(0);
-//    auto seq_length = output->shape(1);
-//    auto num_attention_heads = input.shape(1);
-//    auto width = input.shape(3);
-//    core::CUDADeviceContext& cuda_ctx =
-//    core::CUDADeviceContext::GetInstance(); const float* dummy = nullptr;
-//    GPUTransposeForScore<float, false>(
-//        input.data<float>(), dummy, batch_size, seq_length,
-//        num_attention_heads, width, cuda_ctx.stream(),
-//        output->mutableData<float>());
+    auto batch_size = input.shape(0);
+    auto max_seq_len = input.shape(2);
+    auto num_attention_heads = input.shape(1);
+    auto width = input.shape(3);
+    core::CUDADeviceContext& cuda_ctx = core::CUDADeviceContext::GetInstance();
+    GPUTransposeForScorePad<float>(
+        input.data<float>(), batch_size, seq_list, num_attention_heads, width,
+        cuda_ctx.stream(), output->mutableData<float>());
 #endif
   } else {
     TT_THROW("device_type is not supported");

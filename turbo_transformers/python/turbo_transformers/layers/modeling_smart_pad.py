@@ -447,8 +447,8 @@ class BertModelNoPoolerSmartPad:
         Q_list = []
         for input in inputs:
             embedding_output = self.embeddings(input_ids=input,
-                                               position_ids=None,
-                                               token_type_ids=None)
+                                               position_ids=position_ids,
+                                               token_type_ids=token_type_ids)
             Q_list.append(embedding_output)
         # concat Qs together
         for idx, Q in enumerate(Q_list):
@@ -469,6 +469,7 @@ class BertModelNoPoolerSmartPad:
                 for query_seq_idx in range(query_seq_len_list[batch_idx],
                                            query_max_seq_len):
                     mask[batch_idx][0][query_seq_idx] = -1e9
+            print(mask)
             mask = try_convert(mask)
         else:
             mask = try_convert(attention_masks)

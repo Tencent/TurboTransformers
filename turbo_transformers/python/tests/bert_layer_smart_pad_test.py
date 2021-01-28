@@ -227,18 +227,19 @@ def create_test(query_seq_len_list):
             num_iter = 2
             device = "GPU" if use_cuda else "CPU"
 
+            # for reference
             res_list = []
             for Q in self.input_list:
                 res, _ = self.torch_model(Q)
                 res_list.append(res)
 
-            # concat res_list together
             for i in range(len(res_list)):
                 if i == 0:
                     concat_res = res_list[i]
                 else:
                     concat_res = torch.cat((concat_res, res_list[i]), 1)
 
+            # turbo inference
             pad_result, _ = self.turbo_model(self.input_list,
                                              query_seq_len_list)
 
@@ -260,7 +261,7 @@ def create_test(query_seq_len_list):
             #         f"\"({batch_size},{seq_length:03})\", {torch_qps}, {turbo_qps}\n"
             #     )
 
-        def test_bert_layer(self):
+        def test_bert(self):
             self.check_bert_model(use_cuda=False)
             if torch.cuda.is_available() and \
                     turbo_transformers.config.is_compiled_with_cuda():

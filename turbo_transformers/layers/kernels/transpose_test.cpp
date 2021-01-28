@@ -131,6 +131,89 @@ TEST_CASE("transpose-bias-gpu-test") {
                                                       output_tensor_gpu));
       }
 }
+
+/***
+ * Test smart padding transpose
+ */
+TEST_CASE("split-add-bias-transpose-pad-gpu-test") {
+  const std::vector<int64_t> num_attention_heads_list{4, 6};
+  constexpr int64_t model_dim = 64;
+
+  std::vector<std::vector<int64_t>> seq_length_list_vec;
+  seq_length_list_vec.push_back({4, 7, 2});
+  // seq_length_list_vec.push_back({2, 6, 4, 7});
+
+  for (const auto& seq_length_list : seq_length_list_vec) {
+    int64_t sum_seq_len =
+        std::accumulate(seq_length_list.begin(), seq_length_list.end(), 0);
+    int64_t max_seq_len =
+        *std::max_element(seq_length_list.begin(), seq_length_list.end());
+    int64_t batch_size = seq_length_list.size();
+
+    for (auto num_attention_heads : num_attention_heads_list) {
+      core::Tensor input_tensor_gpu(nullptr);
+      core::Tensor bias_tensor_gpu(nullptr);
+
+      core::Tensor input_tensor_cpu(nullptr);
+      core::Tensor bias_tensor_cpu(nullptr);
+
+      std::tie(input_tensor_cpu, input_tensor_gpu) =
+          common::CreateAndFillRandomForCPUGPUTensors<float>(
+              {1, sum_seq_len, 3, num_attention_heads * model_dim});
+
+      std::tie(bias_tensor_cpu, bias_tensor_gpu) =
+          common::CreateAndFillRandomForCPUGPUTensors<float>(
+              {3, num_attention_heads, model_dim});
+      REQUIRE(common::CheckResultOfCPUAndGPU<float>(input_tensor_cpu,
+                                                    input_tensor_gpu));
+
+      // for reference
+      core::Tensor output_q_cpu(
+          turbo_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, num_attention_heads, max_seq_len * model_dim},
+              kDLCPU, 0));
+      core::Tensor output_k_cpu(
+          turbo_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, num_attention_heads, max_seq_len * model_dim},
+              kDLCPU, 0));
+      core::Tensor output_v_cpu(
+          turbo_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, num_attention_heads, max_seq_len * model_dim},
+              kDLCPU, 0));
+
+      SplitAddBiasTransposeForScorePad(input_tensor_cpu, bias_tensor_cpu,
+                                       output_q_cpu, output_k_cpu, output_v_cpu,
+                                       seq_length_list);
+
+      // real function call
+      core::Tensor output_q_gpu(
+          turbo_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, num_attention_heads, max_seq_len * model_dim},
+              kDLGPU, 0));
+      core::Tensor output_k_gpu(
+          turbo_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, num_attention_heads, max_seq_len * model_dim},
+              kDLGPU, 0));
+      core::Tensor output_v_gpu(
+          turbo_transformers::core::NewDLPackTensorT<float>(
+              {batch_size, num_attention_heads, max_seq_len * model_dim},
+              kDLGPU, 0));
+
+      SplitAddBiasTransposeForScorePad(input_tensor_gpu, bias_tensor_gpu,
+                                       output_q_gpu, output_k_gpu, output_v_gpu,
+                                       seq_length_list);
+
+      REQUIRE(
+          common::CheckResultOfCPUAndGPU<float>(output_q_cpu, output_q_gpu));
+      REQUIRE(
+          common::CheckResultOfCPUAndGPU<float>(output_k_cpu, output_k_gpu));
+      REQUIRE(
+          common::CheckResultOfCPUAndGPU<float>(output_v_cpu, output_v_gpu));
+      std::cerr << "test heads " << num_attention_heads << " finished "
+                << std::endl;
+    }
+  }
+}
 #endif
 
 template <typename T>
