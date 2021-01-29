@@ -35,11 +35,14 @@ def convert2tt_tensor(t):
     return cxx.Tensor.from_dlpack(dlpack.to_dlpack(t))
 
 
-def try_convert(t):
+def try_convert(t, device: Optional[torch.device] = None):
     if isinstance(t, torch.Tensor):
         return convert2tt_tensor(t)
     elif isinstance(t, np.ndarray):
-        return convert2tt_tensor(torch.from_numpy(t))
+        if device is not None:
+            return convert2tt_tensor(torch.from_numpy(t).to(device))
+        else:
+            return convert2tt_tensor(torch.from_numpy(t))
     else:
         return t
 

@@ -54,7 +54,7 @@ void GetBertTensorUsageRecord(
   auto to_seq_len = seq_len;
 
   auto Pooler_size = batch_size * hidden_size * item_bytes;
-
+  auto seq_pool_size = hidden_size * item_bytes;
   auto Q_size = batch_size * from_seq_len * hidden_size * item_bytes;
   auto K_size = batch_size * to_seq_len * hidden_size * item_bytes;
   auto V_size = K_size;
@@ -85,6 +85,7 @@ void GetBertTensorUsageRecord(
   // BertOutput/Reshape is the same as BERTEmbedding/Reshape
   //  ADDITEM("BertOutput/Reshape", start_idx + 0, start_idx + 9, Q_size);
   ADDITEM("BertPooler", start_idx + 9, start_idx + 10, Pooler_size);
+  ADDITEM("SeqPool", start_idx + 10, start_idx + 11, seq_pool_size);
 
   // sort descend order
   std::sort(
