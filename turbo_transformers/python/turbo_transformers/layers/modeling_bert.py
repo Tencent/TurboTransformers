@@ -614,8 +614,7 @@ class BertModel:
         return model
 
     @staticmethod
-    def from_npz(file_name: str, config,
-                 device: Optional[torch.device] = None):
-        model = BertModelNoPooler.from_npz(file_name, config, device)
-        pooler = BertPooler.from_npz(file_name, device)
+    def from_npz(file_name: str, config):
+        model = BertModelNoPooler.from_npz(file_name, config)
+        pooler = BertPooler.from_npz(file_name)
         return BertModel(model, pooler, backend="turbo")

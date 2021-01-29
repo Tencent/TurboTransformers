@@ -11,7 +11,7 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "turbo_transformers/layers/multi_headed_attention.h"
+#include "turbo_transformers/layers/multi_headed_attention_smart_batch.h"
 
 #include "loguru.hpp"
 #include "turbo_transformers/core/memory.h"
@@ -31,18 +31,19 @@ namespace layers {
 
 static std::mutex mutex_;
 
-
 // context attn
 template <>
-void MultiHeadedAttention::FuseGemm012AddBIasTranspose<false>(
+void MultiHeadedAttentionSmartBatch::FuseGemm012AddBIasTranspose<false>(
     const core::Tensor& query_tensor, const core::Tensor& value_tensor,
     const core::Tensor& key_tensor, bool pre_layernorm, bool is_trans_weight,
     std::unordered_map<std::string, core::Tensor*>& layer_cache,
     core::Tensor* q_out, core::Tensor* k_out, core::Tensor* v_out) const {
+  // no padded result tensors.
   core::Tensor temp_q_out(nullptr);
   core::Tensor temp_k_out(nullptr);
   core::Tensor temp_v_out(nullptr);
 
+  // padded result tensors.
   core::Tensor temp_q_out2(nullptr);
   core::Tensor temp_v_out2(nullptr);
   core::Tensor temp_k_out2(nullptr);
@@ -58,12 +59,12 @@ void MultiHeadedAttention::FuseGemm012AddBIasTranspose<false>(
                 "The query_tensor and key_tensor should have the same "
                 "device type and device id.");
 
-  temp_q_out.Reshape<float>({batch_size_, query_seq_length_, hidden_size_},
-                            devtype_, devid_, "context/gemm0/q_out1/Reshape");
+  temp_q_out.Reshape<float>({1, sum_query_seq_len_, hidden_size_}, devtype_,
+                            devid_, "context/gemm0/q_out1/Reshape");
   if (pre_layernorm) {
-    temp_q_out2.Reshape<float>({batch_size_, query_seq_length_, hidden_size_},
-                               devtype_, devid_,
-                               "context/gemm0/q_out2/Reshape");
+    temp_q_out2.Reshape<float>(
+        {batch_size_, max_query_seq_length_, hidden_size_}, devtype_, devid_,
+        "context/gemm0/q_out2/Reshape");
     core::Copy<float>(query_tensor, temp_q_out2,
                       "context/gemm0/prelayernorm/Copy");
     kernels::LayerNorm<float>(
@@ -78,16 +79,20 @@ void MultiHeadedAttention::FuseGemm012AddBIasTranspose<false>(
                     &temp_q_out, 0.0, "context/gemm0");
   }
   temp_q_out.Reshape<float>(
-      {batch_size_, query_seq_length_, num_attention_heads_, size_per_head_},
-      devtype_, devid_, "context/AddBiasTransposeForScore/q_out1/Reshape");
-  temp_q_out2.Reshape<float>(
-      {batch_size_, num_attention_heads_, query_seq_length_, size_per_head_},
-      devtype_, devid_, "context/AddBiasTransposeForScore/q_out2/Reshape");
-  kernels::AddBiasTransposeForScore(temp_q_out, q_bias_, &temp_q_out2,
-                                    "context/AddBiasTransposeForScore");
+      {1, sum_query_seq_len_, num_attention_heads_, size_per_head_}, devtype_,
+      devid_, "context/AddBiasTransposeForScore/q_out1/Reshape");
+  // padded transposed tensor
+  temp_q_out2.Reshape<float>({batch_size_, num_attention_heads_,
+                              max_query_seq_length_, size_per_head_},
+                             devtype_, devid_,
+                             "context/AddBiasTransposeForScore/q_out2/Reshape");
+  kernels::AddBiasTransposeForScorePad(temp_q_out, q_bias_, &temp_q_out2,
+                                       query_seq_len_list_,
+                                       "context/AddBiasTransposeForScore");
   *q_out = std::move(temp_q_out2);
 
   if (memory_not_none_) {
+    // K_out, v_out已经缓存在内存中，直接读取
     k_out->Reshape<float>(
         {batch_size_, num_attention_heads_,
          layer_cache["memory_values"]->shape(2), size_per_head_},
@@ -102,43 +107,46 @@ void MultiHeadedAttention::FuseGemm012AddBIasTranspose<false>(
     core::Copy<float>(*layer_cache["memory_keys"], *k_out,
                       "context/memory_keys/Copy");
   } else {
-    temp_v_out.Reshape<float>({batch_size_, key_seq_length_, hidden_size_},
-                              devtype_, devid_, "context/gemm1/v_out1/Reshape");
-    temp_k_out.Reshape<float>({batch_size_, key_seq_length_, hidden_size_},
-                              devtype_, devid_, "context/gemm2/k_out1/Reshape");
+    temp_v_out.Reshape<float>({1, sum_key_seq_len_, hidden_size_}, devtype_,
+                              devid_, "context/gemm1/v_out1/Reshape");
+    temp_k_out.Reshape<float>({1, sum_key_seq_len_, hidden_size_}, devtype_,
+                              devid_, "context/gemm2/k_out1/Reshape");
 
     kernels::MatMul(key_tensor, false, k_weight_, is_trans_weight, 1.0,
                     &temp_k_out, 0.0, "context/gemm1");
     kernels::MatMul(value_tensor, false, v_weight_, is_trans_weight, 1.0,
                     &temp_v_out, 0.0, "context/gemm2");
     temp_v_out.Reshape<float>(
-        {batch_size_, key_seq_length_, num_attention_heads_, size_per_head_},
-        devtype_, devid_, "context/gemm1/v_out1/Reshape");
+        {1, sum_key_seq_len_, num_attention_heads_, size_per_head_}, devtype_,
+        devid_, "context/gemm1/v_out1/Reshape");
     temp_k_out.Reshape<float>(
-        {batch_size_, key_seq_length_, num_attention_heads_, size_per_head_},
-        devtype_, devid_, "context/gemm2/k_out1/Reshape");
+        {1, sum_key_seq_len_, num_attention_heads_, size_per_head_}, devtype_,
+        devid_, "context/gemm2/k_out1/Reshape");
 
     if (layer_cache_not_none_) {
+      // TODO
       layer_cache["memory_keys"]->Reshape<float>(
-          {batch_size_, num_attention_heads_, key_seq_length_, size_per_head_},
+          {batch_size_, num_attention_heads_, max_key_seq_length_,
+           size_per_head_},
           devtype_, devid_, "context/keys/AddBiasTransposeForScore/Reshape");
       layer_cache["memory_values"]->Reshape<float>(
-          {batch_size_, num_attention_heads_, key_seq_length_, size_per_head_},
+          {batch_size_, num_attention_heads_, max_key_seq_length_,
+           size_per_head_},
           devtype_, devid_, "context/values/AddBiasTransposeForScore/reshape");
-      kernels::AddBiasTransposeForScore(
-          temp_v_out, v_bias_, layer_cache["memory_values"],
+      kernels::AddBiasTransposeForScorePad(
+          temp_v_out, v_bias_, layer_cache["memory_values"], key_seq_len_list_,
           "context/values/AddBiasTransposeForScore");
-      kernels::AddBiasTransposeForScore(
-          temp_k_out, k_bias_, layer_cache["memory_keys"],
+      kernels::AddBiasTransposeForScorePad(
+          temp_k_out, k_bias_, layer_cache["memory_keys"], key_seq_len_list_,
           "context/keys/AddBiasTransposeForScore");
 
       k_out->Reshape<float>(
-          {batch_size_, num_attention_heads_,
-           layer_cache["memory_values"]->shape(2), size_per_head_},
+          {1, sum_key_seq_len_, layer_cache["memory_values"]->shape(2),
+           size_per_head_},
           devtype_, devid_, "self/k/Reshape");
       v_out->Reshape<float>(
-          {batch_size_, num_attention_heads_,
-           layer_cache["memory_keys"]->shape(2), size_per_head_},
+          {1, sum_key_seq_len_, layer_cache["memory_keys"]->shape(2),
+           size_per_head_},
           devtype_, devid_, "self/v/Reshape");
 
       core::Copy<float>(*layer_cache["memory_values"], *v_out,
@@ -147,16 +155,18 @@ void MultiHeadedAttention::FuseGemm012AddBIasTranspose<false>(
                         "context/memory_keys/Copy");
     } else {
       temp_v_out2.Reshape<float>(
-          {batch_size_, num_attention_heads_, key_seq_length_, size_per_head_},
+          {batch_size_, num_attention_heads_, max_key_seq_length_,
+           size_per_head_},
           devtype_, devid_, "context/values/AddBiasTransposeForScore/Reshape");
       temp_k_out2.Reshape<float>(
-          {batch_size_, num_attention_heads_, key_seq_length_, size_per_head_},
+          {batch_size_, num_attention_heads_, max_key_seq_length_,
+           size_per_head_},
           devtype_, devid_, "context/keys/AddBiasTransposeForScore/Reshape");
-      kernels::AddBiasTransposeForScore(
-          temp_v_out, v_bias_, &temp_v_out2,
+      kernels::AddBiasTransposeForScorePad(
+          temp_v_out, v_bias_, &temp_v_out2, key_seq_len_list_,
           "context/values/AddBiasTransposeForScore");
-      kernels::AddBiasTransposeForScore(
-          temp_k_out, k_bias_, &temp_k_out2,
+      kernels::AddBiasTransposeForScorePad(
+          temp_k_out, k_bias_, &temp_k_out2, key_seq_len_list_,
           "context/keys/AddBiasTransposeForScore");
       *v_out = std::move(temp_v_out2);
       *k_out = std::move(temp_k_out2);
@@ -165,31 +175,34 @@ void MultiHeadedAttention::FuseGemm012AddBIasTranspose<false>(
 }
 
 // self attn
+// Fused kernel works as Gemm 0/1/2 and addbias+transpose
+// The q_out, k_out, v_out are padded.
+// if self_keys and self_values are not None, they are concated with gemm 0/1/2
 template <>
-void MultiHeadedAttention::FuseGemm012AddBIasTranspose<true>(
+void MultiHeadedAttentionSmartBatch::FuseGemm012AddBIasTranspose<true>(
     const core::Tensor& query_tensor, const core::Tensor& value_tensor,
     const core::Tensor& key_tensor, bool pre_layernorm, bool is_trans_weight,
     std::unordered_map<std::string, core::Tensor*>& layer_cache,
     core::Tensor* q_out, core::Tensor* k_out, core::Tensor* v_out) const {
   core::Tensor tmp_qkv_out1(nullptr);
 
-  q_out->Reshape<float>(
-      {batch_size_, num_attention_heads_, query_seq_length_, size_per_head_},
-      devtype_, devid_, "self/q/Reshape");
-  k_out->Reshape<float>(
-      {batch_size_, num_attention_heads_, query_seq_length_, size_per_head_},
-      devtype_, devid_, "self/k/Reshape");
-  v_out->Reshape<float>(
-      {batch_size_, num_attention_heads_, query_seq_length_, size_per_head_},
-      devtype_, devid_, "self/v/Reshape");
+  q_out->Reshape<float>({batch_size_, num_attention_heads_,
+                         max_query_seq_length_, size_per_head_},
+                        devtype_, devid_, "self/q/Reshape");
+  k_out->Reshape<float>({batch_size_, num_attention_heads_,
+                         max_query_seq_length_, size_per_head_},
+                        devtype_, devid_, "self/k/Reshape");
+  v_out->Reshape<float>({batch_size_, num_attention_heads_,
+                         max_query_seq_length_, size_per_head_},
+                        devtype_, devid_, "self/v/Reshape");
 
-  tmp_qkv_out1.Reshape<float>({batch_size_, query_seq_length_, 3, hidden_size_},
+  tmp_qkv_out1.Reshape<float>({1, sum_query_seq_len_, 3, hidden_size_},
                               devtype_, devid_, "self/qkv_out1/Reshape");
   if (pre_layernorm) {
     core::Tensor layernormed_query(nullptr);
-    layernormed_query.Reshape<float>(
-        {batch_size_, query_seq_length_, hidden_size_}, devtype_, devid_,
-        "self/layernorm/Reshape");
+    layernormed_query.Reshape<float>({1, sum_query_seq_len_, hidden_size_},
+                                     devtype_, devid_,
+                                     "self/layernorm/Reshape");
     core::Copy<float>(query_tensor, layernormed_query, "self/layernorm/Copy");
     kernels::LayerNorm<float>(layernorm_gamma_, layernorm_beta_,
                               &layernormed_query, 1e-6);
@@ -200,10 +213,10 @@ void MultiHeadedAttention::FuseGemm012AddBIasTranspose<true>(
                     &tmp_qkv_out1, 0.0, "self/gemm012_fused");
   }
 
-  kernels::SplitAddBiasTransposeForScore(tmp_qkv_out1, qkv_bias_, *q_out,
-                                         *k_out, *v_out,
-                                         "self/SplitAddBiasTransposeForScore");
-
+  //! start Padding
+  kernels::SplitAddBiasTransposeForScorePad(
+      tmp_qkv_out1, qkv_bias_, *q_out, *k_out, *v_out, query_seq_len_list_,
+      "self/SplitAddBiasTransposeForScore");
   if (self_keys_not_none_) {
     core::Tensor tmp_k_out(nullptr);
     kernels::Concat<float>(*layer_cache["self_keys"], *k_out, 2, &tmp_k_out,
@@ -231,7 +244,7 @@ void MultiHeadedAttention::FuseGemm012AddBIasTranspose<true>(
   }
 }
 
-void MultiHeadedAttention::SetContextFlag(
+void MultiHeadedAttentionSmartBatch::SetContextFlag(
     const std::unordered_map<std::string, core::Tensor*>& layer_cache) const {
   layer_cache_not_none_ = layer_cache.size() > 0 ? true : false;
   memory_keys_not_none_ = false;
@@ -257,42 +270,65 @@ void MultiHeadedAttention::SetContextFlag(
   memory_not_none_ = memory_values_not_none_ && memory_keys_not_none_;
 }
 
-void MultiHeadedAttention::operator()(
+void MultiHeadedAttentionSmartBatch::operator()(
     const core::Tensor& key_tensor, const core::Tensor& value_tensor,
     const core::Tensor& query_tensor, const core::Tensor& attention_mask,
     const std::string& attn_type, core::Tensor* output, core::Tensor* att_score,
     std::unordered_map<std::string, core::Tensor*> layer_cache,
+    const std::vector<int64_t>& query_seq_len_list,  // from_seq_len list
+    const std::vector<int64_t>& key_seq_len_list,    // key_seq_len list
     bool pre_layernorm, bool post_layernorm, bool post_add_input,
     bool is_trans_weight) const {
 #ifdef WITH_PERFTOOLS
   auto& profile_ctx = core::Profiler::GetInstance();
-  profile_ctx.start_profile("MultiHeadedAttention_" + attn_type,
+  profile_ctx.start_profile("MultiHeadedAttentionSmartBatch_" + attn_type,
                             query_tensor.device_type());
 #endif
   std::lock_guard<std::mutex> g(mutex_);
 
   TT_ENFORCE_EQ(key_tensor.n_dim(), 3,
-                "The key_tensor should be a matrix with shape [batch_size_, "
-                "key_seq_len, hidden_size_].");
+                "The key_tensor should be a matrix with shape [1, "
+                "sum_key_seq_len, hidden_size].");
   TT_ENFORCE_EQ(value_tensor.n_dim(), 3,
-                "The value_tensor should be a matrix with shape [batch_size_, "
-                "key_seq_len, hidden_size_].");
+                "The value_tensor should be a matrix with shape [1, "
+                "sum_value_seq_len, hidden_size].");
   TT_ENFORCE_EQ(query_tensor.n_dim(), 3,
-                "The query_tensors should be a matrix with shape [batch_size_, "
-                "query_seq_len, hidden_size_].");
+                "The query_tensors should be a matrix with shape [1, "
+                "sum_query_seq_len, hidden_size].");
   TT_ENFORCE_EQ(
       key_tensor.shape(0), value_tensor.shape(0),
       "The key_tensor and value_tensor should have the same hidden_size_");
 
   EnforceShapeAndType();
-  batch_size_ = query_tensor.shape(0);
-  query_seq_length_ =
-      query_tensor.shape(1);  // query_seq_length_ = from_seq_Len
+
+  query_seq_len_list_.clear();
+  key_seq_len_list_.clear();
+  std::copy(query_seq_len_list.begin(), query_seq_len_list.end(),
+            std::back_inserter(query_seq_len_list_));
+  std::copy(key_seq_len_list.begin(), key_seq_len_list.end(),
+            std::back_inserter(key_seq_len_list_));
+
+  sum_query_seq_len_ =
+      std::accumulate(query_seq_len_list.begin(), query_seq_len_list.end(), 0);
+  batch_size_ = query_seq_len_list.size();
+  max_query_seq_length_ =
+      *std::max_element(query_seq_len_list.begin(), query_seq_len_list.end());
+  // max_query_seq_length_ = from_seq_Len
 
   if (attn_type == "context") {
-    key_seq_length_ = key_tensor.shape(1);
+    TT_ENFORCE_EQ(key_tensor.shape(0), 1,
+                  "The key_tensor shape 0 should alway be 1.");
+
+    sum_key_seq_len_ =
+        std::accumulate(key_seq_len_list.begin(), key_seq_len_list.end(), 0);
+    TT_ENFORCE_EQ(key_tensor.shape(1), sum_key_seq_len_,
+                  "The key_tensor shape 1 should be the sum of seq_len_list.");
+
+    max_key_seq_length_ =
+        *std::max_element(key_seq_len_list.begin(), key_seq_len_list.end());
   } else if (attn_type == "self") {
-    key_seq_length_ = query_seq_length_;
+    // self context from_seq_len (query) is the same as to_seq_len (key/value)
+    max_key_seq_length_ = max_query_seq_length_;
   } else {
     TT_THROW("attn_type should be context or self.");
   }
@@ -305,6 +341,7 @@ void MultiHeadedAttention::operator()(
   SetContextFlag(layer_cache);
 
   // TODO we should caching allocated intermediate tensor.
+  //! start padding
   core::Tensor q_out{nullptr}, k_out{nullptr}, v_out{nullptr};
   if (attn_type == "context") {
     FuseGemm012AddBIasTranspose<false>(query_tensor, value_tensor, key_tensor,
@@ -315,14 +352,16 @@ void MultiHeadedAttention::operator()(
                                       pre_layernorm, is_trans_weight,
                                       layer_cache, &q_out, &k_out, &v_out);
   } else {
-    TT_THROW("%s is not support in MultiHeadedAttention\n", attn_type);
+    TT_THROW("%s is not support in MultiHeadedAttentionSmartBatch\n",
+             attn_type);
   }  // if (attn_type == "context")
+
   // 2) Calculate and scale scores.
-  key_seq_length_ = k_out.shape(
+  max_key_seq_length_ = k_out.shape(
       2);  // update for self type attn, since it will concat with cache.
   att_score->Reshape<float>(
-      {batch_size_, num_attention_heads_, query_seq_length_,
-       key_seq_length_},  // query_seq_length_ = from_seq_Len
+      {batch_size_, num_attention_heads_, max_query_seq_length_,
+       max_key_seq_length_},  // max_query_seq_length_ = from_seq_Len
       devtype_, devid_, "batch_gemm3/Reshape");
 
   const float scaler = 1.0f / std::sqrt(static_cast<float>(size_per_head_));
@@ -338,9 +377,9 @@ void MultiHeadedAttention::operator()(
 
   // context_original = torch.matmul(drop_attn, value)
   core::Tensor context_layer(nullptr);
-  context_layer.Reshape<float>(
-      {batch_size_, num_attention_heads_, query_seq_length_, size_per_head_},
-      devtype_, devid_, "ApplyMaskAndSoftmax/Reshape");
+  context_layer.Reshape<float>({batch_size_, num_attention_heads_,
+                                max_query_seq_length_, size_per_head_},
+                               devtype_, devid_, "ApplyMaskAndSoftmax/Reshape");
 
   kernels::BatchMatMul(*att_score, false, v_out, false, 1.0, &context_layer,
                        0.0, "batch_gemm4");
@@ -348,13 +387,14 @@ void MultiHeadedAttention::operator()(
   core::Tensor self_attr_out(nullptr);
 
   self_attr_out.Reshape<float>(
-      {batch_size_, query_seq_length_, num_attention_heads_ * size_per_head_},
-      devtype_, devid_, "batch_gemm4/Reshape");
-  kernels::TransposeForScore(&self_attr_out, context_layer,
-                             "TransposeForScore");
+      {1, sum_query_seq_len_, num_attention_heads_ * size_per_head_}, devtype_,
+      devid_, "batch_gemm4/Reshape");
+  kernels::TransposeForScorePad(&self_attr_out, context_layer,
+                                query_seq_len_list, "TransposeForScore");
+  //! end padding
   // output = self.final_linear(context)
-  output->Reshape<float>({batch_size_, query_seq_length_, hidden_size_},
-                         devtype_, devid_, "gemm5/Reshape");
+  output->Reshape<float>({1, sum_query_seq_len_, hidden_size_}, devtype_,
+                         devid_, "gemm5/Reshape");
 
   kernels::MatMul(self_attr_out, false, dense_weight_, is_trans_weight, 1.0,
                   output, 0.0, "gemm5");
@@ -375,11 +415,12 @@ void MultiHeadedAttention::operator()(
     kernels::AddInputBias(*output, query_tensor, dense_bias_, output);
   }
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("MultiHeadedAttention_" + attn_type, devtype_);
+  profile_ctx.end_profile("MultiHeadedAttentionSmartBatch_" + attn_type,
+                          devtype_);
 #endif
 }
 
-void MultiHeadedAttention::EnforceShapeAndType() const {
+void MultiHeadedAttentionSmartBatch::EnforceShapeAndType() const {
   if (loguru::current_verbosity_cutoff() >= 3) {
     std::ostringstream os;
     os << ">>>>>>>>>>>> qkv_weight_ <<<<<<<<<<<<" << std::endl;
