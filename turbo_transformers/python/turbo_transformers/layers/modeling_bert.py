@@ -170,7 +170,8 @@ class BertAttention(cxx.BertAttention):
               self).__call__(input_tensor, attention_mask, context_layer,
                              attn_probs, is_trans_weight)
         outputs = (convert_returns_as_type(context_layer, return_type),
-                   convert_returns_as_type(attn_probs, ReturnType.TORCH)
+                   convert_returns_as_type(attn_probs,
+                                           ReturnType.turbo_transformers)
                    ) if output_attentions else (convert_returns_as_type(
                        context_layer, return_type), )
         return outputs
@@ -297,7 +298,8 @@ class BertEncoder:
                               return_type=ReturnType.turbo_transformers)
             if output_hidden_states:
                 all_hidden_states = all_hidden_states + (
-                    convert_returns_as_type(hidden_states, ReturnType.TORCH), )
+                    convert_returns_as_type(hidden_states,
+                                            ReturnType.turbo_transformers), )
 
             hidden_states = layer_outputs[0]
             if output_attentions:
