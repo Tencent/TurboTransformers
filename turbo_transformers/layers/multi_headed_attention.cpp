@@ -31,6 +31,7 @@ namespace layers {
 
 static std::mutex mutex_;
 
+
 // context attn
 template <>
 void MultiHeadedAttention::FuseGemm012AddBIasTranspose<false>(
@@ -162,7 +163,6 @@ void MultiHeadedAttention::FuseGemm012AddBIasTranspose<false>(
     }
   }  // else
 }
-
 
 // self attn
 template <>

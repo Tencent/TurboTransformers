@@ -100,7 +100,7 @@ def trunked_greedy_by_size_offset_calculation(usage_recorders,
     # descend
     usage_recorders = sorted(usage_recorders,
                              key=lambda tup: tup[3],
-                             reverse=True)
+                             reverse=False)
     assigned_offset = {}
     assigned_trunk = {}
     new_allocate_size = 0
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     #     print(tur[4])
     #     trunked_greedy_by_size_offset_calculation(tur, True)
     #     print("\n\n")
-    tur = get_bert_tensor_usage_record(4, 500, 12)
+    tur = get_bert_tensor_usage_record(1, 25, 12)
     print(tur)
     for t in tur:
         print("{\"" + f"{t[0]}" + "\",", f"{t[1]}, {t[2]}, {t[3]}", "},")

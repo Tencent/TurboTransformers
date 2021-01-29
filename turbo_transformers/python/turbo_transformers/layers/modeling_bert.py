@@ -65,14 +65,14 @@ class BertEmbeddings(cxx.BERTEmbedding):
                               params['LayerNorm.bias'])
 
     @staticmethod
-    def from_npz(file_name: str):
+    def from_npz(file_name: str, device: Optional[torch.device] = None):
         f = np.load(file_name)
         return BertEmbeddings(
-            try_convert(f['embeddings.word_embeddings.weight']),
-            try_convert(f['embeddings.position_embeddings.weight']),
-            try_convert(f['embeddings.token_type_embeddings.weight']),
-            try_convert(f['embeddings.LayerNorm.weight']),
-            try_convert(f['embeddings.LayerNorm.bias']))
+            try_convert(f['embeddings.word_embeddings.weight'], device),
+            try_convert(f['embeddings.position_embeddings.weight'], device),
+            try_convert(f['embeddings.token_type_embeddings.weight'], device),
+            try_convert(f['embeddings.LayerNorm.weight'], device),
+            try_convert(f['embeddings.LayerNorm.bias'], device))
 
 
 class BertIntermediate(cxx.BertIntermediate):
@@ -95,13 +95,17 @@ class BertIntermediate(cxx.BertIntermediate):
             convert2tt_tensor(intermediate_params['dense.bias']))
 
     @staticmethod
-    def from_npz(file_name: str, layer_num: int):
+    def from_npz(file_name: str,
+                 layer_num: int,
+                 device: Optional[torch.device] = None):
         f = np.load(file_name)
         return BertIntermediate(
             try_convert(
-                f[f'encoder.layer.{layer_num}.intermediate.dense.weight']),
+                f[f'encoder.layer.{layer_num}.intermediate.dense.weight'],
+                device),
             try_convert(
-                f[f'encoder.layer.{layer_num}.intermediate.dense.bias']))
+                f[f'encoder.layer.{layer_num}.intermediate.dense.bias'],
+                device))
 
 
 class BertOutput(cxx.BertOutput):
@@ -127,14 +131,20 @@ class BertOutput(cxx.BertOutput):
                           convert2tt_tensor(params["LayerNorm.bias"]))
 
     @staticmethod
-    def from_npz(file_name: str, layer_num: int):
+    def from_npz(file_name: str,
+                 layer_num: int,
+                 device: Optional[torch.device] = None):
         f = np.load(file_name)
         return BertOutput(
-            try_convert(f[f'encoder.layer.{layer_num}.output.dense.weight']),
-            try_convert(f[f'encoder.layer.{layer_num}.output.dense.bias']),
+            try_convert(f[f'encoder.layer.{layer_num}.output.dense.weight'],
+                        device),
+            try_convert(f[f'encoder.layer.{layer_num}.output.dense.bias'],
+                        device),
             try_convert(
-                f[f'encoder.layer.{layer_num}.output.LayerNorm.weight']),
-            try_convert(f[f'encoder.layer.{layer_num}.output.LayerNorm.bias']))
+                f[f'encoder.layer.{layer_num}.output.LayerNorm.weight'],
+                device),
+            try_convert(f[f'encoder.layer.{layer_num}.output.LayerNorm.bias'],
+                        device))
 
 
 class BertAttention(cxx.BertAttention):
@@ -193,21 +203,28 @@ class BertAttention(cxx.BertAttention):
             return att
 
     @staticmethod
-    def from_npz(file_name: str, layer_num: int, num_attention_heads: int):
+    def from_npz(file_name: str,
+                 layer_num: int,
+                 num_attention_heads: int,
+                 device: Optional[torch.device] = None):
         f = np.load(file_name)
         return BertAttention(
-            try_convert(f[f'encoder.layer.{layer_num}.attention.qkv.weight']),
-            try_convert(f[f'encoder.layer.{layer_num}.attention.qkv.bias']),
+            try_convert(f[f'encoder.layer.{layer_num}.attention.qkv.weight'],
+                        device),
+            try_convert(f[f'encoder.layer.{layer_num}.attention.qkv.bias'],
+                        device),
             try_convert(
-                f[f'encoder.layer.{layer_num}.attention.output.dense.weight']),
+                f[f'encoder.layer.{layer_num}.attention.output.dense.weight'],
+                device),
             try_convert(
-                f[f'encoder.layer.{layer_num}.attention.output.dense.bias']),
-            try_convert(f[
-                f'encoder.layer.{layer_num}.attention.output.LayerNorm.weight']
-                        ),
+                f[f'encoder.layer.{layer_num}.attention.output.dense.bias'],
+                device),
             try_convert(
-                f[f'encoder.layer.{layer_num}.attention.output.LayerNorm.bias']
-            ), num_attention_heads)
+                f[f'encoder.layer.{layer_num}.attention.output.LayerNorm.weight'],
+                device),
+            try_convert(
+                f[f'encoder.layer.{layer_num}.attention.output.LayerNorm.bias'],
+                device), num_attention_heads)
 
 
 class BertLayer:
@@ -247,12 +264,16 @@ class BertLayer:
                          BertOutput.from_torch(layer.output))
 
     @staticmethod
-    def from_npz(file_name: str, layer_num: int, num_attention_heads: int):
+    def from_npz(file_name: str,
+                 layer_num: int,
+                 num_attention_heads: int,
+                 device: Optional[torch.device] = None):
         f = np.load(file_name)
         return BertLayer(
-            BertAttention.from_npz(file_name, layer_num, num_attention_heads),
-            BertIntermediate.from_npz(file_name, layer_num),
-            BertOutput.from_npz(file_name, layer_num))
+            BertAttention.from_npz(file_name, layer_num, num_attention_heads,
+                                   device),
+            BertIntermediate.from_npz(file_name, layer_num, device),
+            BertOutput.from_npz(file_name, layer_num, device))
 
 
 class BertEncoder:
@@ -306,11 +327,14 @@ class BertEncoder:
         return BertEncoder(layer)
 
     @staticmethod
-    def from_npz(file_name: str, num_hidden_layers: int,
-                 num_attention_heads: int):
+    def from_npz(file_name: str,
+                 num_hidden_layers: int,
+                 num_attention_heads: int,
+                 device: Optional[torch.device] = None):
         layer = []
         for i in range(num_hidden_layers):
-            layer.append(BertLayer.from_npz(file_name, i, num_attention_heads))
+            layer.append(
+                BertLayer.from_npz(file_name, i, num_attention_heads, device))
         return BertEncoder(layer)
 
 
@@ -361,8 +385,8 @@ class BertPooler(cxx.BertPooler):
     @staticmethod
     def from_npz(file_name: str, device: Optional[torch.device] = None):
         f = np.load(file_name)
-        return BertPooler(try_convert(f['pooler.dense.weight']),
-                          try_convert(f['pooler.dense.bias']))
+        return BertPooler(try_convert(f['pooler.dense.weight'], device),
+                          try_convert(f['pooler.dense.bias'], device))
 
 
 class BertModelNoPooler:
@@ -429,9 +453,9 @@ class BertModelNoPooler:
     @staticmethod
     def from_npz(file_name: str, config,
                  device: Optional[torch.device] = None):
-        embeddings = BertEmbeddings.from_npz(file_name)
+        embeddings = BertEmbeddings.from_npz(file_name, device)
         encoder = BertEncoder.from_npz(file_name, config.num_hidden_layers,
-                                       config.num_attention_heads)
+                                       config.num_attention_heads, device)
         return BertModelNoPooler(embeddings, encoder)
 
 
@@ -558,6 +582,9 @@ class BertModel:
                     input_names=[
                         'input_ids', 'attention_mask', 'token_type_ids'
                     ],
+                    opset_version=11,  # the ONNX version to export the model to
+                    do_constant_folding=
+                    True,  # whether to execute constant folding for optimization
                     output_names=['output'],
                     dynamic_axes={
                         'input_ids': [0, 1],

@@ -22,6 +22,7 @@ from .modeling_gpt2 import GPT2Model
 from .modeling_distillbert import DistillBertAttention, DistrillFFN, DistrillTransformerBlock, DistrillTransformer, DistilBertModel
 from .modeling_smart_pad import MultiHeadedAttentionSmartBatch, BertLayerSmartBatch, BertEncoderSmartBatch, BertModelSmartBatch
 
+
 from .return_type import ReturnType
 
 from .bert_tensor_usage import get_bert_tensor_usage_record
@@ -39,4 +40,5 @@ __all__ = [
     'DistrillFFN', 'DistrillTransformerBlock', 'DistrillTransformer',
     'DistilBertModel', 'MultiHeadedAttentionSmartBatch', 'BertLayerSmartBatch',
     'BertEncoderSmartBatch', 'BertModelSmartBatch', 'DistilBertModel'
+    'DistilBertModel'
 ]
