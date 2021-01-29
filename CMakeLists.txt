@@ -22,7 +22,9 @@ set(CMAKE_CXX_FLAGS "-Wall")
 set(CMAKE_C_FLAGS "-Wall")
 
 
-set(TURBO_TRANSFORMERS_VERSION 0.5.1)
+
+set(TURBO_TRANSFORMERS_VERSION 0.5.2)
+
 
 
 option(WITH_PROFILER  "Compile with profiler"   OFF)

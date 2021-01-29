@@ -168,7 +168,6 @@ class MultiHeadedAttention(cxx.MultiHeadedAttention):
                   layer_norm: TorchLayerNorm,
                   is_trans_weight: bool = False):
         ln_params = {k: v for k, v in layer_norm.named_parameters()}
-        attn_params = {k: v for k, v in multi_headed_attn.named_parameters()}
         with torch.no_grad():
             att = MultiHeadedAttention(
                 *(MultiHeadedAttention.pack_parameter(multi_headed_attn,
