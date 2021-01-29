@@ -3,19 +3,18 @@
 
 <center>Make transformers serving fast by adding a turbo to your inference engine!</center>
 
-The WeChat AI pridely open-sourced TurboTransformers with the following characteristics.
+The WeChat AI open-sourced TurboTransformers with the following characteristics.
 
 1. Supporting both Transformers Encoder and Decoder.
-2. Supports Variable Length inputs. No time-consuming offline tuning is required. You can change the batch size and the sequence length of request at real-time.
-3. Excellent CPU / GPU performance. Backend is implemented with hand-crafted OpenMP and CUDA code and involved with some inovative tricks.
-4. Perfect Usibility. Supports python and C++ APIs.
+2. Supporting real-time variable length inputs. No time-consuming offline tuning is required. You can change the batch size and the sequence length of the request in real-time.
+3. Excellent CPU / GPU performance. Backend is implemented with hand-crafted OpenMP and CUDA code and involved with some innovative tricks.
+4. Perfect Usability. Supports python and C++ APIs. It can be used as a plugin for PyTorch. The end-to-end acceleration is obtained by adding a few lines of python code.
 5. Smart Batching. Minimize zero-padding overhead for a batch of requests of different lengths.
-6. Memory Efficiency. A new model-aware allocator ensure small memory usage in variable-length request serving.
-It can be used as a plugin for pytorch. Tthe end-to-end acceleration is obtained by adding a few lines of python code.
+6. Memory Efficiency. A new model-aware allocator ensures a small memory footprint during the variable-length request serving.
 
 TurboTransformers has been applied to multiple online BERT service scenarios in Tencent.
 For example, It brings 1.88x acceleration to the WeChat FAQ service, 2.11x acceleration to the public cloud sentiment analysis service, and 13.6x acceleration to the QQ recommendation system.
-Moreover, it have already been applied to build services such as Chitchating, Searching and Recommandation.
+Moreover, it has already been applied to build services such as Chitchating, Searching, and Recommendation.
 
 The following table is a comparison of TurboTransformers and related work.
 
@@ -152,9 +151,9 @@ TurboTransformers provides C++ / python API interfaces. We hope to do our best t
 
 
 #### Pretrained Model Loading
-The first step in using turbo is to load a pre-trained model. We provide a way to load pytorch and tensorflow pre-trained models in [huggingface/transformers](https://github.com/huggingface).
+The first step in using turbo is to load a pre-trained model. We provide a way to load PyTorch and TensorFlow pre-trained models in [huggingface/transformers](https://github.com/huggingface).
 The specific conversion method is to use the corresponding script in ./tools to convert the pre-trained model into an npz format file, and turbo uses the C ++ or python interface to load the npz format model.
-In particular, we consider that most of the pre-trained models are in pytorch format and used with python. We provide a shortcut for calling directly in python for the pytorch saved model.
+In particular, we consider that most of the pre-trained models are in PyTorch format and used with python. We provide a shortcut for calling directly in python for the PyTorch saved model.
 
 <img width="700" height="150" src="./images/pretrainmodelload.jpg" alt="pretrained">
 
@@ -172,14 +171,14 @@ Users can link turbo-transformers to your code through add_subdirectory.
 Usually, feeding a batch of requests of different lengths into a bert model for inference,
 zero-padding is required to make all the requests have the same length.
 For example, serving requests list of lengths (100, 10, 50), you need a preprocessing stage to pad them as lengths (100, 100, 100).
-In this way, 90% and 50% of the last two sequence's computation are wasted.
+In this way, 90% and 50% of the last two sequence computation are wasted.
 As indicated in [Effective Transformer](https://github.com/bytedance/effective_transformer),
 it is not necessary to pad the input tensors.
-As an alternative, you just have to pad the batch-gemm operations inside multi-headed attentions,
-which accouts to a small propation of the entire BERT computation.
-Therefore most of gemm operations are processed without zero-padding.
+As an alternative, you have to pad the batch-gemm operations inside multi-headed attentions,
+which accounts for a small proportion of the entire BERT computation.
+Therefore most gemm operations are processed without zero-padding.
 Turbo provides a model as `BertModelSmartBatch` including a smart batching technique.
-The example is presented in [./example/python/bert_smart_pad.py](./example/python/bert_smart_pad.py "smart_batching").
+The example is presented in [./example/python/bert_smart_batch.py](./example/python/bert_smart_batch.py "smart_batching").
 
 ## How to contribute new models
 [How to know hotspots of your code?](./docs/profiler.md)
