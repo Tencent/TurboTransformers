@@ -84,8 +84,8 @@ static void AddBiasTransposeForScorePadImpl(
       auto* dst = output +
                   batch_idx * (num_attention_heads * max_seq_length * width) +
                   head_idx * max_seq_length * width + seq_idx * width;
-#pragma omp simd
       if (seq_idx >= seq_len_list[batch_idx]) {
+#pragma omp simd
         for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
           dst[width_idx] = 0.f;
         }
