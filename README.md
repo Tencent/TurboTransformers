@@ -156,7 +156,7 @@ In particular, we consider that most of the pre-trained models are in pytorch fo
 
 <img width="700" height="150" src="./images/pretrainmodelload.jpg" alt="pretrained">
 
-##### Inference
+#### APIs
 ###### python APIs
 Refer to examples of supported models in [./example/python](./example/python "python").
 [TurboNLP/Translate-Demo](https://github.com/TurboNLP/Translate-Demo "translate") shows a demo of applying TurboTransformer in Translatetion Task.
