@@ -1,11 +1,12 @@
-## turbo_transformers: a fast and user-friendly runtime for transformer inference on CPU and GPU
+## TurboTransformers: a fast and user-friendly runtime for transformer inference on CPU and GPU
 ![logo](./images/logo.jpeg)
 
 <center>Make transformers serving fast by adding a turbo to your inference engine!</center>
 
-Transformer is the most critical alogrithm innovation in the NLP field in recent years. It brings higher model accuracy while introduces more calculations. The efficient deployment of online Transformer-based services faces enormous challenges. In order to make the costly Transformer online service more efficient, the WeChat AI open-sourced a Transformer inference acceleration tool called TurboTransformers, which has the following characteristics.
+The WeChat AI pridely open-sourced TurboTransformers with the following characteristics.
+
 1. Supporting both Transformers Encoder and Decoder.
-3. Supports Variable Length inputs. No time-consuming offline tuning is required. You can change batch size and sequence length at real-time.
+2. Supports Variable Length inputs. No time-consuming offline tuning is required. You can change the batch size and the sequence length of request at real-time.
 3. Excellent CPU / GPU performance.
 4. Perfect Usibility. TurboTransformers supports python and C++ APIs.
 5. Smart Batching. Minimize zero-padding overhead for a batch of requests of different lengths.
