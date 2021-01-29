@@ -20,7 +20,7 @@ from .modeling_decoder import MultiHeadedAttention, PositionwiseFeedForward, Tra
 from .modeling_roberta import RobertaModel
 from .modeling_gpt2 import GPT2Model
 from .modeling_distillbert import DistillBertAttention, DistrillFFN, DistrillTransformerBlock, DistrillTransformer, DistilBertModel
-from .modeling_smart_pad import MultiHeadedAttentionSmartPad, BertLayerSmartPad, BertEncoderSmartPad, BertModelSmartPad
+from .modeling_smart_pad import MultiHeadedAttentionSmartBatch, BertLayerSmartBatch, BertEncoderSmartBatch, BertModelSmartBatch
 
 from .return_type import ReturnType
 
@@ -37,6 +37,6 @@ __all__ = [
     'RobertaModel', 'QBertIntermediate', 'QBertOutput', 'QBertLayer',
     'QBertEncoder', 'QBertModel', 'GPT2Model', 'DistillBertAttention',
     'DistrillFFN', 'DistrillTransformerBlock', 'DistrillTransformer',
-    'DistilBertModel', 'MultiHeadedAttentionSmartPad', 'BertLayerSmartPad',
-    'BertEncoderSmartPad', 'BertModelSmartPad', 'DistilBertModel'
+    'DistilBertModel', 'MultiHeadedAttentionSmartBatch', 'BertLayerSmartBatch',
+    'BertEncoderSmartBatch', 'BertModelSmartBatch', 'DistilBertModel'
 ]

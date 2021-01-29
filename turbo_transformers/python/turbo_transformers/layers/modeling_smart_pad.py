@@ -43,12 +43,12 @@ from torch.nn import LayerNorm as TorchLayerNorm
 import numpy as np
 
 __all__ = [
-    'MultiHeadedAttentionSmartPad', 'BertLayerSmartPad', 'BertEncoderSmartPad',
-    'BertModelSmartPad'
+    'MultiHeadedAttentionSmartBatch', 'BertLayerSmartBatch',
+    'BertEncoderSmartBatch', 'BertModelSmartBatch'
 ]
 
 
-class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
+class MultiHeadedAttentionSmartBatch(cxx.MultiHeadedAttentionSmartBatch):
     def __call__(self,
                  key_tensor: AnyTensor,
                  value_tensor: AnyTensor,
@@ -65,7 +65,7 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
                  return_type: Optional[ReturnType] = None,
                  output: Optional[cxx.Tensor] = None,
                  attn: Optional[cxx.Tensor] = None):
-        """ Implement a MultiHeadedAttention with SmartPad
+        """ Implement a MultiHeadedAttention with SmartBatch
         https://github.com/bytedance/effective_transformer
         Additional Parameter:
         @query_seq_len_list contains a list of input_seq_len.
@@ -85,7 +85,7 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
                                        dtype=torch.float32,
                                        device=query_tensor.device)
                 else:
-                    raise "Mask is None and MultiHeadedAttentionSmartPad can not identify the device type of mask"
+                    raise "Mask is None and MultiHeadedAttentionSmartBatch can not identify the device type of mask"
                 for batch_idx in range(batch_size):
                     for query_seq_idx in range(query_seq_len_list[batch_idx],
                                                query_max_seq_len):
@@ -102,7 +102,7 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
                                        dtype=torch.float32,
                                        device=query_tensor.device)
                 else:
-                    raise "Mask is None and MultiHeadedAttentionSmartPad can not identify the device type of mask"
+                    raise "Mask is None and MultiHeadedAttentionSmartBatch can not identify the device type of mask"
                 for batch_idx in range(batch_size):
                     for key_seq_idx in range(key_seq_len_list[batch_idx],
                                              key_max_seq_len):
@@ -123,7 +123,7 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
                 else:
                     layer_cache_tmp[k] = create_empty_if_none(v)
 
-        super(MultiHeadedAttentionSmartPad,
+        super(MultiHeadedAttentionSmartBatch,
               self).__call__(key_tensor, value_tensor, query_tensor, mask,
                              attn_type, output, attn, layer_cache_tmp,
                              query_seq_len_list, key_seq_len_list,
@@ -189,8 +189,8 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
             raise "multi_headed_attn's max_relative_positions should be 0!"
 
         with torch.no_grad():
-            att = MultiHeadedAttentionSmartPad(
-                *(MultiHeadedAttentionSmartPad.pack_parameter(
+            att = MultiHeadedAttentionSmartBatch(
+                *(MultiHeadedAttentionSmartBatch.pack_parameter(
                     attn_params, is_trans_weight)),
                 multi_headed_attn.head_count)
             return att
@@ -203,7 +203,7 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
     #     ln_params = {k: v for k, v in layer_norm.named_parameters()}
     #     attn_params = {k: v for k, v in multi_headed_attn.named_parameters()}
     #     with torch.no_grad():
-    #         att = MultiHeadedAttentionSmartPad(
+    #         att = MultiHeadedAttentionSmartBatch(
     #             *(MultiHeadedAttention.pack_parameter(multi_headed_attn,
     #                                                   is_trans_weight)),
     #             convert2tt_tensor(ln_params['weight']),
@@ -254,7 +254,7 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
                  params['self.value.bias']), 0)
 
             if layer_norm is not None:
-                att = MultiHeadedAttentionSmartPad(
+                att = MultiHeadedAttentionSmartBatch(
                     convert2tt_tensor(k_w),
                     convert2tt_tensor(params['self.key.bias']),
                     convert2tt_tensor(v_w),
@@ -270,7 +270,7 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
                     convert2tt_tensor(ln_params['bias']),
                     attention.self.num_attention_heads)
             else:
-                att = MultiHeadedAttentionSmartPad(
+                att = MultiHeadedAttentionSmartBatch(
                     convert2tt_tensor(k_w),
                     convert2tt_tensor(params['self.key.bias']),
                     convert2tt_tensor(v_w),
@@ -306,8 +306,8 @@ class MultiHeadedAttentionSmartPad(cxx.MultiHeadedAttentionSmartPad):
             ), num_attention_heads)
 
 
-class BertLayerSmartPad:
-    def __init__(self, attention: MultiHeadedAttentionSmartPad,
+class BertLayerSmartBatch:
+    def __init__(self, attention: MultiHeadedAttentionSmartBatch,
                  intermediate: BertIntermediate, output: BertOutput):
         self.attention = attention
         self.intermediate = intermediate
@@ -344,22 +344,22 @@ class BertLayerSmartPad:
 
     @staticmethod
     def from_torch(layer: TorchBertLayer):
-        return BertLayerSmartPad(
-            MultiHeadedAttentionSmartPad.from_torch(layer.attention),
+        return BertLayerSmartBatch(
+            MultiHeadedAttentionSmartBatch.from_torch(layer.attention),
             BertIntermediate.from_torch(layer.intermediate),
             BertOutput.from_torch(layer.output))
 
     @staticmethod
     def from_npz(file_name: str, layer_num: int, num_attention_heads: int):
         f = np.load(file_name)
-        return BertLayerSmartPad(
+        return BertLayerSmartBatch(
             BertAttention.from_npz(file_name, layer_num, num_attention_heads),
             BertIntermediate.from_npz(file_name, layer_num),
             BertOutput.from_npz(file_name, layer_num))
 
 
-class BertEncoderSmartPad:
-    def __init__(self, layer: Sequence[BertLayerSmartPad]):
+class BertEncoderSmartBatch:
+    def __init__(self, layer: Sequence[BertLayerSmartBatch]):
         self.layer = layer
 
     def __call__(self,
@@ -406,10 +406,10 @@ class BertEncoderSmartPad:
     @staticmethod
     def from_torch(encoder: TorchBertEncoder):
         layer = [
-            BertLayerSmartPad.from_torch(bert_layer)
+            BertLayerSmartBatch.from_torch(bert_layer)
             for bert_layer in encoder.layer
         ]
-        return BertEncoderSmartPad(layer)
+        return BertEncoderSmartBatch(layer)
 
     @staticmethod
     def from_npz(file_name: str, num_hidden_layers: int,
@@ -417,13 +417,14 @@ class BertEncoderSmartPad:
         layer = []
         for i in range(num_hidden_layers):
             layer.append(
-                BertLayerSmartPad.from_npz(file_name, i, num_attention_heads))
-        return BertEncoderSmartPad(layer)
+                BertLayerSmartBatch.from_npz(file_name, i,
+                                             num_attention_heads))
+        return BertEncoderSmartBatch(layer)
 
 
-class BertModelNoPoolerSmartPad:
+class BertModelNoPoolerSmartBatch:
     def __init__(self, embeddings: TorchBertEmbeddings,
-                 encoder: BertEncoderSmartPad):
+                 encoder: BertEncoderSmartBatch):
         self.embeddings = embeddings  #torch
         self.encoder = encoder
         self.prepare = cxx.PrepareBertMasks()
@@ -489,14 +490,14 @@ class BertModelNoPoolerSmartPad:
         ):
             model.to(device)
         # embeddings = BertEmbeddings.from_torch(model.embeddings)
-        encoder = BertEncoderSmartPad.from_torch(model.encoder)
-        return BertModelNoPoolerSmartPad(model.embeddings, encoder)
+        encoder = BertEncoderSmartBatch.from_torch(model.encoder)
+        return BertModelNoPoolerSmartBatch(model.embeddings, encoder)
 
     @staticmethod
     def from_pretrained(model_id_or_path: str,
                         device: Optional[torch.device] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
-        model = BertModelNoPoolerSmartPad.from_torch(torch_model, device)
+        model = BertModelNoPoolerSmartBatch.from_torch(torch_model, device)
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model
@@ -505,14 +506,14 @@ class BertModelNoPoolerSmartPad:
     def from_npz(file_name: str, config,
                  device: Optional[torch.device] = None):
         embeddings = BertEmbeddings.from_npz(file_name)
-        encoder = BertEncoderSmartPad.from_npz(file_name,
-                                               config.num_hidden_layers,
-                                               config.num_attention_heads)
-        return BertModelNoPoolerSmartPad(embeddings, encoder)
+        encoder = BertEncoderSmartBatch.from_npz(file_name,
+                                                 config.num_hidden_layers,
+                                                 config.num_attention_heads)
+        return BertModelNoPoolerSmartBatch(embeddings, encoder)
 
 
-class BertModelSmartPad:
-    def __init__(self, model: BertModelNoPoolerSmartPad, pooler: BertPooler,
+class BertModelSmartBatch:
+    def __init__(self, model: BertModelNoPoolerSmartBatch, pooler: BertPooler,
                  config: TorchBertConfig):
         self.config = config
         self.bertmodel_nopooler = model
@@ -569,24 +570,24 @@ class BertModelSmartPad:
         #     use_gpu = True
 
         # embeddings = BertEmbeddings.from_torch(model.embeddings)
-        encoder = BertEncoderSmartPad.from_torch(model.encoder)
-        bertmodel_nopooler = BertModelNoPoolerSmartPad(model.embeddings,
-                                                       encoder)
+        encoder = BertEncoderSmartBatch.from_torch(model.encoder)
+        bertmodel_nopooler = BertModelNoPoolerSmartBatch(
+            model.embeddings, encoder)
         pooler = BertPooler.from_torch(model.pooler)
-        return BertModelSmartPad(bertmodel_nopooler, pooler, model.config)
+        return BertModelSmartBatch(bertmodel_nopooler, pooler, model.config)
 
     @staticmethod
     def from_pretrained(model_id_or_path: str,
                         device: Optional[torch.device] = None):
         torch_model = TorchBertModel.from_pretrained(model_id_or_path)
-        model = BertModelSmartPad.from_torch(torch_model, device,
-                                             torch_model.config)
+        model = BertModelSmartBatch.from_torch(torch_model, device,
+                                               torch_model.config)
         model.config = torch_model.config
         model._torch_model = torch_model  # prevent destroy torch model.
         return model
 
     @staticmethod
     def from_npz(file_name: str, config):
-        model = BertModelNoPoolerSmartPad.from_npz(file_name, config)
+        model = BertModelNoPoolerSmartBatch.from_npz(file_name, config)
         pooler = BertPooler.from_npz(file_name)
-        return BertModelSmartPad(model, pooler)
+        return BertModelSmartBatch(model, pooler)

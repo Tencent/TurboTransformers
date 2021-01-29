@@ -22,15 +22,15 @@
 namespace turbo_transformers {
 namespace layers {
 
-class MultiHeadedAttentionSmartPad {
+class MultiHeadedAttentionSmartBatch {
  public:
-  MultiHeadedAttentionSmartPad(core::Tensor k_weight, core::Tensor k_bias,
-                               core::Tensor v_weight, core::Tensor v_bias,
-                               core::Tensor q_weight, core::Tensor q_bias,
-                               core::Tensor dense_weight,
-                               core::Tensor dense_bias, core::Tensor qkv_weight,
-                               core::Tensor qkv_bias,
-                               int64_t num_attention_heads)
+  MultiHeadedAttentionSmartBatch(core::Tensor k_weight, core::Tensor k_bias,
+                                 core::Tensor v_weight, core::Tensor v_bias,
+                                 core::Tensor q_weight, core::Tensor q_bias,
+                                 core::Tensor dense_weight,
+                                 core::Tensor dense_bias,
+                                 core::Tensor qkv_weight, core::Tensor qkv_bias,
+                                 int64_t num_attention_heads)
       : k_weight_(std::move(k_weight)),  //(768, 768)
         k_bias_(std::move(k_bias)),
         v_weight_(std::move(v_weight)),  //(768, 768)
@@ -47,15 +47,15 @@ class MultiHeadedAttentionSmartPad {
     EnforceShapeAndType();
   }
 
-  MultiHeadedAttentionSmartPad(core::Tensor k_weight, core::Tensor k_bias,
-                               core::Tensor v_weight, core::Tensor v_bias,
-                               core::Tensor q_weight, core::Tensor q_bias,
-                               core::Tensor dense_weight,
-                               core::Tensor dense_bias, core::Tensor qkv_weight,
-                               core::Tensor qkv_bias,
-                               core::Tensor layernorm_gamma,
-                               core::Tensor layernorm_beta,
-                               int64_t num_attention_heads)
+  MultiHeadedAttentionSmartBatch(core::Tensor k_weight, core::Tensor k_bias,
+                                 core::Tensor v_weight, core::Tensor v_bias,
+                                 core::Tensor q_weight, core::Tensor q_bias,
+                                 core::Tensor dense_weight,
+                                 core::Tensor dense_bias,
+                                 core::Tensor qkv_weight, core::Tensor qkv_bias,
+                                 core::Tensor layernorm_gamma,
+                                 core::Tensor layernorm_beta,
+                                 int64_t num_attention_heads)
       : k_weight_(std::move(k_weight)),  //(768, 768)
         k_bias_(std::move(k_bias)),
         v_weight_(std::move(v_weight)),  //(768, 768)

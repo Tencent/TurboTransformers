@@ -11,7 +11,7 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
-#include "turbo_transformers/layers/multi_headed_attention_smart_pad.h"
+#include "turbo_transformers/layers/multi_headed_attention_smart_batch.h"
 
 #include "loguru.hpp"
 #include "turbo_transformers/core/memory.h"
@@ -33,7 +33,7 @@ static std::mutex mutex_;
 
 // context attn
 template <>
-void MultiHeadedAttentionSmartPad::FuseGemm012AddBIasTranspose<false>(
+void MultiHeadedAttentionSmartBatch::FuseGemm012AddBIasTranspose<false>(
     const core::Tensor& query_tensor, const core::Tensor& value_tensor,
     const core::Tensor& key_tensor, bool pre_layernorm, bool is_trans_weight,
     std::unordered_map<std::string, core::Tensor*>& layer_cache,
@@ -179,7 +179,7 @@ void MultiHeadedAttentionSmartPad::FuseGemm012AddBIasTranspose<false>(
 // The q_out, k_out, v_out are padded.
 // if self_keys and self_values are not None, they are concated with gemm 0/1/2
 template <>
-void MultiHeadedAttentionSmartPad::FuseGemm012AddBIasTranspose<true>(
+void MultiHeadedAttentionSmartBatch::FuseGemm012AddBIasTranspose<true>(
     const core::Tensor& query_tensor, const core::Tensor& value_tensor,
     const core::Tensor& key_tensor, bool pre_layernorm, bool is_trans_weight,
     std::unordered_map<std::string, core::Tensor*>& layer_cache,
@@ -244,7 +244,7 @@ void MultiHeadedAttentionSmartPad::FuseGemm012AddBIasTranspose<true>(
   }
 }
 
-void MultiHeadedAttentionSmartPad::SetContextFlag(
+void MultiHeadedAttentionSmartBatch::SetContextFlag(
     const std::unordered_map<std::string, core::Tensor*>& layer_cache) const {
   layer_cache_not_none_ = layer_cache.size() > 0 ? true : false;
   memory_keys_not_none_ = false;
@@ -270,7 +270,7 @@ void MultiHeadedAttentionSmartPad::SetContextFlag(
   memory_not_none_ = memory_values_not_none_ && memory_keys_not_none_;
 }
 
-void MultiHeadedAttentionSmartPad::operator()(
+void MultiHeadedAttentionSmartBatch::operator()(
     const core::Tensor& key_tensor, const core::Tensor& value_tensor,
     const core::Tensor& query_tensor, const core::Tensor& attention_mask,
     const std::string& attn_type, core::Tensor* output, core::Tensor* att_score,
@@ -281,7 +281,7 @@ void MultiHeadedAttentionSmartPad::operator()(
     bool is_trans_weight) const {
 #ifdef WITH_PERFTOOLS
   auto& profile_ctx = core::Profiler::GetInstance();
-  profile_ctx.start_profile("MultiHeadedAttentionSmartPad_" + attn_type,
+  profile_ctx.start_profile("MultiHeadedAttentionSmartBatch_" + attn_type,
                             query_tensor.device_type());
 #endif
   std::lock_guard<std::mutex> g(mutex_);
@@ -352,7 +352,8 @@ void MultiHeadedAttentionSmartPad::operator()(
                                       pre_layernorm, is_trans_weight,
                                       layer_cache, &q_out, &k_out, &v_out);
   } else {
-    TT_THROW("%s is not support in MultiHeadedAttentionSmartPad\n", attn_type);
+    TT_THROW("%s is not support in MultiHeadedAttentionSmartBatch\n",
+             attn_type);
   }  // if (attn_type == "context")
 
   // 2) Calculate and scale scores.
@@ -414,12 +415,12 @@ void MultiHeadedAttentionSmartPad::operator()(
     kernels::AddInputBias(*output, query_tensor, dense_bias_, output);
   }
 #ifdef WITH_PERFTOOLS
-  profile_ctx.end_profile("MultiHeadedAttentionSmartPad_" + attn_type,
+  profile_ctx.end_profile("MultiHeadedAttentionSmartBatch_" + attn_type,
                           devtype_);
 #endif
 }
 
-void MultiHeadedAttentionSmartPad::EnforceShapeAndType() const {
+void MultiHeadedAttentionSmartBatch::EnforceShapeAndType() const {
   if (loguru::current_verbosity_cutoff() >= 3) {
     std::ostringstream os;
     os << ">>>>>>>>>>>> qkv_weight_ <<<<<<<<<<<<" << std::endl;
