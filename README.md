@@ -8,10 +8,9 @@ The WeChat AI pridely open-sourced TurboTransformers with the following characte
 1. Supporting both Transformers Encoder and Decoder.
 2. Supports Variable Length inputs. No time-consuming offline tuning is required. You can change the batch size and the sequence length of request at real-time.
 3. Excellent CPU / GPU performance. Backend is implemented with hand-crafted OpenMP and CUDA code and involved with some inovative tricks.
-4. Perfect Usibility. Supports python and C++ APIs.
+4. Perfect Usibility. Supports python and C++ APIs. It can be used as a plugin for pytorch. The end-to-end acceleration is obtained by adding a few lines of python code.
 5. Smart Batching. Minimize zero-padding overhead for a batch of requests of different lengths.
-6. Memory Efficiency. A new model-aware allocator ensure small memory usage in variable-length request serving.
-It can be used as a plugin for pytorch. Tthe end-to-end acceleration is obtained by adding a few lines of python code.
+6. Memory Efficiency. A new model-aware allocator ensures small memory footprint during the variable-length request serving.
 
 TurboTransformers has been applied to multiple online BERT service scenarios in Tencent.
 For example, It brings 1.88x acceleration to the WeChat FAQ service, 2.11x acceleration to the public cloud sentiment analysis service, and 13.6x acceleration to the QQ recommendation system.
