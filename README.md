@@ -6,7 +6,7 @@
 The WeChat AI open-sourced TurboTransformers with the following characteristics.
 
 1. Supporting both Transformers Encoder and Decoder.
-2. Supports Variable Length inputs. No time-consuming offline tuning is required. You can change the batch size and the sequence length of the request in real-time.
+2. Supporting real-time variable length inputs. No time-consuming offline tuning is required. You can change the batch size and the sequence length of the request in real-time.
 3. Excellent CPU / GPU performance. Backend is implemented with hand-crafted OpenMP and CUDA code and involved with some innovative tricks.
 4. Perfect Usability. Supports python and C++ APIs. It can be used as a plugin for PyTorch. The end-to-end acceleration is obtained by adding a few lines of python code.
 5. Smart Batching. Minimize zero-padding overhead for a batch of requests of different lengths.
