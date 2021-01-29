@@ -178,7 +178,7 @@ As an alternative, you just have to pad the batch-gemm operations inside multi-h
 which accouts to a small propation of the entire BERT computation.
 Therefore most of gemm operations are processed without zero-padding.
 Turbo provides a model as `BertModelSmartBatch` including a smart batching technique.
-The example is presented in [./example/python/bert_smart_pad.py](./example/python/bert_smart_pad.py "smart_batching").
+The example is presented in [./example/python/bert_smart_batch.py](./example/python/bert_smart_batch.py "smart_batching").
 
 ## How to contribute new models
 [How to know hotspots of your code?](./docs/profiler.md)
