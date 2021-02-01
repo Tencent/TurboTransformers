@@ -33,7 +33,9 @@ def benchmark_turbo_transformers(model_name: str, seq_len: int,
         model.eval()
         model = turbo_transformers.BertModel.from_torch(model, backend="turbo")
     elif model_name == "albert":
-        cfg = transformers.AlbertConfig()
+        cfg = transformers.AlbertConfig(hidden_size=768,
+                               num_attention_heads=12,
+                               intermediate_size=3072)
         model = transformers.AlbertModel(cfg)
         model.to(test_device)
         model.eval()
