@@ -29,7 +29,7 @@ The following table is a comparison of TurboTransformers and related work.
 | **turbo-transformers (CPU/GPU)** | **Fastest/Fastest** | **No** | **Yes** | **Easy** |
 
 ### Supported Models
-We currenly support the following transformer models.
+We currently support the following transformer models.
 
 * [BERT](https://arxiv.org/abs/1810.04805) [[Python]](./example/python/bert_example.py) [[C++]](./example/python/bert_example.cpp)
 * [ALBERT](https://arxiv.org/abs/1909.11942) [[Python]](./example/python/albert_example.py)
@@ -69,7 +69,7 @@ if __name__ == "__main__":
 ```
 
 ### Installation
-Note that the building scripts only applie to specific OS and software (Pytorch, OpenNMT, transformers, etc.) versions.
+Note that the building scripts only apply to specific OS and software (Pytorch, OpenNMT, transformers, etc.) versions.
 Please adjust them according to your needs.
 
 #### CPU
@@ -160,7 +160,7 @@ In particular, we consider that most of the pre-trained models are in PyTorch fo
 #### APIs
 ###### python APIs
 Refer to examples of supported models in [./example/python](./example/python "python").
-[TurboNLP/Translate-Demo](https://github.com/TurboNLP/Translate-Demo "translate") shows a demo of applying TurboTransformer in Translatetion Task.
+[TurboNLP/Translate-Demo](https://github.com/TurboNLP/Translate-Demo "translate") shows a demo of applying TurboTransformer in Translation Task.
 Since the user of BERT acceleration always requires a customized post-processing process for the task, we provide an example of how to write a sequence classification application.
 ###### C++ APIs
 Refer to [./example/cpp](./example/cpp "C ++") for an example.
@@ -187,21 +187,21 @@ The example is presented in [./example/python/bert_smart_batch.py](./example/pyt
 
 
 ## TODO
-Currently (June 2020), In the near futuer, we will add support for low-precision models (CPU int8, GPU FP16).
+Currently (June 2020), In the near future, we will add support for low-precision models (CPU int8, GPU FP16).
 **Looking forwards to your contribution!**
 
-## Lisence
+## License
 BSD 3-Clause License
 
 ## Known Issues
 1. The results of Turbo Transformers may be different from the results of PyTorch after 2 digits behind the decimal point.
-The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
-2. Turbo and PyTorch share the same MKL. MKL of PyTorch 1.5.0 may slow in Turbo. Reasons needs to be determined.
+The diff mainly comes from Bert Output Layer. We use an approximate GELU algorithm, which may be different from PyTorch.
+2. Turbo and PyTorch share the same MKL. MKL of PyTorch 1.5.0 may slow in Turbo. Reasons need to be determined.
 Download PyTorch version to 1.1.0 will improve Turbo's Performance.
 3. onnxruntime-cpu==1.4.0 and onnxruntime-gpu==1.3.0 can not work simultaneously.
 
 ## History
-1. Janurary 2021 v0.6.0, TurboTransformers supports smart batching.
+1. January 2021 v0.6.0, TurboTransformers supports smart batching.
 2. July 2020 v0.4.0, TurboTransformers used onnxruntime as cpu backend, supports GPT2. Anded a Quantized BERT.
 3. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
 4. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.
@@ -223,6 +223,6 @@ Cite this paper, if you use TurboTransformers in your research publication.
 The artifacts of the paper can be found at branch `ppopp21_artifact_centos`.
 
 ## Contact us
-Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
+Although we recommend you post your problem with github issues, you can also join in our Turbo user group.
 1. Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.
 2. QQ Group, Name: TurboTransformers, Number : 1109315167.
