@@ -70,23 +70,27 @@ __global__ void cub_softmax_kernel_k(float* qk_buf_, const float* attr_mask,
   float tmp[K];
   int qk_offset = blockIdx.x * K * to_seq_len;
 
-  float mask_val = 0.;
-  for (int i = 0; i < K; ++i) {
-    float qk = threadIdx.x < to_seq_len
-                   ? qk_buf_[threadIdx.x + qk_offset + to_seq_len * i]
-                   : 0.0f;
-    if (attr_mask != nullptr) {
-      int batch_id = (blockIdx.x * K + i) / (head_num * from_seq_len);
-      int from_seq_id = (blockIdx.x * K + i) % from_seq_len;
-      mask_val = attr_mask[threadIdx.x +
-                           (is_2D ? (batch_id * to_seq_len)
-                                  : (batch_id * from_seq_len + from_seq_id) *
-                                        to_seq_len)];
-    } else {
-      mask_val = 0.0f;
+  if (threadIdx.x < to_seq_len) {
+    float mask_val = 0.;
+    for (int i = 0; i < K; ++i) {
+      float qk = qk_buf_[threadIdx.x + qk_offset + to_seq_len * i];
+      if (attr_mask != nullptr) {
+        int batch_id = (blockIdx.x * K + i) / (head_num * from_seq_len);
+        int from_seq_id = (blockIdx.x * K + i) % from_seq_len;
+        mask_val = attr_mask[threadIdx.x +
+                            (is_2D ? (batch_id * to_seq_len)
+                                    : (batch_id * from_seq_len + from_seq_id) *
+                                          to_seq_len)];
+      } else {
+        mask_val = 0.0f;
+      }
+      // mask_val = (1.0f - mask_val) * -10000.0f;
+      tmp[i] = qk * scaler + mask_val;
     }
-    // mask_val = (1.0f - mask_val) * -10000.0f;
-    tmp[i] = threadIdx.x < to_seq_len ? (qk * scaler + mask_val) : -1e20f;
+  } else {
+    for (int i = 0; i < K; ++i) {
+      tmp[i] = -1e20f;
+    }
   }
 
   Array<float, K> max_val =
