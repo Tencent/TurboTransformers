@@ -145,7 +145,11 @@ We also prepared a docker image containing GPU version of TurboTransformers.
 ```
 docker pull thufeifeibear/turbo_transformers_gpu:latest
 ```
-
+#### Using Tensor Core (FP16)
+[Tensor Core](https://developer.download.nvidia.cn/video/gputechconf/gtc/2019/presentation/s9926-tensor-core-performance-the-ultimate-guide.pdf)  can accelerate computing on GPU. It is disabled by default in TurboTransformers. If you want to turn it on, before compiling code, set option WITH_MODULE_BENCHMAKR ON in CMakeLists.txt
+```
+option(WITH_TENSOR_CORE     "Use Tensor core to accelerate"     ON)
+```
 ### Usage
 TurboTransformers provides C++ / python API interfaces. We hope to do our best to adapt to a variety of online environments to reduce the difficulty of development for users.
 
