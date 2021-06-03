@@ -30,6 +30,7 @@ set(TURBO_TRANSFORMERS_VERSION 0.6.0)
 option(WITH_PROFILER  "Compile with profiler"   OFF)
 option(WITH_GPU       "Build with GPU"          OFF)
 option(WITH_MODULE_BENCHMAKR       "Catch2 unitest with benchmarking"          ON)
+option(WITH_TENSOR_CORE       "Use Tensor core to accelerate"          OFF)
 
 
 if (WITH_GPU)
@@ -70,6 +71,10 @@ endif ()
 
 if (WITH_PROFILER)
     add_definitions(-DWITH_PERFTOOLS)
+endif ()
+
+if (WITH_GPU AND WITH_TENSOR_CORE)
+    add_definitions(-DWITH_TENSOR_CORE)
 endif ()
 
 IF (UNIX AND NOT APPLE)
