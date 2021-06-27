@@ -132,7 +132,7 @@ class RobertaModel:
         self.seq_pool = SequencePool(PoolingMap[pooling_type])
         output = self.seq_pool(input_tensor=sequence_output,
                                return_type=return_type)
-        pooler_output = self.pooler(output, return_type)
+        pooler_output = self.pooler(sequence_output) if self.pooler is not None else None
         return (
             convert_returns_as_type(sequence_output, return_type),
             pooler_output,
@@ -145,6 +145,8 @@ class RobertaModel:
         ):
             model.to(device)
         encoder = BertEncoder.from_torch(model.encoder)
-        pooler = BertPooler.from_torch(model.pooler)
+        if model.pooler is not None:
+            pooler = BertPooler.from_torch(model.pooler)
+        else:
+            pooler = None
         return RobertaModel(model.embeddings, encoder, pooler, model.config)
-
