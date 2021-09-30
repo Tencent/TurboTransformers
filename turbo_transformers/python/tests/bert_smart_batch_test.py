@@ -224,8 +224,8 @@ def create_test(query_seq_len_list):
             # for reference
             res_list = []
             for Q in self.input_list:
-                res, _ = self.torch_model(Q)
-                res_list.append(res)
+                res = self.torch_model(Q)
+                res_list.append(res['last_hidden_state'])
 
             for i in range(len(res_list)):
                 if i == 0:
