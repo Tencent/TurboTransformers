@@ -16,7 +16,7 @@ import unittest
 import sys
 import torch
 import turbo_transformers
-from transformers.modeling_bert import BertConfig, BertIntermediate
+from transformers.models.bert.modeling_bert import BertConfig, BertIntermediate
 import numpy
 import os
 

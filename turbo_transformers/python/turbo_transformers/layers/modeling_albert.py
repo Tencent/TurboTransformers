@@ -20,13 +20,13 @@ import torch.utils.dlpack as dlpack
 import numpy as np
 from typing import Union, Optional, Sequence
 from .return_type import convert_returns_as_type, ReturnType
-from transformers.modeling_albert import AlbertEmbeddings as TorchAlbertEmbeddings
-from transformers.modeling_albert import AlbertTransformer as TorchAlbertTransformer
-from transformers.modeling_albert import AlbertAttention as TorchAlbertAttention
-from transformers.modeling_albert import AlbertLayer as TorchAlbertLayer
-from transformers.modeling_albert import AlbertLayerGroup as TorchAlbertLayerGroup
-from transformers.modeling_albert import AlbertModel as TorchAlbertModel
-from transformers.modeling_albert import AlbertConfig
+from transformers.models.albert.modeling_albert import AlbertEmbeddings as TorchAlbertEmbeddings
+from transformers.models.albert.modeling_albert import AlbertTransformer as TorchAlbertTransformer
+from transformers.models.albert.modeling_albert import AlbertAttention as TorchAlbertAttention
+from transformers.models.albert.modeling_albert import AlbertLayer as TorchAlbertLayer
+from transformers.models.albert.modeling_albert import AlbertLayerGroup as TorchAlbertLayerGroup
+from transformers.models.albert.modeling_albert import AlbertModel as TorchAlbertModel
+from transformers.models.albert.modeling_albert import AlbertConfig
 import torch
 from .utils import get_head_mask
 from .utils import try_convert, convert2tt_tensor, to_param_dict_convert_tt, to_param_dict, create_empty_if_none, AnyTensor, get_head_mask, get_extended_attention_mask

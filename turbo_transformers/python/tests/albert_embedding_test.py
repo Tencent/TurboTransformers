@@ -28,7 +28,7 @@ import turbo_transformers
 import unittest
 import sys
 import torch
-from transformers.modeling_albert import AlbertEmbeddings, AlbertConfig
+from transformers.models.albert.modeling_albert import AlbertEmbeddings, AlbertConfig
 import os
 
 sys.path.append(os.path.dirname(__file__))

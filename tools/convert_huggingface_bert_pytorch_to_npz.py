@@ -11,7 +11,7 @@
 # permissions and limitations under the License.
 # See the AUTHORS file for names of contributors.
 
-from transformers.modeling_bert import BertModel
+from transformers.models.bert.modeling_bert import BertModel
 import sys
 import numpy
 import torch

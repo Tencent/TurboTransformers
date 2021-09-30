@@ -16,7 +16,7 @@ import turbo_transformers
 import unittest
 import sys
 import torch
-from transformers.modeling_albert import AlbertConfig, AlbertAttention
+from transformers.models.albert.modeling_albert import AlbertConfig, AlbertAttention
 import os
 
 sys.path.append(os.path.dirname(__file__))

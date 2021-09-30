@@ -23,12 +23,12 @@ from .return_type import convert_returns_as_type, ReturnType
 from .utils import try_convert, convert2tt_tensor, create_empty_if_none, AnyTensor
 
 from onmt.modules.multi_headed_attn import MultiHeadedAttention as OnmtMultiHeadedAttention
-from transformers.modeling_bert import BertAttention as TorchBertAttention
-from transformers.modeling_bert import BertLayer as TorchBertLayer
-from transformers.modeling_bert import BertEncoder as TorchBertEncoder
-from transformers.modeling_bert import BertModel as TorchBertModel
-from transformers.modeling_bert import BertConfig as TorchBertConfig
-from transformers.modeling_bert import BertEmbeddings as TorchBertEmbeddings
+from transformers.models.bert.modeling_bert import BertAttention as TorchBertAttention
+from transformers.models.bert.modeling_bert import BertLayer as TorchBertLayer
+from transformers.models.bert.modeling_bert import BertEncoder as TorchBertEncoder
+from transformers.models.bert.modeling_bert import BertModel as TorchBertModel
+from transformers.models.bert.modeling_bert import BertConfig as TorchBertConfig
+from transformers.models.bert.modeling_bert import BertEmbeddings as TorchBertEmbeddings
 from .modeling_bert import BertIntermediate
 from .modeling_bert import BertOutput
 from .modeling_bert import BertEmbeddings

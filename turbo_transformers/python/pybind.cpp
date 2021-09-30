@@ -11,6 +11,7 @@
 // permissions and limitations under the License.
 // See the AUTHORS file for names of contributors.
 
+#include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
 #include "absl/memory/memory.h"
@@ -20,6 +21,7 @@
 #include "turbo_transformers/core/config.h"
 #include "turbo_transformers/core/profiler.h"
 #include "turbo_transformers/core/tensor.h"
+#include "turbo_transformers/core/tensor_copy.h"
 #include "turbo_transformers/layers/addbias_act.h"
 #include "turbo_transformers/layers/addbias_layernorm.h"
 #include "turbo_transformers/layers/albert_layer.h"
@@ -61,6 +63,81 @@ static void BindConfig(py::module &m) {
       .def("get_blas_provider", &core::GetBlasProvider);
 }
 
+template <typename T>
+core::Tensor nparray2tensor(py::array_t<T> array, const std::string &dev_name) {
+  py::buffer_info buf1 = array.request();
+  auto ndim = array.ndim();
+  if (ndim == 0) {
+    throw std::runtime_error("nparray2tensor: numpy array shall not be empty!");
+  }
+  std::vector<int64_t> shape;
+  shape.resize(ndim);
+  for (auto i = 0; i < ndim; ++i) {
+    shape[i] = array.shape(i);
+  }
+  DLDeviceType dev_type;
+  if (dev_name == "CPU") {
+    dev_type = DLDeviceType::kDLCPU;
+  } else if (dev_name == "GPU") {
+    dev_type = DLDeviceType::kDLGPU;
+  } else {
+    TT_THROW("nparray2tensor dev_name should be CPU or GPU!");
+  }
+  core::Tensor tensor(core::NewDLPackTensorT<T>(shape, dev_type));
+  // real copy, src dev is alway GPU for numpy
+  core::Copy(array.data(), tensor.numel(), DLDeviceType::kDLCPU, tensor);
+  return tensor;
+}
+
+template <typename T>
+py::array_t<T> tensor2nparray(const core::Tensor &tensor) {
+  auto numel = tensor.numel();
+  auto ndim = tensor.n_dim();
+  DLDeviceType dev_type = tensor.device_type();
+
+  // py::buffer_info(
+  //         m.data(),                               /* Pointer to buffer */
+  //         sizeof(float),                          /* Size of one scalar */
+  //         py::format_descriptor<float>::format(), /* Python struct-style
+  //         format descriptor */ 2,                                      /*
+  //         Number of dimensions */ { m.rows(), m.cols() },                 /*
+  //         Buffer dimensions */ { sizeof(float) * m.cols(),             /*
+  //         Strides (in bytes) for each index */
+  //           sizeof(float) }
+  //     );
+
+  T *np_data_ptr = new T[numel];
+  std::vector<py::ssize_t> shape, strides;
+  shape.resize(ndim);
+  for (py::ssize_t i = 0; i < ndim; ++i) {
+    shape[i] = tensor.shape(i);
+  }
+
+  py::ssize_t j = 1;
+  strides.resize(ndim);
+  for (py::ssize_t i = ndim - 1; i >= 0; --i) {
+    strides[i] = j * sizeof(T);
+    j *= shape[i];
+  }
+
+  core::Copy(tensor.data<T>(), tensor.numel(), dev_type, DLDeviceType::kDLCPU,
+             np_data_ptr);
+
+  // Create a Python object that will free the allocated
+  // memory when destroyed:
+  py::capsule free_when_done(np_data_ptr, [](void *f) {
+    T *np_data_ptr = reinterpret_cast<T *>(f);
+    // std::cerr << "Element [0] = " << np_data_ptr[0] << "\n";
+    // std::cerr << "freeing memory @ " << f << "\n";
+    delete[] np_data_ptr;
+  });
+
+  return py::array_t<T>(shape,        // shape
+                        strides,      // C-style contiguous strides for double
+                        np_data_ptr,  // the data pointer
+                        free_when_done);  // numpy array references this parent
+}
+
 PYBIND11_MODULE(turbo_transformers_cxx, m) {
   char *argv[] = {strdup("turbo_transformers_cxx"), nullptr};
   int argc = 1;
@@ -70,6 +147,14 @@ PYBIND11_MODULE(turbo_transformers_cxx, m) {
       m.def_submodule("config", "compile configuration of turbo_transformers");
 
   BindConfig(config_module);
+
+  m.def("nparray2tensor", &nparray2tensor<float>, "Convert Numpy to Tensor.");
+  m.def("nparray2tensor", &nparray2tensor<int64_t>, "Convert Numpy to Tensor.");
+
+  m.def("tensor2nparrayf", &tensor2nparray<float>,
+        "Convert Tensor to Numpy, float data only.");
+  m.def("tensor2nparrayl", &tensor2nparray<int64_t>,
+        "Convert Tensor to Numpy, float data only.");
 
   m.def("set_stderr_verbose_level",
         [](int v) { loguru::g_stderr_verbosity = v; });

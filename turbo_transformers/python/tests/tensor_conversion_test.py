@@ -16,6 +16,7 @@ import torch.utils.dlpack as dlpack
 import unittest
 from turbo_transformers.layers.modeling_bert import convert2tt_tensor
 import turbo_transformers
+import numpy as np
 
 
 class TestDLPack(unittest.TestCase):

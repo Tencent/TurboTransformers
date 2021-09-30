@@ -16,7 +16,7 @@ import unittest
 import sys
 import torch
 import turbo_transformers
-from transformers.modeling_bert import BertConfig, BertPooler
+from transformers.models.bert.modeling_bert import BertConfig, BertPooler
 import numpy
 import os
 

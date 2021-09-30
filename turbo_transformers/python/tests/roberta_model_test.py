@@ -13,7 +13,7 @@
 
 import unittest
 import torch
-from transformers.modeling_roberta import RobertaModel, RobertaConfig
+from transformers.models.roberta.modeling_roberta import RobertaModel, RobertaConfig
 import numpy
 import turbo_transformers
 import sys
@@ -64,7 +64,6 @@ class TestRobertaModel(unittest.TestCase):
         print(f'RobertaModel TurboTransformer({device_name}) QPS {turbo_qps}')
 
         torch_result_final = torch_result[0].cpu().numpy()
-
 
         turbo_result_final = turbo_result[0].cpu().numpy()
         # print(numpy.size(torch_result_final), numpy.size(turbo_result_final))

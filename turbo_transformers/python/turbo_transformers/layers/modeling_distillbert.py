@@ -21,13 +21,13 @@ import torch
 from .return_type import convert_returns_as_type, ReturnType
 from .utils import try_convert, convert2tt_tensor, to_param_dict_convert_tt, to_param_dict, create_empty_if_none, AnyTensor
 
-from transformers.modeling_distilbert import DistilBertConfig
-from transformers.modeling_distilbert import MultiHeadSelfAttention as TorchDistilMultiHeadSelfAttention
-from transformers.modeling_distilbert import FFN as TorchDistilFFN
-from transformers.modeling_distilbert import TransformerBlock as TorchDistilTransformerBlock
-from transformers.modeling_distilbert import Transformer as TorchDistilTransformer
-from transformers.modeling_distilbert import Embeddings as TorchDistrilEmbeddings
-from transformers.modeling_distilbert import DistilBertModel as TorchDistilBertModel
+from transformers.models.distilbert.modeling_distilbert import DistilBertConfig
+from transformers.models.distilbert.modeling_distilbert import MultiHeadSelfAttention as TorchDistilMultiHeadSelfAttention
+from transformers.models.distilbert.modeling_distilbert import FFN as TorchDistilFFN
+from transformers.models.distilbert.modeling_distilbert import TransformerBlock as TorchDistilTransformerBlock
+from transformers.models.distilbert.modeling_distilbert import Transformer as TorchDistilTransformer
+from transformers.models.distilbert.modeling_distilbert import Embeddings as TorchDistrilEmbeddings
+from transformers.models.distilbert.modeling_distilbert import DistilBertModel as TorchDistilBertModel
 
 from torch import nn
 import numpy as np

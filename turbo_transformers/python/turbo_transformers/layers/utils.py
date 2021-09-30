@@ -27,7 +27,7 @@ from .return_type import convert_returns_as_type, ReturnType
 
 __all__ = [
     'try_convert', 'convert2tt_tensor', 'to_param_dict_convert_tt',
-    'to_param_dict', 'create_empty_if_none', 'AnyTensor'
+    'to_param_dict', 'create_empty_if_none', 'AnyTensor', 'try_convert'
 ]
 
 
@@ -39,10 +39,10 @@ def try_convert(t, device: Optional[torch.device] = None):
     if isinstance(t, torch.Tensor):
         return convert2tt_tensor(t)
     elif isinstance(t, np.ndarray):
-        if device is not None:
-            return convert2tt_tensor(torch.from_numpy(t).to(device))
-        else:
-            return convert2tt_tensor(torch.from_numpy(t))
+        dev_name = "CPU"
+        if device is not None and "cuda" in device.type:
+            dev_name = "GPU"
+        return cxx.nparray2tensor(t, dev_name)
     else:
         return t
 

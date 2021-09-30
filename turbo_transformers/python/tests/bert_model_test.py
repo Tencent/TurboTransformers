@@ -13,7 +13,7 @@
 
 import unittest
 import torch
-from transformers.modeling_bert import BertModel, BertConfig
+from transformers.models.bert.modeling_bert import BertModel, BertConfig
 import numpy
 import turbo_transformers
 import sys
