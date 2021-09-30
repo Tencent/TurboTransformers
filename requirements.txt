@@ -14,4 +14,4 @@
 contexttimer
 onnx
 future
-transformers==3.4.0
+transformers==4.11.1

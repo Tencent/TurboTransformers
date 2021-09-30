@@ -16,8 +16,8 @@ import turbo_transformers
 import unittest
 import sys
 import torch
-from transformers.modeling_distilbert import DistilBertConfig
-from transformers.modeling_distilbert import MultiHeadSelfAttention as DistilAttention
+from transformers.models.distilbert.modeling_distilbert import DistilBertConfig
+from transformers.models.distilbert.modeling_distilbert import MultiHeadSelfAttention as DistilAttention
 from torch import nn
 
 import os

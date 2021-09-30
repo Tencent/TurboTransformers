@@ -6,11 +6,12 @@
 The WeChat AI open-sourced TurboTransformers with the following characteristics.
 
 1. Supporting both Transformers Encoder and Decoder.
-2. Supporting real-time variable length inputs. No time-consuming offline tuning is required. You can change the batch size and the sequence length of the request in real-time.
-3. Excellent CPU / GPU performance. Backend is implemented with hand-crafted OpenMP and CUDA code and involved with some innovative tricks.
-4. Perfect Usability. Supports python and C++ APIs. It can be used as a plugin for PyTorch. The end-to-end acceleration is obtained by adding a few lines of python code.
+3. Supports Variable Length inputs. No time-consuming offline tuning is required. You can change batch size and sequence length at real-time.
+3. Excellent CPU / GPU performance.
+4. Perfect Usibility. TurboTransformers supports python and C++ APIs.
 5. Smart Batching. Minimize zero-padding overhead for a batch of requests of different lengths.
-6. Memory Efficiency. A new model-aware allocator ensures a small memory footprint during the variable-length request serving.
+It can be used as a plugin for pytorch. Tthe end-to-end acceleration is obtained by adding a few lines of python code.
+
 
 TurboTransformers has been applied to multiple online BERT service scenarios in Tencent.
 For example, It brings 1.88x acceleration to the WeChat FAQ service, 2.11x acceleration to the public cloud sentiment analysis service, and 13.6x acceleration to the QQ recommendation system.
@@ -30,6 +31,7 @@ The following table is a comparison of TurboTransformers and related work.
 
 ### Supported Models
 We currently support the following transformer models.
+
 
 * [BERT](https://arxiv.org/abs/1810.04805) [[Python]](./example/python/bert_example.py) [[C++]](./example/python/bert_example.cpp)
 * [ALBERT](https://arxiv.org/abs/1909.11942) [[Python]](./example/python/albert_example.py)
@@ -155,7 +157,7 @@ TurboTransformers provides C++ / python API interfaces. We hope to do our best t
 
 
 #### Pretrained Model Loading
-The first step in using turbo is to load a pre-trained model. We provide a way to load PyTorch and TensorFlow pre-trained models in [huggingface/transformers](https://github.com/huggingface).
+The first step in using turbo is to load a pre-trained model. We provide a way to load pytorch and tensorflow pre-trained models in [huggingface/transformers](https://github.com/huggingface).
 The specific conversion method is to use the corresponding script in ./tools to convert the pre-trained model into an npz format file, and turbo uses the C ++ or python interface to load the npz format model.
 In particular, we consider that most of the pre-trained models are in PyTorch format and used with python. We provide a shortcut for calling directly in python for the PyTorch saved model.
 
@@ -175,14 +177,15 @@ Users can link turbo-transformers to your code through add_subdirectory.
 Usually, feeding a batch of requests of different lengths into a bert model for inference,
 zero-padding is required to make all the requests have the same length.
 For example, serving requests list of lengths (100, 10, 50), you need a preprocessing stage to pad them as lengths (100, 100, 100).
-In this way, 90% and 50% of the last two sequence computation are wasted.
+In this way, 90% and 50% of the last two sequence's computation are wasted.
 As indicated in [Effective Transformer](https://github.com/bytedance/effective_transformer),
 it is not necessary to pad the input tensors.
-As an alternative, you have to pad the batch-gemm operations inside multi-headed attentions,
-which accounts for a small proportion of the entire BERT computation.
-Therefore most gemm operations are processed without zero-padding.
+As an alternative, you just have to pad the batch-gemm operations inside multi-headed attentions,
+which accouts to a small propation of the entire BERT computation.
+Therefore most of gemm operations are processed without zero-padding.
 Turbo provides a model as `BertModelSmartBatch` including a smart batching technique.
-The example is presented in [./example/python/bert_smart_batch.py](./example/python/bert_smart_batch.py "smart_batching").
+The example is presented in [./example/python/bert_smart_pad.py](./example/python/bert_smart_pad.py "smart_batching").
+
 
 ## How to contribute new models
 [How to know hotspots of your code?](./docs/profiler.md)
@@ -205,7 +208,7 @@ Download PyTorch version to 1.1.0 will improve Turbo's Performance.
 3. onnxruntime-cpu==1.4.0 and onnxruntime-gpu==1.3.0 can not work simultaneously.
 
 ## History
-1. January 2021 v0.6.0, TurboTransformers supports smart batching.
+1. Janurary 2021 v0.6.0, TurboTransformers supports smart batching.
 2. July 2020 v0.4.0, TurboTransformers used onnxruntime as cpu backend, supports GPT2. Anded a Quantized BERT.
 3. July 2020 v0.3.1, TurboTransformers added support for ALbert, Roberta on CPU/GPU.
 4. June 2020 v0.3.0, TurboTransformers added support for Transformer Decoder on CPU/GPU.

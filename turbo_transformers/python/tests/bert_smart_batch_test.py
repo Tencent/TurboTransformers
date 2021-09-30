@@ -16,7 +16,7 @@ import turbo_transformers
 import unittest
 
 import torch
-from transformers.modeling_bert import BertConfig, BertLayer, BertAttention, BertModel
+from transformers.models.bert.modeling_bert import BertConfig, BertLayer, BertAttention, BertModel
 from onmt.modules.multi_headed_attn import MultiHeadedAttention
 import sys
 import os
@@ -224,8 +224,8 @@ def create_test(query_seq_len_list):
             # for reference
             res_list = []
             for Q in self.input_list:
-                res, _ = self.torch_model(Q)
-                res_list.append(res)
+                res = self.torch_model(Q)
+                res_list.append(res['last_hidden_state'])
 
             for i in range(len(res_list)):
                 if i == 0:
@@ -242,15 +242,6 @@ def create_test(query_seq_len_list):
             self.assertTrue(
                 torch.max(torch.abs(concat_res - pad_result)) < tolerate_error)
 
-            # self.assertTrue(
-            #     torch.max(
-            #         torch.abs(torch_bert_layer_result[1] -
-            #                   turbo_bert_layer_result[1])) < tolerate_error)
-
-            # with open(fname, "a") as fh:
-            #     fh.write(
-            #         f"\"({batch_size},{seq_length:03})\", {torch_qps}, {turbo_qps}\n"
-            #     )
 
         def test_bert(self):
             self.check_bert_model(use_cuda=False)

@@ -77,6 +77,7 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
 
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 9010
     if (gpu_ctx.compute_major() >= 5) {
+
 #if defined(WITH_TENSOR_CORE)      
       auto cublas_algo = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
       auto math_algo = CUBLAS_TENSOR_OP_MATH;

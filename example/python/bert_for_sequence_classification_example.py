@@ -17,11 +17,10 @@ from turbo_transformers import PoolingType
 from turbo_transformers import ReturnType
 
 # import the class of the acceleration model. here is the example of BertForSequenceClassification.
-from transformers.modeling_bert import BertModel as TorchBertModel
+from transformers.models.bert.modeling_bert import BertModel as TorchBertModel
 from transformers import BertTokenizer
-from transformers.modeling_bert import (
-    BertForSequenceClassification as TorchBertForSequenceClassification,
-)
+from transformers.models.bert.modeling_bert import (
+    BertForSequenceClassification as TorchBertForSequenceClassification, )
 import os
 import torch
 from typing import Optional
@@ -31,19 +30,19 @@ from typing import Optional
 # Contact me if you find it is wrong.
 class BertForSequenceClassification:  # create a new class for speeding up
     def __init__(
-        self, bertmodel, classifier
+            self, bertmodel, classifier
     ):  # the realization of the init function（we can just copy it）
         self.bert = bertmodel
         self.classifier = classifier
 
     def __call__(
-        self,  # the realization of the call function（we can just copy it）
-        input_ids,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        pooling_type=PoolingType.FIRST,
-        return_type=None,
+            self,  # the realization of the call function（we can just copy it）
+            input_ids,
+            attention_mask=None,
+            token_type_ids=None,
+            position_ids=None,
+            pooling_type=PoolingType.FIRST,
+            return_type=None,
     ):
         bert_outputs = self.bert(
             input_ids,
@@ -61,9 +60,11 @@ class BertForSequenceClassification:  # create a new class for speeding up
 
     @staticmethod
     def from_torch(
-        model: TorchBertModel, device: Optional[torch.device] = None  # from_torch函数实现
+            model: TorchBertModel,
+            device: Optional[torch.device] = None  # from_torch函数实现
     ):
-        if device is not None and "cuda" in device.type and torch.cuda.is_available():
+        if device is not None and "cuda" in device.type and torch.cuda.is_available(
+        ):
             model.to(device)
         bertmodel = turbo_transformers.BertModel.from_torch(model.bert)
         # We can copy the following code and do not change it
@@ -72,11 +73,11 @@ class BertForSequenceClassification:  # create a new class for speeding up
         return BertForSequenceClassification(bertmodel, model.classifier)
 
     @staticmethod
-    def from_pretrained(model_id_or_path: str, device: Optional[torch.device] = None):
+    def from_pretrained(model_id_or_path: str,
+                        device: Optional[torch.device] = None):
         # First, Use the function of from_pretrained to load the model you trained.
         torch_model = TorchBertForSequenceClassification.from_pretrained(
-            model_id_or_path
-        )
+            model_id_or_path)
         # Then, Use the init function of the acceleration model to get it.
         model = BertForSequenceClassification.from_torch(torch_model, device)
         model._torch_model = torch_model  # prevent destroy torch model.
@@ -86,18 +87,20 @@ class BertForSequenceClassification:  # create a new class for speeding up
 # use 4 threads for BERT inference
 turbo_transformers.set_num_threads(4)
 
-model_id = os.path.join(
-    os.path.dirname(__file__), "bert_model"
-)  # the model of huggingface's path
-tokenizer = BertTokenizer.from_pretrained(model_id)  # the initialization of tokenizer
+model_id = os.path.join(os.path.dirname(__file__),
+                        "bert_model")  # the model of huggingface's path
+tokenizer = BertTokenizer.from_pretrained(
+    model_id)  # the initialization of tokenizer
 turbo_model = BertForSequenceClassification.from_pretrained(
-    model_id, torch.device("cpu:0")
-)  # the initialization of the acceleration model
+    model_id,
+    torch.device("cpu:0"))  # the initialization of the acceleration model
 
 # predict after loading the model
 
 text = "Sample input text"
-inputs = tokenizer.encode_plus(text, add_special_tokens=True, return_tensors="pt")
+inputs = tokenizer.encode_plus(text,
+                               add_special_tokens=True,
+                               return_tensors="pt")
 # turbo_result holds the returned logits from TurboTransformers model
 turbo_result = turbo_model(**inputs)
 
@@ -106,5 +109,6 @@ torch_model = TorchBertForSequenceClassification.from_pretrained(model_id)
 torch_result = torch_model(**inputs)[0]
 print(turbo_result)
 # tensor([[0.2716, 0.0318]], grad_fn=<AddmmBackward>)
-print(torch_result) # torch_result and turbo_result should hold the same logits
+print(
+    torch_result)  # torch_result and turbo_result should hold the same logits
 # tensor([[0.2716, 0.0318]], grad_fn=<AddmmBackward>)

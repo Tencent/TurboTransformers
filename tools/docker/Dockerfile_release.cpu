@@ -14,5 +14,5 @@ RUN /opt/conda/bin/conda install pytorch==1.5.0 cpuonly -c pytorch && \
     /opt/conda/bin/conda install make cmake git graphviz gperftools git-lfs docopt -c conda-forge && \
     /opt/conda/bin/conda clean -afy
 
-RUN pip --no-cache-dir install contexttimer future transformers==3.4.0 docopt onnxruntime-tools
+RUN pip --no-cache-dir install contexttimer future transformers==4.11.1 docopt onnxruntime-tools
 WORKDIR /workspace

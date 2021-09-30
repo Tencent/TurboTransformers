@@ -13,7 +13,7 @@
 
 import unittest
 import torch
-from transformers.modeling_roberta import RobertaModel, RobertaConfig
+from transformers.models.roberta.modeling_roberta import RobertaModel, RobertaConfig
 import numpy
 import turbo_transformers
 import sys

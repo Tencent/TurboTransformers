@@ -24,10 +24,10 @@ import torch
 from torch import nn
 import enum
 from .utils import try_convert, convert2tt_tensor, to_param_dict_convert_tt, to_param_dict, create_empty_if_none, AnyTensor, get_head_mask, get_extended_attention_mask
-from transformers.modeling_roberta import RobertaModel as TorchRobertaModel
-from transformers.modeling_roberta import RobertaEmbeddings as TorchRobertaEmbeddings
-from transformers.modeling_roberta import RobertaConfig
-from transformers.modeling_bert import BertEncoder as TorchBertEncoder
+from transformers.models.roberta.modeling_roberta import RobertaModel as TorchRobertaModel
+from transformers.models.roberta.modeling_roberta import RobertaEmbeddings as TorchRobertaEmbeddings
+from transformers.models.roberta.modeling_roberta import RobertaConfig
+from transformers.models.bert.modeling_bert import BertEncoder as TorchBertEncoder
 from .modeling_bert import BertEncoder, SequencePool, BertPooler
 
 __all__ = [" RobertaModel"]
@@ -147,4 +147,3 @@ class RobertaModel:
         encoder = BertEncoder.from_torch(model.encoder)
         pooler = BertPooler.from_torch(model.pooler)
         return RobertaModel(model.embeddings, encoder, pooler, model.config)
-

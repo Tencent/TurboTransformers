@@ -22,21 +22,22 @@ from .return_type import convert_returns_as_type, ReturnType
 
 from .utils import try_convert, convert2tt_tensor, create_empty_if_none, AnyTensor
 
-from .modules import MultiHeadedAttention, PositionwiseFeedForward
+from onmt.modules.multi_headed_attn import MultiHeadedAttention as OnmtMultiHeadedAttention
+from transformers.models.bert.modeling_bert import BertAttention as TorchBertAttention
 
 from onmt.decoders.transformer import TransformerDecoderLayer as OnmtTransformerDecoderLayer
 from onmt.decoders.transformer import TransformerDecoder as OnmtTransformerDecoder
 from onmt.modules import Embeddings as TorchBertEmbeddings
 from torch.nn import LayerNorm as TorchLayerNorm
 
+from .modules import MultiHeadedAttention, PositionwiseFeedForward
 from onmt.utils.misc import sequence_mask
 
 import enum
 import numpy as np
 
-__all__ = [
-    'TransformerDecoderLayer', 'TransformerDecoder'
-]
+__all__ = ['TransformerDecoderLayer', 'TransformerDecoder']
+
 
 class TransformerDecoderLayer:
     def __init__(self, self_attn: MultiHeadedAttention,

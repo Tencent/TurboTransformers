@@ -18,8 +18,8 @@ import sys
 import torch
 import os
 
-from transformers.modeling_distilbert import DistilBertConfig
-from transformers.modeling_distilbert import FFN as DistilFFN
+from transformers.models.distilbert.modeling_distilbert import DistilBertConfig
+from transformers.models.distilbert.modeling_distilbert import FFN as DistilFFN
 
 sys.path.append(os.path.dirname(__file__))
 import test_helper
