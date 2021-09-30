@@ -16,7 +16,7 @@ import unittest
 import sys
 import torch
 import turbo_transformers
-from transformers.modeling_albert import AlbertConfig, AlbertLayer
+from transformers.models.albert.modeling_albert import AlbertConfig, AlbertLayer
 import numpy
 import os
 

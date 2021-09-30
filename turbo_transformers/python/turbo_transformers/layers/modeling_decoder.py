@@ -23,7 +23,7 @@ from .return_type import convert_returns_as_type, ReturnType
 from .utils import try_convert, convert2tt_tensor, create_empty_if_none, AnyTensor
 
 from onmt.modules.multi_headed_attn import MultiHeadedAttention as OnmtMultiHeadedAttention
-from transformers.modeling_bert import BertAttention as TorchBertAttention
+from transformers.models.bert.modeling_bert import BertAttention as TorchBertAttention
 
 from onmt.modules.position_ffn import PositionwiseFeedForward as OnmtPositionwiseFeedForward
 from onmt.decoders.transformer import TransformerDecoderLayer as OnmtTransformerDecoderLayer

@@ -16,7 +16,7 @@ import turbo_transformers
 import unittest
 import sys
 import torch
-from transformers.modeling_bert import BertConfig, BertEncoder
+from transformers.models.bert.modeling_bert import BertConfig, BertEncoder
 import os
 
 sys.path.append(os.path.dirname(__file__))

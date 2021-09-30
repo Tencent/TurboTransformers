@@ -16,7 +16,7 @@ import turbo_transformers
 import unittest
 import sys
 import torch
-from transformers.modeling_bert import BertConfig, BertAttention
+from transformers.models.bert.modeling_bert import BertConfig, BertAttention
 import os
 
 sys.path.append(os.path.dirname(__file__))
@@ -100,7 +100,6 @@ def create_test(batch_size, seq_length):
             #         torch.abs(torch_attention_result[1] -
             #                   turbo_attention_result[1])) < (
             #                       1e-2 if use_cuda else 1e-4))
-
 
             turbo_multiheaded_model = lambda: turbo_decoder_attention(
                 input_tensor,

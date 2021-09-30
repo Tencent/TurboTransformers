@@ -14,7 +14,7 @@ RUN curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py37_4.8.3-Linux-x86
     conda install conda-verify conda-build mkl-include cmake ninja -c anaconda -y && \
     conda clean -afy
 
-RUN pip install --no-cache-dir OpenNMT-py==1.1.0 docopt onnxruntime-gpu==1.3.0
+RUN pip install --no-cache-dir OpenNMT-py==1.2.0 docopt onnxruntime-gpu==1.3.0
 
 # build turbo
 RUN mkdir -p /src && cd /src && git clone https://github.com/Tencent/TurboTransformers.git --recursive && cd ./TurboTransformers && \

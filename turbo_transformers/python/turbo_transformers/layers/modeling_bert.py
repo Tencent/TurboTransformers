@@ -21,14 +21,14 @@ import torch
 from .return_type import convert_returns_as_type, ReturnType
 from .utils import try_convert, convert2tt_tensor, to_param_dict_convert_tt, to_param_dict, create_empty_if_none, AnyTensor
 
-from transformers.modeling_bert import BertEmbeddings as TorchBertEmbeddings
-from transformers.modeling_bert import BertIntermediate as TorchBertIntermediate
-from transformers.modeling_bert import BertOutput as TorchBertOutput
-from transformers.modeling_bert import BertAttention as TorchBertAttention
-from transformers.modeling_bert import BertLayer as TorchBertLayer
-from transformers.modeling_bert import BertEncoder as TorchBertEncoder
-from transformers.modeling_bert import BertModel as TorchBertModel
-from transformers.modeling_bert import BertPooler as TorchBertPooler
+from transformers.models.bert.modeling_bert import BertEmbeddings as TorchBertEmbeddings
+from transformers.models.bert.modeling_bert import BertIntermediate as TorchBertIntermediate
+from transformers.models.bert.modeling_bert import BertOutput as TorchBertOutput
+from transformers.models.bert.modeling_bert import BertAttention as TorchBertAttention
+from transformers.models.bert.modeling_bert import BertLayer as TorchBertLayer
+from transformers.models.bert.modeling_bert import BertEncoder as TorchBertEncoder
+from transformers.models.bert.modeling_bert import BertModel as TorchBertModel
+from transformers.models.bert.modeling_bert import BertPooler as TorchBertPooler
 
 import enum
 import numpy as np
