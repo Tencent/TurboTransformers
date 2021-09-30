@@ -23,13 +23,15 @@ from .return_type import convert_returns_as_type, ReturnType
 from .utils import try_convert, convert2tt_tensor, create_empty_if_none, AnyTensor
 
 from onmt.modules.multi_headed_attn import MultiHeadedAttention as OnmtMultiHeadedAttention
-from transformers.modeling_bert import BertAttention as TorchBertAttention
+from transformers.models.bert.modeling_bert import BertAttention as TorchBertAttention
 from onmt.modules.position_ffn import PositionwiseFeedForward as OnmtPositionwiseFeedForward
 from torch.nn import LayerNorm as TorchLayerNorm
 
 __all__ = [
-    'MultiHeadedAttention', 'PositionwiseFeedForward',
+    'MultiHeadedAttention',
+    'PositionwiseFeedForward',
 ]
+
 
 class MultiHeadedAttention(cxx.MultiHeadedAttention):
     def __call__(self,
@@ -302,4 +304,3 @@ class PositionwiseFeedForward(cxx.PositionwiseFeedForward):
                 convert2tt_tensor(params['layer_norm.weight']),
                 convert2tt_tensor(params['layer_norm.bias']))
             return ffn
-
