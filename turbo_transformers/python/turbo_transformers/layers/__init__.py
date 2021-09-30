@@ -17,6 +17,7 @@ from .qmodeling_bert import QBertIntermediate, QBertOutput, QBertLayer, QBertEnc
 
 from .modeling_albert import AlbertEmbeddings, AlbertAttention, AlbertLayer, AlbertTransformer, AlbertModel
 from .modeling_decoder import MultiHeadedAttention, PositionwiseFeedForward, TransformerDecoderLayer, TransformerDecoder
+from .modeling_encoder import TransformerEncoderLayer, TransformerEncoder
 from .modeling_roberta import RobertaModel
 from .modeling_gpt2 import GPT2Model
 from .modeling_distillbert import DistillBertAttention, DistrillFFN, DistrillTransformerBlock, DistrillTransformer, DistilBertModel
@@ -34,6 +35,7 @@ __all__ = [
     'PositionwiseFeedForward', 'AlbertLayer', 'AlbertEmbeddings',
     'AlbertAttention', 'AlbertTransformer', 'AlbertModel',
     'PositionwiseFeedForward', 'TransformerDecoderLayer', 'TransformerDecoder',
+    'TransformerEncoderLayer', 'TransformerEncoder',
     'RobertaModel', 'QBertIntermediate', 'QBertOutput', 'QBertLayer',
     'QBertEncoder', 'QBertModel', 'GPT2Model', 'DistillBertAttention',
     'DistrillFFN', 'DistrillTransformerBlock', 'DistrillTransformer',

@@ -30,7 +30,9 @@ def benchmark_torch(model_name: str, seq_len: int, batch_size: int, n: int,
         cfg = transformers.BertConfig()
         model = transformers.BertModel(cfg)
     elif model_name == "albert":
-        cfg = transformers.AlbertConfig()
+        cfg = transformers.AlbertConfig(hidden_size=768,
+                               num_attention_heads=12,
+                               intermediate_size=3072)
         model = transformers.AlbertModel(cfg)
     elif model_name == "roberta":
         cfg = transformers.RobertaConfig()

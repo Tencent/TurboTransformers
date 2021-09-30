@@ -25,22 +25,20 @@ from .utils import try_convert, convert2tt_tensor, create_empty_if_none, AnyTens
 from onmt.modules.multi_headed_attn import MultiHeadedAttention as OnmtMultiHeadedAttention
 from transformers.models.bert.modeling_bert import BertAttention as TorchBertAttention
 
-from onmt.modules.position_ffn import PositionwiseFeedForward as OnmtPositionwiseFeedForward
+
 from onmt.decoders.transformer import TransformerDecoderLayer as OnmtTransformerDecoderLayer
 from onmt.decoders.transformer import TransformerDecoder as OnmtTransformerDecoder
 from onmt.modules import Embeddings as TorchBertEmbeddings
-
 from torch.nn import LayerNorm as TorchLayerNorm
+
 from onmt.utils.misc import sequence_mask
 
 import enum
 import numpy as np
 
 __all__ = [
-    'MultiHeadedAttention', 'PositionwiseFeedForward',
     'TransformerDecoderLayer', 'TransformerDecoder'
 ]
-
 
 class MultiHeadedAttention(cxx.MultiHeadedAttention):
     def __call__(self,
@@ -413,7 +411,7 @@ class TransformerDecoderLayer:
         output = self.feed_forward(mid, return_type=return_type)
         return output, convert_returns_as_type(
             attns, return_type)[:, 0, :, :].contiguous(
-            ), None  #attn_aligned mast be None
+            ), None  #attn_aligned must be None
 
     @staticmethod
     def from_onmt(transformer_decoder_layer: OnmtTransformerDecoderLayer):

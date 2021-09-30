@@ -242,15 +242,6 @@ def create_test(query_seq_len_list):
             self.assertTrue(
                 torch.max(torch.abs(concat_res - pad_result)) < tolerate_error)
 
-            # self.assertTrue(
-            #     torch.max(
-            #         torch.abs(torch_bert_layer_result[1] -
-            #                   turbo_bert_layer_result[1])) < tolerate_error)
-
-            # with open(fname, "a") as fh:
-            #     fh.write(
-            #         f"\"({batch_size},{seq_length:03})\", {torch_qps}, {turbo_qps}\n"
-            #     )
 
         def test_bert(self):
             self.check_bert_model(use_cuda=False)

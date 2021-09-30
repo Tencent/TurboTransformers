@@ -39,7 +39,9 @@ def generate_onnx_model(model_name: str,
             cfg = transformers.BertConfig()
             model = transformers.BertModel(cfg)
     elif model_name == "albert":
-        cfg = transformers.AlbertConfig()
+        cfg = transformers.AlbertConfig(hidden_size=768,
+                               num_attention_heads=12,
+                               intermediate_size=3072)
         model = transformers.AlbertModel(cfg)
     elif model_name == "roberta":
         cfg = transformers.RobertaConfig()
@@ -96,7 +98,7 @@ def onnxruntime_benchmark_creator(backend: str):
         import multiprocessing
         import os
         temp_fn = f"/tmp/temp_{model_name}_onnx.model"
-        if os.path.exists(temp_fn):
+        if enable_random and os.path.exists(temp_fn):
             import transformers
             cfg = transformers.BertConfig()
             vocab_size = cfg.vocab_size

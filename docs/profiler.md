@@ -1,5 +1,5 @@
 ## How to profile you code
-1. Compiling code before setting option WITH_PROFILER ON in CMakeList.txt
+1. Before compiling code, set option WITH_PROFILER ON in CMakeLists.txt
 
 ```
 option(WITH_PROFILER  "Compile with profiler"   ON)

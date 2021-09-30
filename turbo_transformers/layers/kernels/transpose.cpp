@@ -69,6 +69,7 @@ static void AddBiasTransposeForScorePadImpl(
   int64_t batch_size = seq_len_list.size();
   int64_t max_seq_length =
       *std::max_element(seq_len_list.begin(), seq_len_list.end());
+
   memset(output, 0,
          batch_size * max_seq_length * num_attention_heads * width *
              sizeof(float));
@@ -80,6 +81,7 @@ static void AddBiasTransposeForScorePadImpl(
     if (seq_idx >= seq_len_list[batch_idx]) {
       continue;
     }
+
     int64_t acc_seq_len = std::accumulate(seq_len_list.begin(),
                                           seq_len_list.begin() + batch_idx, 0);
     for (int64_t head_idx = 0; head_idx < num_attention_heads; ++head_idx) {
@@ -90,6 +92,7 @@ static void AddBiasTransposeForScorePadImpl(
       auto* dst = output +
                   batch_idx * (num_attention_heads * max_seq_length * width) +
                   head_idx * max_seq_length * width + seq_idx * width;
+
 #pragma omp simd
       for (int64_t width_idx = 0; width_idx < width; ++width_idx) {
         dst[width_idx] = src[width_idx] + bias_ptr[width_idx];
@@ -507,6 +510,7 @@ void SplitAddBiasTransposeForScorePad(const core::Tensor& input_tensor,
     memset(v_out, 0,
            out_batch_size * out_max_seq_length * num_attention_heads * width *
                sizeof(float));
+
 #pragma omp parallel for
     for (int64_t idx = 0;
          idx < out_batch_size * weight_num * out_max_seq_length; ++idx) {

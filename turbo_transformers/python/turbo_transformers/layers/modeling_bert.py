@@ -441,7 +441,7 @@ class BertModelNoPooler:
             model.to(device)
         embeddings = BertEmbeddings.from_torch(model.embeddings)
         encoder = BertEncoder.from_torch(model.encoder)
-        return BertModelNoPooler(embeddings, encoder, pooler)
+        return BertModelNoPooler(embeddings, encoder)
 
     @staticmethod
     def from_pretrained(model_id_or_path: str,

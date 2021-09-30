@@ -25,7 +25,9 @@ class LoadType(enum.Enum):
 
 
 def test(loadtype: LoadType, use_cuda: bool):
-    cfg = transformers.AlbertConfig()
+    cfg = transformers.AlbertConfig(hidden_size=768,
+                               num_attention_heads=12,
+                               intermediate_size=3072)
     model = transformers.AlbertModel(cfg)
     model.eval()
     torch.set_grad_enabled(False)

@@ -1,9 +1,10 @@
-## turbo_transformers: a fast and user-friendly runtime for transformer inference on CPU and GPU
+## TurboTransformers: a fast and user-friendly runtime for transformer inference on CPU and GPU
 ![logo](./images/logo.jpeg)
 
 <center>Make transformers serving fast by adding a turbo to your inference engine!</center>
 
-Transformer is the most critical alogrithm innovation in the NLP field in recent years. It brings higher model accuracy while introduces more calculations. The efficient deployment of online Transformer-based services faces enormous challenges. In order to make the costly Transformer online service more efficient, the WeChat AI open-sourced a Transformer inference acceleration tool called TurboTransformers, which has the following characteristics.
+The WeChat AI open-sourced TurboTransformers with the following characteristics.
+
 1. Supporting both Transformers Encoder and Decoder.
 3. Supports Variable Length inputs. No time-consuming offline tuning is required. You can change batch size and sequence length at real-time.
 3. Excellent CPU / GPU performance.
@@ -11,9 +12,10 @@ Transformer is the most critical alogrithm innovation in the NLP field in recent
 5. Smart Batching. Minimize zero-padding overhead for a batch of requests of different lengths.
 It can be used as a plugin for pytorch. Tthe end-to-end acceleration is obtained by adding a few lines of python code.
 
+
 TurboTransformers has been applied to multiple online BERT service scenarios in Tencent.
 For example, It brings 1.88x acceleration to the WeChat FAQ service, 2.11x acceleration to the public cloud sentiment analysis service, and 13.6x acceleration to the QQ recommendation system.
-Moreover, it have already been applied to build services such as Chitchating, Searching and Recommandation.
+Moreover, it has already been applied to build services such as Chitchating, Searching, and Recommendation.
 
 The following table is a comparison of TurboTransformers and related work.
 
@@ -28,7 +30,8 @@ The following table is a comparison of TurboTransformers and related work.
 | **turbo-transformers (CPU/GPU)** | **Fastest/Fastest** | **No** | **Yes** | **Easy** |
 
 ### Supported Models
-We currenly support the following transformer models.
+We currently support the following transformer models.
+
 
 * [BERT](https://arxiv.org/abs/1810.04805) [[Python]](./example/python/bert_example.py) [[C++]](./example/python/bert_example.cpp)
 * [ALBERT](https://arxiv.org/abs/1909.11942) [[Python]](./example/python/albert_example.py)
@@ -68,7 +71,7 @@ if __name__ == "__main__":
 ```
 
 ### Installation
-Note that the building scripts only applie to specific OS and software (Pytorch, OpenNMT, transformers, etc.) versions.
+Note that the building scripts only apply to specific OS and software (Pytorch, OpenNMT, transformers, etc.) versions.
 Please adjust them according to your needs.
 
 #### CPU
@@ -144,7 +147,11 @@ We also prepared a docker image containing GPU version of TurboTransformers.
 ```
 docker pull thufeifeibear/turbo_transformers_gpu:latest
 ```
-
+#### Using Tensor Core (FP16)
+[Tensor Core](https://developer.download.nvidia.cn/video/gputechconf/gtc/2019/presentation/s9926-tensor-core-performance-the-ultimate-guide.pdf)  can accelerate computing on GPU. It is disabled by default in TurboTransformers. If you want to turn it on, before compiling code, set option WITH_MODULE_BENCHMAKR ON in CMakeLists.txt
+```
+option(WITH_TENSOR_CORE     "Use Tensor core to accelerate"     ON)
+```
 ### Usage
 TurboTransformers provides C++ / python API interfaces. We hope to do our best to adapt to a variety of online environments to reduce the difficulty of development for users.
 
@@ -152,14 +159,14 @@ TurboTransformers provides C++ / python API interfaces. We hope to do our best t
 #### Pretrained Model Loading
 The first step in using turbo is to load a pre-trained model. We provide a way to load pytorch and tensorflow pre-trained models in [huggingface/transformers](https://github.com/huggingface).
 The specific conversion method is to use the corresponding script in ./tools to convert the pre-trained model into an npz format file, and turbo uses the C ++ or python interface to load the npz format model.
-In particular, we consider that most of the pre-trained models are in pytorch format and used with python. We provide a shortcut for calling directly in python for the pytorch saved model.
+In particular, we consider that most of the pre-trained models are in PyTorch format and used with python. We provide a shortcut for calling directly in python for the PyTorch saved model.
 
 <img width="700" height="150" src="./images/pretrainmodelload.jpg" alt="pretrained">
 
 #### APIs
 ###### python APIs
 Refer to examples of supported models in [./example/python](./example/python "python").
-[TurboNLP/Translate-Demo](https://github.com/TurboNLP/Translate-Demo "translate") shows a demo of applying TurboTransformer in Translatetion Task.
+[TurboNLP/Translate-Demo](https://github.com/TurboNLP/Translate-Demo "translate") shows a demo of applying TurboTransformer in Translation Task.
 Since the user of BERT acceleration always requires a customized post-processing process for the task, we provide an example of how to write a sequence classification application.
 ###### C++ APIs
 Refer to [./example/cpp](./example/cpp "C ++") for an example.
@@ -179,6 +186,7 @@ Therefore most of gemm operations are processed without zero-padding.
 Turbo provides a model as `BertModelSmartBatch` including a smart batching technique.
 The example is presented in [./example/python/bert_smart_pad.py](./example/python/bert_smart_pad.py "smart_batching").
 
+
 ## How to contribute new models
 [How to know hotspots of your code?](./docs/profiler.md)
 
@@ -186,16 +194,16 @@ The example is presented in [./example/python/bert_smart_pad.py](./example/pytho
 
 
 ## TODO
-Currently (June 2020), In the near futuer, we will add support for low-precision models (CPU int8, GPU FP16).
+Currently (June 2020), In the near future, we will add support for low-precision models (CPU int8, GPU FP16).
 **Looking forwards to your contribution!**
 
-## Lisence
+## License
 BSD 3-Clause License
 
 ## Known Issues
 1. The results of Turbo Transformers may be different from the results of PyTorch after 2 digits behind the decimal point.
-The diff mainly comes from Bert Output Layer. We use a approximate GELU algorithm, which may be different from PyTorch.
-2. Turbo and PyTorch share the same MKL. MKL of PyTorch 1.5.0 may slow in Turbo. Reasons needs to be determined.
+The diff mainly comes from Bert Output Layer. We use an approximate GELU algorithm, which may be different from PyTorch.
+2. Turbo and PyTorch share the same MKL. MKL of PyTorch 1.5.0 may slow in Turbo. Reasons need to be determined.
 Download PyTorch version to 1.1.0 will improve Turbo's Performance.
 3. onnxruntime-cpu==1.4.0 and onnxruntime-gpu==1.3.0 can not work simultaneously.
 
@@ -222,6 +230,6 @@ Cite this paper, if you use TurboTransformers in your research publication.
 The artifacts of the paper can be found at branch `ppopp21_artifact_centos`.
 
 ## Contact us
-Although we recommand you post your problem with github issues, you can also join in our Turbo user group.
+Although we recommend you post your problem with github issues, you can also join in our Turbo user group.
 1. Scan this [QR code](./images/namecode.pdf "qrcode") and add our contactor as your WeChat friend.
 2. QQ Group, Name: TurboTransformers, Number : 1109315167.

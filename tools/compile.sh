@@ -25,6 +25,6 @@ rm -rf ${BUILD_PATH} || true
 mkdir -p ${BUILD_PATH}
 cd ${BUILD_PATH}
 cmake -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release ${SRC_ROOT} ${WITH_GPU}
+    -D CMAKE_BUILD_TYPE=Release -D CUDA_INCLUDE_DIRS=/usr/local/cuda/include ${SRC_ROOT} ${WITH_GPU}
 ninja
 pip install `find . -name "*whl"`
