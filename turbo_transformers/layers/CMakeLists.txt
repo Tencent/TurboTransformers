@@ -23,6 +23,7 @@ add_library(tt_layers OBJECT
         prepare_bert_masks.cpp
         albert_layer.cpp
         multi_headed_attention.cpp
+        multi_headed_attention_smart_batch.cpp
         positionwise_ffn.cpp
         addbias_act.cpp
         addbias_layernorm.cpp

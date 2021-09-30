@@ -77,9 +77,11 @@ void MatMul(const core::Tensor& A, bool a_trans, const core::Tensor& B,
 
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 9010
     if (gpu_ctx.compute_major() >= 5) {
-      auto cublas_algo = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+      // auto cublas_algo = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+      auto cublas_algo = CUBLAS_GEMM_DEFAULT;
+      auto math_algo = CUBLAS_DEFAULT_MATH;  // CUBLAS_TENSOR_OP_MATH;
       TT_ENFORCE_CUDA_SUCCESS(
-          cublasSetMathMode(gpu_ctx.cublas_handle(), CUBLAS_TENSOR_OP_MATH));
+          cublasSetMathMode(gpu_ctx.cublas_handle(), math_algo));
       TT_ENFORCE_CUDA_SUCCESS(cublasGemmEx(
           gpu_ctx.cublas_handle(), transB, transA, N, M, K_a, &alpha,
           B.data<float>(), CUDA_R_32F, ldb, A.data<float>(), CUDA_R_32F, lda,
