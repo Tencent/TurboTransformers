@@ -219,11 +219,12 @@ Download PyTorch version to 1.1.0 will improve Turbo's Performance.
 Cite this paper, if you use TurboTransformers in your research publication.
 
 ```
-@article{fang2020turbotransformers,
-  title={TurboTransformers: An Efficient GPU Serving System For Transformer Models},
+@inproceedings{fang2021turbotransformers,
+  title={TurboTransformers: an efficient GPU serving system for transformer models},
   author={Fang, Jiarui and Yu, Yang and Zhao, Chengduo and Zhou, Jie},
-  journal={arXiv preprint arXiv:2010.05680},
-  year={2020}
+  booktitle={Proceedings of the 26th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming},
+  pages={389--402},
+  year={2021}
 }
 ```
 
