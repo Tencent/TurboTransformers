@@ -16,7 +16,7 @@ import turbo_transformers
 import unittest
 
 import torch
-from transformers.modeling_bert import BertConfig, BertLayer, BertAttention, BertModel
+from transformers.models.bert.modeling_bert import BertConfig, BertLayer, BertAttention, BertModel
 from onmt.modules.multi_headed_attn import MultiHeadedAttention
 import sys
 import os
