@@ -2,20 +2,26 @@
 FROM continuumio/anaconda3
 
 RUN apt-get update && apt-get install -y gfortran build-essential
-RUN /opt/conda/bin/conda install cmake curl git numpy -c anaconda
+
+# Change conda channels when you need
+RUN 	echo "channels:" > ~/.condarc && \
+	echo " - https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/" >> ~/.condarc && \
+	echo " - https://mirrors.bfsu.edu.cn/anaconda/cloud/conda-forge/" >> ~/.condarc && \
+	echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/main/" >> ~/.condarc && \
+	echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/free/" >> ~/.condarc && \
+	echo " - defaults" >> ~/.condarc && \
+	echo "ssl_verify: true" >> ~/.condarc && \
+	#/opt/conda/bin/conda update conda -y && \
+  	/opt/conda/bin/conda clean -i && \
+  	/opt/conda/bin/conda info
 
 # Try to install deps by anaconda
 # NOTE:  1. MKL is installed with pytorch.
 #           turbo-transformers will use the same MKL from pytorch
 
 RUN   /opt/conda/bin/conda install pytorch==1.3.1 cpuonly -c pytorch && \
-    pip install OpenNMT-py==1.2.0 && \
-    /opt/conda/bin/conda install curl conda-verify conda-build mkl-include cmake -c anaconda &&  \
-    /opt/conda/bin/conda install make cmake git graphviz gperftools git-lfs docopt -c conda-forge && \
+RUN /opt/conda/bin/conda env update -y -f conda_environment_dev.cpu.yml && \
     /opt/conda/bin/conda clean -afy
-RUN pip --no-cache-dir install contexttimer future transformers==4.11.1 docopt
-
-RUN pip --no-cache-dir install onnxruntime==1.4.0
 
 # Install c++ compiler only
 RUN apt-get update && apt-get install -y g++ && rm -rf /var/lib/apt/lists/*
