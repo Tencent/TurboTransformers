@@ -1,7 +1,9 @@
 # Build ONNX Runtime for benchmark
-FROM continuumio/anaconda3
+#FROM continuumio/anaconda3:2020.07
+FROM continuumio/miniconda3:4.8.3
 
-RUN apt-get update && apt-get install -y gfortran build-essential
+RUN apt-get --allow-releaseinfo-change update && apt-get install -y gfortran build-essential
+#RUN /opt/conda/bin/conda install cmake curl git numpy -c anaconda
 
 # Change conda channels when you need
 RUN 	echo "channels:" > ~/.condarc && \
@@ -11,16 +13,18 @@ RUN 	echo "channels:" > ~/.condarc && \
 	echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/free/" >> ~/.condarc && \
 	echo " - defaults" >> ~/.condarc && \
 	echo "ssl_verify: true" >> ~/.condarc && \
-	#/opt/conda/bin/conda update conda -y && \
-  	/opt/conda/bin/conda clean -i && \
+ 	/opt/conda/bin/conda clean -i && \
+	/opt/conda/bin/conda config --set allow_conda_downgrades true && \
   	/opt/conda/bin/conda info
+
 
 # Try to install deps by anaconda
 # NOTE:  1. MKL is installed with pytorch.
 #           turbo-transformers will use the same MKL from pytorch
 
-RUN   /opt/conda/bin/conda install pytorch==1.3.1 cpuonly -c pytorch && \
-RUN /opt/conda/bin/conda env update -y -f conda_environment_dev.cpu.yml && \
+COPY ./docker/conda_environment_dev.cpu.yml .
+
+RUN /opt/conda/bin/conda env update -n base -f conda_environment_dev.cpu.yml && \
     /opt/conda/bin/conda clean -afy
 
 # Install c++ compiler only
