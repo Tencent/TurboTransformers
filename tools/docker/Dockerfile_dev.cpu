@@ -6,16 +6,16 @@ RUN apt-get --allow-releaseinfo-change update && apt-get install -y gfortran bui
 #RUN /opt/conda/bin/conda install cmake curl git numpy -c anaconda
 
 # Change conda channels when you need
-RUN 	echo "channels:" > ~/.condarc && \
-	echo " - https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/" >> ~/.condarc && \
-	echo " - https://mirrors.bfsu.edu.cn/anaconda/cloud/conda-forge/" >> ~/.condarc && \
-	echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/main/" >> ~/.condarc && \
-	echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/free/" >> ~/.condarc && \
-	echo " - defaults" >> ~/.condarc && \
-	echo "ssl_verify: true" >> ~/.condarc && \
- 	/opt/conda/bin/conda clean -i && \
-	/opt/conda/bin/conda config --set allow_conda_downgrades true && \
-  	/opt/conda/bin/conda info
+#RUN 	echo "channels:" > ~/.condarc && \
+#	echo " - https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/" >> ~/.condarc && \
+#	echo " - https://mirrors.bfsu.edu.cn/anaconda/cloud/conda-forge/" >> ~/.condarc && \
+#	echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/main/" >> ~/.condarc && \
+#	echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/free/" >> ~/.condarc && \
+#	echo " - defaults" >> ~/.condarc && \
+#	echo "ssl_verify: true" >> ~/.condarc && \
+# 	/opt/conda/bin/conda clean -i && \
+#	/opt/conda/bin/conda config --set allow_conda_downgrades true && \
+#  	/opt/conda/bin/conda info
 
 
 # Try to install deps by anaconda

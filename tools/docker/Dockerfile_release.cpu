@@ -1,18 +1,29 @@
-FROM continuumio/anaconda3
+#FROM continuumio/anaconda3:2020.07
+FROM continuumio/miniconda3:4.8.3
 
-RUN apt-get update && \
+RUN apt-get --allow-releaseinfo-change update && \
     apt-get install -y gfortran curl git wget bzip2 build-essential ninja-build g++ && rm -rf /var/lib/apt/lists/*
 
 ENV PATH=/opt/conda/bin/bin:${PATH} CONDA_PREFIX=/opt/conda
 
+# Change conda channels when you need
+#RUN     echo "channels:" > ~/.condarc && \
+#        echo " - https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/" >> ~/.condarc && \
+#        echo " - https://mirrors.bfsu.edu.cn/anaconda/cloud/conda-forge/" >> ~/.condarc && \
+#        echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/main/" >> ~/.condarc && \
+#        echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/free/" >> ~/.condarc && \
+#        echo " - defaults" >> ~/.condarc && \
+#        echo "ssl_verify: true" >> ~/.condarc && \
+#        /opt/conda/bin/conda clean -i && \
+#        /opt/conda/bin/conda config --set allow_conda_downgrades true && \
+#        /opt/conda/bin/conda info
+
 # NOTE:  1. MKL is installed with pytorch.
 #           turbo-transformers will use the same MKL from PyTorch
 
-RUN /opt/conda/bin/conda install pytorch==1.5.0 cpuonly -c pytorch && \
-    pip install OpenNMT-py onnxruntime==1.4.0 && \
-    /opt/conda/bin/conda install curl conda-verify conda-build mkl-include cmake -c anaconda &&  \
-    /opt/conda/bin/conda install make cmake git graphviz gperftools git-lfs docopt -c conda-forge && \
+COPY ./docker/conda_environment_release.cpu.yml .
+
+RUN /opt/conda/bin/conda env update -n base -f conda_environment_release.cpu.yml && \
     /opt/conda/bin/conda clean -afy
 
-RUN pip --no-cache-dir install contexttimer future transformers==4.11.1 docopt onnxruntime-tools
 WORKDIR /workspace
