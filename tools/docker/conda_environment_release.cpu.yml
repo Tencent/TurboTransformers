@@ -23,9 +23,8 @@ dependencies:
   - conda-build=3.18.11
   - conda-package-handling=1.6.1
   - conda-verify=3.4.2
-  - cpuonly=2.0
+  - pytorch::cpuonly=2.0
   - cryptography=2.9.2
-  - cudatoolkit=10.1.243
   - curl=7.71.1
   - docopt=0.6.2
   - expat=2.2.9
@@ -78,7 +77,7 @@ dependencies:
   - python=3.7.7
   - python-libarchive-c=2.9
   - python_abi=3.7
-  - pytorch=1.5.0
+  - pytorch::pytorch=1.5.0
   - pytz=2020.1
   - pyyaml=5.3.1
   - readline=8.0

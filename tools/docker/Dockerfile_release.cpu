@@ -1,22 +1,20 @@
 #FROM continuumio/anaconda3:2020.07
 FROM continuumio/miniconda3:4.8.3
 
+#COPY ./docker/superupdate.sh /root/superupdate.sh
+#RUN bash /root/superupdate.sh cn
+
 RUN apt-get --allow-releaseinfo-change update && \
     apt-get install -y gfortran curl git wget bzip2 build-essential ninja-build g++ && rm -rf /var/lib/apt/lists/*
 
 ENV PATH=/opt/conda/bin/bin:${PATH} CONDA_PREFIX=/opt/conda
 
 # Change conda channels when you need
-#RUN     echo "channels:" > ~/.condarc && \
-#        echo " - https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/" >> ~/.condarc && \
-#        echo " - https://mirrors.bfsu.edu.cn/anaconda/cloud/conda-forge/" >> ~/.condarc && \
-#        echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/main/" >> ~/.condarc && \
-#        echo " - https://mirrors.bfsu.edu.cn/anaconda/pkgs/free/" >> ~/.condarc && \
-#        echo " - defaults" >> ~/.condarc && \
-#        echo "ssl_verify: true" >> ~/.condarc && \
-#        /opt/conda/bin/conda clean -i && \
-#        /opt/conda/bin/conda config --set allow_conda_downgrades true && \
-#        /opt/conda/bin/conda info
+#COPY ./docker/condarc /root/.condarc
+RUN    /opt/conda/bin/conda clean -i && \
+       /opt/conda/bin/conda config --set allow_conda_downgrades true && \
+       /opt/conda/bin/conda info
+
 
 # NOTE:  1. MKL is installed with pytorch.
 #           turbo-transformers will use the same MKL from PyTorch
